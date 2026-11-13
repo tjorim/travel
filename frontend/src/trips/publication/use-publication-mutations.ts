@@ -3,12 +3,12 @@ import { ownerKeys } from "../../query/keys";
 import { tripPath, useOwnerMutation } from "../../query/owner-queries";
 import type {
   FollowAudienceResult,
-  ProjectionDocument,
   PublicProjectionStatus,
   ShareLink,
   ShareScope,
   SharingPresetId,
-} from "../../tracker-model";
+} from "../../api-types";
+import type { ProjectionDocument } from "../../api-types";
 
 export type LinkAction = {
   link: ShareLink;

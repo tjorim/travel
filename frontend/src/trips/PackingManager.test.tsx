@@ -3,7 +3,7 @@ import "fake-indexeddb/auto";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { renderWithOwner, testToken } from "../query/test-utils";
-import type { Trip } from "../tracker-model";
+import type { Trip } from "../api-types";
 import { PackingManager } from "./PackingManager";
 import { __resetOfflineStoreForTests, listOfflineCopies } from "../offline/offline-store";
 import { serveApi } from "../query/serve-api";
@@ -11,6 +11,10 @@ import { serveApi } from "../query/serve-api";
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 const trip: Trip = {
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id: "trip",
   title: "Exampleland",
   summary: null,

@@ -3,7 +3,7 @@ import { m } from "../../paraglide/messages.js";
 import { Link } from "@tanstack/react-router";
 
 import { Markdown } from "../../Markdown";
-import type { Location, Trip } from "../../tracker-model";
+import type { Location, Trip } from "../../api-types";
 import { placeLabel, Section } from "./shared";
 import { DetailList } from "./DetailList";
 

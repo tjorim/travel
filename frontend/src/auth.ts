@@ -7,7 +7,7 @@ const transactionKey = "travel-tracker-pkce-transaction";
 const restoreMarkerKey = "travel-tracker-may-restore-session";
 const silentRestoreKey = "travel-tracker-silent-restore-in-progress";
 
-export type TrackerSession = {
+export type OwnerSession = {
   accessToken: string;
   expiresAt: number;
   idToken?: string;
@@ -49,11 +49,11 @@ function trackerPath(path: string): string {
   return path.startsWith("/") && !path.startsWith("//") ? path : "/";
 }
 
-export function readSession(): TrackerSession | null {
+export function readSession(): OwnerSession | null {
   const stored = sessionStorage.getItem(storageKey);
   if (!stored) return null;
   try {
-    const session = JSON.parse(stored) as TrackerSession;
+    const session = JSON.parse(stored) as OwnerSession;
     if (typeof session.accessToken !== "string" || typeof session.expiresAt !== "number") {
       sessionStorage.removeItem(storageKey);
       return null;
@@ -65,7 +65,7 @@ export function readSession(): TrackerSession | null {
   }
 }
 
-function storeSession(session: TrackerSession): void {
+function storeSession(session: OwnerSession): void {
   if (readSessionSubject() !== decodeSubject(session.accessToken)) sessionGeneration++;
   sessionStorage.setItem(storageKey, JSON.stringify(session));
   // This contains no credential. It permits a reload to ask Keycloak for a
@@ -111,7 +111,7 @@ export async function beginSignIn(
 
 export async function completeSignIn(
   search: string,
-): Promise<{ returnPath: string; session: TrackerSession }> {
+): Promise<{ returnPath: string; session: OwnerSession }> {
   // The parent validates origin, source and PKCE state and exchanges the code.
   if (
     window.name === "travel-session-renewal" ||
@@ -185,7 +185,7 @@ export async function completeSignIn(
       m.owner_the_identity_server_did_not_return_a_valid_access_token(),
     );
   }
-  const session: TrackerSession = {
+  const session: OwnerSession = {
     accessToken: token.access_token,
     expiresAt: Date.now() + token.expires_in * 1000,
     ...(typeof token.id_token === "string" ? { idToken: token.id_token } : {}),
@@ -257,7 +257,7 @@ export function accountUrl(): string {
   return `${issuer}/account/?${parameters}`;
 }
 
-export function beginSignOut(session: TrackerSession): void {
+export function beginSignOut(session: OwnerSession): void {
   clearSession();
   const parameters = new URLSearchParams({
     client_id: clientId,
@@ -268,13 +268,13 @@ export function beginSignOut(session: TrackerSession): void {
 }
 
 let renewalRefused = false;
-let renewal: Promise<TrackerSession> | undefined;
+let renewal: Promise<OwnerSession> | undefined;
 let cancelRenewal: (() => void) | undefined;
 let renewalSubject: string | null = null;
 let sessionGeneration = 0;
 
 /** PKCE runs in a child browsing context so open editors never navigate away. */
-export function renewSession(interactive = false): Promise<TrackerSession> {
+export function renewSession(interactive = false): Promise<OwnerSession> {
   if (renewal) return renewal;
   if (!interactive && renewalRefused) return Promise.reject(new Error("Sign-in required"));
   if (interactive) renewalRefused = false;
@@ -282,7 +282,7 @@ export function renewSession(interactive = false): Promise<TrackerSession> {
   const popup = interactive
     ? window.open("about:blank", "travel-sign-in", "popup,width=520,height=720")
     : null;
-  renewal = new Promise<TrackerSession>((resolve, reject) => {
+  renewal = new Promise<OwnerSession>((resolve, reject) => {
     const frame = interactive ? null : document.createElement("iframe");
     if (frame) {
       frame.hidden = true;
@@ -292,7 +292,7 @@ export function renewSession(interactive = false): Promise<TrackerSession> {
     }
     const child = popup ?? frame?.contentWindow;
     let settled = false;
-    const finish = (error?: unknown, session?: TrackerSession) => {
+    const finish = (error?: unknown, session?: OwnerSession) => {
       if (settled) return;
       settled = true;
       if (error && completing) sessionGeneration++;
@@ -360,10 +360,7 @@ export function renewSession(interactive = false): Promise<TrackerSession> {
 }
 
 /** Reuses a token already renewed by a concurrent request. */
-export async function freshSession(
-  session: TrackerSession,
-  force = false,
-): Promise<TrackerSession> {
+export async function freshSession(session: OwnerSession, force = false): Promise<OwnerSession> {
   const stored = readSession();
   if (stored && stored.accessToken !== session.accessToken) {
     if (decodeSubject(stored.accessToken) !== decodeSubject(session.accessToken))
@@ -376,9 +373,7 @@ export async function freshSession(
 
 function readSessionSubject(): string | null {
   try {
-    const stored = JSON.parse(
-      sessionStorage.getItem(storageKey) ?? "null",
-    ) as TrackerSession | null;
+    const stored = JSON.parse(sessionStorage.getItem(storageKey) ?? "null") as OwnerSession | null;
     return stored ? decodeSubject(stored.accessToken) : null;
   } catch {
     return null;

@@ -11,14 +11,9 @@ import { useTripResource } from "../query/owner-queries";
 import { AlternativesPanel } from "./alternatives/AlternativesPanel";
 import { groupedIds } from "./alternatives/model";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import {
-  formatDay,
-  routeInPlan,
-  routeTitle,
-  sameJourney,
-  type Route,
-  type Trip,
-} from "../tracker-model";
+import { formatDay } from "../dates";
+import { routeInPlan, routeTitle, sameJourney } from "../records";
+import { type Route, type Trip } from "../api-types";
 import { placeFields, samePlace } from "./PlacePicker";
 import { useInPlaceCreate, type CreateRequestProps } from "./create-request";
 import {

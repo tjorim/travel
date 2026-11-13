@@ -3,7 +3,7 @@ import { m } from "../paraglide/messages.js";
 import { Link } from "@tanstack/react-router";
 
 import { useLinkedLibraryDocuments } from "../query/owner-queries";
-import { bytesLabel } from "../tracker-model";
+import { bytesLabel } from "../files";
 
 export function LinkedLibraryDocuments({ tripId }: { tripId: string }) {
   useLocale();

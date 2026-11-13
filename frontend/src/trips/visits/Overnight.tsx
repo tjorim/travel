@@ -1,6 +1,7 @@
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import { stayLabel, type Stay, type Trip, type Visit } from "../../tracker-model";
+import { stayLabel } from "../../records";
+import { type Stay, type Trip, type Visit } from "../../api-types";
 import { overnights } from "./model";
 
 /** Where the nights of a visit are spent; nothing when it covers no night. */

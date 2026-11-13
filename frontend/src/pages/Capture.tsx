@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 
 import { CaptureDialog } from "../trips/CaptureDialog";
 import { Trips } from "./Trips";
-import type { TravelUpdateCandidateIntent } from "../tracker-model";
+import type { TravelUpdateCandidateIntent } from "../capture-draft";
 
 /** The `/capture` deep link: the global "Vastleggen" entry with no trip context, and any
  * shared link into the same dialog the trip-header action opens over its workspace. The trips overview

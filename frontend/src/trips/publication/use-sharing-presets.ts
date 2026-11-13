@@ -8,7 +8,7 @@ import type {
   ShareLink,
   SharingPresetId,
   SharingPresetReview,
-} from "../../tracker-model";
+} from "../../api-types";
 import type { CollectionMember } from "../../sharing/collections";
 
 /** The audience a preset is reviewed for and applied to: the public view, a saved hidden link or a collection member. */

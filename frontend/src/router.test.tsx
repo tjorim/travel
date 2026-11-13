@@ -9,7 +9,7 @@ import { AuthProvider } from "./auth-context";
 import { createOwnerQueryClient } from "./query/client";
 import { OwnerQueryProvider } from "./query/OwnerQueryProvider";
 import { testToken } from "./query/test-utils";
-import { buildTrackerRouteTree, createTrackerRouter } from "./router";
+import { buildOwnerRouteTree, createOwnerRouter } from "./router";
 import { Trips } from "./pages/Trips";
 import { TripWorkspace } from "./pages/TripWorkspace";
 
@@ -74,8 +74,8 @@ it("prefetches the trips list through tripsRoute's loader before Trips reads it"
   const requests = serveTrips([{ id: "t1", title: "Exampleland" }]);
 
   const queryClient = createOwnerQueryClient();
-  const routeTree = buildTrackerRouteTree(routeComponents);
-  const router = createTrackerRouter(routeTree, { queryClient, initialEntries: ["/trips"] });
+  const routeTree = buildOwnerRouteTree(routeComponents);
+  const router = createOwnerRouter(routeTree, { queryClient, initialEntries: ["/trips"] });
 
   render(
     <AuthProvider>
@@ -95,8 +95,8 @@ it("skips the prefetch (and any request) when there is no signed-in owner", asyn
   const requests = serveTrips([{ id: "t1", title: "Exampleland" }]);
 
   const queryClient = createOwnerQueryClient();
-  const routeTree = buildTrackerRouteTree(routeComponents);
-  const router = createTrackerRouter(routeTree, { queryClient, initialEntries: ["/trips"] });
+  const routeTree = buildOwnerRouteTree(routeComponents);
+  const router = createOwnerRouter(routeTree, { queryClient, initialEntries: ["/trips"] });
 
   render(
     <AuthProvider>
@@ -128,9 +128,9 @@ it("opens a trip workspace section directly without crashing (regression for #23
   server.use(http.get("/api/trips/:tripId/areas", () => HttpResponse.json([])));
 
   const queryClient = createOwnerQueryClient();
-  const routeTree = buildTrackerRouteTree(workspaceRouteComponents);
+  const routeTree = buildOwnerRouteTree(workspaceRouteComponents);
   // A direct load of a trip's sharing section, as in the issue's reproduction steps.
-  const router = createTrackerRouter(routeTree, {
+  const router = createOwnerRouter(routeTree, {
     queryClient,
     initialEntries: ["/trips/t1/sharing"],
   });

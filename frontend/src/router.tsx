@@ -116,7 +116,7 @@ export const trackerNotFoundRoute = createRoute({
   component: () => <Navigate to="/" replace />,
 });
 
-export function buildTrackerRouteTree({
+export function buildOwnerRouteTree({
   Callback,
   OwnerHome,
   Trips,
@@ -154,7 +154,7 @@ export function buildTrackerRouteTree({
   ]);
 }
 
-export function createTrackerRouter(
+export function createOwnerRouter(
   routeTree: AnyRoute,
   options: { queryClient: QueryClient; initialEntries?: string[]; basepath?: string },
 ) {

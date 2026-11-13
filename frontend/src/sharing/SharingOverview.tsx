@@ -19,7 +19,7 @@ import {
   useOwnerMutation,
   useTripsQuery,
 } from "../query/owner-queries";
-import type { ShareLink, TripSummary } from "../tracker-model";
+import type { ShareLink, TripSummary } from "../api-types";
 import { sectionPath } from "../trips/workspace-sections";
 import { dateLabel, LINK_STATE_LABELS, publicUrl, shareUrl } from "../trips/publication/catalog";
 import { RevealedLinkDialog } from "../trips/publication/RevealedLinkDialog";

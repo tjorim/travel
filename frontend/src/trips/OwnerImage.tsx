@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import type { TrackerSession } from "../auth";
+import type { OwnerSession } from "../auth";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { ownerFile } from "../query/api";
@@ -13,7 +13,7 @@ export function OwnerImage({
   className,
   lazy = false,
 }: {
-  session: TrackerSession;
+  session: OwnerSession;
   url: string;
   alt: string;
   className?: string;

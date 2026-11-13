@@ -2,7 +2,7 @@ import { Button } from "@/ui/button";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { textNotice, useFeedback } from "../../query/feedback";
-import type { Area, Location } from "../../tracker-model";
+import type { Area, Location } from "../../api-types";
 import type { RouteCoordinate } from "../RouteGeometryEditor";
 import { resolvedAreaPoint, type Values } from "./model";
 import { flightArc } from "./flight-arc";

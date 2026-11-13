@@ -1,7 +1,8 @@
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { Markdown } from "../../Markdown";
-import { formatUpdateInstant, type MediaAsset, type Trip } from "../../tracker-model";
+import { formatUpdateInstant } from "../../dates";
+import { type MediaAsset, type Trip } from "../../api-types";
 import { visibilityLabel } from "../visibility";
 import {
   MediaPreview,

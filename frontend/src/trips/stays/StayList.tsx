@@ -2,7 +2,9 @@ import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import { daysBetween, formatDay, stayLabel, type Stay } from "../../tracker-model";
+import { daysBetween, formatDay } from "../../dates";
+import { stayLabel } from "../../records";
+import { type Stay } from "../../api-types";
 import { PLANNING_STATUS_LABELS } from "../labels";
 import { visibilityLabel } from "../visibility";
 

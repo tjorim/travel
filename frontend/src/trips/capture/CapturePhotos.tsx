@@ -9,7 +9,7 @@ import { useRef, type ChangeEvent } from "react";
 import { useAuth } from "../../auth-context";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { MediaAsset } from "../../tracker-model";
+import type { MediaAsset } from "../../api-types";
 import { OwnerImage } from "../OwnerImage";
 import type { CaptureUpload } from "./use-capture-uploads";
 

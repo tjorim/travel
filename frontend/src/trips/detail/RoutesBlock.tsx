@@ -2,16 +2,9 @@ import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { dayjs } from "../../dayjs";
 import { Markdown } from "../../Markdown";
-import {
-  ROUTE_MODE_LABELS,
-  formatDay,
-  formatInstant,
-  routeTitle,
-  type Location,
-  type Route,
-  type Trip,
-  areaName,
-} from "../../tracker-model";
+import { ROUTE_MODE_LABELS, routeTitle, areaName } from "../../records";
+import { formatDay, formatInstant } from "../../dates";
+import { type Location, type Route, type Trip } from "../../api-types";
 import { PLANNING_STATUS_LABELS } from "../labels";
 import { placeLabel, RecordHeading, Section } from "./shared";
 import { DetailList } from "./DetailList";

@@ -4,42 +4,9 @@ import { m } from "../paraglide/messages.js";
 import { ownerRequest } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { useOwner, useOwnerMutation, type Owner } from "../query/owner-queries";
-import type {
-  PresetLabel,
-  ProjectionDocument,
-  ScopeExclusions,
-  ShareLink,
-  ShareScope,
-} from "../tracker-model";
+import type { Collection, CollectionMember, ProjectionDocument, ShareScope } from "../api-types";
 
-export type CollectionMember = {
-  revision: number;
-  id: string;
-  trip_id: string;
-  /** Owner-only: the trip's own title, whatever the member scope shares. */
-  trip_title: string;
-  scope: ShareScope;
-  /** How many records this member delivers today; 0 means a visitor sees at most the trip header. */
-  delivered_records: number;
-  exclusions?: ScopeExclusions;
-  created_at: string;
-  updated_at: string;
-} & PresetLabel;
-
-export type Collection = {
-  id: string;
-  label: string;
-  title: string | null;
-  state: ShareLink["state"];
-  token: string | null;
-  expires_at: string | null;
-  rotations: number;
-  created_at: string;
-  updated_at: string;
-  activated_at: string | null;
-  revoked_at: string | null;
-  members: CollectionMember[];
-};
+export type { Collection, CollectionMember };
 
 export const collectionsPath = "/api/collections";
 

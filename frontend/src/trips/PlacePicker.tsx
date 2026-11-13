@@ -16,16 +16,14 @@ import {
   useOwnerMutation,
   useTripResource,
 } from "../query/owner-queries";
+import { locationName, areaName } from "../records";
 import {
-  locationName,
   type Area,
   type AreaSuggestion,
   type Location,
   type LocationInput,
-  type PlaceSearchResult,
   type Visit,
-  areaName,
-} from "../tracker-model";
+} from "../api-types";
 import { PlaceSearchField } from "./PlaceSearchField";
 import { Field, FieldError, FieldLabel, FieldSet, FieldLegend } from "@/ui/field";
 
@@ -211,7 +209,7 @@ export function PlacePicker({
               ),
             }
           : null;
-  async function useResult(result: PlaceSearchResult) {
+  async function useResult(result: LocationInput) {
     const next = {
       ...value,
       choice: "new",

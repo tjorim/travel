@@ -1,11 +1,7 @@
 import { m } from "../../paraglide/messages.js";
 import { ApiError } from "../../query/api";
-import {
-  ownerLocationName,
-  type Location,
-  type PublicProjectionStatus,
-  type ShareLink,
-} from "../../tracker-model";
+import { ownerLocationName } from "../../records";
+import { type Location, type PublicProjectionStatus, type ShareLink } from "../../api-types";
 
 export type Values = {
   areaId: string;

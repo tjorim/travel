@@ -5,7 +5,7 @@ import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { Input } from "@/ui/input";
 import { useEffect, useRef, useState } from "react";
 import { ChoiceGroup } from "@/ui/ChoiceGroup";
-import { formatInstant } from "../tracker-model";
+import { formatInstant } from "../dates";
 import type { OfflineCopySummary } from "../offline/offline-store";
 import { Field, FieldLabel } from "@/ui/field";
 

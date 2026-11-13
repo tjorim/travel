@@ -2,7 +2,8 @@ import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import { ownerLocationName, type Area, type Location, areaName } from "../../tracker-model";
+import { ownerLocationName, areaName } from "../../records";
+import { type Area, type Location } from "../../api-types";
 import { visibilityLabel } from "../visibility";
 import { areaSummary } from "./model";
 

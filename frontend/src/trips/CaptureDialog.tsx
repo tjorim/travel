@@ -21,20 +21,21 @@ import { useTripSearch, useTripUpdates, useTripsQuery } from "../query/owner-que
 import { RecordDialog } from "../RecordDialog";
 import {
   DRAFT_FENCE,
-  captureInputValue,
   clearDraft,
   emptyDraft,
   draftIsCurrent,
-  localDateTime,
   readDraft,
   saveDraft,
-  type MediaAsset,
-  type PlaceSearchResult,
-  type TravelUpdate,
   type TravelUpdateCandidateIntent,
-  type TripSummary,
   type UpdateDraft,
-} from "../tracker-model";
+} from "../capture-draft";
+import { captureInputValue, localDateTime } from "../dates";
+import {
+  type MediaAsset,
+  type LocationInput,
+  type TravelUpdate,
+  type TripSummary,
+} from "../api-types";
 import { CapturePhotos } from "./capture/CapturePhotos";
 import { captureTripOrder } from "./capture/default-trip";
 import { LocationSearch } from "./capture/LocationSearch";
@@ -334,7 +335,7 @@ function OwnerCaptureDialog({
     );
   }
 
-  function selectPlace(result: PlaceSearchResult) {
+  function selectPlace(result: LocationInput) {
     updateDraft({ location: result });
     places.chosen();
   }

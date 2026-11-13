@@ -3,7 +3,8 @@ import { Link } from "@tanstack/react-router";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import { bytesLabel, type DocumentAsset, type OwnerDocument, type Trip } from "../../tracker-model";
+import { bytesLabel } from "../../files";
+import { type DocumentAsset, type OwnerDocument, type Trip } from "../../api-types";
 import { DOCUMENT_KIND_LABELS } from "../labels";
 import { RecordHeading, Section } from "./shared";
 import { DetailList } from "./DetailList";

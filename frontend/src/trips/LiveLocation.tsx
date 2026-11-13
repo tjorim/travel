@@ -12,22 +12,11 @@ import { Field, FieldLabel } from "@/ui/field";
 import { Input } from "@/ui/input";
 import { ChoiceGroup } from "@/ui/ChoiceGroup";
 import { Alert } from "@/ui/alert";
-import { CurrentLocations, type CurrentLocation } from "../CurrentLocations";
+import { CurrentLocations } from "../CurrentLocations";
 import { saveFile } from "./save-file";
+import type { LiveSession, LiveTrackPage } from "../api-types";
 
 type Precision = "off" | "exact" | "1km" | "10km";
-type Point = { id: string; latitude: number; longitude: number; observed_at: string };
-type Session = {
-  id: string;
-  source: string;
-  enabled: boolean;
-  audiences: Record<string, Exclude<Precision, "off">>;
-  delays?: Record<string, number>;
-  previews?: Record<string, CurrentLocation[]>;
-  current: Point | null;
-  stale: boolean;
-};
-
 export function LiveLocation({ tripId }: { tripId: string }) {
   useLocale();
   const owner = useOwner();
@@ -35,8 +24,8 @@ export function LiveLocation({ tripId }: { tripId: string }) {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [source, setSource] = useState("");
-  const [editing, setEditing] = useState<Session | null>(null);
-  const [draft, setDraft] = useState<Session | null>(null);
+  const [editing, setEditing] = useState<LiveSession | null>(null);
+  const [draft, setDraft] = useState<LiveSession | null>(null);
   const [deleting, setDeleting] = useState<{ id: string; session: boolean } | null>(null);
   const [inspecting, setInspecting] = useState("");
   const [after, setAfter] = useState("");
@@ -47,7 +36,7 @@ export function LiveLocation({ tripId }: { tripId: string }) {
   const sessions = useQuery({
     queryKey: key,
     enabled: open && !!owner,
-    queryFn: ({ signal }) => request<Session[]>("", { signal }),
+    queryFn: ({ signal }) => request<LiveSession[]>("", { signal }),
     refetchInterval: open ? 30000 : false,
   });
   const links = useTripResource(open ? tripId : null, "share-links");
@@ -55,10 +44,9 @@ export function LiveLocation({ tripId }: { tripId: string }) {
     queryKey: [...key, "tracks", inspecting, after],
     enabled: !!inspecting && !!owner,
     queryFn: ({ signal }) =>
-      request<{ points: Point[]; next: string | null }>(
-        `/${inspecting}/tracks?after=${encodeURIComponent(after)}`,
-        { signal },
-      ),
+      request<LiveTrackPage>(`/${inspecting}/tracks?after=${encodeURIComponent(after)}`, {
+        signal,
+      }),
   });
   const change = useMutation({
     mutationFn: async (action: {

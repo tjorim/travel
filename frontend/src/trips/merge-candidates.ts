@@ -1,5 +1,5 @@
-import { areaName } from "../tracker-model";
-import type { Area, Location } from "../tracker-model";
+import { areaName } from "../records";
+import type { Area, Location } from "../api-types";
 
 export type DuplicateReason = "name" | "coordinates" | "address";
 /** Records that look like the same place, in list order; the first is the suggested one to keep. */

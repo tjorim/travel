@@ -13,7 +13,7 @@ import type {
   ShareScope,
   SharingPresetId,
   SharingPresetReview,
-} from "../../tracker-model";
+} from "../../api-types";
 import type { CatalogItem } from "./catalog";
 import type { ScopePreset } from "./PresetSection";
 import { ScopeEditor } from "./ScopeEditor";
@@ -28,8 +28,8 @@ const scope = (extra: Partial<ShareScope> = {}): ShareScope => ({
   ...extra,
 });
 
-const arrival = { kind: "travel_update", id: "u1", label: "Aankomst" } as const;
-const market = { kind: "visit", id: "v1", label: "Nachtmarkt" } as const;
+const arrival = { kind: "travel_update", id: "u1", label: "Aankomst", day: null } as const;
+const market = { kind: "visit", id: "v1", label: "Nachtmarkt", day: null } as const;
 
 const catalog: CatalogItem[] = [
   { kind: "travel_update", id: "u1", label: "Aankomst", detail: "", visibility: "custom" },
@@ -254,7 +254,10 @@ it("shows the fresh review and asks again when the records changed since the rev
                   after: { travel_update: 2 },
                   added: { travel_update: 2 },
                   removed: {},
-                  widened: [arrival, { kind: "travel_update", id: "u2", label: "Dagboek" }],
+                  widened: [
+                    arrival,
+                    { kind: "travel_update", id: "u2", label: "Dagboek", day: null },
+                  ],
                   narrowed: [],
                 },
               }),
@@ -410,8 +413,8 @@ it("says which preset an audience carries, with its exceptions and the way to re
   const exceptions: PresetExceptions = {
     shown: [arrival],
     hidden: [
-      { kind: "travel_update", id: "u2", label: "Dagboek" },
-      { kind: "visit", id: "v1", label: "Nachtmarkt" },
+      { kind: "travel_update", id: "u2", label: "Dagboek", day: null },
+      { kind: "visit", id: "v1", label: "Nachtmarkt", day: null },
     ],
     count: 3,
   };

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { ownerRequest } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwner } from "../query/owner-queries";
-import type { Visit } from "../tracker-model";
+import type { Visit } from "../api-types";
 import type { PlaceValue } from "./PlacePicker";
 
 type RouteReference = NonNullable<Visit["possible_route_duplicates"]>[number];

@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import type { Stay, Trip } from "../../tracker-model";
+import type { Stay, Trip } from "../../api-types";
 import {
   accommodationLine,
   accommodationOf,

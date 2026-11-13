@@ -5,7 +5,7 @@ import type {
   ProjectionRoute,
   ProjectionStay,
   ProjectionVisit,
-} from "./projection-types";
+} from "./api-types";
 
 /** What the visitor projection already delivers about the same area and day as one story update. */
 export type UpdateContext = {

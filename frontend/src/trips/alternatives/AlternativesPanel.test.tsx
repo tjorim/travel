@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../../query/fake-api";
 import { renderWithOwner, testToken } from "../../query/test-utils";
-import type { AlternativeGroup, AlternativeSuggestion, Area, Stay } from "../../tracker-model";
+import type { AlternativeGroup, AlternativeSuggestion, Area, Stay } from "../../api-types";
 import { AlternativesPanel } from "./AlternativesPanel";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
@@ -37,6 +37,8 @@ const stay = (id: string, name: string, fields: Partial<Stay> = {}): Stay => ({
   visibility: "private",
   share_date_precision: null,
   document_asset_ids: [],
+  notes_html: null,
+  contact_details_html: null,
   ...fields,
 });
 const hotels = [

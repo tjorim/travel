@@ -6,13 +6,13 @@ import { useId, useRef, useState } from "react";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { errorNotice, textNotice, useFeedback } from "../../query/feedback";
+import { formatInstantDate } from "../../dates";
 import {
-  formatInstantDate,
   type PresetLabel,
   type ShareScope,
   type SharingPresetId,
   type SharingPresetReview,
-} from "../../tracker-model";
+} from "../../api-types";
 import type { CatalogItem } from "./catalog";
 import { PresetExceptionsList } from "./PresetExceptionsList";
 import { PresetReviewDialog } from "./PresetReviewDialog";

@@ -2,7 +2,8 @@ import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import { formatUpdateInstant, type TravelUpdate } from "../../tracker-model";
+import { formatUpdateInstant } from "../../dates";
+import { type TravelUpdate } from "../../api-types";
 
 /** The trip's saved travel updates, newest first; choosing one loads it into the editor. */
 export function SavedUpdates({

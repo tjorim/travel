@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
+import type { TranslationDraftResponse } from "../api-types";
 import { ownerRequest } from "../query/api";
 import {
   errorNotice,
@@ -111,7 +112,7 @@ function TranslationRun({
       return;
     }
     const controller = new AbortController();
-    ownerRequest<{ text: string }>(
+    ownerRequest<TranslationDraftResponse>(
       owner.session,
       "/api/translation/drafts",
       m.owner_the_translation_could_not_be_made_your_text_is_unchanged,

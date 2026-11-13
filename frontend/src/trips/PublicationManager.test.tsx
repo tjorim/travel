@@ -11,13 +11,13 @@ import { chooseOption, renderWithOwner, selectedOption, testToken } from "../que
 import { answerConfirmation } from "../test-confirm";
 import type {
   OverviewAudience,
-  ProjectionDocument,
   PublicProjectionStatus,
   ShareLink,
   ShareScope,
   Trip,
   TripOverview,
-} from "../tracker-model";
+} from "../api-types";
+import type { ProjectionDocument } from "../api-types";
 import { PublicationManager } from "./PublicationManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
@@ -30,6 +30,10 @@ const scope = (items: ShareScope["items"] = []): ShareScope => ({
   items,
 });
 const trip: Trip = {
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id: "trip",
   title: "Exampleland",
   summary: null,
@@ -37,6 +41,9 @@ const trip: Trip = {
   ends_on: null,
   travel_updates: [
     {
+      area: null,
+      body_html: null,
+      private_notes_html: null,
       id: "u1",
       occurred_at: "2054-11-16T10:00:00Z",
       date_precision: "day",
@@ -49,6 +56,9 @@ const trip: Trip = {
       visibility: "private",
     },
     {
+      area: null,
+      body_html: null,
+      private_notes_html: null,
       id: "u2",
       occurred_at: "2054-11-16T10:00:00Z",
       date_precision: "day",
@@ -61,6 +71,9 @@ const trip: Trip = {
       visibility: "everyone",
     },
     {
+      area: null,
+      body_html: null,
+      private_notes_html: null,
       id: "u3",
       occurred_at: "2054-11-16T10:00:00Z",
       date_precision: "day",
@@ -104,6 +117,11 @@ const audience = (overrides: Partial<OverviewAudience> = {}): OverviewAudience =
   delivered: { visits: 0, places: 0, stays: 0, routes: 0, updates: 0, media: 0 },
   without_map_point: { visits: 0, stays: 0, updates: 0 },
   shows_cover: false,
+  numbers: {},
+  excluded: 0,
+  excluded_also_hides: {},
+  preset: null,
+  preset_exceptions: 0,
   ...overrides,
 });
 const SECRET = "secret-token-123";
@@ -117,7 +135,16 @@ beforeEach(() => {
     surface_state: "unpublished",
     scope: scope(),
   } as unknown as PublicProjectionStatus;
-  overview = { trip_id: "trip", counts: {}, visibility: {}, audiences: [audience()], warnings: [] };
+  overview = {
+    title: "Titel",
+    starts_on: null,
+    ends_on: null,
+    trip_id: "trip",
+    counts: {},
+    visibility: {},
+    audiences: [audience()],
+    warnings: [],
+  };
   api = fakeApi()
     .collection("/api/trips/trip/share-links", [link("l1", "Familie")], {
       create: (body, count) => link(`l${count + 1}`, String(body.label)),
@@ -665,6 +692,9 @@ it("saves a renamed link and shows the new name in the list", async () => {
 
 it("shows what each audience receives and words the review warnings in Dutch", async () => {
   overview = {
+    title: "Titel",
+    starts_on: null,
+    ends_on: null,
     trip_id: "trip",
     counts: {},
     visibility: {},
@@ -679,6 +709,7 @@ it("shows what each audience receives and words the review warnings in Dutch", a
     ],
     warnings: [
       {
+        count: null,
         code: "trip_dates_shared",
         severity: "info",
         message: "",
@@ -689,6 +720,7 @@ it("shows what each audience receives and words the review warnings in Dutch", a
         id: null,
       },
       {
+        count: null,
         code: "map_point_withheld",
         severity: "warning",
         message: "",
@@ -699,6 +731,7 @@ it("shows what each audience receives and words the review warnings in Dutch", a
         id: null,
       },
       {
+        count: null,
         code: "live_audience_receives_nothing",
         severity: "warning",
         message: "",
@@ -709,6 +742,7 @@ it("shows what each audience receives and words the review warnings in Dutch", a
         id: null,
       },
       {
+        count: null,
         code: "planning_marker_visible",
         severity: "warning",
         message: "",
@@ -719,6 +753,7 @@ it("shows what each audience receives and words the review warnings in Dutch", a
         id: null,
       },
       {
+        count: null,
         code: "cover_not_received",
         severity: "info",
         message: "",
@@ -1012,6 +1047,9 @@ it("applies a preset to the public page and loads the scope the server answers w
 
 it("states the preset and its exceptions for each audience in the sharing check", async () => {
   overview = {
+    title: "Titel",
+    starts_on: null,
+    ends_on: null,
     trip_id: "trip",
     counts: {},
     visibility: {},
@@ -1038,6 +1076,9 @@ it("states the preset and its exceptions for each audience in the sharing check"
 
 it("states in the sharing check how each audience reads dates and which records are held coarser", async () => {
   overview = {
+    title: "Titel",
+    starts_on: null,
+    ends_on: null,
     trip_id: "trip",
     counts: {},
     visibility: {},
@@ -1374,6 +1415,9 @@ it("keeps the edit and sends nothing when the owner declines the widening", asyn
 
 it("states in the sharing check how many records a link leaves out and what that also hides", async () => {
   overview = {
+    title: "Titel",
+    starts_on: null,
+    ends_on: null,
     trip_id: "trip",
     counts: {},
     visibility: {},

@@ -4,7 +4,8 @@ import { Link } from "@tanstack/react-router";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { useTripResource } from "../query/owner-queries";
-import { formatDay, type Trip } from "../tracker-model";
+import { formatDay } from "../dates";
+import { type Trip } from "../api-types";
 import { sectionPath } from "./workspace-sections";
 
 const SHOWN = 5;

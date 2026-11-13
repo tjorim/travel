@@ -2,11 +2,11 @@ import { useQueries } from "@tanstack/react-query";
 import { VideoIcon } from "lucide-react";
 import { useMemo } from "react";
 
-import type { TrackerSession } from "../auth";
+import type { OwnerSession } from "../auth";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { derivativesQueryOptions, useOwner, useTripResource } from "../query/owner-queries";
-import type { MediaDerivative, TravelUpdate, Trip } from "../tracker-model";
+import type { MediaDerivative, TravelUpdate, Trip } from "../api-types";
 import { OwnerImage } from "./OwnerImage";
 
 /** How many thumbnails a row shows before the rest become a count. */
@@ -83,7 +83,7 @@ export function UpdatePhotoStrip({
 }: {
   update: Pick<TravelUpdate, "title">;
   photos: UpdatePhoto[];
-  session: TrackerSession;
+  session: OwnerSession;
 }) {
   useLocale();
   if (photos.length === 0) return null;

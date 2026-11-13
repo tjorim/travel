@@ -3,9 +3,9 @@ import { errorNotice, useFeedback, textNotice, FeedbackError } from "../query/fe
 import { m } from "../paraglide/messages.js";
 import { useEffect, useState } from "react";
 
-import type { TrackerSession } from "../auth";
+import type { OwnerSession } from "../auth";
 import { ProjectionView, isProjection, type Audience, type Projection } from "../ProjectionView";
-import type { ShareScope } from "../tracker-model";
+import type { ShareScope } from "../api-types";
 import { ownerFile, ownerRequest } from "../query/api";
 
 export function RenderedPreview({
@@ -24,7 +24,7 @@ export function RenderedPreview({
   linkId?: string;
   /** The unsaved candidate scope being previewed; resolves files and directions without saving it. */
   scope: ShareScope;
-  session: TrackerSession;
+  session: OwnerSession;
   /** Where this preview's files and directions are resolved, for a preview that is not a trip's own audience. */
   previewBase?: string;
   /** A delivered item, such as one update, to bring into view once the preview shows. */

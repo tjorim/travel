@@ -1,6 +1,6 @@
 import { FeedbackError } from "./FeedbackError";
-import { freshSession, type TrackerSession } from "../auth";
-import { openBlobInNewTab } from "../tracker-model";
+import { freshSession, type OwnerSession } from "../auth";
+import { openBlobInNewTab } from "../files";
 
 import { m } from "../paraglide/messages.js";
 import { descriptorMessage, type ErrorDescriptor } from "./error-messages";
@@ -104,7 +104,7 @@ export type OwnerRequest = {
   credentials?: RequestCredentials;
 };
 
-const authorization = (session: TrackerSession) => ({
+const authorization = (session: OwnerSession) => ({
   Authorization: `Bearer ${session.accessToken}`,
 });
 
@@ -124,7 +124,7 @@ async function send(
 }
 
 async function authenticatedSend(
-  session: TrackerSession,
+  session: OwnerSession,
   url: string,
   init: RequestInit,
   signal?: AbortSignal,
@@ -151,7 +151,7 @@ async function authenticatedSend(
  * cached value or a devtools panel.
  */
 export async function ownerRequest<T>(
-  session: TrackerSession,
+  session: OwnerSession,
   path: string,
   fallback: ErrorFallback,
   { method = "GET", body, signal, cache, credentials, headers }: OwnerRequest = {},
@@ -198,7 +198,7 @@ export async function ownerRequest<T>(
  * offline copy) and never into the query cache.
  */
 export async function ownerFile(
-  session: TrackerSession,
+  session: OwnerSession,
   url: string,
   fallback: ErrorFallback,
   {
@@ -235,7 +235,7 @@ export async function ownerFile(
 
 /** Opens a protected file in a new tab. */
 export async function openOwnerFile(
-  session: TrackerSession,
+  session: OwnerSession,
   url: string,
   fallback: ErrorFallback,
 ): Promise<void> {

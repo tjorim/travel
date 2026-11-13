@@ -11,15 +11,9 @@ import { useTripResource } from "../query/owner-queries";
 import { AlternativesPanel } from "./alternatives/AlternativesPanel";
 import { groupedIds } from "./alternatives/model";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import {
-  addDays,
-  formatDay,
-  stayInPlan,
-  stayLabel,
-  type Area,
-  type Stay,
-  type Trip,
-} from "../tracker-model";
+import { addDays, formatDay } from "../dates";
+import { stayInPlan, stayLabel } from "../records";
+import { type Area, type Stay, type Trip } from "../api-types";
 import {
   blankStay,
   accommodationOf,

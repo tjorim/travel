@@ -9,13 +9,17 @@ import { pinOfflineCopy } from "../offline/offline-store";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { ownerKeys } from "../query/keys";
 import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils";
-import type { Area, Route, Location, Trip } from "../tracker-model";
+import type { Area, Route, Location, Trip } from "../api-types";
 import { OwnerTripMap } from "./OwnerTripMap";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 const trip: Trip = {
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id: "trip",
   title: "Exampleland",
   summary: null,

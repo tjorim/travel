@@ -5,7 +5,7 @@ import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 
 import { AuthProvider } from "../auth-context";
 import { chooseOption, renderWithOwner, resetOfflineDb } from "../query/test-utils";
-import type { OwnerDocument, Trip } from "../tracker-model";
+import type { OwnerDocument, Trip } from "../api-types";
 import { DocumentLibraryManager } from "./DocumentLibraryManager";
 import { serveApi } from "../query/serve-api";
 
@@ -95,6 +95,7 @@ function libraryDocument(overrides: Partial<OwnerDocument> = {}): OwnerDocument 
     linked_trip_id: null,
     created_at: "2054-01-01T00:00:00Z",
     file_url: "/api/library/documents/doc-1/original",
+    deleted_at: null,
     ...overrides,
   };
 }

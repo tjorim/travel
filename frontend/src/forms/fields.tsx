@@ -20,7 +20,7 @@ import {
 } from "react";
 import { SearchSelect } from "@/ui/SearchCombobox";
 import { SuggestInput } from "@/ui/SuggestInput";
-import { timeZoneOptions } from "../tracker-model";
+import { timeZoneOptions } from "../dates";
 import { blockUnreadableEntries } from "./unreadable-entry";
 export { SearchSelect, AsyncSearchSelect } from "@/ui/SearchCombobox";
 export type { SearchSelectOption, SearchSelectGroup } from "@/ui/SearchCombobox";

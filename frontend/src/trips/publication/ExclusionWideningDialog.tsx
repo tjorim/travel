@@ -6,7 +6,7 @@ import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { ApiError } from "../../query/api";
 import { DeleteConfirmation } from "../../RecordDialog";
-import type { ExclusionWidening, KindCounts } from "../../tracker-model";
+import type { ExclusionWidening, KindCounts } from "../../api-types";
 import { kindCountsText } from "./catalog";
 
 export const EXCLUSION_WIDENING_CODE = "exclusion_widening_needs_acknowledgement";

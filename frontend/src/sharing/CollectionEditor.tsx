@@ -10,7 +10,7 @@ import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { RecordDialog } from "../RecordDialog";
-import type { TripSummary } from "../tracker-model";
+import type { TripSummary } from "../api-types";
 import { emptyScope } from "../trips/publication/catalog";
 import { LinkLifecycle } from "../trips/publication/LinkLifecycle";
 import { RevealedLinkDialog } from "../trips/publication/RevealedLinkDialog";

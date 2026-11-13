@@ -5,7 +5,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 
 import { AuthProvider } from "../auth-context";
 import { renderWithOwner, resetOfflineDb } from "../query/test-utils";
-import type { EmergencyInfoEntry } from "../tracker-model";
+import type { EmergencyInfoEntry } from "../api-types";
 import { EmergencyInfoManager } from "./EmergencyInfoManager";
 import { serveApi } from "../query/serve-api";
 
@@ -96,6 +96,9 @@ function entry(overrides: Partial<EmergencyInfoEntry> = {}): EmergencyInfoEntry 
     value: "+32 470 00 00 00",
     notes: null,
     created_at: "2054-01-01T00:00:00Z",
+    updated_at: "2054-01-01T00:00:00Z",
+    notes_html: null,
+    notes_text: null,
     ...overrides,
   };
 }

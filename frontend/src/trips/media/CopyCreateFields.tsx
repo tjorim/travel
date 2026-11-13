@@ -2,7 +2,7 @@ import { SelectField, TextField } from "../../forms/fields";
 import type { useRecordForm } from "../../forms/useRecordForm";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { MediaAsset } from "../../tracker-model";
+import type { MediaAsset } from "../../api-types";
 import { Field, FieldLabel } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { dimensionInRange, type DerivativeValues } from "./copy-form";

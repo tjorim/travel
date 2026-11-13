@@ -30,9 +30,9 @@ export const exclusions = {
     ", Maxar, Earthstar Geographics, and the GIS User Community": "provider attribution",
   },
   "auth-context.tsx": {
-    "Travel tracker authentication context is missing.": "internal invariant diagnostic",
+    "Travel authentication context is missing.": "internal invariant diagnostic",
   },
-  "tracker-model.ts": { kB: "file size unit" },
+  "files.ts": { kB: "file size unit" },
   "trips/packing/model.ts": { kg: "SI weight unit" },
   "auth.ts": { "openid profile email": "OIDC scopes" },
   "map-style.ts": {

@@ -2,7 +2,8 @@ import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { Markdown } from "../Markdown";
 import { TripMap, type MapLine, type MapPoint } from "../TripMap";
-import { formatDay, type Visit } from "../tracker-model";
+import { formatDay } from "../dates";
+import { type Visit } from "../api-types";
 import { VISIT_KIND_LABELS, PLANNING_STATUS_LABELS } from "../trips/labels";
 import type { OfflineResourceKind } from "./offline-store";
 

@@ -1,7 +1,8 @@
 import { DeleteConfirmation } from "../../RecordDialog";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import { areaName, type Area } from "../../tracker-model";
+import { areaName } from "../../records";
+import { type Area } from "../../api-types";
 import { audienceName, visitorFieldLabel, type VisitorChange } from "./model";
 
 /**

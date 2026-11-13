@@ -1,6 +1,6 @@
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { Area, Trip } from "../../tracker-model";
+import type { Area, Trip } from "../../api-types";
 import { RecordHeading, Section } from "./shared";
 import { DetailList } from "./DetailList";
 

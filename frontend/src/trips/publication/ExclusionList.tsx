@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { ExcludedRecord, ShareScope, ShareScopeKind } from "../../tracker-model";
+import type { ExcludedRecord, ShareScope, ShareScopeKind } from "../../api-types";
 import {
   GROUP_TITLES,
   groupBy,

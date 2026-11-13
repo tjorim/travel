@@ -17,6 +17,8 @@ it("marks an open position stale and removes it after 24 hours", () => {
     <CurrentLocations
       positions={[
         {
+          delay_seconds: 0,
+          expires_at: "2026-11-10T00:00:00Z",
           latitude: 12.35,
           longitude: 45.68,
           observed_at: new Date().toISOString(),
@@ -73,6 +75,8 @@ it("shows how long ago the position was observed, refreshes with the clock and l
         <CurrentLocations
           positions={[
             {
+              delay_seconds: 0,
+              expires_at: "2054-01-01T00:00:00Z",
               latitude: 12.35,
               longitude: 45.68,
               observed_at: "2026-11-09T12:00:00Z",

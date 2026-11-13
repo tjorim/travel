@@ -4,7 +4,7 @@ import { Collapsible } from "@/ui/collapsible";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { ShareLink } from "../../tracker-model";
+import type { ShareLink } from "../../api-types";
 import { dateLabel, LINK_STATE_LABELS } from "./catalog";
 import { presetLabelText } from "./PresetSection";
 

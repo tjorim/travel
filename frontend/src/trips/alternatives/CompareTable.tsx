@@ -1,6 +1,6 @@
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { AlternativeGroup, AlternativeKind } from "../../tracker-model";
+import type { AlternativeGroup, AlternativeKind } from "../../api-types";
 import { comparisonRows, groupTitle, membersOf } from "./model";
 
 /** The group's members side by side, with the exact details only the owner sees. */

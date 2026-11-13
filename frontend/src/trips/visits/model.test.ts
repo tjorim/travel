@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import type { Stay, Trip, Visit } from "../../tracker-model";
+import type { Stay, Trip, Visit } from "../../api-types";
 import { blank, dayLine, fromVisit, lastDay, overnights, visitPlace } from "./model";
 
 const trip = { starts_on: "2054-11-16", ends_on: "2054-11-26" } as Trip;

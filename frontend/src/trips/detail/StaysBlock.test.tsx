@@ -2,7 +2,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
-import type { Stay, Trip } from "../../tracker-model";
+import type { Stay, Trip } from "../../api-types";
 import { StaysBlock } from "./StaysBlock";
 
 vi.mock("./shared", async (importOriginal) => ({

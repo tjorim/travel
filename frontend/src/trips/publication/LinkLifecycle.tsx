@@ -3,7 +3,7 @@ import { Input } from "@/ui/input";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { ShareLink } from "../../tracker-model";
+import type { ShareLink } from "../../api-types";
 import { Field, FieldLabel } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
 

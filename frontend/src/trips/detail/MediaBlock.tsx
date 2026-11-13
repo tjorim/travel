@@ -2,7 +2,9 @@ import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import { bytesLabel, formatCapture, type MediaAsset, type Trip } from "../../tracker-model";
+import { bytesLabel } from "../../files";
+import { formatCapture } from "../../dates";
+import { type MediaAsset, type Trip } from "../../api-types";
 import { MEDIA_KIND_LABELS } from "../labels";
 import { MediaPreview, RecordHeading, Section, type OwnerSession } from "./shared";
 import { DetailList } from "./DetailList";

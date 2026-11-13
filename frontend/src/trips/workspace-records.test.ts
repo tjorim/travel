@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import type { Area, MediaAsset, Route, TripTask } from "../tracker-model";
+import type { Area, MediaAsset, Route, TripTask } from "../api-types";
 import { matchesQuery, RECORDS_PER_KIND, searchRecords } from "./workspace-records";
 
 const area = (label: string) => ({ id: label, label }) as Area;

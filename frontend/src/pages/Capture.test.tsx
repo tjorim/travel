@@ -7,7 +7,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
-import { emptyDraft, readDraft, saveDraft, type TravelUpdate, type Trip } from "../tracker-model";
+import { emptyDraft, readDraft, saveDraft } from "../capture-draft";
+import { type TravelUpdate, type Trip } from "../api-types";
 import { Capture } from "./Capture";
 
 const routeTree = createRootRoute({ component: Capture });
@@ -18,6 +19,9 @@ const auth = vi.hoisted(() => ({
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 const update = (id: string, title: string): TravelUpdate => ({
+  area: null,
+  body_html: null,
+  private_notes_html: null,
   id,
   occurred_at: "2054-11-17T10:00:00Z",
   date_precision: "day",
@@ -43,6 +47,10 @@ beforeEach(() => {
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   state = {
     trip: {
+      owner_subject: "owner-1",
+      cover_derivative_id: null,
+      cover_url: null,
+      summary_html: null,
       id: "trip",
       title: "Exampleland",
       summary: null,

@@ -4,12 +4,9 @@ import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { useOwner } from "../../query/owner-queries";
 import { DeleteConfirmation } from "../../RecordDialog";
-import {
-  bytesLabel,
-  formatCapture,
-  type MediaAsset,
-  type MediaDerivative,
-} from "../../tracker-model";
+import { bytesLabel } from "../../files";
+import { formatCapture } from "../../dates";
+import { type MediaAsset, type MediaDerivative } from "../../api-types";
 import { OwnerImage } from "../OwnerImage";
 import { purposeLabel } from "./labels";
 

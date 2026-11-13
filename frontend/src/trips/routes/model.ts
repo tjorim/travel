@@ -1,19 +1,8 @@
 import { dayjs } from "../../dayjs";
 import { m } from "../../paraglide/messages.js";
-import {
-  browserTimeZone,
-  daysBetween,
-  formatDay,
-  locationName,
-  localDate,
-  wallClock,
-  type Area,
-  type Location,
-  type Route,
-  type RouteMode,
-  type TimedRoute,
-  areaName,
-} from "../../tracker-model";
+import { browserTimeZone, daysBetween, formatDay, localDate, wallClock } from "../../dates";
+import { locationName, type TimedRoute, areaName } from "../../records";
+import { type Area, type Location, type Route, type RouteMode } from "../../api-types";
 import type { CreatePrefill } from "../create-request";
 import { hasPlace, emptyPlace, placeOf, placeOfPrefill, type PlaceValue } from "../PlacePicker";
 import type { RouteCoordinate } from "../RouteGeometryEditor";

@@ -15,12 +15,8 @@ import { MarkdownField } from "../../forms/MarkdownField";
 import type { useRecordForm } from "../../forms/useRecordForm";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import {
-  ROUTE_MODE_LABELS,
-  type Area,
-  type DocumentAsset,
-  type Location,
-} from "../../tracker-model";
+import { ROUTE_MODE_LABELS } from "../../records";
+import { type Area, type DocumentAsset, type Location } from "../../api-types";
 import { FieldLegend, FieldSet } from "@/ui/field";
 import { PLANNING_STATUS_LABELS } from "../labels";
 import { PlacePicker } from "../PlacePicker";

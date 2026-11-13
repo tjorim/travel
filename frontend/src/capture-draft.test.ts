@@ -2,7 +2,7 @@
 import { mockCaptureLocks } from "./capture-draft-test-utils";
 import { beforeEach, expect, it, vi } from "vitest";
 import { clearSession } from "./auth";
-import { clearDraft, emptyDraft, readDraft, saveDraft } from "./tracker-model";
+import { clearDraft, emptyDraft, readDraft, saveDraft } from "./capture-draft";
 import { testToken } from "./query/test-utils";
 
 function owner(subject: string) {

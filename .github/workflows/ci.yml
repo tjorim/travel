@@ -191,7 +191,7 @@ jobs:
         run: pnpm format:check
       - name: Audit interface strings and catalogues
         run: pnpm locale:audit
-      - name: Check generated message types
+      - name: Check generated message and API types
         run: pnpm typecheck
       - name: Test frontend regressions
         run: pnpm test --maxWorkers=2

@@ -15,7 +15,7 @@ import { errorMessage } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { libraryPath, useLibrary, useOwnerMutation } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import type { EmergencyInfoEntry, EmergencyInfoKind } from "../tracker-model";
+import type { EmergencyInfoEntry, EmergencyInfoKind } from "../api-types";
 
 const KIND_LABELS: Record<EmergencyInfoKind, string> = {
   get contact() {

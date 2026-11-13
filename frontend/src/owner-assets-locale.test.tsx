@@ -13,7 +13,7 @@ import { OfflineManager } from "./offline/OfflineManager";
 import { OfflineSnapshotView } from "./offline/OfflineSnapshotView";
 import { OfflineUnsupportedError, openOfflineCopy, pinOfflineCopy } from "./offline/offline-store";
 import type { OfflineCopySummary } from "./offline/offline-store";
-import type { Trip } from "./tracker-model";
+import type { Trip } from "./api-types";
 import { serveApi } from "./query/serve-api";
 
 const auth = vi.hoisted(() => ({ session: { accessToken: "" } }));
@@ -22,6 +22,10 @@ vi.mock("./TripMap", () => ({
   TripMap: ({ points }: { points: { detail: string }[] }) => <p>{points[0]?.detail}</p>,
 }));
 const trip: Trip = {
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id: "trip",
   title: "Eigen reis",
   summary: null,

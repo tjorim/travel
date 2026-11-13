@@ -10,14 +10,14 @@ import { m } from "../../paraglide/messages.js";
 import { errorMessage } from "../../query/api";
 import { descriptorMessage } from "../../query/error-messages";
 import { DeleteConfirmation } from "../../RecordDialog";
+import { presetRecordName } from "../../records";
 import {
-  presetRecordName,
   type DatePrecision,
   type KindCounts,
   type PresetRecordRef,
   type ShareScopeKind,
   type SharingPresetReview,
-} from "../../tracker-model";
+} from "../../api-types";
 import { GROUP_TITLES, kindCountsText } from "./catalog";
 import {
   presetName,

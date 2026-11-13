@@ -1,13 +1,13 @@
 import { useState } from "react";
 
-import type { TrackerSession } from "../../auth";
+import type { OwnerSession } from "../../auth";
 import { MarkdownField } from "../../forms/MarkdownField";
 import { AsyncSearchSelect, TextField } from "../../forms/fields";
 import type { useRecordForm } from "../../forms/useRecordForm";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { useTravelUpdateSearch } from "../../query/owner-queries";
-import type { MediaDerivative, TravelUpdate } from "../../tracker-model";
+import type { MediaDerivative, TravelUpdate } from "../../api-types";
 import { Field, FieldLabel } from "@/ui/field";
 import { OwnerImage } from "../OwnerImage";
 
@@ -66,7 +66,7 @@ export function PresentationFields({
   tripId: string;
   updates: TravelUpdate[];
   previewUrl: string | null;
-  session: TrackerSession | null;
+  session: OwnerSession | null;
 }) {
   useLocale();
   const focalX = record.values.focalX === "" ? 50 : Number(record.values.focalX);

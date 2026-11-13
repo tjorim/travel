@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "pnpm paraglide:compile && tsc -b && vite build",
-    "typecheck": "pnpm paraglide:compile && tsc -b --noEmit",
+    "typecheck": "pnpm paraglide:compile && pnpm api:check && tsc -b --noEmit",
+    "api:generate": "node scripts/api-types.mjs generate",
+    "api:check": "node scripts/api-types.mjs check",
     "lint": "oxlint",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
@@ -67,6 +69,7 @@
     "fake-indexeddb": "^6.2.7",
     "happy-dom": "^21.0.4",
     "msw": "^3.0.4",
+    "openapi-typescript": "7.13.0",
     "oxc-parser": "^0.157.0",
     "oxfmt": "^0.77.0",
     "oxlint": "^1.92.0",

@@ -22,7 +22,7 @@ import type {
   MergeWidenedRecord,
   MergeWidening,
   Trip,
-} from "../tracker-model";
+} from "../api-types";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { audienceName } from "./locations/model";

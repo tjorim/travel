@@ -4,12 +4,12 @@ import { m } from "../../paraglide/messages.js";
 import { ownerRequest } from "../../query/api";
 import { ownerKeys } from "../../query/keys";
 import { tripPath, useOwner } from "../../query/owner-queries";
-import type { AuditEvent } from "../../tracker-model";
+import type { AuditEvent } from "../../api-types";
 import { isVisitorField, visitorFieldLabel } from "../locations/model";
 import { kindCountsText } from "./catalog";
 
 function eventMessage(event: AuditEvent) {
-  const messages = {
+  const messages: Partial<Record<AuditEvent["kind"], () => string>> = {
     "public_projection.publish": m.audit_publish,
     "public_projection.unpublish": m.audit_unpublish,
     "public_projection.scope_change": m.audit_public_scope,
@@ -60,8 +60,10 @@ function eventMessage(event: AuditEvent) {
   });
 }
 
-const changedFields = (event: AuditEvent) =>
-  (event.details.changes ?? []).map((change) => change.field);
+/** A location update lists its changed fields; a preset's apply counts its changes per action instead. */
+const locationChanges = (event: AuditEvent) =>
+  Array.isArray(event.details.changes) ? event.details.changes : [];
+const changedFields = (event: AuditEvent) => locationChanges(event).map((change) => change.field);
 
 /** The audiences that started to read finer dates when visits and stays followed the audience. */
 const precisionWidened = (event: AuditEvent) =>
@@ -120,9 +122,7 @@ export function AuditList({ tripId }: { tripId: string }) {
                 <p>
                   {m.audit_location_update_audiences(
                     audienceCounts([
-                      ...new Set(
-                        (event.details.changes ?? []).flatMap((change) => change.audiences),
-                      ),
+                      ...new Set(locationChanges(event).flatMap((change) => change.audiences)),
                     ]),
                   )}
                 </p>

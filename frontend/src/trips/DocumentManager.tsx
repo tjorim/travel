@@ -14,7 +14,8 @@ import { errorMessage, openOwnerFile, ownerFile } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { tripPath, useOwner, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { bytesLabel, type DocumentAsset, type Trip } from "../tracker-model";
+import { bytesLabel } from "../files";
+import { type DocumentAsset, type Trip } from "../api-types";
 import { Field, FieldLabel } from "@/ui/field";
 
 type UploadValues = { title: string; kind: DocumentAsset["document_kind"] };
@@ -142,7 +143,7 @@ export function DocumentManager({
       : documentsQuery.isPending
         ? m.assets_loading_your_private_documents()
         : documents.length
-          ? m.assets_documents_and_originals_stay_in_your_private_tracker()
+          ? m.assets_documents_and_originals_stay_in_your_private_travel_app()
           : m.assets_upload_a_private_document_when_you_want_to_keep_it());
 
   return (

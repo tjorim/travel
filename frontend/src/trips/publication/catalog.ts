@@ -1,13 +1,13 @@
 import { m } from "../../paraglide/messages.js";
+import { formatInstantDate } from "../../dates";
 import {
-  formatInstantDate,
   type KindCounts,
-  type ProjectionDocument,
   type ShareLink,
   type ShareScope,
   type ShareScopeKind,
   type Visibility,
-} from "../../tracker-model";
+} from "../../api-types";
+import { type ProjectionDocument } from "../../api-types";
 
 export type CatalogItem = {
   kind: ShareScopeKind;

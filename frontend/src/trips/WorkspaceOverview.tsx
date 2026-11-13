@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import { formatUpdateInstant } from "../tracker-model";
+import { formatUpdateInstant } from "../dates";
 import { FirstSteps } from "./FirstSteps";
 import { OwnerTripMap } from "./OwnerTripMap";
 import { TripOverview } from "./TripOverview";

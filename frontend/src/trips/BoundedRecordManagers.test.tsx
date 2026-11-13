@@ -10,7 +10,7 @@ import {
   selectedOption,
   testToken,
 } from "../query/test-utils";
-import type { Area, DocumentAsset, Location, Stay, Trip } from "../tracker-model";
+import type { Area, DocumentAsset, Location, Stay, Trip } from "../api-types";
 import { AreaManager } from "./AreaManager";
 import { StayManager } from "./StayManager";
 
@@ -18,6 +18,10 @@ const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 const trip: Trip = {
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id: "trip",
   title: "Exampleland",
   summary: null,
@@ -51,6 +55,8 @@ const createdStay = {
   create: (body: Record<string, unknown>, count: number) => ({ id: `new-${count}`, area, ...body }),
 };
 const stay = (id: string, name: string): Stay => ({
+  notes_html: null,
+  contact_details_html: null,
   id,
   check_in_date: "2054-11-16",
   check_out_date: "2054-11-18",

@@ -1,7 +1,9 @@
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { Markdown } from "../../Markdown";
-import { formatDayRange, stayLabel, type Stay, type Trip, areaName } from "../../tracker-model";
+import { formatDayRange } from "../../dates";
+import { stayLabel, areaName } from "../../records";
+import { type Stay, type Trip } from "../../api-types";
 import { PLANNING_STATUS_LABELS } from "../labels";
 import { placeLabel, RecordHeading, Section } from "./shared";
 import { DetailList } from "./DetailList";

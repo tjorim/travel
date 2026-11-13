@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 
 import { changeLocale } from "../locale";
-import { formatInstant } from "../tracker-model";
+import { formatInstant } from "../dates";
 import * as api from "../query/api";
 import { AuthProvider } from "../auth-context";
 import { answerConfirmation } from "../test-confirm";

@@ -4,7 +4,7 @@ import { RecordForm } from "../../forms/fields";
 import type { useRecordForm } from "../../forms/useRecordForm";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { PublicProjectionStatus, ShareScope, Trip } from "../../tracker-model";
+import type { PublicProjectionStatus, ShareScope, Trip } from "../../api-types";
 import { publicUrl, type CatalogItem } from "./catalog";
 import type { ScopePreset } from "./PresetSection";
 import { ScopeEditor } from "./ScopeEditor";

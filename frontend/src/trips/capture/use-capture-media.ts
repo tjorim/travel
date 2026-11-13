@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { m } from "../../paraglide/messages.js";
 import { errorMessage } from "../../query/api";
 import { useTripResource } from "../../query/owner-queries";
-import type { MediaAsset } from "../../tracker-model";
+import type { MediaAsset } from "../../api-types";
 
 /** The trip's photos that can be linked, the linked ones among them and the status line above the list. */
 export function useCaptureMedia(

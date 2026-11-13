@@ -20,14 +20,8 @@ import {
   useOwnerMutation,
   useTripResource,
 } from "../query/owner-queries";
-import {
-  formatInstant,
-  formatDay,
-  localDateTime,
-  type TaskLink,
-  type Trip,
-  type TripTask,
-} from "../tracker-model";
+import { formatInstant, formatDay, localDateTime } from "../dates";
+import { type TaskLink, type Trip, type TripTask } from "../api-types";
 import { FieldSet, FieldLegend } from "@/ui/field";
 
 const MAX_LINKS = 5;

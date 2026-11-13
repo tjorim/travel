@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
+import type { CollectionMembershipResponse } from "../api-types";
 import { ownerKeys } from "../query/keys";
 import { ownerFile, ownerRequest } from "../query/api";
 import { useOwner, useTripResource } from "../query/owner-queries";
@@ -27,7 +28,7 @@ export function TripPdfExport({ tripId }: { tripId: string }) {
     queryKey: [...ownerKeys.trip(owner?.subject ?? "", tripId), "collections"],
     enabled: open && owner !== null,
     queryFn: ({ signal }) =>
-      ownerRequest<{ member_id: string; label: string }[]>(
+      ownerRequest<CollectionMembershipResponse[]>(
         owner!.session,
         `/api/trips/${encodeURIComponent(tripId)}/collections`,
         m.sharing_collections_load_error,

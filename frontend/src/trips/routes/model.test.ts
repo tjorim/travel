@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import type { Area, Location } from "../../tracker-model";
+import type { Area, Location } from "../../api-types";
 import { emptyPlace } from "../PlacePicker";
 import {
   areaPoint,

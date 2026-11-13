@@ -5,7 +5,8 @@ import { SearchSelect } from "../../forms/fields";
 import { useLocale } from "../../locale";
 import { useOfflineCopies } from "../../offline/useOfflineCopies";
 import { m } from "../../paraglide/messages.js";
-import { bytesLabel, formatInstant } from "../../tracker-model";
+import { bytesLabel } from "../../files";
+import { formatInstant } from "../../dates";
 import { PackingOfflineView } from "../PackingOfflineView";
 
 /** This reader needs only the route id, never a cached live trip response or an editor chunk. */

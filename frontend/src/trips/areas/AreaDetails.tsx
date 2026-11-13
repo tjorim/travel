@@ -1,10 +1,10 @@
-import { areaName } from "../../tracker-model";
+import { areaName } from "../../records";
 import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { DeleteConfirmation } from "../../RecordDialog";
-import type { Area, Trip } from "../../tracker-model";
+import type { Area, Trip } from "../../api-types";
 import { AreaContents } from "../AreaContents";
 import type { DuplicateGroup } from "../merge-candidates";
 import { MergeDialog, type MergeRequest } from "../MergeDialog";

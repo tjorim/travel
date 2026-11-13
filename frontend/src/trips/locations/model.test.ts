@@ -1,11 +1,7 @@
 import { expect, it } from "vitest";
 
-import {
-  ownerLocationName,
-  type Location,
-  type PublicProjectionStatus,
-  type ShareLink,
-} from "../../tracker-model";
+import { ownerLocationName } from "../../records";
+import { type Location, type PublicProjectionStatus, type ShareLink } from "../../api-types";
 import {
   address,
   addressProjection,

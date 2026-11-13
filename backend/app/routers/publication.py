@@ -43,6 +43,7 @@ from ..schemas import (
     CollectionIndexDocument,
     ExclusionReview,
     ExclusionReviewRequest,
+    ExclusionWideningConflict,
     FeedEnableRequest,
     FutureDisclosure,
     Identifier,
@@ -555,7 +556,11 @@ def get_share_link(
     return link_response(link, owned_trip(session, trip_id, subject, load_relations=True))
 
 
-@router.patch("/share-links/{link_id}", response_model=ShareLinkResponse)
+@router.patch(
+    "/share-links/{link_id}",
+    response_model=ShareLinkResponse,
+    responses={409: {"model": ExclusionWideningConflict, "description": "A live audience would newly show records."}},
+)
 def update_share_link(
     trip_id: Identifier,
     link_id: Identifier,

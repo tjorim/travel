@@ -55,6 +55,7 @@ from ..schemas import (
     MediaTravelUpdateCandidatesResponse,
     MediaTravelUpdateLocationOption,
     MediaTravelUpdateTimeOption,
+    OAuthStartResponse,
     ProviderConnectionStatus,
 )
 from ..secrets import SecretStore, get_secret_store
@@ -491,12 +492,14 @@ def start_import_session(
         raise service_exception(status.HTTP_409_CONFLICT, error) from error
     except ProviderError as error:
         raise service_exception(status.HTTP_502_BAD_GATEWAY, error) from error
-    return ImportSessionResponse(
-        id=created.session.id,
-        provider=created.session.provider,
-        state=created.session.state,
-        picker_uri=created.picker_uri,
-        expires_at=created.session.expires_at,
+    return ImportSessionResponse.model_validate(
+        {
+            "id": created.session.id,
+            "provider": created.session.provider,
+            "state": created.session.state,
+            "picker_uri": created.picker_uri,
+            "expires_at": created.session.expires_at,
+        }
     )
 
 
@@ -561,7 +564,7 @@ class OAuthComplete(InputModel):
     state: str
 
 
-@provider_tokens_router.post("/google_photos_picker/oauth/start")
+@provider_tokens_router.post("/google_photos_picker/oauth/start", response_model=OAuthStartResponse)
 def start_google_oauth(subject: SubjectDep, secret_store: SecretStoreDep) -> dict[str, str]:
     if not provider_available(ImportProvider.GOOGLE_PHOTOS_PICKER):
         raise ApiException(

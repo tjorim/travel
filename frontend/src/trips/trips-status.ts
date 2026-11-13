@@ -1,12 +1,12 @@
-import type { TrackerSession } from "../auth";
+import type { OwnerSession } from "../auth";
 import { m } from "../paraglide/messages.js";
 import { errorMessage } from "../query/api";
 import type { useTripsQuery } from "../query/owner-queries";
-import type { TripSummary } from "../tracker-model";
+import type { TripSummary } from "../api-types";
 
 /** What the trips list and a trip's workspace say about loading the owner's trips, before any notice overrides it. */
 export function tripsStatusMessage(
-  session: TrackerSession | null,
+  session: OwnerSession | null,
   tripsQuery: ReturnType<typeof useTripsQuery>,
   trips: TripSummary[],
 ): string {

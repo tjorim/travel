@@ -9,7 +9,7 @@ import { m } from "../../paraglide/messages.js";
 import { ownerRequest } from "../../query/api";
 import { tripPath, useOwner } from "../../query/owner-queries";
 import { ownerKeys } from "../../query/keys";
-import type { ShareLink } from "../../tracker-model";
+import type { ShareLink } from "../../api-types";
 import { dateLabel } from "./catalog";
 
 export function FeedControls({ tripId, link }: { tripId: string; link: ShareLink }) {

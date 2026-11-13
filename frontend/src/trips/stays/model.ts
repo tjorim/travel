@@ -1,15 +1,13 @@
 import { m } from "../../paraglide/messages.js";
+import { addDays, formatDay } from "../../dates";
+import { locationName, stayLabel } from "../../records";
 import {
-  addDays,
-  formatDay,
-  locationName,
-  stayLabel,
   type DatePrecision,
   type Location,
   type LocationInput,
   type Stay,
   type Trip,
-} from "../../tracker-model";
+} from "../../api-types";
 import type { FormContext } from "../../forms/form-context";
 import type { CreatePrefill } from "../create-request";
 

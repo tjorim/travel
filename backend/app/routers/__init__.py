@@ -1,1 +1,1 @@
-"""HTTP routers for the Travel tracker API."""
+"""HTTP routers for the Travel API."""
