@@ -69,8 +69,7 @@ function seed(overrides: Record<string, unknown[]> = {}) {
   };
   api = fakeApi();
   api.collection("/api/trips", [trip as never]);
-  // The endpoint answers newest first.
-  api.collection("/api/trips/trip/travel-updates", [...trip.travel_updates].reverse());
+  api.collection("/api/trips/trip/travel-updates", trip.travel_updates);
   api.collection("/api/library/documents?linked_trip_id=trip", []);
   for (const [resource, rows] of Object.entries(collections))
     api.collection(path(resource), rows as never[]);

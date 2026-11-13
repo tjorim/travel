@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, aliased
 
 from .models import (
+    TRAVEL_UPDATE_ORDER,
     VISIT_ORDER,
     AlternativeGroup,
     AlternativeGroupMember,
@@ -184,7 +185,7 @@ def _sections(session: Session, trip: Trip) -> Iterator[Iterator[str]]:
         location_areas = dict(
             session.execute(select(Location.id, Location.area_id).where(Location.trip_id == trip_id)).all()
         )
-        for (row,) in _batched(session, owned(TravelUpdate).order_by(TravelUpdate.occurred_at, TravelUpdate.id)):
+        for (row,) in _batched(session, owned(TravelUpdate).order_by(*TRAVEL_UPDATE_ORDER)):
             area_id = location_areas.get(row.location_id) if row.location_id else row.area_id
             yield _record(row, TRAVEL_UPDATE) | {
                 "local_date": local_day(row.occurred_at, zones.get(area_id)),

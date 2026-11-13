@@ -65,10 +65,7 @@ beforeEach(() => {
       last_update_at: null,
     },
   ]);
-  // The endpoint answers newest first.
-  api.on("GET", /^\/api\/trips\/trip\/travel-updates$/, () =>
-    [...state.trip.travel_updates].reverse(),
-  );
+  api.on("GET", /^\/api\/trips\/trip\/travel-updates$/, () => state.trip.travel_updates);
   api.on("POST", /^\/api\/trips\/trip\/travel-updates$/, (body) => {
     const created = {
       id: `new-${state.trip.travel_updates.length}`,

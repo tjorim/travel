@@ -134,11 +134,8 @@ beforeEach(() => {
           })),
         );
       const updates = /^\/api\/trips\/([^/]+)\/travel-updates$/.exec(url);
-      // The endpoint answers newest first.
       if (updates && method === "GET")
-        return json(
-          [...(trips.find((item) => item.id === updates[1])?.travel_updates ?? [])].reverse(),
-        );
+        return json(trips.find((item) => item.id === updates[1])?.travel_updates ?? []);
       if (url === "/api/trips" && method === "POST") {
         const created = trip("t3", String(body.title));
         trips = [...trips, created];

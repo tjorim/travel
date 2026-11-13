@@ -102,10 +102,7 @@ beforeEach(() => {
   });
   api.value("/api/trips/trip/share-links", []);
   api.on("GET", /^\/api\/trips$/, () => [state.trip]);
-  // The endpoint answers newest first.
-  api.on("GET", /^\/api\/trips\/trip\/travel-updates$/, () =>
-    [...state.trip.travel_updates].reverse(),
-  );
+  api.on("GET", /^\/api\/trips\/trip\/travel-updates$/, () => state.trip.travel_updates);
   embed("travel_updates", "travel-updates");
 });
 afterEach(() => {

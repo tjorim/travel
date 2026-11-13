@@ -541,8 +541,7 @@ def test_owner_can_review_selected_media_as_travel_updates_without_creating_upda
 
     # Candidate generation is a read-only review operation: it cannot create
     # a reisupdate, place, shareable item, or persistent candidate row.
-    trip_after_review = owner.get(f"/api/trips/{trip['id']}").json()
-    assert trip_after_review["travel_updates"] == []
+    assert owner.get(f"/api/trips/{trip['id']}/travel-updates").json() == []
     assert owner.get(f"/api/trips/{trip['id']}/locations").json() == []
 
     other = client_for("owner-2", tmp_path)

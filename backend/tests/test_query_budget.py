@@ -198,9 +198,42 @@ def test_the_trip_list_does_not_grow_with_the_updates_of_a_trip() -> None:
     assert listed["last_update_at"].startswith("2054-04-03T10:00:00")
     assert len(set(sizes)) == 1
     assert len(empty.content) < sizes[0] <= len(empty.content) + 40
-    # The complete trip still carries them, and so does its own list.
-    assert len(client.get(f"/api/trips/{trip_id}").json()["travel_updates"]) == 90
+    # Neither the trip nor its writes carry them: they are read from their own list.
+    assert "travel_updates" not in client.get(f"/api/trips/{trip_id}").json()
     assert len(client.get(f"/api/trips/{trip_id}/travel-updates").json()) == 90
+
+
+def test_reading_or_changing_a_trip_costs_the_same_whatever_it_holds() -> None:
+    client = TestClient(app)
+    small = client.post("/api/trips", json={"title": "Small"}).json()["id"]
+    large = client.post("/api/trips", json={"title": "Large"}).json()["id"]
+    fill(client, small, 1)
+    fill(client, large, 12)
+    costs = [
+        (
+            queries_for(lambda trip_id=trip_id: client.get(f"/api/trips/{trip_id}")),
+            queries_for(lambda trip_id=trip_id: client.patch(f"/api/trips/{trip_id}", json={"summary": "x"})),
+        )
+        for trip_id in (small, large)
+    ]
+    assert costs[0] == costs[1]
+    # The trip row, then its cover: never a pass over the stays, routes, updates or media copies.
+    assert max(costs[0]) <= 4
+    assert untouched("stays", "routes", "travel_updates", "areas", "locations", "trip_tasks")
+
+
+def test_travel_updates_list_in_one_chronological_order_and_the_latest_are_its_tail() -> None:
+    client = TestClient(app)
+    trip_id = client.post("/api/trips", json={"title": "Exampleland"}).json()["id"]
+    base = f"/api/trips/{trip_id}/travel-updates"
+    # Created out of order.
+    for title, at in [("C", "2054-04-03T10:00:00Z"), ("A", "2054-04-01T10:00:00Z"), ("B", "2054-04-02T10:00:00Z")]:
+        assert client.post(base, json={"occurred_at": at, "title": title}).status_code == 201
+    assert [item["title"] for item in client.get(base).json()] == ["A", "B", "C"]
+    assert [item["title"] for item in client.get(base, params={"latest": 2}).json()] == ["B", "C"]
+    assert [item["title"] for item in client.get(base, params={"limit": 1, "offset": 1}).json()] == ["B"]
+    assert client.get(base, params={"latest": 0}).status_code == 422
+    assert client.get(f"/api/trips/{trip_id}/travel-updates", params={"q": "b"}).json()[0]["title"] == "B"
 
 
 def test_the_trip_list_costs_the_same_for_any_number_of_trips_and_is_bounded() -> None:

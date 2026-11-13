@@ -133,9 +133,8 @@ export async function mockApi(page: Page): Promise<MockApiRecord> {
     if (path === `/api/trips/${ownerTrip.id}/media`) return json(route, media());
     if (path === "/api/trips")
       return json(route, [summaryOf({ ...ownerTrip, travel_updates: record.updates.map(saved) })]);
-    // The endpoint answers newest first.
     if (path === `/api/trips/${ownerTrip.id}/travel-updates`)
-      return json(route, record.updates.map(saved).reverse());
+      return json(route, record.updates.map(saved));
     if (path === `/api/trips/${ownerTrip.id}/public-projection`) {
       return json(route, {
         revision: 1,

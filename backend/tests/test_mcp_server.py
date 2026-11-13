@@ -595,6 +595,12 @@ def test_travel_update_tools_use_the_owner_handlers_and_require_confirmation_to_
         trip["id"], schemas.TravelUpdateCreate(occurred_at="2054-04-04T10:00:00Z", title="Arrival", body="We landed.")
     )
     assert created["visibility"] == "private"
+    assert "travel_updates" not in backend.get_trip(trip["id"])
+    for title, at in [("Later", "2054-04-06T10:00:00Z"), ("Earlier", "2054-04-02T10:00:00Z")]:
+        backend.create_travel_update(trip["id"], schemas.TravelUpdateCreate(occurred_at=at, title=title))
+    assert [row["title"] for row in backend.list_travel_updates(trip["id"])] == ["Earlier", "Arrival", "Later"]
+    assert [row["title"] for row in backend.list_travel_updates(trip["id"], latest=2)] == ["Arrival", "Later"]
+    assert [row["title"] for row in backend.list_travel_updates(trip["id"], query="earl")] == ["Earlier"]
     edited = backend.update_travel_update(trip["id"], created["id"], schemas.TravelUpdatePatch(visibility="everyone"))
     assert edited["visibility"] == "everyone"
     with pytest.raises(ValueError, match="confirm=true"):
@@ -1335,6 +1341,7 @@ SEARCH_QUERIES = {
     "publish the trip publicly": {"preview_public_projection", "publish_public_projection"},
     "import photos from google": {"start_media_import_session"},
     "reisupdate schrijven": {"create_travel_update"},
+    "list the travel updates of a trip": {"list_travel_updates"},
     "emergency numbers": {"list_emergency_info"},
     "apply a sharing preset to a hidden link": {"apply_sharing_preset"},
     "review what a sharing preset would change": {"preview_sharing_preset"},
