@@ -44,7 +44,7 @@ export function FeedControls({ tripId, link }: { tripId: string; link: ShareLink
       </Field>
       <Field>
         <FieldLabel>
-          {m.assets_valid_for_days()}
+          {m.publication_valid_for_days()}
           <Input
             type="number"
             min={1}

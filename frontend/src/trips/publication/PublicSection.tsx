@@ -46,11 +46,11 @@ export function PublicSection({
     <div className="manager-subsection">
       <div className="capture-heading">
         <div>
-          <h3>{m.assets_for_everyone()}</h3>
+          <h3>{m.publication_for_everyone()}</h3>
           <p>
             {isPublished
-              ? m.assets_this_page_is_accessible_to_everyone()
-              : m.assets_this_page_is_not_accessible_to_visitors_yet()}
+              ? m.publication_this_page_is_accessible_to_everyone()
+              : m.publication_this_page_is_not_accessible_to_visitors_yet()}
           </p>
         </div>
       </div>
@@ -68,8 +68,8 @@ export function PublicSection({
       )}
       <RecordForm
         record={record}
-        submitLabel={m.assets_save_selection()}
-        pendingLabel={m.assets_saving()}
+        submitLabel={m.publication_save_selection()}
+        pendingLabel={m.publication_saving()}
         actions={
           <>
             {slug && (
@@ -79,16 +79,16 @@ export function PublicSection({
                 target="_blank"
                 rel="noreferrer"
               >
-                {m.assets_open_public_page()}
+                {m.publication_open_public_page()}
               </a>
             )}
             {slug && (
               <Button className="secondary" type="button" onClick={onCopyLink}>
-                {m.assets_copy_link_2()}
+                {m.publication_copy_link_2()}
               </Button>
             )}
             <Button className="secondary" type="button" disabled={previewing} onClick={onPreview}>
-              {m.assets_view_as_visitor()}
+              {m.sharing_view_as_visitor()}
             </Button>
             <Button
               className={isPublished ? "danger" : ""}
@@ -96,7 +96,9 @@ export function PublicSection({
               disabled={!status || toggling}
               onClick={onToggle}
             >
-              {isPublished ? m.assets_stop_sharing_with_everyone() : m.assets_share_with_everyone()}
+              {isPublished
+                ? m.publication_stop_sharing_with_everyone()
+                : m.publication_share_with_everyone()}
             </Button>
           </>
         }
@@ -104,7 +106,7 @@ export function PublicSection({
         <record.form.Field name="scope">
           {(field) => (
             <ScopeEditor
-              name={m.assets_what_everyone_can_see()}
+              name={m.sharing_what_everyone_can_see()}
               scope={field.state.value}
               setScope={(scope) => {
                 field.handleChange(scope);

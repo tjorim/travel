@@ -64,7 +64,7 @@ export type KeyDisclosure = { subject: string; exportable: boolean; createdAt: n
 
 export class OfflineUnsupportedError extends FeedbackError {
   constructor() {
-    super(() => m.assets_offline_storage_is_not_supported_in_this_browser());
+    super(() => m.offline_storage_is_not_supported_in_this_browser());
     this.name = "OfflineUnsupportedError";
   }
 }
@@ -125,7 +125,7 @@ function openDb(): Promise<IDBDatabase> {
         resolve(request.result);
       };
       request.onerror = () =>
-        reject(storageFailure(m.assets_the_offline_database_could_not_be_opened, request.error));
+        reject(storageFailure(m.offline_the_offline_database_could_not_be_opened, request.error));
     });
   }
   return dbPromise;
@@ -151,7 +151,7 @@ function promisifyRequest<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () =>
-      reject(storageFailure(m.assets_the_offline_action_failed, request.error));
+      reject(storageFailure(m.offline_the_offline_action_failed, request.error));
   });
 }
 
@@ -159,9 +159,9 @@ function promisifyTransaction(transaction: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
     transaction.onerror = () =>
-      reject(storageFailure(m.assets_the_offline_action_failed, transaction.error));
+      reject(storageFailure(m.offline_the_offline_action_failed, transaction.error));
     transaction.onabort = () =>
-      reject(storageFailure(m.assets_the_offline_action_was_aborted, transaction.error));
+      reject(storageFailure(m.offline_the_offline_action_was_aborted, transaction.error));
   });
 }
 
@@ -319,7 +319,7 @@ export async function pinOfflineCopy(input: PinInput): Promise<OfflineCopySummar
   const ciphertext = await crypto.subtle
     .encrypt({ name: "AES-GCM", iv }, key, input.bytes)
     .catch((cause: unknown) => {
-      throw storageFailure(m.assets_the_offline_action_failed, cause);
+      throw storageFailure(m.offline_the_offline_action_failed, cause);
     });
   const now = Date.now();
   const existing = await findPinnedCopy(input.subject, input.resourceKind, input.resourceId);
@@ -410,22 +410,22 @@ export async function openOfflineCopy(subject: string, id: string): Promise<Blob
   const db = await openDb();
   const record = await getCopy(db, id);
   if (!record || record.subject !== subject)
-    throw new FeedbackError(() => m.assets_this_offline_copy_is_not_available_for_this_account());
+    throw new FeedbackError(() => m.offline_this_offline_copy_is_not_available_for_this_account());
   if (record.schemaVersion !== OFFLINE_SCHEMA_VERSION) {
     await deleteCopy(db, id);
-    throw new FeedbackError(() => m.assets_this_offline_copy_is_not_available_for_this_account());
+    throw new FeedbackError(() => m.offline_this_offline_copy_is_not_available_for_this_account());
   }
   if (record.leaseExpiresAt <= Date.now()) {
     await deleteCopy(db, id);
     throw new FeedbackError(() =>
-      m.assets_the_offline_validity_period_of_this_copy_has_expired_reconnect_to_the_in(),
+      m.offline_the_offline_validity_period_of_this_copy_has_expired_reconnect_to_the_in(),
     );
   }
   const { key } = await getOrCreateDeviceKey(subject);
   const plaintext = await crypto.subtle
     .decrypt({ name: "AES-GCM", iv: record.iv as BufferSource }, key, record.ciphertext)
     .catch((cause: unknown) => {
-      throw storageFailure(m.assets_the_offline_copy_could_not_be_opened, cause);
+      throw storageFailure(m.offline_the_offline_copy_could_not_be_opened, cause);
     });
   return new Blob([plaintext], { type: record.contentType });
 }

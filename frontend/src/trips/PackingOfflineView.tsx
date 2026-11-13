@@ -57,16 +57,16 @@ export function PackingOfflineView({
             !Array.isArray(value.items) ||
             !value.savedAt
           )
-            throw new FeedbackError(() => m.assets_the_offline_packing_list_is_invalid());
+            throw new FeedbackError(() => m.offline_the_offline_packing_list_is_invalid());
           if (active) setSnapshot(value);
         },
         (reason: unknown) => {
           if (active)
-            setError(errorNotice(reason, m.assets_the_offline_packing_list_could_not_be_opened));
+            setError(errorNotice(reason, m.offline_the_offline_packing_list_could_not_be_opened));
         },
       )
       .catch((reason: unknown) => {
-        if (active) setError(errorNotice(reason, m.assets_the_offline_packing_list_is_invalid));
+        if (active) setError(errorNotice(reason, m.offline_the_offline_packing_list_is_invalid));
       });
     return () => {
       active = false;
@@ -80,7 +80,7 @@ export function PackingOfflineView({
         setSnapshot(null);
         setError(
           textNotice(
-            m.assets_the_offline_validity_period_of_this_copy_has_expired_reconnect_to_the_in,
+            m.offline_the_offline_validity_period_of_this_copy_has_expired_reconnect_to_the_in,
           ),
         );
       },
@@ -90,7 +90,7 @@ export function PackingOfflineView({
   }, [copy.id, copy.leaseExpiresAt]);
 
   if (error) return <p role="alert">{error}</p>;
-  if (!snapshot) return <p role="status">{m.assets_opening_offline_packing_list()}</p>;
+  if (!snapshot) return <p role="status">{m.offline_opening_offline_packing_list()}</p>;
   const visible = snapshot.items.filter(
     (item) =>
       (filter === "all" ||
@@ -105,46 +105,46 @@ export function PackingOfflineView({
           ...[...snapshot.bags]
             .sort((a, b) => a.position - b.position)
             .map((bag) => ({ id: bag.id, title: bag.name })),
-          { id: "", title: m.assets_unassigned() },
+          { id: "", title: m.packing_unassigned() },
         ]
       : [...new Set(visible.map((item) => item.category?.trim() || ""))]
           .sort((a, b) => a.localeCompare(b, locale))
-          .map((category) => ({ id: category, title: category || m.assets_uncategorised() }));
+          .map((category) => ({ id: category, title: category || m.packing_uncategorised() }));
 
   return (
     <section
       className="space-y-4"
-      aria-label={m.assets_offline_packing_list_2({ p0: snapshot.list.name })}
+      aria-label={m.offline_packing_list_2({ p0: snapshot.list.name })}
     >
       <div>
         <h3 className="text-xl font-semibold">{snapshot.list.name}</h3>
         <p role="status" className="text-sm">
-          {m.assets_offline_copy_saved_on_line({
+          {m.offline_copy_saved_on_line({
             p0: formatInstant(new Date(snapshot.savedAt).toISOString()),
           })}
         </p>
         <p className="text-sm">
-          {m.assets_view_only_checking_off_moving_and_editing_require_a_connection()}
+          {m.packing_view_only_checking_off_moving_and_editing_require_a_connection()}
         </p>
       </div>
       <div className="flex flex-wrap items-end gap-3">
         <ChoiceGroup
-          label={m.assets_group()}
+          label={m.packing_group()}
           value={group}
           choices={[
-            { value: "bag", label: m.assets_by_bag() },
-            { value: "category", label: m.assets_by_category() },
+            { value: "bag", label: m.packing_by_bag() },
+            { value: "category", label: m.packing_by_category() },
           ]}
           onChange={setGroup}
         />
         <ChoiceGroup
-          label={m.assets_show()}
+          label={m.packing_show()}
           value={filter}
           choices={[
-            { value: "all", label: m.assets_all() },
-            { value: "unpacked", label: m.assets_unpacked() },
-            { value: "packed", label: m.assets_packed() },
-            { value: "last-minute", label: m.assets_departure_day() },
+            { value: "all", label: m.packing_all() },
+            { value: "unpacked", label: m.packing_unpacked() },
+            { value: "packed", label: m.packing_packed() },
+            { value: "last-minute", label: m.packing_departure_day() },
           ]}
           onChange={setFilter}
         />
@@ -171,7 +171,7 @@ export function PackingOfflineView({
         return (
           <section key={section.id} className="rounded-xl border p-3" aria-label={section.title}>
             <h4 className="font-semibold">{section.title}</h4>
-            {!rows.length && <p>{m.assets_no_items_here()}</p>}
+            {!rows.length && <p>{m.packing_no_items_here()}</p>}
             <ul className="m-0 list-none divide-y p-0">
               {rows.map((item) => (
                 <li key={item.id} className="py-2">
@@ -181,7 +181,7 @@ export function PackingOfflineView({
                         checked={item.packed}
                         disabled
                         readOnly
-                        aria-label={m.assets_packed_3({ p0: item.label })}
+                        aria-label={m.packing_packed_3({ p0: item.label })}
                       />
                       <span>
                         <strong className={item.packed ? "line-through opacity-60" : ""}>
@@ -189,9 +189,9 @@ export function PackingOfflineView({
                           {item.label}
                         </strong>
                         <span className="block text-sm opacity-70">
-                          {item.category || m.assets_uncategorised()}
+                          {item.category || m.packing_uncategorised()}
                           {group === "category"
-                            ? ` · ${snapshot.bags.find((bag) => bag.id === item.bag_id)?.name ?? m.assets_unassigned()}`
+                            ? ` · ${snapshot.bags.find((bag) => bag.id === item.bag_id)?.name ?? m.packing_unassigned()}`
                             : ""}
                         </span>
                         {item.notes && <span className="block text-sm">{item.notes}</span>}
@@ -204,7 +204,7 @@ export function PackingOfflineView({
           </section>
         );
       })}
-      {!visible.length && <p>{m.assets_no_items_for_this_filter()}</p>}
+      {!visible.length && <p>{m.packing_no_items_for_this_filter()}</p>}
     </section>
   );
 }

@@ -81,7 +81,7 @@ export function useUpdatePreview(trip: Trip, onError: (error: unknown) => void) 
         const scope = status.data.scope;
         const document = (await previewPublicScope.mutateAsync(scope)) as Projection;
         setPreview({
-          name: m.assets_public_preview,
+          name: m.publication_public_preview,
           audience: "public",
           scope,
           document,
@@ -94,7 +94,7 @@ export function useUpdatePreview(trip: Trip, onError: (error: unknown) => void) 
           scope: link.scope,
         })) as Projection;
         setPreview({
-          name: () => m.assets_preview_of({ p0: link.label }),
+          name: () => m.publication_preview_of({ p0: link.label }),
           audience: "share",
           linkId: link.id,
           scope: link.scope,

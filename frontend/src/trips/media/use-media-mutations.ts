@@ -17,12 +17,12 @@ export function useMediaMutations(tripId: string, selected: MediaAsset | null) {
   ];
 
   const upload = useOwnerMutation<FormData, MediaAsset>({
-    fallback: m.assets_the_media_could_not_be_uploaded,
+    fallback: m.media_the_media_could_not_be_uploaded,
     request: (body) => ({ path: `${mediaPath}/uploads`, method: "POST", body }),
     invalidate: refreshMedia,
   });
   const remove = useOwnerMutation<MediaAsset>({
-    fallback: m.assets_the_media_could_not_be_deleted,
+    fallback: m.media_the_media_could_not_be_deleted,
     request: (asset) => ({ path: `${mediaPath}/${asset.id}`, method: "DELETE" }),
     // The server also drops the deleted asset from the reisupdates that used it.
     invalidate: (subject) => [...refreshMedia(subject), ownerKeys.trips(subject)],
@@ -36,7 +36,7 @@ export function useMediaMutations(tripId: string, selected: MediaAsset | null) {
     },
     MediaDerivative
   >({
-    fallback: m.assets_the_copy_could_not_be_created,
+    fallback: m.media_the_copy_could_not_be_created,
     request: ({ assetId, purpose, maxDimension, removeAudio }) => ({
       path: `${mediaPath}/${assetId}/derivatives`,
       method: "POST",
@@ -52,7 +52,7 @@ export function useMediaMutations(tripId: string, selected: MediaAsset | null) {
     { assetId: string; derivative: MediaDerivative },
     MediaDerivative
   >({
-    fallback: m.assets_the_copy_could_not_be_approved,
+    fallback: m.media_the_copy_could_not_be_approved,
     request: ({ assetId, derivative }) => ({
       path: `${mediaPath}/${assetId}/derivatives/${derivative.id}/approve`,
       method: "POST",
@@ -61,7 +61,7 @@ export function useMediaMutations(tripId: string, selected: MediaAsset | null) {
   });
   const retry = useOwnerMutation<{ assetId: string; derivative: MediaDerivative }, MediaDerivative>(
     {
-      fallback: m.assets_the_video_could_not_be_processed_again,
+      fallback: m.media_the_video_could_not_be_processed_again,
       request: ({ assetId, derivative }) => ({
         path: `${mediaPath}/${assetId}/derivatives/${derivative.id}/retry`,
         method: "POST",
@@ -73,7 +73,7 @@ export function useMediaMutations(tripId: string, selected: MediaAsset | null) {
     { assetId: string; derivative: MediaDerivative; values: Record<string, unknown> },
     MediaDerivative
   >({
-    fallback: m.assets_the_presentation_could_not_be_saved,
+    fallback: m.media_the_presentation_could_not_be_saved,
     request: ({ assetId, derivative, values }) => ({
       path: `${mediaPath}/${assetId}/derivatives/${derivative.id}/presentation`,
       method: "PATCH",
@@ -82,7 +82,7 @@ export function useMediaMutations(tripId: string, selected: MediaAsset | null) {
     invalidate: refreshDerivatives,
   });
   const setCover = useOwnerMutation<MediaDerivative | null>({
-    fallback: m.assets_the_cover_could_not_be_saved,
+    fallback: m.media_the_cover_could_not_be_saved,
     request: (derivative) => ({
       path: `/api/trips/${encodeURIComponent(tripId)}`,
       method: "PATCH",
@@ -96,7 +96,7 @@ export function useMediaMutations(tripId: string, selected: MediaAsset | null) {
     ],
   });
   const removeDerivative = useOwnerMutation<{ assetId: string; derivative: MediaDerivative }>({
-    fallback: m.assets_the_copy_could_not_be_deleted,
+    fallback: m.media_the_copy_could_not_be_deleted,
     request: ({ assetId, derivative }) => ({
       path: `${mediaPath}/${assetId}/derivatives/${derivative.id}`,
       method: "DELETE",
@@ -104,12 +104,12 @@ export function useMediaMutations(tripId: string, selected: MediaAsset | null) {
     invalidate: refreshDerivatives,
   });
   const startImport = useOwnerMutation<ImportSession["provider"], ImportSession>({
-    fallback: m.assets_the_import_session_could_not_be_started,
+    fallback: m.media_the_import_session_could_not_be_started,
     request: (provider) => ({ path: `${mediaPath}/imports/${provider}/sessions`, method: "POST" }),
     invalidate: () => [],
   });
   const completeImport = useOwnerMutation<ImportSession, ImportCompleteResult>({
-    fallback: m.assets_the_import_session_could_not_be_completed,
+    fallback: m.media_the_import_session_could_not_be_completed,
     request: (session) => ({
       path: `${mediaPath}/imports/${session.provider}/sessions/${session.id}/complete`,
       method: "POST",

@@ -1768,7 +1768,7 @@ export function ProjectionView({
     <>
       <TripHeader
         title={projection.title ?? m.shared_trip()}
-        eyebrow={previewResources ? m.assets_travel_preview() : "Travel"}
+        eyebrow={previewResources ? m.publication_travel_preview() : "Travel"}
         level={previewResources ? "h2" : "h1"}
         dates={dates}
         destinations={tripDestinations(projection)}

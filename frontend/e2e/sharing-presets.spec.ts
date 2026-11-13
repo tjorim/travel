@@ -123,7 +123,7 @@ for (const locale of ["nl", "en"] as const) {
     await expect(dialog).toBeHidden();
     await page.keyboard.press("Escape");
     await expect(editor).toBeHidden();
-    const check = page.getByRole("list", { name: message(locale, "assets_sharing_check") });
+    const check = page.getByRole("list", { name: message(locale, "sharing_check") });
     await expect(
       check.getByText(/(Voorinstelling|Preset): .*(1 uitzondering|1 exception)/),
     ).toBeVisible();
@@ -139,7 +139,7 @@ for (const locale of ["nl", "en"] as const) {
     const applies = await mockSharingPresets(page, "draft");
     await page.goto(`/admin/trips/${ownerTrip.id}/sharing`);
     const audience = page.getByRole("group", {
-      name: message(locale, "assets_what_everyone_can_see"),
+      name: message(locale, "sharing_what_everyone_can_see"),
     });
     await audience.getByRole("radio", { name: story(locale) }).click();
     await audience.getByRole("button", { name: message(locale, "preset_review_button") }).click();

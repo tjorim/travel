@@ -47,7 +47,7 @@ for (const locale of ["nl", "en"] as const) {
       });
       await page.goto(`/admin/trips/${ownerTrip.id}/sharing`);
       const scope = page.getByRole("group", {
-        name: message(locale, "assets_what_everyone_can_see"),
+        name: message(locale, "sharing_what_everyone_can_see"),
       });
       await scope.getByRole("checkbox", { name: message(locale, "numbers_days") }).check();
       const summary = scope.getByRole("checkbox", { name: message(locale, "owner_summary") });
@@ -55,8 +55,10 @@ for (const locale of ["nl", "en"] as const) {
       await summary.click();
       await expect(summary).toHaveAttribute("aria-checked", "false");
 
-      await page.getByRole("button", { name: message(locale, "assets_view_as_visitor") }).click();
-      const dialog = page.getByRole("dialog", { name: message(locale, "assets_public_preview") });
+      await page.getByRole("button", { name: message(locale, "sharing_view_as_visitor") }).click();
+      const dialog = page.getByRole("dialog", {
+        name: message(locale, "publication_public_preview"),
+      });
       await expect(dialog).toBeVisible();
       await expect(
         dialog.getByRole("region", { name: message(locale, "numbers_heading") }),
@@ -74,7 +76,7 @@ for (const locale of ["nl", "en"] as const) {
         .getByRole("button", {
           name: message(locale, "owner_close").replace(
             "{p0}",
-            message(locale, "assets_public_preview"),
+            message(locale, "publication_public_preview"),
           ),
         })
         .click();

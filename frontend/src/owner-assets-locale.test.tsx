@@ -253,20 +253,20 @@ it("renders plural counts and retained local offline errors in either language",
   }
   for (const locale of ["nl", "en"] as const) {
     act(() => changeLocale(locale));
-    expect(unsupported.message).toBe(m.assets_offline_storage_is_not_supported_in_this_browser());
+    expect(unsupported.message).toBe(m.offline_storage_is_not_supported_in_this_browser());
     expect((unavailable as Error).message).toBe(
-      m.assets_this_offline_copy_is_not_available_for_this_account(),
+      m.offline_this_offline_copy_is_not_available_for_this_account(),
     );
     for (const count of [0, 1, 3]) {
-      expect(m.assets_offline_copies_count({ count, size: "12 kB" })).toContain(
+      expect(m.offline_copies_count({ count, size: "12 kB" })).toContain(
         locale === "en"
           ? `${count} offline ${count === 1 ? "copy" : "copies"}`
           : `${count} offline ${count === 1 ? "kopie" : "kopieën"}`,
       );
-      expect(m.assets_imported_count({ count })).toContain(
+      expect(m.media_imported_count({ count })).toContain(
         `${count} ${count === 1 ? "item" : "items"}`,
       );
-      expect(m.assets_count_visits({ count })).toBe(
+      expect(m.publication_count_visits({ count })).toBe(
         `${count} ${locale === "en" ? (count === 1 ? "visit" : "visits") : count === 1 ? "bezoek" : "bezoeken"}`,
       );
     }
@@ -332,7 +332,7 @@ it("opens the same encrypted document bytes in both locales and still rejects an
     expect(new Uint8Array(await blob.arrayBuffer())).toEqual(new Uint8Array(bytes));
     expect(blob.type).toBe("application/pdf");
     await expect(openOfflineCopy("other-subject", copy.id)).rejects.toThrow(
-      m.assets_this_offline_copy_is_not_available_for_this_account(),
+      m.offline_this_offline_copy_is_not_available_for_this_account(),
     );
   }
 });
@@ -376,7 +376,7 @@ it("keeps decryption diagnostics separate from retained localized offline failur
   expect((failure as Error).cause).toBe(diagnostic);
   for (const locale of ["nl", "en"] as const) {
     act(() => changeLocale(locale));
-    expect((failure as Error).message).toBe(m.assets_the_offline_copy_could_not_be_opened());
+    expect((failure as Error).message).toBe(m.offline_the_offline_copy_could_not_be_opened());
     expect((failure as Error).message).not.toContain("native diagnostic");
   }
 });

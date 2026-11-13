@@ -32,21 +32,21 @@ export function Suggestions({
       ownerRequest<PackingSuggestion[]>(
         owner!.session,
         `${path}/suggestions`,
-        m.assets_loading_suggestions_failed,
+        m.packing_loading_suggestions_failed,
       ),
   });
   return (
     <>
       {show && (
         <section
-          aria-label={m.assets_suggestions_from_earlier_trips()}
+          aria-label={m.packing_suggestions_from_earlier_trips()}
           className="space-y-2 rounded-xl border p-4"
         >
-          <h4 className="font-semibold">{m.assets_you_might_want_to_bring()}</h4>
-          {suggestionsQuery.isPending && <p>{m.assets_loading_suggestions()}</p>}
+          <h4 className="font-semibold">{m.packing_you_might_want_to_bring()}</h4>
+          {suggestionsQuery.isPending && <p>{m.packing_loading_suggestions()}</p>}
           {suggestionsQuery.isError && (
             <p role="alert">
-              {m.assets_loading_suggestions_failed()}{" "}
+              {m.packing_loading_suggestions_failed()}{" "}
               <Button type="button" onClick={() => void suggestionsQuery.refetch()}>
                 {m.retry()}
               </Button>
@@ -62,11 +62,11 @@ export function Suggestions({
                 className="flex flex-wrap items-center gap-2 border-t py-2"
               >
                 <p className="flex-1">
-                  {m.assets_suggestion_summary({
+                  {m.packing_suggestion_summary({
                     name: suggestion.label,
-                    trips: m.assets_prior_trips({ count: suggestion.prior_trips }),
-                    cabin: suggestion.usually_cabin ? m.assets_usually_in_cabin_baggage() : "",
-                    essential: suggestion.usually_essential ? m.assets_usually_essential() : "",
+                    trips: m.packing_prior_trips({ count: suggestion.prior_trips }),
+                    cabin: suggestion.usually_cabin ? m.packing_usually_in_cabin_baggage() : "",
+                    essential: suggestion.usually_essential ? m.packing_usually_essential() : "",
                   })}
                 </p>
                 <Button
@@ -74,7 +74,7 @@ export function Suggestions({
                   className="secondary compact"
                   onClick={() => onAdd(suggestion)}
                 >
-                  {m.assets_add()}
+                  {m.common_add()}
                 </Button>
                 <Button
                   type="button"
@@ -86,12 +86,12 @@ export function Suggestions({
                     ])
                   }
                 >
-                  {m.assets_dismiss()}
+                  {m.packing_dismiss()}
                 </Button>
               </div>
             ))}
           {suggestionsQuery.data?.length === 0 && (
-            <p>{m.assets_no_recurring_items_to_suggest_yet()}</p>
+            <p>{m.packing_no_recurring_items_to_suggest_yet()}</p>
           )}
         </section>
       )}

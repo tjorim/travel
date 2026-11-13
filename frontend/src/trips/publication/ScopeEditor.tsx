@@ -91,7 +91,7 @@ function ScopeGroup({
     <Collapsible.Root className="scope-group" data-disclosure="">
       <Collapsible.Trigger className="max-sm:flex-wrap max-sm:justify-start max-sm:[&>strong]:basis-3/4 max-sm:[&>span]:basis-full max-sm:[&>span]:pl-6">
         <strong>{GROUP_TITLES[kind]}</strong>
-        <span>{m.assets_of_selected_line({ p0: count, p1: items.length })}</span>
+        <span>{m.publication_of_selected_line({ p0: count, p1: items.length })}</span>
       </Collapsible.Trigger>
       <Collapsible.Panel keepMounted className="grid gap-2.5 px-3.25 pt-0 pb-3.25">
         <div className="button-row">
@@ -101,7 +101,7 @@ function ScopeGroup({
             disabled={busy || count === items.length}
             onClick={() => void chooseAll()}
           >
-            {m.assets_select_all()}
+            {m.publication_select_all()}
           </Button>
           <Button
             className="secondary compact"
@@ -111,7 +111,7 @@ function ScopeGroup({
               setScope(items.reduce((current, item) => updateItem(current, item, false), scope))
             }
           >
-            {m.assets_select_none()}
+            {m.publication_select_none()}
           </Button>
         </div>
         <div className="grid gap-2">
@@ -134,7 +134,7 @@ function ScopeGroup({
                     {item.visibility === "private" && (
                       <em className="text-xs font-medium not-italic text-travel-muted">
                         {" "}
-                        {m.assets_currently_private_selecting_includes_this_for_this_audience()}
+                        {m.publication_currently_private_selecting_includes_this_for_this_audience()}
                       </em>
                     )}
                   </span>
@@ -157,7 +157,7 @@ function VisibilityNote({ catalog }: { catalog: CatalogItem[] }) {
   const privateCount = own.filter((item) => item.visibility === "private").length;
   return (
     <p className="help">
-      {m.assets_for_everyone_always_appears_here_you_can_select_private_items_bel_line({
+      {m.publication_for_everyone_always_appears_here_you_can_select_private_items_bel_line({
         p0: everyone,
         p1: privateCount,
       })}
@@ -237,9 +237,9 @@ function TripDates({
   return (
     <div className="grid gap-1.5">
       <Field className="max-w-sm">
-        <FieldLabel>{m.assets_how_precise_can_the_travel_dates_be()}</FieldLabel>
+        <FieldLabel>{m.sharing_how_precise_can_the_travel_dates_be()}</FieldLabel>
         <SearchSelect
-          ariaLabel={m.assets_how_precise_can_the_travel_dates_be()}
+          ariaLabel={m.sharing_how_precise_can_the_travel_dates_be()}
           value={scope.trip.dates ?? ""}
           onChange={(value) =>
             setScope({
@@ -248,7 +248,7 @@ function TripDates({
             })
           }
         >
-          <option value="">{m.assets_hide()}</option>
+          <option value="">{m.publication_hide()}</option>
           {Object.entries(DATE_PRECISIONS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
@@ -257,13 +257,17 @@ function TripDates({
         </SearchSelect>
       </Field>
       <small>{m.sharing_advanced_trip_dates_help()}</small>
-      {scope.trip.dates === "day" && <small>{m.assets_visitors_see_the_start_and_end_day()}</small>}
-      {scope.trip.dates === "month" && (
-        <small>{m.assets_visitors_see_only_the_start_and_end_month()}</small>
+      {scope.trip.dates === "day" && (
+        <small>{m.publication_visitors_see_the_start_and_end_day()}</small>
       )}
-      {scope.trip.dates === "year" && <small>{m.assets_visitors_see_only_the_travel_year()}</small>}
+      {scope.trip.dates === "month" && (
+        <small>{m.publication_visitors_see_only_the_start_and_end_month()}</small>
+      )}
+      {scope.trip.dates === "year" && (
+        <small>{m.publication_visitors_see_only_the_travel_year()}</small>
+      )}
       {scope.trip.dates && !hasDates && (
-        <small>{m.assets_this_trip_has_no_travel_dates_yet()}</small>
+        <small>{m.publication_this_trip_has_no_travel_dates_yet()}</small>
       )}
     </div>
   );
@@ -305,7 +309,9 @@ export function ScopeEditor({
       disabled={disabled}
     >
       <FieldLegend>{name}</FieldLegend>
-      <p>{m.assets_choose_what_visitors_can_see_everything_you_do_not_select_stays_private()}</p>
+      <p>
+        {m.publication_choose_what_visitors_can_see_everything_you_do_not_select_stays_private()}
+      </p>
       {preset && (
         <PresetSection
           // Another audience starts with nothing chosen.
@@ -329,7 +335,7 @@ export function ScopeEditor({
                 setScope({ ...scope, trip: { ...scope.trip, title: checked } })
               }
             />
-            {m.assets_trip_title()}
+            {m.sharing_trip_title()}
           </FieldLabel>
         </Field>
         <Field className="contents">
@@ -403,7 +409,7 @@ export function ScopeEditor({
           ))}
           {!groups.size && !allowExclusions && (
             <p className="help">
-              {m.assets_there_is_nothing_to_select_yet_items_already_set_to_everyone_always_appe()}
+              {m.publication_there_is_nothing_to_select_yet_items_already_set_to_everyone_always_appe()}
             </p>
           )}
         </div>

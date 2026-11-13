@@ -15,8 +15,8 @@ export function LinkedLibraryDocuments({ tripId }: { tripId: string }) {
     <section className="travel-card" aria-labelledby="linked-library-documents-title">
       <div className="capture-heading">
         <div>
-          <h3 id="linked-library-documents-title">{m.assets_linked_library_documents()}</h3>
-          <p>{m.assets_manage_and_delete_these_essentials_in_the_library()}</p>
+          <h3 id="linked-library-documents-title">{m.library_linked_library_documents()}</h3>
+          <p>{m.library_manage_and_delete_these_essentials_in_the_library()}</p>
         </div>
         <Link className="action-link" to="/library">
           {m.owner_go_to_library()}

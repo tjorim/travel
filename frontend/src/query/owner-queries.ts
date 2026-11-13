@@ -84,11 +84,11 @@ const resourceFailure: Record<TripResource, ErrorFallback> = {
   locations: m.owner_your_locations_could_not_be_loaded,
   routes: m.owner_your_routes_could_not_be_loaded,
   visits: m.owner_your_visits_could_not_be_loaded,
-  documents: m.assets_your_documents_could_not_be_loaded,
+  documents: m.library_your_documents_could_not_be_loaded,
   media: m.owner_your_media_could_not_be_loaded,
-  "public-projection": m.assets_the_public_publication_could_not_be_loaded,
-  "share-links": m.assets_the_share_links_could_not_be_loaded,
-  overview: m.assets_the_sharing_check_could_not_be_loaded,
+  "public-projection": m.publication_the_public_publication_could_not_be_loaded,
+  "share-links": m.publication_the_share_links_could_not_be_loaded,
+  overview: m.publication_the_sharing_check_could_not_be_loaded,
 };
 
 export const tripPath = (tripId: string, resource?: string) =>
@@ -206,7 +206,7 @@ export function useAreaSearch(tripId: string) {
   return useOwnerSearch<Area>(
     (q) => tripPath(tripId, `areas${searchParams(q)}`),
     (subject, q) => [...ownerKeys.tripResource(subject, tripId, "areas"), "search", q],
-    m.assets_your_areas_could_not_be_searched(),
+    m.publication_your_areas_could_not_be_searched(),
   );
 }
 
@@ -214,7 +214,7 @@ export function useLocationSearch(tripId: string) {
   return useOwnerSearch<Location>(
     (q) => tripPath(tripId, `locations${searchParams(q)}`),
     (subject, q) => [...ownerKeys.tripResource(subject, tripId, "locations"), "search", q],
-    m.assets_your_locations_could_not_be_searched(),
+    m.publication_your_locations_could_not_be_searched(),
   );
 }
 
@@ -222,7 +222,7 @@ export function useTripSearch() {
   return useOwnerSearch<TripSummary>(
     (q) => `/api/trips${searchParams(q)}`,
     (subject, q) => [...ownerKeys.trips(subject), "search", q],
-    m.assets_your_trips_could_not_be_searched(),
+    m.publication_your_trips_could_not_be_searched(),
   );
 }
 
@@ -230,13 +230,13 @@ export function useTravelUpdateSearch(tripId: string) {
   return useOwnerSearch<TravelUpdate>(
     (q) => tripPath(tripId, `travel-updates${searchParams(q)}`),
     (subject, q) => [...ownerKeys.trip(subject, tripId), "travel-updates", "search", q],
-    m.assets_your_travel_updates_could_not_be_searched(),
+    m.publication_your_travel_updates_could_not_be_searched(),
   );
 }
 
 type DerivativeData = { media: MediaDerivative[] };
 const derivativeFailure: Record<DerivativeParent, ErrorFallback> = {
-  media: m.assets_the_media_copies_could_not_be_loaded,
+  media: m.media_the_media_copies_could_not_be_loaded,
 };
 
 /** The generated copies of one media asset; nothing is read until an asset is chosen. */
@@ -269,8 +269,8 @@ export function useDerivatives<K extends DerivativeParent>(
 
 type LibraryData = { documents: OwnerDocument[]; "emergency-info": EmergencyInfoEntry[] };
 const libraryFailure: Record<LibraryResource, ErrorFallback> = {
-  documents: m.assets_your_library_could_not_be_loaded,
-  "emergency-info": m.assets_your_emergency_information_could_not_be_loaded,
+  documents: m.library_your_library_could_not_be_loaded,
+  "emergency-info": m.library_your_emergency_information_could_not_be_loaded,
 };
 
 export const libraryPath = (resource: LibraryResource) => `/api/library/${resource}`;
@@ -300,7 +300,7 @@ export function useLinkedLibraryDocuments(tripId: string | null) {
       ownerRequest<OwnerDocument[]>(
         owner!.session,
         `${libraryPath("documents")}?linked_trip_id=${encodeURIComponent(tripId!)}`,
-        m.assets_linked_library_documents_could_not_be_loaded,
+        m.library_linked_library_documents_could_not_be_loaded,
         { signal },
       ),
   });
@@ -364,7 +364,7 @@ export function useOwnerMutation<V, R = unknown>({
   return useMutation<R, Error, V, { key: QueryKey; previous: unknown } | undefined>({
     ...(gcTime === undefined ? {} : { gcTime }),
     mutationFn: (variables) => {
-      if (!owner) throw new ApiError(m.assets_sign_in_to_change_your_private_trips, 401);
+      if (!owner) throw new ApiError(m.publication_sign_in_to_change_your_private_trips, 401);
       const { path, ...options } = request(variables);
       return ownerRequest<R>(owner.session, path, fallback, options);
     },
@@ -425,7 +425,7 @@ export type MarkAlertRead = { tripId: string; alertId: string };
 /** Marks a reminder read at once, restoring it if the server refuses. */
 export function useMarkAlertRead() {
   return useOwnerMutation<MarkAlertRead, TripTaskAlert>({
-    fallback: m.assets_the_notification_could_not_be_marked_as_read,
+    fallback: m.publication_the_notification_could_not_be_marked_as_read,
     request: ({ tripId, alertId }) => ({
       path: `${tripPath(tripId, "task-alerts")}/${encodeURIComponent(alertId)}/read`,
       method: "PATCH",

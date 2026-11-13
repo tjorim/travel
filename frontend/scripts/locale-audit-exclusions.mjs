@@ -76,6 +76,11 @@ export const exclusions = {
 // Message keys read through a computed lookup (`m[name]`), which the unused-key check cannot see by name.
 // Each entry needs a reason; none is needed while every call names its message directly.
 export const computedMessageKeys = {};
+// Key prefixes that name no area. A key starting with one fails the audit; each entry states the reason.
+export const retiredKeyPrefixes = {
+  assets_:
+    "catch-all prefix split into packing_, media_, publication_, sharing_, library_ and offline_",
+};
 // One-word connectives and joined sentence fragments that still ship in an assembled sentence. Each entry
 // is debt: replace it with a whole message (issue 371) and delete the entry. Never add one for new copy.
 export const fragmentMessages = {

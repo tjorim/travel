@@ -132,14 +132,14 @@ for (const locale of ["nl", "en"] as const) {
         const open = page.getByRole("button", { name: label("Six photos") });
         await open.click();
         const dialog = page.getByRole("dialog", {
-          name: message(locale, "assets_public_preview"),
+          name: message(locale, "publication_public_preview"),
         });
         await expect(dialog.getByText("Text of Six photos").first()).toBeVisible();
         await dialog
           .getByRole("button", {
             name: message(locale, "owner_close").replace(
               "{p0}",
-              message(locale, "assets_public_preview"),
+              message(locale, "publication_public_preview"),
             ),
           })
           .click();

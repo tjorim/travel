@@ -19,13 +19,13 @@ const KINDS: Record<Choice, ("visit" | "stay")[]> = {
 
 const audienceName = (audience: FollowAudienceAudience) =>
   audience.audience === "public"
-    ? m.assets_the_page_for_everyone()
-    : m.assets_link({ p0: audience.label ?? "" });
+    ? m.publication_the_page_for_everyone()
+    : m.publication_link({ p0: audience.label ?? "" });
 
 const countsText = (counts: { visits: number; stays: number }) =>
   [
-    counts.visits ? m.assets_count_visits({ count: counts.visits }) : "",
-    counts.stays ? m.assets_count_stays({ count: counts.stays }) : "",
+    counts.visits ? m.publication_count_visits({ count: counts.visits }) : "",
+    counts.stays ? m.publication_count_stays({ count: counts.stays }) : "",
   ]
     .filter(Boolean)
     .join(", ");

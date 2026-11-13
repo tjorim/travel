@@ -41,7 +41,7 @@ export function OwnerImage({
     const controller = new AbortController();
     let objectUrl: string | null = null;
     setSrc(null);
-    ownerFile(session, url, m.assets_the_preview_could_not_be_loaded, {
+    ownerFile(session, url, m.media_the_preview_could_not_be_loaded, {
       cache: "no-store",
       signal: controller.signal,
     })

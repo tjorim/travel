@@ -95,7 +95,7 @@ export function MediaManager({
 
   const derivativeRecord = useRecordForm<DerivativeValues>({
     defaultValues: blankDerivative(),
-    fallback: m.assets_the_copy_could_not_be_created,
+    fallback: m.media_the_copy_could_not_be_created,
     serverFields: { purpose: "purpose", max_dimension: "maxDimension" },
     submit: async (values) => {
       if (selected)
@@ -109,13 +109,13 @@ export function MediaManager({
     onSuccess: () => {
       setView({ kind: "asset" });
       setNotice(
-        textNotice(() => m.assets_copy_started_check_the_copy_and_then_explicitly_approve_it()),
+        textNotice(() => m.media_copy_started_check_the_copy_and_then_explicitly_approve_it()),
       );
     },
   });
   const presentationRecord = useRecordForm<PresentationValues>({
     defaultValues: blankPresentation(),
-    fallback: m.assets_the_presentation_could_not_be_saved,
+    fallback: m.media_the_presentation_could_not_be_saved,
     serverFields: {
       travel_update_id: "travelUpdateId",
       caption: "caption",
@@ -141,7 +141,7 @@ export function MediaManager({
       setView({ kind: "asset" });
       setNotice(
         textNotice(() =>
-          m.assets_presentation_saved_only_fields_selected_in_a_sharing_scope_become_visibl(),
+          m.media_presentation_saved_only_fields_selected_in_a_sharing_scope_become_visibl(),
         ),
       );
     },
@@ -179,26 +179,26 @@ export function MediaManager({
   function submitUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!uploadFile) {
-      setUploadError(textNotice(() => m.assets_choose_a_photo_or_video_first()));
+      setUploadError(textNotice(() => m.media_choose_a_photo_or_video_first()));
       return;
     }
     setUploadError(null);
     const data = new FormData();
     data.set("file", uploadFile);
-    setNotice(textNotice(() => m.assets_uploading_private_media()));
+    setNotice(textNotice(() => m.media_uploading_private_media()));
     upload.mutateAsync(data).then(
       (saved) => {
         closeUpload();
         inspectAsset(saved.id);
         setNotice(
           textNotice(() =>
-            m.assets_private_media_uploaded_you_can_now_link_them_to_a_travel_update(),
+            m.media_private_media_uploaded_you_can_now_link_them_to_a_travel_update(),
           ),
         );
       },
       (error: unknown) => {
         setNotice("");
-        setUploadError(errorNotice(error, m.assets_the_media_could_not_be_uploaded));
+        setUploadError(errorNotice(error, m.media_the_media_could_not_be_uploaded));
       },
     );
   }
@@ -250,13 +250,13 @@ export function MediaManager({
         setDeletingId(null);
         setNotice(
           textNotice(() =>
-            m.assets_private_media_deleted_links_to_travel_updates_have_also_been_removed(),
+            m.media_private_media_deleted_links_to_travel_updates_have_also_been_removed(),
           ),
         );
       },
       (error: unknown) => {
         setDeletingId(null);
-        failInDialog(m.assets_the_media_could_not_be_deleted)(error);
+        failInDialog(m.media_the_media_could_not_be_deleted)(error);
       },
     );
   }
@@ -268,7 +268,7 @@ export function MediaManager({
       setNotice(
         textNotice(() =>
           m.owner_is_no_longer_available_offline({
-            p0: asset.original_filename ?? m.assets_this_media_item(),
+            p0: asset.original_filename ?? m.media_this_media_item(),
           }),
         ),
       );
@@ -277,7 +277,7 @@ export function MediaManager({
     const blob = await ownerFile(
       owner.session,
       asset.file_url,
-      m.assets_the_private_media_item_could_not_be_saved_offline,
+      m.offline_the_private_media_item_could_not_be_saved_offline,
       {
         cache: "no-store",
       },
@@ -294,7 +294,7 @@ export function MediaManager({
     setNotice(
       textNotice(() =>
         m.owner_is_saved_offline_on_this_device({
-          p0: asset.original_filename ?? m.assets_this_media_item(),
+          p0: asset.original_filename ?? m.media_this_media_item(),
         }),
       ),
     );
@@ -308,13 +308,13 @@ export function MediaManager({
     if (!owner || !selected) return;
     if (offline.isPinned("media_derivative", derivative.id)) {
       await offline.removeByResource("media_derivative", derivative.id);
-      setNotice(textNotice(() => m.assets_the_offline_copy_has_been_removed()));
+      setNotice(textNotice(() => m.offline_the_offline_copy_has_been_removed()));
       return;
     }
     const blob = await ownerFile(
       owner.session,
       derivative.file_url,
-      m.assets_the_copy_could_not_be_saved_offline,
+      m.offline_the_copy_could_not_be_saved_offline,
       {
         cache: "no-store",
       },
@@ -324,43 +324,43 @@ export function MediaManager({
       contentMetadata: derivative,
       resourceId: derivative.id,
       metadataUrl: `${mediaPath}/${selected.id}/derivatives/${derivative.id}`,
-      title: selected.original_filename ?? m.assets_media_copy(),
+      title: selected.original_filename ?? m.media_copy_title(),
       contentType: blob.type,
       bytes: await blob.arrayBuffer(),
     });
-    setNotice(textNotice(() => m.assets_the_copy_has_been_saved_offline_on_this_device()));
+    setNotice(textNotice(() => m.offline_the_copy_has_been_saved_offline_on_this_device()));
   }
 
   function performEraseDerivative(asset: MediaAsset, derivative: MediaDerivative) {
     removeDerivative.mutateAsync({ assetId: asset.id, derivative }).then(async () => {
       await offline.removeByResource("media_derivative", derivative.id);
       backToAsset();
-      setNotice(textNotice(() => m.assets_copy_deleted_and_removed_from_any_sharing_scopes()));
-    }, failInDialog(m.assets_the_copy_could_not_be_deleted));
+      setNotice(textNotice(() => m.media_copy_deleted_and_removed_from_any_sharing_scopes()));
+    }, failInDialog(m.media_the_copy_could_not_be_deleted));
   }
 
   function startProvider(provider: ImportSession["provider"]) {
-    setNotice(textNotice(() => m.assets_starting_selection({ p0: providerLabel[provider] })));
+    setNotice(textNotice(() => m.media_starting_selection({ p0: providerLabel[provider] })));
     startImport.mutateAsync(provider).then((created) => {
       setImportSession(created);
       setNotice(
         textNotice(() =>
-          m.assets_choose_media_in_then_return_here_to_import_your_selection({
+          m.media_choose_media_in_then_return_here_to_import_your_selection({
             p0: providerLabel[provider],
           }),
         ),
       );
-    }, fail(m.assets_the_import_session_could_not_be_started));
+    }, fail(m.media_the_import_session_could_not_be_started));
   }
 
   function finishImport() {
     if (!importSession) return;
-    setNotice(textNotice(() => m.assets_safely_copying_selected_media_to_your_private_trip()));
+    setNotice(textNotice(() => m.media_safely_copying_selected_media_to_your_private_trip()));
     completeImport.mutateAsync(importSession).then((outcome) => {
       if (!outcome.ready) {
         setNotice(
           textNotice(() =>
-            m.assets_your_selection_is_not_ready_at_the_provider_yet_try_again_when_you_are_d(),
+            m.media_your_selection_is_not_ready_at_the_provider_yet_try_again_when_you_are_d(),
           ),
         );
         return;
@@ -369,13 +369,13 @@ export function MediaManager({
       setNotice(
         textNotice(
           () =>
-            m.assets_imported_count({ count: outcome.imported.length }) +
+            m.media_imported_count({ count: outcome.imported.length }) +
             (outcome.failed.length
-              ? m.assets_import_failed_count({ count: outcome.failed.length })
+              ? m.media_import_failed_count({ count: outcome.failed.length })
               : "."),
         ),
       );
-    }, fail(m.assets_the_import_session_could_not_be_completed));
+    }, fail(m.media_the_import_session_could_not_be_completed));
   }
 
   function toggleReviewSelection(assetId: string) {
@@ -392,19 +392,19 @@ export function MediaManager({
     (readError
       ? errorMessage(readError, m.owner_your_media_could_not_be_loaded)
       : mediaQuery.isPending
-        ? m.assets_loading_your_private_media()
+        ? m.media_loading_your_private_media()
         : assets.length
-          ? m.assets_originals_exif_and_links_stay_in_your_private_travel_app()
-          : m.assets_upload_photos_or_videos_from_this_device_or_import_your_selected_media());
+          ? m.media_originals_exif_and_links_stay_in_your_private_travel_app()
+          : m.media_upload_photos_or_videos_from_this_device_or_import_your_selected_media());
 
   const dialogOpen = selected !== null;
   const dialogTitle =
     view.kind === "create"
-      ? m.assets_create_a_copy_to_share()
+      ? m.media_create_a_copy_to_share()
       : view.kind === "copy"
         ? view.edit
-          ? m.assets_edit_presentation()
-          : m.assets_copy()
+          ? m.media_edit_presentation()
+          : m.media_copy_action()
         : (selected?.original_filename ?? m.owner_unnamed_media_item());
   const dialogDirty =
     view.kind === "create"
@@ -414,7 +414,7 @@ export function MediaManager({
         : false;
   const cancelAction = (
     <Button className="secondary" type="button" onClick={backToAsset}>
-      {m.assets_back_to_the_media_item()}
+      {m.media_back_to_the_media_item()}
     </Button>
   );
 
@@ -422,13 +422,13 @@ export function MediaManager({
     <section className="travel-card manager" aria-labelledby="media-title">
       <div className="capture-heading">
         <div>
-          <h3 id="media-title">{m.assets_media_library()}</h3>
+          <h3 id="media-title">{m.media_library()}</h3>
           <p>
-            {m.assets_originals_and_metadata_stay_private_only_a_separate_metadatafree_and_app()}
+            {m.media_originals_and_metadata_stay_private_only_a_separate_metadatafree_and_app()}
           </p>
         </div>
         <Button className="secondary compact" type="button" onClick={openUpload}>
-          {m.assets_upload_media()}
+          {m.media_upload_media()}
         </Button>
       </div>
       <p className="help" role="status">
@@ -436,7 +436,7 @@ export function MediaManager({
       </p>
       <RecordDialog
         open={uploading}
-        title={m.assets_upload_media()}
+        title={m.media_upload_media()}
         dirty={uploading && uploadFile !== null}
         error={uploadError}
         onDismiss={closeUpload}
@@ -445,7 +445,7 @@ export function MediaManager({
           <form className="stack-form" onSubmit={submitUpload}>
             <Field className="contents">
               <FieldLabel>
-                {m.assets_photo_or_video_from_this_device()}
+                {m.media_photo_or_video_from_this_device()}
                 <Input
                   key={uploadKey}
                   required
@@ -456,7 +456,7 @@ export function MediaManager({
               </FieldLabel>
             </Field>
             <Button type="submit" disabled={upload.isPending}>
-              {m.assets_upload_private_media()}
+              {m.media_upload_private_media()}
             </Button>
           </form>
         )}
@@ -491,11 +491,11 @@ export function MediaManager({
             pinned={offline.isPinned("media_asset", selected.id)}
             confirmingDelete={confirmDeleteAsset}
             onViewOriginal={() =>
-              open(selected.file_url, m.assets_the_private_original_could_not_be_opened)
+              open(selected.file_url, m.library_the_private_original_could_not_be_opened)
             }
             onToggleOffline={() =>
               void toggleOffline(selected).catch(
-                fail(m.assets_the_private_media_item_could_not_be_saved_offline),
+                fail(m.offline_the_private_media_item_could_not_be_saved_offline),
               )
             }
             onAskDelete={() => setConfirmDeleteAsset(true)}
@@ -510,10 +510,10 @@ export function MediaManager({
             record={derivativeRecord}
             submitLabel={
               selected.media_kind === "video"
-                ? m.assets_create_safe_video_copy()
-                : m.assets_create_metadatafree_copy()
+                ? m.media_create_safe_video_copy()
+                : m.media_create_metadatafree_copy()
             }
-            pendingLabel={m.assets_creating_copy()}
+            pendingLabel={m.media_creating_copy()}
             actions={cancelAction}
           >
             <CopyCreateFields record={derivativeRecord} mediaKind={selected.media_kind} />
@@ -527,17 +527,17 @@ export function MediaManager({
             pinned={offline.isPinned("media_derivative", selectedDerivative.id)}
             confirmingDelete={confirmDeleteCopy}
             onOpen={() =>
-              open(selectedDerivative.file_url, m.assets_the_private_copy_could_not_be_opened)
+              open(selectedDerivative.file_url, m.media_the_private_copy_could_not_be_opened)
             }
             onToggleOffline={() =>
               void toggleDerivativeOffline(selectedDerivative).catch(
-                fail(m.assets_the_copy_could_not_be_saved_offline),
+                fail(m.offline_the_copy_could_not_be_saved_offline),
               )
             }
             onRetry={() =>
               retry
                 .mutateAsync({ assetId: selected.id, derivative: selectedDerivative })
-                .catch(fail(m.assets_the_video_could_not_be_processed_again))
+                .catch(fail(m.media_the_video_could_not_be_processed_again))
             }
             onApprove={() =>
               approve
@@ -546,10 +546,10 @@ export function MediaManager({
                   () =>
                     setNotice(
                       textNotice(() =>
-                        m.assets_copy_explicitly_approved_now_choose_who_can_see_it(),
+                        m.media_copy_explicitly_approved_now_choose_who_can_see_it(),
                       ),
                     ),
-                  fail(m.assets_the_copy_could_not_be_approved),
+                  fail(m.media_the_copy_could_not_be_approved),
                 )
             }
             onEdit={() => editCopy(selectedDerivative)}
@@ -561,11 +561,11 @@ export function MediaManager({
                     setNotice(
                       textNotice(() =>
                         selectedDerivative.is_cover
-                          ? m.assets_cover_removed()
-                          : m.assets_cover_chosen(),
+                          ? m.media_cover_removed()
+                          : m.media_cover_chosen(),
                       ),
                     ),
-                  fail(m.assets_the_cover_could_not_be_saved),
+                  fail(m.media_the_cover_could_not_be_saved),
                 )
             }
             onAskDelete={() => setConfirmDeleteCopy(true)}
@@ -577,7 +577,7 @@ export function MediaManager({
         {selected && view.kind === "copy" && selectedDerivative && view.edit && (
           <RecordForm
             record={presentationRecord}
-            submitLabel={m.assets_save_presentation()}
+            submitLabel={m.media_save_presentation()}
             pendingLabel={m.owner_saving()}
             actions={cancelAction}
           >

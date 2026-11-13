@@ -15,9 +15,11 @@ export function Library() {
   return (
     <section className="grid gap-4.5" aria-labelledby="library-title">
       <div>
-        <p className="travel-eyebrow">{m.assets_separate_from_your_trips()}</p>
+        <p className="travel-eyebrow">{m.library_separate_from_your_trips()}</p>
         <h2 id="library-title">{m.library()}</h2>
-        <p>{m.assets_travel_documents_and_emergency_information_that_belong_to_no_specific_tr()}</p>
+        <p>
+          {m.library_travel_documents_and_emergency_information_that_belong_to_no_specific_tr()}
+        </p>
         <p>
           {m.owner_library_trip_documents_note()} <HomeLink to="/trips">{m.trips()}</HomeLink>
         </p>

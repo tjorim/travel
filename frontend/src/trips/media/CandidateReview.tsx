@@ -53,7 +53,7 @@ export function CandidateReview({
   const [candidateAreas, setCandidateAreas] = useState<Record<string, AreaSuggestion>>({});
 
   const reviewCandidates = useOwnerMutation<string[], TravelUpdateCandidatesResponse>({
-    fallback: m.assets_the_possible_travel_updates_could_not_be_calculated,
+    fallback: m.media_the_possible_travel_updates_could_not_be_calculated,
     request: (mediaAssetIds) => ({
       path: `${mediaPath}/travel-update-candidates`,
       method: "POST",
@@ -69,7 +69,7 @@ export function CandidateReview({
     gcTime: 0,
   });
   const attach = useOwnerMutation<{ updateId: string; mediaAssetIds: string[] }>({
-    fallback: m.assets_the_private_media_could_not_be_linked_to_the_travel_update,
+    fallback: m.media_the_private_media_could_not_be_linked_to_the_travel_update,
     request: ({ updateId, mediaAssetIds }) => ({
       path: tripPath(tripId, `travel-updates/${updateId}`),
       method: "PATCH",
@@ -87,7 +87,7 @@ export function CandidateReview({
   function review() {
     if (reviewSelection.length === 0) {
       onNotice(
-        textNotice(() => m.assets_choose_private_media_first_to_review_possible_travel_updates()),
+        textNotice(() => m.media_choose_private_media_first_to_review_possible_travel_updates()),
       );
       return;
     }
@@ -100,11 +100,11 @@ export function CandidateReview({
       onNotice(
         textNotice(() =>
           result.candidates.length
-            ? m.assets_candidates_were_calculated_for_this_private_review_only_nothing_has_been()
-            : m.assets_this_selection_has_no_usable_capture_or_location_data(),
+            ? m.media_candidates_were_calculated_for_this_private_review_only_nothing_has_been()
+            : m.media_this_selection_has_no_usable_capture_or_location_data(),
         ),
       );
-    }, fail(m.assets_the_possible_travel_updates_could_not_be_calculated));
+    }, fail(m.media_the_possible_travel_updates_could_not_be_calculated));
   }
 
   function candidateAssetNames(candidate: TravelUpdateCandidate) {
@@ -112,7 +112,7 @@ export function CandidateReview({
       .map(
         (id) =>
           assets.find((asset) => asset.id === id)?.original_filename ??
-          m.assets_unnamed_media_item(),
+          m.media_unnamed_media_item(),
       )
       .join(", ");
   }
@@ -120,7 +120,7 @@ export function CandidateReview({
   function suggestCandidateArea(candidate: TravelUpdateCandidate) {
     const locationIndex = candidateLocations[candidate.id];
     if (candidate.location_options.length > 1 && locationIndex === undefined) {
-      onNotice(textNotice(() => m.assets_choose_a_gps_option_first()));
+      onNotice(textNotice(() => m.media_choose_a_gps_option_first()));
       return;
     }
     const location =
@@ -142,16 +142,14 @@ export function CandidateReview({
     const locationIndex = candidateLocations[candidate.id];
     if (candidate.time_options.length > 1 && !time) {
       onNotice(
-        textNotice(() =>
-          m.assets_choose_which_capture_time_to_use_for_this_candidate_visit_first(),
-        ),
+        textNotice(() => m.media_choose_which_capture_time_to_use_for_this_candidate_visit_first()),
       );
       return;
     }
     if (candidate.location_options.length > 1 && locationIndex === undefined) {
       onNotice(
         textNotice(() =>
-          m.assets_the_gps_metadata_differs_choose_a_location_option_yourself_first_or_igno(),
+          m.media_the_gps_metadata_differs_choose_a_location_option_yourself_first_or_igno(),
         ),
       );
       return;
@@ -178,7 +176,7 @@ export function CandidateReview({
     if (!update) {
       onNotice(
         textNotice(() =>
-          m.assets_choose_an_existing_travel_update_to_link_the_private_media_to_first(),
+          m.media_choose_an_existing_travel_update_to_link_the_private_media_to_first(),
         ),
       );
       return;
@@ -191,12 +189,12 @@ export function CandidateReview({
       }));
       onNotice(
         textNotice(() =>
-          m.assets_private_media_linked_to_no_location_or_shareable_content_was_created({
+          m.media_private_media_linked_to_no_location_or_shareable_content_was_created({
             p0: update.title,
           }),
         ),
       );
-    }, fail(m.assets_the_private_media_could_not_be_linked_to_the_travel_update));
+    }, fail(m.media_the_private_media_could_not_be_linked_to_the_travel_update));
   }
 
   if (assets.length === 0) return null;
@@ -204,20 +202,20 @@ export function CandidateReview({
     <div className="manager-subsection">
       <div className="capture-heading">
         <div>
-          <h3>{m.assets_review_possible_travel_updates()}</h3>
+          <h3>{m.media_review_possible_travel_updates()}</h3>
           <p>
-            {m.assets_choose_private_media_above_candidates_use_a_twohour_window_and_ke_line({
+            {m.media_choose_private_media_above_candidates_use_a_twohour_window_and_ke_line({
               p0: candidateReview?.gps_agreement_metres ?? 500,
             })}
           </p>
         </div>
       </div>
       <Button className="w-fit" type="button" onClick={review}>
-        {m.assets_review_selected_media()}
+        {m.media_review_selected_media()}
       </Button>
       {candidateReview?.unavailable_media_asset_ids.length ? (
         <p className="help">
-          {m.assets_metadata_unavailable({
+          {m.media_metadata_unavailable({
             count: candidateReview.unavailable_media_asset_ids.length,
           })}
         </p>
@@ -228,19 +226,19 @@ export function CandidateReview({
           <span>
             {candidate.starts_at
               ? `${formatCapture(candidate.starts_at, candidate.captured_local)}${candidate.ends_at && candidate.ends_at !== candidate.starts_at ? ` – ${formatCapture(candidate.ends_at, candidate.captured_local, "HH:mm")}` : ""}`
-              : m.assets_no_capture_time_available()}
+              : m.media_no_capture_time_available()}
           </span>
           {candidate.time_options.length > 1 && (
             <Field>
-              <FieldLabel>{m.assets_use_capture_time()}</FieldLabel>
+              <FieldLabel>{m.media_use_capture_time()}</FieldLabel>
               <SearchSelect
-                ariaLabel={m.assets_use_capture_time()}
+                ariaLabel={m.media_use_capture_time()}
                 value={candidateTimes[candidate.id] ?? ""}
                 onChange={(value) =>
                   setCandidateTimes((current) => ({ ...current, [candidate.id]: value }))
                 }
               >
-                <option value="">{m.assets_choose_a_time_yourself()}</option>
+                <option value="">{m.media_choose_a_time_yourself()}</option>
                 {candidate.time_options.map((option) => (
                   <option key={option.media_asset_id} value={option.captured_at}>
                     {formatCapture(option.captured_at, option.captured_local)}
@@ -251,9 +249,9 @@ export function CandidateReview({
           )}
           {candidate.location_options.length > 1 && (
             <Field>
-              <FieldLabel>{m.assets_gps_choice()}</FieldLabel>
+              <FieldLabel>{m.media_gps_choice()}</FieldLabel>
               <SearchSelect
-                ariaLabel={m.assets_gps_choice()}
+                ariaLabel={m.media_gps_choice()}
                 value={candidateLocations[candidate.id] ?? ""}
                 onChange={(value) =>
                   setCandidateLocations((current) => ({ ...current, [candidate.id]: value }))
@@ -262,7 +260,7 @@ export function CandidateReview({
                 <option value="">{m.owner_dismiss_location()}</option>
                 {candidate.location_options.map((option, index) => (
                   <option key={option.media_asset_ids.join("-")} value={index}>
-                    {m.assets_location_from_media_items_line({
+                    {m.media_location_from_media_items_line({
                       p0: option.media_asset_ids.length,
                     })}
                   </option>
@@ -271,11 +269,11 @@ export function CandidateReview({
             </Field>
           )}
           {candidate.location_options.length === 0 && (
-            <p className="help">{m.assets_no_gps_available_no_place_will_be_suggested()}</p>
+            <p className="help">{m.media_no_gps_available_no_place_will_be_suggested()}</p>
           )}
           {candidate.location_options.length > 1 && (
             <p className="help">
-              {m.assets_the_gps_metadata_conflicts_choose_at_most_one_option_nothing_will_be_mer()}
+              {m.media_the_gps_metadata_conflicts_choose_at_most_one_option_nothing_will_be_mer()}
             </p>
           )}
           {candidate.location_options.length > 0 && (
@@ -284,17 +282,17 @@ export function CandidateReview({
               type="button"
               onClick={() => suggestCandidateArea(candidate)}
             >
-              {m.assets_suggest_area_and_visit()}
+              {m.media_suggest_area_and_visit()}
             </Button>
           )}
           {candidateAreas[candidate.id] && (
             <p className="help">
-              {m.assets_this_suggestion_has_not_been_saved_line({
+              {m.media_this_suggestion_has_not_been_saved_line({
                 p0: candidateAreas[candidate.id].existing_area_id
-                  ? m.assets_existing_area({ p0: areaName(candidateAreas[candidate.id].area) })
-                  : m.assets_new_area_possible({
+                  ? m.media_existing_area({ p0: areaName(candidateAreas[candidate.id].area) })
+                  : m.media_new_area_possible({
                       p0: areaName(candidateAreas[candidate.id].area),
-                      p1: candidateAreas[candidate.id].area.timezone ?? m.assets_unknown_timezone(),
+                      p1: candidateAreas[candidate.id].area.timezone ?? m.media_unknown_timezone(),
                     }),
                 p1:
                   visits
@@ -307,20 +305,20 @@ export function CandidateReview({
                         candidate.starts_at.slice(0, 10) <= (visit.ends_on ?? visit.starts_on),
                     )
                     .map((visit) => visitTitle(visit))
-                    .join(", ") || m.assets_new_visit_possible(),
+                    .join(", ") || m.media_new_visit_possible(),
               })}
             </p>
           )}
           <div className="button-row">
             <Button type="button" onClick={() => startCandidateUpdate(candidate)}>
-              {m.assets_open_as_a_new_travel_update()}
+              {m.media_open_as_a_new_travel_update()}
             </Button>
             {
               <>
                 <Field>
-                  <FieldLabel className="scope-choice">{m.assets_link_to()}</FieldLabel>
+                  <FieldLabel className="scope-choice">{m.media_link_to()}</FieldLabel>
                   <AsyncSearchSelect
-                    ariaLabel={m.assets_link_to()}
+                    ariaLabel={m.media_link_to()}
                     value={candidateAttachments[candidate.id] ?? ""}
                     selectedOption={
                       foundUpdates[candidateAttachments[candidate.id]]
@@ -343,7 +341,7 @@ export function CandidateReview({
                         ...Object.fromEntries(updates.map((update) => [update.id, update])),
                       }));
                       return [
-                        { value: "", label: m.assets_choose_existing_travel_update() },
+                        { value: "", label: m.media_choose_existing_travel_update() },
                         ...updates.map((update) => ({ value: update.id, label: update.title })),
                       ];
                     }}
@@ -354,7 +352,7 @@ export function CandidateReview({
                   type="button"
                   onClick={() => attachCandidate(candidate)}
                 >
-                  {m.assets_link_to_travel_update()}
+                  {m.media_link_to_travel_update()}
                 </Button>
               </>
             }

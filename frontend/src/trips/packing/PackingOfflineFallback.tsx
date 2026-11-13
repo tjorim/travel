@@ -40,9 +40,9 @@ export function PackingOfflineFallback({
       </h3>
       {savedCopies.length > 1 && (
         <Field>
-          <FieldLabel className="block">{m.assets_offline_packing_list()} </FieldLabel>
+          <FieldLabel className="block">{m.offline_packing_list()} </FieldLabel>
           <SearchSelect
-            ariaLabel={m.assets_offline_packing_list()}
+            ariaLabel={m.offline_packing_list()}
             value={savedCopy?.resourceId ?? ""}
             onChange={onChoose}
           >
@@ -59,12 +59,12 @@ export function PackingOfflineFallback({
       ) : (
         <p role={offline.online ? "alert" : "status"}>
           {offline.online && listsQuery.isError
-            ? errorMessage(listsQuery.error, m.assets_loading_packing_lists_failed)
+            ? errorMessage(listsQuery.error, m.packing_loading_packing_lists_failed)
             : offline.online && (bagsQuery.isError || itemsQuery.isError)
-              ? m.assets_loading_packing_list_failed_2()
+              ? m.packing_loading_packing_list_failed_2()
               : offline.loaded
-                ? m.assets_no_offline_packing_list_saved_for_this_trip_reconnect_to_save_one()
-                : m.assets_loading_offline_packing_lists()}
+                ? m.offline_no_offline_packing_list_saved_for_this_trip_reconnect_to_save_one()
+                : m.offline_loading_offline_packing_lists()}
         </p>
       )}
       {offline.online && (

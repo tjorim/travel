@@ -68,6 +68,13 @@ ship are listed in `fragmentMessages` in the same file, each with a reason; that
 list only shrinks and is never extended for new copy. Both lists are optional, so a
 project sharing the script without them is checked without exceptions.
 
+Name a key after the area it belongs to (`packing_`, `media_`, `publication_`,
+`sharing_`, `library_`, `offline_`, `live_`, `precision_`), not after the file that
+happens to render it. A key that starts with a prefix listed in `retiredKeyPrefixes`
+(`assets_`) fails the audit. A key used by several areas takes the area of most of its
+call sites, or `common_` when none leads. Identical English and Dutch values under two
+keys are merged unless a noun and a button must be able to diverge.
+
 Messages that show a count take plural variants (`input count` plus
 `local countPlural = count: plural`) with a `one` and an `other` branch in every
 locale, so "1 day" never reads "1 days". Name parameters after what they hold

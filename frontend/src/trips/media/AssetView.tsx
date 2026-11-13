@@ -51,14 +51,14 @@ export function AssetView({
         ) : null}
         <h3>{asset.original_filename ?? m.owner_unnamed_media_item()}</h3>
         <p>
-          {asset.media_kind === "photo" ? m.assets_photo() : m.assets_video()} ·{" "}
+          {asset.media_kind === "photo" ? m.media_photo() : m.media_video()} ·{" "}
           {bytesLabel(asset.byte_size)}
           {asset.captured_at ? ` · ${formatCapture(asset.captured_at, asset.captured_local)}` : ""}
         </p>
       </div>
       <div className="button-row">
         <Button className="secondary compact" type="button" onClick={onViewOriginal}>
-          {m.assets_view_original()}
+          {m.library_view_original()}
         </Button>
         <Button className="secondary compact" type="button" onClick={onToggleOffline}>
           {pinned ? m.owner_remove_offline_copy() : m.owner_save_offline()}
@@ -69,10 +69,10 @@ export function AssetView({
       </div>
       {confirmingDelete && (
         <DeleteConfirmation
-          title={m.assets_delete_from_this_trip({
-            p0: asset.original_filename ?? m.assets_this_media_item_2(),
+          title={m.media_delete_from_this_trip({
+            p0: asset.original_filename ?? m.media_this_media_item_2(),
           })}
-          description={m.assets_links_to_travel_updates_will_also_be_removed()}
+          description={m.media_links_to_travel_updates_will_also_be_removed()}
           onCancel={onCancelDelete}
           onConfirm={onConfirmDelete}
         />
@@ -80,11 +80,11 @@ export function AssetView({
       <div className="manager-subsection">
         <div className="capture-heading">
           <div>
-            <h4>{m.assets_copies_to_share()}</h4>
-            <p>{m.assets_a_new_copy_always_requires_explicit_approval()}</p>
+            <h4>{m.media_copies_to_share()}</h4>
+            <p>{m.media_a_new_copy_always_requires_explicit_approval()}</p>
           </div>
           <Button className="secondary compact" type="button" onClick={onCreateCopy}>
-            {m.assets_create_copy()}
+            {m.media_create_copy()}
           </Button>
         </div>
         {derivatives.length > 0 ? (
@@ -100,7 +100,7 @@ export function AssetView({
                     className="document-select flex items-center gap-3"
                     type="button"
                     onClick={() => onViewCopy(item.id)}
-                    aria-label={m.assets_view_copy({ p0: purposeLabel[item.purpose] })}
+                    aria-label={m.media_view_copy({ p0: purposeLabel[item.purpose] })}
                   >
                     {canPreview && previewUrl && owner ? (
                       <OwnerImage
@@ -120,18 +120,18 @@ export function AssetView({
                     <div className="min-w-0">
                       <strong>
                         {item.processing_state === "processing"
-                          ? m.assets_processing()
+                          ? m.media_processing()
                           : item.processing_state === "failed"
-                            ? m.assets_processing_failed()
+                            ? m.media_processing_failed()
                             : item.review_state === "approved"
-                              ? m.assets_approved()
-                              : m.assets_awaiting_approval()}
+                              ? m.media_approved()
+                              : m.media_awaiting_approval()}
                       </strong>
                       <span>
                         {purposeLabel[item.purpose]} ·{" "}
                         {item.width && item.height
                           ? `${item.width} × ${item.height}`
-                          : m.assets_unknown_dimensions()}
+                          : m.media_unknown_dimensions()}
                       </span>
                     </div>
                   </Button>
@@ -140,7 +140,7 @@ export function AssetView({
             })}
           </div>
         ) : (
-          <p className="help">{m.assets_no_copies_for_this_media_item_yet()}</p>
+          <p className="help">{m.media_no_copies_for_this_media_item_yet()}</p>
         )}
       </div>
     </div>

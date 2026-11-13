@@ -10,6 +10,7 @@ const { diagnosticCallees, excludedFiles, exclusions } = config;
 // Optional per-project allowlists; a project without them is checked without exceptions.
 const computedMessageKeys = config.computedMessageKeys ?? {};
 const fragmentMessages = config.fragmentMessages ?? {};
+const retiredKeyPrefixes = config.retiredKeyPrefixes ?? {};
 
 const copyAttribute =
   /^(?:aria-label|aria-description|title|label|ariaLabel|placeholder|alt|description)$/;
@@ -210,6 +211,10 @@ export function unusedMessageKeys(keys, sources, computed = {}) {
     for (const token of source.match(/[A-Za-z_]\w*/g) ?? []) used.add(token);
   return keys.filter((key) => !used.has(key) && !(key in computed));
 }
+/** Keys that start with a retired prefix: a catch-all grouping that said nothing about where a message is used. */
+export function retiredPrefixKeys(keys, prefixes = {}) {
+  return keys.filter((key) => Object.keys(prefixes).some((prefix) => key.startsWith(prefix)));
+}
 /**
  * One-word sentence parts: a connective ("of", "van") or a word joined onto other text with a leading or
  * trailing separator or space ("· on"). A label ending in a colon is whole. Messages with interpolations and whole-word labels are not fragments.
@@ -272,6 +277,10 @@ function main() {
   for (const key of unusedMessageKeys(keys, referenceSources, computedMessageKeys))
     errors.push(
       `${key}: unused message key; delete it or list a computed lookup in computedMessageKeys`,
+    );
+  for (const key of retiredPrefixKeys(keys, retiredKeyPrefixes))
+    errors.push(
+      `${key}: retired key prefix; name the key after the area it belongs to (${Object.keys(retiredKeyPrefixes).join(", ")})`,
     );
   for (const [locale, catalogue] of Object.entries(catalogues))
     for (const key of fragmentMessageKeys(catalogue, fragmentMessages))

@@ -138,7 +138,7 @@ for (const locale of ["nl", "en"] as const) {
         name: message(locale, "exclusions_show_named").replace("{name}", "Night market"),
       })
       .click();
-    await page.getByRole("button", { name: message(locale, "assets_save_link") }).click();
+    await page.getByRole("button", { name: message(locale, "sharing_save_link") }).click();
 
     const dialog = page.getByRole("alertdialog", {
       name: message(locale, "exclusions_widen_title"),

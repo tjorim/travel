@@ -123,10 +123,10 @@ for (const locale of ["en", "nl"] as const)
         .click();
       await expect(page).toHaveURL(/\/prepare$/);
       await page
-        .getByRole("button", { name: new RegExp("^" + message(locale, "assets_documents") + " ") })
+        .getByRole("button", { name: new RegExp("^" + message(locale, "library_documents") + " ") })
         .click();
       await page
-        .getByRole("button", { name: message(locale, "assets_new_document"), exact: true })
+        .getByRole("button", { name: message(locale, "library_new_document"), exact: true })
         .click();
       const input = page
         .getByRole("dialog")

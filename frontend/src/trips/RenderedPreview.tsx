@@ -51,7 +51,7 @@ export function RenderedPreview({
         void ownerFile(
           session,
           `${base}/files/${encodeURIComponent(id)}`,
-          m.assets_media_unavailable,
+          m.publication_media_unavailable,
           {
             method: "POST",
             body: scope,
@@ -84,7 +84,7 @@ export function RenderedPreview({
       const blob = await ownerFile(
         session,
         `${base}/files/${encodeURIComponent(id)}`,
-        m.assets_document_unavailable,
+        m.publication_document_unavailable,
         {
           method: "POST",
           body: scope,
@@ -104,7 +104,7 @@ export function RenderedPreview({
           } as Record<string, string>
         )[blob.type.split(";")[0]] ?? "";
       anchor.href = url;
-      anchor.download = `${m.assets_shared_document_filename()}${extension}`;
+      anchor.download = `${m.publication_shared_document_filename()}${extension}`;
       anchor.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (failure) {
@@ -119,14 +119,14 @@ export function RenderedPreview({
       const target = await ownerRequest<unknown>(
         session,
         `${base}/navigation/${encodeURIComponent(id)}`,
-        m.assets_navigation_unavailable,
+        m.publication_navigation_unavailable,
         { method: "POST", body: scope, cache: "no-store", credentials: "omit" },
       );
       const url = (target as { url?: unknown }).url;
       if (typeof url !== "string" || !url.startsWith("https://www.google.com/maps/dir/?"))
-        throw new FeedbackError(() => m.assets_invalid_navigation());
+        throw new FeedbackError(() => m.publication_invalid_navigation());
       if (tab) tab.location.href = url;
-      else setError(textNotice(() => m.assets_allow_popups_to_open_directions()));
+      else setError(textNotice(() => m.publication_allow_popups_to_open_directions()));
     } catch (failure) {
       tab?.close();
       setError(errorNotice(failure, m.api_visitor_navigation));
@@ -134,7 +134,7 @@ export function RenderedPreview({
   }
 
   if (!isProjection(projection, audience))
-    return <p role="alert">{m.assets_the_preview_could_not_be_displayed_safely()}</p>;
+    return <p role="alert">{m.publication_the_preview_could_not_be_displayed_safely()}</p>;
   return (
     <div className="rounded-xl border border-travel-card-border bg-travel-paper p-5">
       {error && <p role="alert">{error}</p>}

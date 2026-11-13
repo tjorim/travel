@@ -63,7 +63,7 @@ export function MemberScopeDialog({
       });
       setPreview({ document: document as Projection, scope: candidate });
     } catch (error) {
-      setNotice(errorNotice(error, m.assets_the_link_preview_could_not_be_loaded));
+      setNotice(errorNotice(error, m.sharing_the_link_preview_could_not_be_loaded));
     }
   }
 

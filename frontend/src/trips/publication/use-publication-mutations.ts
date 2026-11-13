@@ -38,7 +38,7 @@ export function usePublicationMutations(tripId: string) {
     { scope: ShareScope; revision: number },
     PublicProjectionStatus
   >({
-    fallback: m.assets_the_public_scope_could_not_be_saved,
+    fallback: m.publication_the_public_scope_could_not_be_saved,
     request: ({ scope, revision }) => ({
       path,
       method: "PUT",
@@ -48,7 +48,7 @@ export function usePublicationMutations(tripId: string) {
     invalidate: refreshStatus,
   });
   const previewPublicScope = useOwnerMutation<ShareScope, ProjectionDocument>({
-    fallback: m.assets_the_public_preview_could_not_be_loaded,
+    fallback: m.publication_the_public_preview_could_not_be_loaded,
     // The unsaved candidate scope is rendered and never stored.
     request: (scope) => ({ path: `${path}/preview`, method: "POST", body: scope }),
     invalidate: () => [],
@@ -59,7 +59,7 @@ export function usePublicationMutations(tripId: string) {
     { publish: boolean; reason: string | null },
     PublicProjectionStatus
   >({
-    fallback: m.assets_the_publication_status_could_not_be_changed,
+    fallback: m.publication_the_publication_status_could_not_be_changed,
     request: ({ publish, reason: why }) => ({
       path: `${path}/${publish ? "publish" : "unpublish"}`,
       method: "POST",
@@ -80,7 +80,7 @@ export function usePublicationMutations(tripId: string) {
     },
     ShareLink
   >({
-    fallback: m.assets_the_share_link_could_not_be_saved,
+    fallback: m.publication_the_share_link_could_not_be_saved,
     request: ({ id, label, scope, revision, confirmWidening, preset }) => ({
       path: id ? `${linksPath}/${id}` : linksPath,
       method: id ? "PATCH" : "POST",
@@ -98,7 +98,7 @@ export function usePublicationMutations(tripId: string) {
     { link: ShareLink; scope: ShareScope },
     ProjectionDocument
   >({
-    fallback: m.assets_the_link_preview_could_not_be_loaded,
+    fallback: m.sharing_the_link_preview_could_not_be_loaded,
     request: ({ link, scope }) => ({
       path: `${linksPath}/${link.id}/preview`,
       method: "POST",
@@ -110,7 +110,7 @@ export function usePublicationMutations(tripId: string) {
   // The owner-managed URL remains in the owner-only in-memory cache; the PWA
   // never persists it locally.
   const activate = useOwnerMutation<LinkAction, ShareLink>({
-    fallback: m.assets_the_secure_link_could_not_be_created,
+    fallback: m.sharing_the_secure_link_could_not_be_created,
     request: ({ link, action, expiresInDays: days, reason: why }) => ({
       path: `${linksPath}/${link.id}/${action}`,
       method: "POST",
@@ -120,7 +120,7 @@ export function usePublicationMutations(tripId: string) {
     gcTime: 0,
   });
   const revoke = useOwnerMutation<{ link: ShareLink; reason: string | null }, ShareLink>({
-    fallback: m.assets_the_link_could_not_be_revoked,
+    fallback: m.sharing_the_link_could_not_be_revoked,
     request: ({ link, reason: why }) => ({
       path: `${linksPath}/${link.id}/revoke`,
       method: "POST",

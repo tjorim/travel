@@ -10,6 +10,6 @@ export const purposeLabel = {
     return m.owner_sharing();
   },
   get owner_preview() {
-    return m.assets_private_preview();
+    return m.media_private_preview();
   },
 } as const;
