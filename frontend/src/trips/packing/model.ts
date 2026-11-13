@@ -37,15 +37,15 @@ export const grams = (value: number) =>
     : `${formatNumber(value)} g`;
 export const count = (rows: Item[]) => {
   const packed = rows.filter((item) => item.packed).length;
-  return m.assets_of_packed_to_go({ p0: packed, p1: rows.length, p2: rows.length - packed });
+  return m.packing_of_packed_to_go({ p0: packed, p1: rows.length, p2: rows.length - packed });
 };
 export const bagTypes = () =>
   [
-    ["cabin", m.assets_cabin_baggage()],
-    ["checked", m.assets_checked_baggage()],
-    ["day", m.assets_day_or_overnight_bag()],
-    ["person", m.assets_on_your_person()],
-    ["other", m.assets_other()],
+    ["cabin", m.packing_cabin_baggage()],
+    ["checked", m.packing_checked_baggage()],
+    ["day", m.packing_day_or_overnight_bag()],
+    ["person", m.packing_on_your_person()],
+    ["other", m.packing_other()],
   ] as const;
 
 /** Runs a packing write, refreshes the lists afterwards and reports whether it succeeded. */

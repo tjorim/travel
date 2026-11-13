@@ -45,7 +45,7 @@ export function useCaptureUploads(tripId: string | null, onUploaded: (asset: Med
   const previews = useRef(new Set<string>());
 
   const upload = useOwnerMutation<{ tripId: string; body: FormData }, MediaAsset>({
-    fallback: m.assets_the_media_could_not_be_uploaded,
+    fallback: m.media_the_media_could_not_be_uploaded,
     request: ({ tripId: target, body }) => ({
       path: `${tripPath(target, "media")}/uploads`,
       method: "POST",
@@ -91,7 +91,7 @@ export function useCaptureUploads(tripId: string | null, onUploaded: (asset: Med
               ? {
                   ...entry,
                   status: "failed",
-                  error: errorMessage(error, m.assets_the_media_could_not_be_uploaded),
+                  error: errorMessage(error, m.media_the_media_could_not_be_uploaded),
                 }
               : entry,
           ),

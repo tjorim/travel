@@ -39,7 +39,7 @@ export function MediaAssetList({
             className="document-select flex items-center gap-3"
             type="button"
             onClick={() => onInspect(asset.id)}
-            aria-label={m.assets_view_2({
+            aria-label={m.media_view_2({
               p0: asset.original_filename ?? m.owner_unnamed_media_item(),
             })}
           >
@@ -61,7 +61,7 @@ export function MediaAssetList({
             <div className="min-w-0">
               <strong>{asset.original_filename ?? m.owner_unnamed_media_item()}</strong>
               <span>
-                {asset.media_kind === "photo" ? m.assets_photo() : m.assets_video()} ·{" "}
+                {asset.media_kind === "photo" ? m.media_photo() : m.media_video()} ·{" "}
                 {bytesLabel(asset.byte_size)}
                 {asset.captured_at
                   ? ` · ${formatCapture(asset.captured_at, asset.captured_local)}`
@@ -76,7 +76,7 @@ export function MediaAssetList({
                   checked={reviewSelection.includes(asset.id)}
                   onCheckedChange={() => onToggleReview(asset.id)}
                 />
-                {m.assets_review_travel_updates()}
+                {m.media_review_travel_updates()}
               </FieldLabel>
             </Field>
           </div>

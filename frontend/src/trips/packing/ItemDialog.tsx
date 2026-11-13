@@ -40,7 +40,7 @@ export function ItemDialog({
   return (
     <RecordDialog
       open={dialog !== null}
-      title={dialog === "new" ? m.assets_add_item() : m.assets_edit_item()}
+      title={dialog === "new" ? m.packing_add_item() : m.packing_edit_item()}
       onDismiss={() => onClose()}
     >
       <form
@@ -55,7 +55,7 @@ export function ItemDialog({
                 dialog === "new" ? "POST" : "PATCH",
                 { ...draft, label: draft.label.trim() },
               ),
-            () => m.assets_item_saved(),
+            () => m.packing_item_saved(),
           ).then((ok) => {
             if (ok) onClose();
           });
@@ -75,7 +75,7 @@ export function ItemDialog({
         </Field>
         <Field className="contents">
           <FieldLabel className="block">
-            {m.assets_quantity()}
+            {m.packing_quantity()}
             <Input
               type="number"
               min="1"
@@ -88,7 +88,7 @@ export function ItemDialog({
         </Field>
         <Field className="contents">
           <FieldLabel className="block">
-            {m.assets_category()}
+            {m.packing_category()}
             <Input
               maxLength={80}
               value={draft.category ?? ""}
@@ -97,13 +97,13 @@ export function ItemDialog({
           </FieldLabel>
         </Field>
         <Field>
-          <FieldLabel className="block">{m.assets_bag()}</FieldLabel>
+          <FieldLabel className="block">{m.packing_bag()}</FieldLabel>
           <SearchSelect
-            ariaLabel={m.assets_bag()}
+            ariaLabel={m.packing_bag()}
             value={draft.bag_id ?? ""}
             onChange={(value) => setDraft({ ...draft, bag_id: value || null })}
           >
-            <option value="">{m.assets_unassigned()}</option>
+            <option value="">{m.packing_unassigned()}</option>
             {bags.map((bag) => (
               <option key={bag.id} value={bag.id}>
                 {bag.name}
@@ -113,7 +113,7 @@ export function ItemDialog({
         </Field>
         <Field className="contents">
           <FieldLabel className="block">
-            {m.assets_weight_per_item_grams()}
+            {m.packing_weight_per_item_grams()}
             <Input
               type="number"
               min="0"
@@ -129,7 +129,7 @@ export function ItemDialog({
         </Field>
         <Field className="contents">
           <FieldLabel className="block">
-            {m.assets_note()}
+            {m.packing_note()}
             <TravelTextarea
               maxLength={4000}
               value={draft.notes ?? ""}
@@ -148,11 +148,11 @@ export function ItemDialog({
                 />{" "}
                 {
                   {
-                    essential: m.assets_essential(),
-                    last_minute: m.assets_departure_day_lastminute(),
-                    valuable: m.assets_valuable(),
-                    cabin_only: m.assets_cabin_baggage_only(),
-                    checked_only: m.assets_checked_baggage_only(),
+                    essential: m.packing_essential(),
+                    last_minute: m.packing_departure_day_lastminute(),
+                    valuable: m.packing_valuable(),
+                    cabin_only: m.packing_cabin_baggage_only(),
+                    checked_only: m.packing_checked_baggage_only(),
                   }[flag]
                 }
               </FieldLabel>
@@ -160,11 +160,11 @@ export function ItemDialog({
           ),
         )}
         {draft.cabin_only && draft.checked_only && (
-          <p role="alert">{m.assets_choose_at_most_one_baggage_restriction()}</p>
+          <p role="alert">{m.packing_choose_at_most_one_baggage_restriction()}</p>
         )}
         <div className="flex gap-2">
           <Button type="submit" disabled={busy || (draft.cabin_only && draft.checked_only)}>
-            {m.assets_save()}
+            {m.common_save()}
           </Button>
           {dialog !== "new" && (
             <Button
@@ -179,12 +179,12 @@ export function ItemDialog({
       </form>
       {confirm?.kind === "item" && (
         <DeleteConfirmation
-          title={m.assets_delete_item()}
+          title={m.packing_delete_item()}
           onCancel={() => onConfirmDelete(null)}
           onConfirm={() => {
             void save(
               () => request(`${path}/items/${encodeURIComponent(confirm.id)}`, "DELETE"),
-              () => m.assets_item_deleted(),
+              () => m.packing_item_deleted(),
             ).then((ok) => {
               if (ok) {
                 onClose();

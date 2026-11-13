@@ -31,7 +31,7 @@ async function readOfflineMetadata(
   url: string,
 ): Promise<unknown> {
   const read = (path: string) =>
-    ownerRequest(session, path, m.assets_the_offline_copy_could_not_be_checked, {
+    ownerRequest(session, path, m.offline_the_offline_copy_could_not_be_checked, {
       cache: "no-store",
     });
   const metadata = await read(url);
@@ -172,7 +172,7 @@ export function useOfflineCopies(): UseOfflineCopies {
         (copy) => copy.resourceKind === resourceKind && copy.resourceId === resourceId,
       ),
     async pin(input) {
-      if (!subject) throw new FeedbackError(() => m.assets_sign_in_to_save_something_offline());
+      if (!subject) throw new FeedbackError(() => m.offline_sign_in_to_save_something_offline());
       if (!session) return;
       const metadata =
         input.contentMetadata ?? (await readOfflineMetadata(session, input.metadataUrl));
@@ -200,7 +200,7 @@ export function useOfflineCopies(): UseOfflineCopies {
       await clearOfflineCopies(subject);
     },
     async open(id) {
-      if (!subject) throw new FeedbackError(() => m.assets_sign_in_to_open_an_offline_copy());
+      if (!subject) throw new FeedbackError(() => m.offline_sign_in_to_open_an_offline_copy());
       return openOfflineCopy(subject, id);
     },
   };

@@ -42,7 +42,7 @@ export function DocumentManager({
   const [inputKey, setInputKey] = useState(0);
 
   const upload = useOwnerMutation<FormData, DocumentAsset>({
-    fallback: m.assets_the_document_could_not_be_uploaded,
+    fallback: m.library_the_document_could_not_be_uploaded,
     request: (body) => ({
       path: `${tripPath(trip.id, "documents")}/uploads`,
       method: "POST",
@@ -51,7 +51,7 @@ export function DocumentManager({
     invalidate: (subject) => [ownerKeys.tripResource(subject, trip.id, "documents")],
   });
   const remove = useOwnerMutation<DocumentAsset>({
-    fallback: m.assets_the_document_could_not_be_deleted,
+    fallback: m.library_the_document_could_not_be_deleted,
     request: (document) => ({
       path: `${tripPath(trip.id, "documents")}/${document.id}`,
       method: "DELETE",
@@ -65,10 +65,10 @@ export function DocumentManager({
   });
   const uploadRecord = useRecordForm<UploadValues>({
     defaultValues: blankUpload(),
-    fallback: m.assets_the_document_could_not_be_uploaded,
+    fallback: m.library_the_document_could_not_be_uploaded,
     serverFields: { title: "title", document_kind: "kind" },
     submit: async (values) => {
-      if (!file) throw new FeedbackError(() => m.assets_choose_a_file_to_upload());
+      if (!file) throw new FeedbackError(() => m.library_choose_a_file_to_upload());
       const body = new FormData();
       body.set("title", values.title.trim());
       body.set("document_kind", values.kind);
@@ -77,7 +77,7 @@ export function DocumentManager({
     },
     onSuccess: () => {
       close();
-      setNotice(textNotice(() => m.assets_private_document_uploaded()));
+      setNotice(textNotice(() => m.library_private_document_uploaded()));
     },
   });
 
@@ -103,8 +103,8 @@ export function DocumentManager({
     remove.mutateAsync(document).then(async () => {
       await offline.removeByResource("trip_document", document.id);
       close();
-      setNotice(textNotice(() => m.assets_private_document_deleted()));
-    }, failInDialog(m.assets_the_document_could_not_be_deleted));
+      setNotice(textNotice(() => m.library_private_document_deleted()));
+    }, failInDialog(m.library_the_document_could_not_be_deleted));
   }
 
   async function togglePin(document: DocumentAsset) {
@@ -117,7 +117,7 @@ export function DocumentManager({
     const blob = await ownerFile(
       owner.session,
       document.file_url,
-      m.assets_the_document_could_not_be_retrieved_for_offline_use,
+      m.offline_the_document_could_not_be_retrieved_for_offline_use,
     );
     await offline.pin({
       resourceKind: "trip_document",
@@ -139,22 +139,22 @@ export function DocumentManager({
   const message =
     notice ??
     (readError
-      ? errorMessage(readError, m.assets_your_documents_could_not_be_loaded)
+      ? errorMessage(readError, m.library_your_documents_could_not_be_loaded)
       : documentsQuery.isPending
-        ? m.assets_loading_your_private_documents()
+        ? m.library_loading_your_private_documents()
         : documents.length
-          ? m.assets_documents_and_originals_stay_in_your_private_travel_app()
-          : m.assets_upload_a_private_document_when_you_want_to_keep_it());
+          ? m.library_documents_and_originals_stay_in_your_private_travel_app()
+          : m.library_upload_a_private_document_when_you_want_to_keep_it());
 
   return (
     <section className="travel-card manager" aria-labelledby="documents-title">
       <div className="capture-heading">
         <div>
-          <h3 id="documents-title">{m.assets_documents()}</h3>
-          <p>{m.assets_documents_always_stay_private_and_are_never_shared_with_visitors()}</p>
+          <h3 id="documents-title">{m.library_documents()}</h3>
+          <p>{m.library_documents_always_stay_private_and_are_never_shared_with_visitors()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
-          {m.assets_new_document()}
+          {m.library_new_document()}
         </Button>
       </div>
       <p className="help" role="status">
@@ -168,7 +168,7 @@ export function DocumentManager({
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(document.id)}
-                aria-label={m.assets_view_document({ p0: document.title })}
+                aria-label={m.library_view_document({ p0: document.title })}
               >
                 <strong>{document.title}</strong>
                 <span>
@@ -181,16 +181,16 @@ export function DocumentManager({
                   className="secondary compact"
                   type="button"
                   onClick={() =>
-                    open(document.file_url, m.assets_the_private_original_could_not_be_opened)
+                    open(document.file_url, m.library_the_private_original_could_not_be_opened)
                   }
                 >
-                  {m.assets_view_original()}
+                  {m.library_view_original()}
                 </Button>
                 <Button
                   className="secondary compact"
                   type="button"
                   onClick={() =>
-                    void togglePin(document).catch(fail(m.assets_saving_offline_failed))
+                    void togglePin(document).catch(fail(m.offline_saving_offline_failed))
                   }
                 >
                   {offline.isPinned("trip_document", document.id)
@@ -204,7 +204,7 @@ export function DocumentManager({
       )}
       <RecordDialog
         open={editing || selected !== null}
-        title={editing ? m.assets_upload_document() : m.assets_document()}
+        title={editing ? m.library_upload_document() : m.library_document()}
         dirty={editing && uploadRecord.dirty}
         error={dialog.error}
         onDismiss={close}
@@ -229,7 +229,7 @@ export function DocumentManager({
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation
-                title={m.assets_delete_document({ p0: selected.title })}
+                title={m.library_delete_document({ p0: selected.title })}
                 onCancel={() => dialog.setConfirmDelete(false)}
                 onConfirm={() => erase(selected)}
               />
@@ -239,15 +239,15 @@ export function DocumentManager({
         {editing && (
           <RecordForm
             record={uploadRecord}
-            submitLabel={m.assets_upload_document()}
-            pendingLabel={m.assets_uploading()}
+            submitLabel={m.library_upload_document()}
+            pendingLabel={m.library_uploading()}
           >
             <div className="field-row">
               <uploadRecord.form.Field
                 name="title"
                 validators={{
-                  onChange: requiredText(m.assets_give_the_document_a_title),
-                  onSubmit: requiredText(m.assets_give_the_document_a_title),
+                  onChange: requiredText(m.library_give_the_document_a_title),
+                  onSubmit: requiredText(m.library_give_the_document_a_title),
                 }}
               >
                 {(field) => (
@@ -256,10 +256,10 @@ export function DocumentManager({
               </uploadRecord.form.Field>
               <uploadRecord.form.Field name="kind">
                 {(field) => (
-                  <SelectField field={field} label={m.assets_kind()}>
-                    <option value="booking">{m.assets_booking()}</option>
-                    <option value="itinerary">{m.assets_itinerary()}</option>
-                    <option value="receipt">{m.assets_receipt()}</option>
+                  <SelectField field={field} label={m.library_kind()}>
+                    <option value="booking">{m.library_booking()}</option>
+                    <option value="itinerary">{m.library_itinerary()}</option>
+                    <option value="receipt">{m.library_receipt()}</option>
                     <option value="other">{m.owner_other()}</option>
                   </SelectField>
                 )}
@@ -267,7 +267,7 @@ export function DocumentManager({
             </div>
             <Field>
               <FieldLabel>
-                {m.assets_private_file()}
+                {m.library_private_file()}
                 <Input
                   key={inputKey}
                   required

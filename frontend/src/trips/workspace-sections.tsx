@@ -87,7 +87,7 @@ export const WORKSPACE_SECTIONS = [
     component: lazyView<SectionProps>(() => import("./PrepareSection")),
     parts: [
       { id: "tasks", label: () => m.owner_things_to_arrange(), records: ["task"] },
-      { id: "documents", label: () => m.assets_documents(), records: ["document"] },
+      { id: "documents", label: () => m.library_documents(), records: ["document"] },
     ],
   },
   {
@@ -103,7 +103,7 @@ export const WORKSPACE_SECTIONS = [
     component: lazyView<SectionProps>(() => import("./StorySection")),
     parts: [
       { id: "updates", label: () => m.owner_travel_updates(), records: ["update"] },
-      { id: "media", label: () => m.assets_media_library(), records: ["media"] },
+      { id: "media", label: () => m.media_library(), records: ["media"] },
     ],
     // The media library used to have a tab of its own.
     aliases: ["media"],

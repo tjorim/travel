@@ -52,8 +52,8 @@ export function PreviewDialog({
   const futureLines = futureDisclosureLines(
     future.data ?? { transport: 0, day_dates: 0 },
     preview.audience === "public"
-      ? m.assets_the_page_for_everyone()
-      : m.assets_link({ p0: links.find((link) => link.id === preview.linkId)?.label ?? "" }),
+      ? m.publication_the_page_for_everyone()
+      : m.publication_link({ p0: links.find((link) => link.id === preview.linkId)?.label ?? "" }),
   );
   return (
     <RecordDialog
@@ -68,13 +68,13 @@ export function PreviewDialog({
       >
         <p>
           {preview.audience === "public"
-            ? m.assets_audience_everyone()
-            : m.assets_audience_only_people_with_the_active_hidden_link()}{" "}
+            ? m.publication_audience_everyone()
+            : m.publication_audience_only_people_with_the_active_hidden_link()}{" "}
           ·{" "}
           {preview.audience === "public"
             ? isPublished
-              ? m.assets_currently_shared()
-              : m.assets_not_shared_yet()
+              ? m.publication_currently_shared()
+              : m.publication_not_shared_yet()
             : LINK_STATE_LABELS[links.find((link) => link.id === preview.linkId)?.state ?? "draft"]}
         </p>
         <p>{projectionSummary(preview.document)}</p>
@@ -104,7 +104,7 @@ export function PreviewDialog({
         />
         <Collapsible.Root>
           <Collapsible.Trigger className="bg-transparent p-0 text-left font-bold text-travel-forest">
-            {m.assets_inspect_delivered_fields()}
+            {m.publication_inspect_delivered_fields()}
           </Collapsible.Trigger>
           <Collapsible.Panel keepMounted>
             <pre>{JSON.stringify(preview.document, null, 2)}</pre>

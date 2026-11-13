@@ -20,16 +20,16 @@ export type CatalogItem = {
 
 export const LINK_STATE_LABELS: Record<ShareLink["state"], string> = {
   get draft() {
-    return m.assets_draft();
+    return m.publication_draft();
   },
   get active() {
-    return m.assets_active();
+    return m.publication_active();
   },
   get revoked() {
-    return m.assets_revoked();
+    return m.publication_revoked();
   },
   get expired() {
-    return m.assets_expired();
+    return m.publication_expired();
   },
 };
 
@@ -53,7 +53,7 @@ export const GROUP_TITLES: Record<ShareScopeKind, string> = {
     return m.owner_stays();
   },
   get media_derivative() {
-    return m.assets_photos_and_videos();
+    return m.publication_photos_and_videos();
   },
 };
 
@@ -134,11 +134,11 @@ export function projectionSummary(document: ProjectionDocument): string {
     document.stays.length +
     document.media.length +
     document.routes.length;
-  return m.assets_projection_summary({
+  return m.publication_projection_summary({
     count,
-    title: document.title ? m.assets_title() : m.assets_no_title(),
-    summary: document.summary ? m.assets_summary() : m.assets_no_summary(),
-    dates: document.dates ? m.assets_dates() : m.assets_no_travel_dates(),
+    title: document.title ? m.publication_title() : m.publication_no_title(),
+    summary: document.summary ? m.publication_summary() : m.publication_no_summary(),
+    dates: document.dates ? m.publication_dates() : m.publication_no_travel_dates(),
   });
 }
 
@@ -169,12 +169,12 @@ export function kindCountsText(counts: KindCounts | undefined): string {
   if (!counts) return "";
   const places = (counts.area ?? 0) + (counts.location ?? 0);
   return [
-    counts.visit ? m.assets_count_visits({ count: counts.visit }) : "",
-    counts.stay ? m.assets_count_stays({ count: counts.stay }) : "",
-    counts.route ? m.assets_count_routes({ count: counts.route }) : "",
-    counts.travel_update ? m.assets_count_updates({ count: counts.travel_update }) : "",
-    places ? m.assets_count_places({ count: places }) : "",
-    counts.media_derivative ? m.assets_count_media({ count: counts.media_derivative }) : "",
+    counts.visit ? m.publication_count_visits({ count: counts.visit }) : "",
+    counts.stay ? m.publication_count_stays({ count: counts.stay }) : "",
+    counts.route ? m.publication_count_routes({ count: counts.route }) : "",
+    counts.travel_update ? m.publication_count_updates({ count: counts.travel_update }) : "",
+    places ? m.publication_count_places({ count: places }) : "",
+    counts.media_derivative ? m.publication_count_media({ count: counts.media_derivative }) : "",
   ]
     .filter(Boolean)
     .join(", ");

@@ -43,17 +43,17 @@ for (const locale of ["nl", "en"] as const) {
       await openSharing(page, scopeWith({}));
 
       const editor = page.getByRole("group", {
-        name: message(locale, "assets_what_everyone_can_see"),
+        name: message(locale, "sharing_what_everyone_can_see"),
       });
       // The primary controls: title, summary and the one date control, without opening anything.
       await expect(
-        editor.getByRole("checkbox", { name: message(locale, "assets_trip_title") }),
+        editor.getByRole("checkbox", { name: message(locale, "sharing_trip_title") }),
       ).toBeVisible();
       await expect(
         editor.getByRole("combobox", { name: message(locale, "precision_audience_label") }),
       ).toBeVisible();
       const tripDates = editor.getByRole("combobox", {
-        name: message(locale, "assets_how_precise_can_the_travel_dates_be"),
+        name: message(locale, "sharing_how_precise_can_the_travel_dates_be"),
       });
       // Nothing in Advanced differs from the default, so it starts closed.
       const advanced = editor.getByRole("button", {
@@ -91,14 +91,14 @@ test("Advanced starts open when the audience already shows trip dates", async ({
   await signInOwner(page);
   await choosePreferences(page, "en", "light");
   await openSharing(page, scopeWith({ trip: { title: true, summary: true, dates: "year" } }));
-  const editor = page.getByRole("group", { name: message("en", "assets_what_everyone_can_see") });
+  const editor = page.getByRole("group", { name: message("en", "sharing_what_everyone_can_see") });
   await expect(editor.getByRole("button", { name: /Advanced/ })).toHaveAttribute(
     "aria-expanded",
     "true",
   );
   await expect(
     editor.getByRole("combobox", {
-      name: message("en", "assets_how_precise_can_the_travel_dates_be"),
+      name: message("en", "sharing_how_precise_can_the_travel_dates_be"),
     }),
   ).toHaveValue(message("en", "owner_year_only"));
 });

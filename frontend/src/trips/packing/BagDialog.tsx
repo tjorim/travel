@@ -42,7 +42,7 @@ export function BagDialog({
   return (
     <RecordDialog
       open={dialog !== null}
-      title={dialog === "new" ? m.assets_add_bag() : m.assets_edit_bag()}
+      title={dialog === "new" ? m.packing_add_bag() : m.packing_edit_bag()}
       onDismiss={() => onClose()}
     >
       <form
@@ -57,7 +57,7 @@ export function BagDialog({
                 dialog === "new" ? "POST" : "PATCH",
                 { ...draft, name: draft.name.trim() },
               ),
-            () => m.assets_bag_saved(),
+            () => m.packing_bag_saved(),
           ).then((ok) => {
             if (ok) onClose();
           });
@@ -76,13 +76,13 @@ export function BagDialog({
           </FieldLabel>
         </Field>
         <Field>
-          <FieldLabel className="block">{m.assets_type()}</FieldLabel>
+          <FieldLabel className="block">{m.packing_type()}</FieldLabel>
           <SearchSelect
-            ariaLabel={m.assets_type()}
+            ariaLabel={m.packing_type()}
             value={draft.type ?? ""}
             onChange={(value) => setDraft({ ...draft, type: value || null })}
           >
-            <option value="">{m.assets_no_type()}</option>
+            <option value="">{m.packing_no_type()}</option>
             {bagTypes().map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -92,7 +92,7 @@ export function BagDialog({
         </Field>
         <Field className="contents">
           <FieldLabel className="block">
-            {m.assets_weight_limit_grams()}
+            {m.packing_weight_limit_grams()}
             <Input
               type="number"
               min="1"
@@ -108,7 +108,7 @@ export function BagDialog({
         </Field>
         <div className="flex gap-2">
           <Button type="submit" disabled={busy}>
-            {m.assets_save()}
+            {m.common_save()}
           </Button>
           {dialog !== "new" && (
             <Button
@@ -123,13 +123,13 @@ export function BagDialog({
       </form>
       {confirm?.kind === "bag" && (
         <DeleteConfirmation
-          title={m.assets_delete_bag()}
-          description={m.assets_the_items_remain_as_unassigned()}
+          title={m.packing_delete_bag()}
+          description={m.packing_the_items_remain_as_unassigned()}
           onCancel={() => onConfirmDelete(null)}
           onConfirm={() => {
             void save(
               () => request(`${path}/bags/${encodeURIComponent(confirm.id)}`, "DELETE"),
-              () => m.assets_bag_deleted_items_are_unassigned(),
+              () => m.packing_bag_deleted_items_are_unassigned(),
             ).then((ok) => {
               if (ok) {
                 onClose();

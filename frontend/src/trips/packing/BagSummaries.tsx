@@ -9,7 +9,7 @@ export function BagSummaries({ bags, items }: { bags: Bag[]; items: Item[] }) {
   return (
     <div
       className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
-      aria-label={m.assets_progress_per_bag()}
+      aria-label={m.packing_progress_per_bag()}
     >
       {bags.map((bag) => {
         const rows = items.filter((item) => item.bag_id === bag.id);
@@ -24,17 +24,17 @@ export function BagSummaries({ bags, items }: { bags: Bag[]; items: Item[] }) {
               </p>
             )}
             <p>{count(rows)}</p>
-            <PackingProgress rows={rows} label={m.assets_packing_progress({ p0: bag.name })} />
+            <PackingProgress rows={rows} label={m.packing_progress({ p0: bag.name })} />
             <p>
-              {m.assets_known_line_2({
+              {m.packing_known_line_2({
                 p0: grams(known),
-                p1: unknown ? m.assets_weight_incomplete() : "",
-                p2: bag.weight_limit_g ? m.assets_limit({ p0: grams(bag.weight_limit_g) }) : "",
+                p1: unknown ? m.packing_weight_incomplete() : "",
+                p2: bag.weight_limit_g ? m.packing_limit({ p0: grams(bag.weight_limit_g) }) : "",
               })}
             </p>
             {bag.weight_limit_g !== null && known > bag.weight_limit_g && (
               <p role="alert" className="font-bold text-travel-danger!">
-                {m.assets_over_the_weight_limit()}
+                {m.packing_over_the_weight_limit()}
               </p>
             )}
           </div>

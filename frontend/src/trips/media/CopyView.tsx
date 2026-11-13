@@ -61,8 +61,8 @@ export function CopyView({
         <OwnerImage
           session={owner.session}
           url={previewUrl}
-          alt={m.assets_preview_of_the_copy_of({
-            p0: asset.original_filename ?? m.assets_this_media_item_2(),
+          alt={m.media_preview_of_the_copy_of({
+            p0: asset.original_filename ?? m.media_this_media_item_2(),
           })}
           className="mb-1 block max-h-65 max-w-65 rounded-travel-media bg-travel-media-bg object-contain"
         />
@@ -70,23 +70,23 @@ export function CopyView({
       <div>
         <strong>
           {derivative.processing_state === "processing"
-            ? m.assets_video_is_being_processed()
+            ? m.media_video_is_being_processed()
             : derivative.processing_state === "failed"
-              ? m.assets_processing_failed()
+              ? m.media_processing_failed()
               : derivative.review_state === "approved"
-                ? m.assets_approved_copy()
-                : m.assets_awaiting_approval()}
+                ? m.media_approved_copy()
+                : m.media_awaiting_approval()}
         </strong>
         <p>
           {purposeLabel[derivative.purpose]} ·{" "}
           {derivative.width && derivative.height
             ? `${derivative.width} × ${derivative.height}`
-            : m.assets_unknown_dimensions()}
+            : m.media_unknown_dimensions()}
           {derivative.media_kind === "video" &&
-            ` · ${derivative.duration_seconds?.toFixed(1) ?? "?"} s · ${derivative.remove_audio ? m.assets_without_audio() : m.assets_with_audio()}`}
+            ` · ${derivative.duration_seconds?.toFixed(1) ?? "?"} s · ${derivative.remove_audio ? m.media_without_audio() : m.media_with_audio()}`}
         </p>
       </div>
-      {derivative.is_cover && <p className="help">{m.assets_is_the_trip_cover()}</p>}
+      {derivative.is_cover && <p className="help">{m.media_is_the_trip_cover()}</p>}
       {derivative.review_state === "approved" &&
         derivative.processing_state !== "failed" &&
         derivative.purpose === "share" && (
@@ -95,7 +95,7 @@ export function CopyView({
             kind="media_derivative"
             id={derivative.id}
             value={derivative.visibility}
-            name={m.assets_copy_of({ p0: asset.original_filename ?? "foto" })}
+            name={m.media_copy_of({ p0: asset.original_filename ?? "foto" })}
             followsUpdate={
               trip.travel_updates.find((update) => update.id === derivative.travel_update_id)?.title
             }
@@ -104,14 +104,14 @@ export function CopyView({
       <div className="button-row">
         {canPreview && (
           <Button className="secondary compact" type="button" onClick={onOpen}>
-            {derivative.media_kind === "video" ? m.assets_check_video_and_audio() : m.assets_view()}
+            {derivative.media_kind === "video" ? m.media_check_video_and_audio() : m.library_view()}
           </Button>
         )}
         {canPreview && (
           <Button className="secondary compact" type="button" onClick={onToggleOffline}>
             {pinned
               ? m.owner_remove_offline_copy()
-              : m.assets_save_offline({ p0: bytesLabel(derivative.byte_size ?? 0) })}
+              : m.offline_save_offline({ p0: bytesLabel(derivative.byte_size ?? 0) })}
           </Button>
         )}
         {derivative.processing_state === "failed" && (
@@ -121,12 +121,12 @@ export function CopyView({
         )}
         {derivative.review_state === "pending" && canPreview && (
           <Button className="compact" type="button" onClick={onApprove}>
-            {m.assets_explicitly_approve()}
+            {m.media_explicitly_approve()}
           </Button>
         )}
         {derivative.purpose === "share" && derivative.processing_state !== "processing" && (
           <Button className="secondary compact" type="button" onClick={onEdit}>
-            {m.assets_edit_presentation()}
+            {m.media_edit_presentation()}
           </Button>
         )}
         {canBeCover && (
@@ -136,7 +136,7 @@ export function CopyView({
             aria-pressed={derivative.is_cover === true}
             onClick={onToggleCover}
           >
-            {derivative.is_cover ? m.assets_remove_as_cover() : m.assets_use_as_cover()}
+            {derivative.is_cover ? m.media_remove_as_cover() : m.media_use_as_cover()}
           </Button>
         )}
         <Button className="danger compact" type="button" onClick={onAskDelete}>
@@ -145,15 +145,15 @@ export function CopyView({
       </div>
       {confirmingDelete && (
         <DeleteConfirmation
-          title={m.assets_delete_this_copy()}
-          description={m.assets_it_will_immediately_be_removed_from_any_sharing_scopes()}
+          title={m.media_delete_this_copy()}
+          description={m.media_it_will_immediately_be_removed_from_any_sharing_scopes()}
           onCancel={onCancelDelete}
           onConfirm={onConfirmDelete}
         />
       )}
       <div className="button-row">
         <Button className="secondary" type="button" onClick={onBack}>
-          {m.assets_back_to_the_media_item()}
+          {m.media_back_to_the_media_item()}
         </Button>
       </div>
     </div>

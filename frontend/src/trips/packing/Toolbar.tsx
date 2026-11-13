@@ -45,22 +45,22 @@ export function Toolbar({
     <>
       <div className="flex flex-wrap gap-3 rounded-xl border p-3">
         <ChoiceGroup<Group>
-          label={m.assets_group()}
+          label={m.packing_group()}
           value={group}
           choices={[
-            { value: "bag", label: m.assets_by_bag() },
-            { value: "category", label: m.assets_by_category() },
+            { value: "bag", label: m.packing_by_bag() },
+            { value: "category", label: m.packing_by_category() },
           ]}
           onChange={onGroup}
         />
         <ChoiceGroup<Filter>
-          label={m.assets_show()}
+          label={m.packing_show()}
           value={filter}
           choices={[
-            { value: "all", label: m.assets_all() },
-            { value: "unpacked", label: m.assets_unpacked() },
-            { value: "packed", label: m.assets_packed() },
-            { value: "last-minute", label: m.assets_departure_day() },
+            { value: "all", label: m.packing_all() },
+            { value: "unpacked", label: m.packing_unpacked() },
+            { value: "packed", label: m.packing_packed() },
+            { value: "last-minute", label: m.packing_departure_day() },
           ]}
           onChange={onFilter}
         />
@@ -77,7 +77,7 @@ export function Toolbar({
       </div>
       {selecting && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border p-3">
-          <span>{m.assets_selected_line({ p0: selected.length })}</span>
+          <span>{m.packing_selected_line({ p0: selected.length })}</span>
           <Button type="button" disabled={busy || !selected.length} onClick={() => void bulk(true)}>
             {m.owner_packing()}
           </Button>
@@ -86,20 +86,20 @@ export function Toolbar({
             disabled={busy || !selected.length}
             onClick={() => void bulk(false)}
           >
-            {m.assets_unpack()}
+            {m.packing_unpack()}
           </Button>
           <Field>
-            <FieldLabel>{m.assets_move_to()} </FieldLabel>
+            <FieldLabel>{m.packing_move_to()} </FieldLabel>
             <SearchSelect
-              ariaLabel={m.assets_move_selected_items_to()}
+              ariaLabel={m.packing_move_selected_items_to()}
               value=""
               isDisabled={busy || !selected.length}
               onChange={(value) => {
                 if (value) void bulk(undefined, value === "unassigned" ? null : value);
               }}
             >
-              <option value="">{m.assets_choose_bag()}</option>
-              <option value="unassigned">{m.assets_unassigned()}</option>
+              <option value="">{m.packing_choose_bag()}</option>
+              <option value="unassigned">{m.packing_unassigned()}</option>
               {bags.map((bag) => (
                 <option key={bag.id} value={bag.id}>
                   {bag.name}
@@ -115,7 +115,7 @@ export function Toolbar({
               onSelecting(false);
             }}
           >
-            {m.assets_done()}
+            {m.packing_done()}
           </Button>
         </div>
       )}
@@ -123,7 +123,7 @@ export function Toolbar({
         <div className="flex flex-wrap gap-2">
           {!selecting && (
             <Button type="button" className="secondary compact" onClick={() => onSelecting(true)}>
-              {m.assets_select_items()}
+              {m.packing_select_items()}
             </Button>
           )}
           <Button
@@ -132,7 +132,7 @@ export function Toolbar({
             disabled={busy}
             onClick={() => void bulk(true, undefined, true)}
           >
-            {m.assets_pack_all()}
+            {m.packing_pack_all()}
           </Button>
           <Button
             type="button"
@@ -140,7 +140,7 @@ export function Toolbar({
             disabled={busy}
             onClick={() => void bulk(false, undefined, true)}
           >
-            {m.assets_unpack_all()}
+            {m.packing_unpack_all()}
           </Button>
         </div>
       )}

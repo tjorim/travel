@@ -27,9 +27,9 @@ export function PackingTripOffline({ tripId, onRetry }: { tripId: string; onRetr
       <p role="status">{m.packing_trip_metadata_unavailable()}</p>
       {copies.length > 1 && (
         <Field>
-          <FieldLabel>{m.assets_offline_packing_list()}</FieldLabel>
+          <FieldLabel>{m.offline_packing_list()}</FieldLabel>
           <SearchSelect
-            ariaLabel={m.assets_offline_packing_list()}
+            ariaLabel={m.offline_packing_list()}
             value={copy?.id ?? ""}
             onChange={setChosen}
           >
@@ -45,24 +45,22 @@ export function PackingTripOffline({ tripId, onRetry }: { tripId: string; onRetr
         <div key={`${offline.subject}:${copy.id}`} className="grid gap-3">
           <h3 className="text-xl font-semibold">{copy.title}</h3>
           <p>
-            {m.assets_last_checked_valid_until_line({
-              p0: m.assets_packing_list(),
+            {m.common_last_checked_valid_until_line({
+              p0: m.packing_list(),
               p1: bytesLabel(copy.byteSize),
               p2: formatInstant(copy.lastValidatedAt),
               p3: formatInstant(copy.leaseExpiresAt),
             })}
           </p>
-          {copy.newerVersionAvailable && (
-            <p role="status">{m.assets_offline_newer_version_available()}</p>
-          )}
+          {copy.newerVersionAvailable && <p role="status">{m.offline_newer_version_available()}</p>}
           <PackingOfflineView copy={copy} open={offline.open} />
         </div>
       ) : (
         <p role="status">
           {offline.unsupported
-            ? m.assets_offline_storage_is_not_supported_in_this_browser()
+            ? m.offline_storage_is_not_supported_in_this_browser()
             : !offline.loaded
-              ? m.assets_loading_offline_packing_lists()
+              ? m.offline_loading_offline_packing_lists()
               : m.packing_no_valid_offline_copy()}
         </p>
       )}

@@ -39,13 +39,13 @@ export function ItemSections({
     group === "bag"
       ? [
           ...bags.map((bag) => ({ id: bag.id, title: bag.name, bag })),
-          { id: "unassigned", title: m.assets_unassigned(), bag: null },
+          { id: "unassigned", title: m.packing_unassigned(), bag: null },
         ]
       : [...new Set(visible.map((item) => item.category?.trim() || ""))]
           .sort((a, b) => a.localeCompare(b, locale))
           .map((category) => ({
             id: category,
-            title: category || m.assets_uncategorised(),
+            title: category || m.packing_uncategorised(),
             bag: null,
           }));
   return (
@@ -81,7 +81,7 @@ export function ItemSections({
                       className="secondary compact"
                       onClick={() => onStartItem(undefined, section.bag?.id ?? null)}
                     >
-                      {m.assets_quick_add()}
+                      {m.packing_quick_add()}
                     </Button>
                     {section.bag && (
                       <Button
@@ -89,7 +89,7 @@ export function ItemSections({
                         className="secondary compact"
                         onClick={() => onStartBag(section.bag!)}
                       >
-                        {m.assets_edit_bag()}
+                        {m.packing_edit_bag()}
                       </Button>
                     )}
                   </>
@@ -97,7 +97,7 @@ export function ItemSections({
               </div>
             </div>
             {!sectionRows.length ? (
-              <p className="text-sm">{m.assets_no_items_here()}</p>
+              <p className="text-sm">{m.packing_no_items_here()}</p>
             ) : (
               <ul className="m-0 list-none divide-y p-0">
                 {sectionRows.map((item) => (
@@ -107,7 +107,7 @@ export function ItemSections({
                         <Field className="contents">
                           <FieldLabel className="flex size-11 shrink-0 items-center justify-center">
                             <span className="sr-only">
-                              {m.assets_select_line({ p0: item.label })}
+                              {m.packing_select_line({ p0: item.label })}
                             </span>
                             <TravelCheckbox
                               className="size-6"
@@ -126,7 +126,7 @@ export function ItemSections({
                         <Field className="contents">
                           <FieldLabel className="flex size-11 shrink-0 items-center justify-center">
                             <span className="sr-only">
-                              {m.assets_packed_line({
+                              {m.packing_packed_line({
                                 p0: item.quantity > 1 ? `${item.quantity} × ` : "",
                                 p1: item.label,
                               })}
@@ -147,13 +147,13 @@ export function ItemSections({
                         </strong>
                         <p className="text-sm opacity-70">
                           {[
-                            item.category || m.assets_uncategorised(),
+                            item.category || m.packing_uncategorised(),
                             group === "category"
                               ? (bags.find((bag) => bag.id === item.bag_id)?.name ??
-                                m.assets_unassigned())
+                                m.packing_unassigned())
                               : null,
                             item.weight_g !== null
-                              ? m.assets_per_item({ p0: grams(item.weight_g) })
+                              ? m.packing_per_item({ p0: grams(item.weight_g) })
                               : null,
                           ]
                             .filter(Boolean)
@@ -166,11 +166,11 @@ export function ItemSections({
                           item.checked_only) && (
                           <p className="text-xs opacity-70">
                             {[
-                              item.essential && m.assets_essential(),
-                              item.last_minute && m.assets_departure_day(),
-                              item.valuable && m.assets_valuable(),
-                              item.cabin_only && m.assets_cabin_baggage_only(),
-                              item.checked_only && m.assets_checked_baggage_only(),
+                              item.essential && m.packing_essential(),
+                              item.last_minute && m.packing_departure_day(),
+                              item.valuable && m.packing_valuable(),
+                              item.cabin_only && m.packing_cabin_baggage_only(),
+                              item.checked_only && m.packing_checked_baggage_only(),
                             ]
                               .filter(Boolean)
                               .join(" · ")}
@@ -179,7 +179,7 @@ export function ItemSections({
                         {item.notes && <p className="mt-1 text-sm">{item.notes}</p>}
                         {item.id in unsaved && !savingIds.includes(item.id) && (
                           <Button type="button" onClick={() => onToggle(item, unsaved[item.id])}>
-                            {m.assets_try_again_line({ p0: item.label })}
+                            {m.packing_try_again_line({ p0: item.label })}
                           </Button>
                         )}
                       </div>
@@ -187,7 +187,7 @@ export function ItemSections({
                         <Button
                           type="button"
                           className="secondary compact shrink-0"
-                          aria-label={m.assets_edit({ p0: item.label })}
+                          aria-label={m.packing_edit({ p0: item.label })}
                           onClick={() => onStartItem(item)}
                         >
                           {m.owner_edit()}

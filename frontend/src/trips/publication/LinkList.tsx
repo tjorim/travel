@@ -33,11 +33,13 @@ export function LinkList({
     <div className="manager-subsection">
       <div className="capture-heading">
         <div>
-          <h3>{m.assets_hidden_share_links()}</h3>
-          <p>{m.assets_each_link_has_its_own_live_scope_and_can_later_be_revoked_or_rotated()}</p>
+          <h3>{m.publication_hidden_share_links()}</h3>
+          <p>
+            {m.publication_each_link_has_its_own_live_scope_and_can_later_be_revoked_or_rotated()}
+          </p>
         </div>
         <Button className="secondary compact" type="button" onClick={onNew}>
-          {m.assets_new_link()}
+          {m.publication_new_link()}
         </Button>
       </div>
       {series.length > 0 && (
@@ -52,10 +54,10 @@ export function LinkList({
               >
                 <strong>{current.label}</strong>
                 <span>
-                  {m.assets_expires_line({
+                  {m.publication_expires_line({
                     p0: LINK_STATE_LABELS[current.state],
                     p1: dateLabel(current.expires_at),
-                    p2: history.length ? m.assets_previous({ count: history.length }) : "",
+                    p2: history.length ? m.publication_previous({ count: history.length }) : "",
                   })}
                   {!!current.exclusions?.excluded.length &&
                     ` · ${m.exclusions_link_summary({ count: current.exclusions.excluded.length })}`}
@@ -67,7 +69,7 @@ export function LinkList({
               {history.length > 0 && (
                 <Collapsible.Root className="border-l-2 border-travel-divider pl-3">
                   <Collapsible.Trigger className="bg-transparent p-0 text-left text-sm font-bold text-travel-muted">
-                    {m.assets_previous_view_line({ count: history.length })}
+                    {m.publication_previous_view_line({ count: history.length })}
                   </Collapsible.Trigger>
                   <Collapsible.Panel keepMounted className="mt-2 grid gap-2">
                     {history.map((link) => (
@@ -93,7 +95,9 @@ export function LinkList({
         </div>
       )}
       {!hasLinks && !loading && (
-        <p>{m.assets_no_share_links_yet_choose_new_link_to_create_a_hidden_link_with_its_own_()}</p>
+        <p>
+          {m.publication_no_share_links_yet_choose_new_link_to_create_a_hidden_link_with_its_own_()}
+        </p>
       )}
     </div>
   );

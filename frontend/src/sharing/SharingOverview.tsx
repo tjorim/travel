@@ -99,7 +99,7 @@ export function SharingOverview() {
     { tripId: string; link: ShareLink; action: "revoke" | "rotate" },
     ShareLink
   >({
-    fallback: m.assets_the_link_could_not_be_revoked,
+    fallback: m.sharing_the_link_could_not_be_revoked,
     request: ({ tripId, link, action }) => ({
       path: tripPath(tripId, `share-links/${link.id}/${action}`),
       method: "POST",
@@ -191,14 +191,15 @@ export function SharingOverview() {
 
   function revokeLink(trip: TripSummary, link: ShareLink) {
     confirmation.ask({
-      title: () => m.assets_revoke_named_link({ name: link.label }),
+      title: () => m.sharing_revoke_named_link({ name: link.label }),
       description: () =>
-        m.assets_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h(),
-      confirmLabel: () => m.assets_revoke_link(),
+        m.sharing_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h(),
+      confirmLabel: () => m.sharing_revoke_link(),
       onConfirm: () =>
         linkAction.mutateAsync({ tripId: trip.id, link, action: "revoke" }).then(
-          () => setNotice(textNotice(() => m.assets_share_link_revoked())),
-          (error: unknown) => setNotice(errorNotice(error, m.assets_the_link_could_not_be_revoked)),
+          () => setNotice(textNotice(() => m.sharing_share_link_revoked())),
+          (error: unknown) =>
+            setNotice(errorNotice(error, m.sharing_the_link_could_not_be_revoked)),
         ),
     });
   }
@@ -213,21 +214,22 @@ export function SharingOverview() {
           (result) =>
             result.token && setRevealed({ label: result.label, url: shareUrl(result.token) }),
           (error: unknown) =>
-            setNotice(errorNotice(error, m.assets_the_secure_link_could_not_be_created)),
+            setNotice(errorNotice(error, m.sharing_the_secure_link_could_not_be_created)),
         ),
     });
   }
 
   function revokeCollection(collection: Collection) {
     confirmation.ask({
-      title: () => m.assets_revoke_named_link({ name: collection.label }),
+      title: () => m.sharing_revoke_named_link({ name: collection.label }),
       description: () =>
-        m.assets_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h(),
-      confirmLabel: () => m.assets_revoke_link(),
+        m.sharing_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h(),
+      confirmLabel: () => m.sharing_revoke_link(),
       onConfirm: () =>
         collectionMutations.revoke.mutateAsync({ collection, reason: null }).then(
           () => setNotice(textNotice(() => m.sharing_collection_revoked())),
-          (error: unknown) => setNotice(errorNotice(error, m.assets_the_link_could_not_be_revoked)),
+          (error: unknown) =>
+            setNotice(errorNotice(error, m.sharing_the_link_could_not_be_revoked)),
         ),
     });
   }
@@ -247,7 +249,7 @@ export function SharingOverview() {
                 setRevealed({ label: result.label, url: collectionUrl(result.token) });
             },
             (error: unknown) =>
-              setNotice(errorNotice(error, m.assets_the_secure_link_could_not_be_created)),
+              setNotice(errorNotice(error, m.sharing_the_secure_link_could_not_be_created)),
           ),
     });
   }

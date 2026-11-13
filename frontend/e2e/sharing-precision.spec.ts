@@ -84,7 +84,7 @@ for (const locale of ["nl", "en"] as const) {
       await page.goto(`/admin/trips/${ownerTrip.id}/sharing`);
 
       // The Sharing check states what the audience effectively shows.
-      const check = page.getByRole("list", { name: message(locale, "assets_sharing_check") });
+      const check = page.getByRole("list", { name: message(locale, "sharing_check") });
       await expect(
         check.getByText(
           message(locale, "precision_check_audience").replace(
@@ -96,7 +96,7 @@ for (const locale of ["nl", "en"] as const) {
 
       // The audience's own control is a labelled combobox next to the scope.
       const scope = page.getByRole("group", {
-        name: message(locale, "assets_what_everyone_can_see"),
+        name: message(locale, "sharing_what_everyone_can_see"),
       });
       const control = scope.getByRole("combobox", {
         name: message(locale, "precision_audience_label"),

@@ -99,7 +99,7 @@ export function TravelUpdateManager({
   const owner = useOwner();
   const photos = useUpdatePhotos(trip);
   const preview = useUpdatePreview(trip, (error) =>
-    setMessage(errorNotice(error, m.assets_the_preview_could_not_be_loaded_2)),
+    setMessage(errorNotice(error, m.publication_the_preview_could_not_be_loaded_2)),
   );
   const path = tripPath(trip.id, "travel-updates");
   // An update may add a reusable location and its derived area as well as changing the trip's embedded update list.

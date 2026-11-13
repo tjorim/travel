@@ -13,13 +13,13 @@ import {
 
 export const DOCUMENT_KIND_LABELS: Record<DocumentAsset["document_kind"], string> = {
   get booking() {
-    return m.assets_booking();
+    return m.library_booking();
   },
   get itinerary() {
-    return m.assets_itinerary();
+    return m.library_itinerary();
   },
   get receipt() {
-    return m.assets_receipt();
+    return m.library_receipt();
   },
   get other() {
     return m.owner_other();
@@ -28,10 +28,10 @@ export const DOCUMENT_KIND_LABELS: Record<DocumentAsset["document_kind"], string
 
 export const MEDIA_KIND_LABELS: Record<MediaAsset["media_kind"], string> = {
   get photo() {
-    return m.assets_photo();
+    return m.media_photo();
   },
   get video() {
-    return m.assets_video();
+    return m.media_video();
   },
 };
 

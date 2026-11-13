@@ -60,7 +60,7 @@ export function ReuseDialog({
       ownerRequest<PackingSource[]>(
         owner!.session,
         "/api/packing-list-sources",
-        m.assets_loading_source_lists_failed,
+        m.packing_loading_source_lists_failed,
       ),
   });
   const templatesQuery = useQuery({
@@ -70,11 +70,11 @@ export function ReuseDialog({
       ownerRequest<PackingTemplate[]>(
         owner!.session,
         "/api/packing-templates",
-        m.assets_loading_templates_failed,
+        m.packing_loading_templates_failed,
       ),
   });
   return (
-    <RecordDialog open={open} title={m.assets_reuse_packing_list()} onDismiss={() => onClose()}>
+    <RecordDialog open={open} title={m.packing_reuse_packing_list()} onDismiss={() => onClose()}>
       <form
         className="space-y-3"
         onSubmit={(event) => {
@@ -90,30 +90,30 @@ export function ReuseDialog({
               });
               onCreated(created);
             },
-            () => m.assets_packing_list_reused_all_items_are_unpacked(),
+            () => m.packing_list_reused_all_items_are_unpacked(),
           ).then((ok) => {
             if (ok) onClose();
           });
         }}
       >
         <ChoiceGroup
-          label={m.assets_source()}
+          label={m.packing_source()}
           value={reuseMode}
           choices={[
-            { value: "copy", label: m.assets_another_packing_list() },
-            { value: "templates", label: m.assets_templates() },
+            { value: "copy", label: m.packing_another_packing_list() },
+            { value: "templates", label: m.packing_templates() },
           ]}
           onChange={setReuseMode}
         />
         {reuseMode === "copy" ? (
           <Field>
-            <FieldLabel className="block">{m.assets_packing_list()}</FieldLabel>
+            <FieldLabel className="block">{m.packing_list()}</FieldLabel>
             <SearchSelect
-              ariaLabel={m.assets_source_packing_list()}
+              ariaLabel={m.packing_source_packing_list()}
               value={sourceId}
               onChange={setSourceId}
             >
-              <option value="">{m.assets_choose_a_packing_list()}</option>
+              <option value="">{m.packing_choose_a_packing_list()}</option>
               {sourcesQuery.data
                 ?.filter((source) => source.trip_id !== tripId)
                 .map((source) => (
@@ -125,7 +125,7 @@ export function ReuseDialog({
           </Field>
         ) : (
           <FieldSet className="space-y-2">
-            <FieldLegend>{m.assets_choose_templates()}</FieldLegend>
+            <FieldLegend>{m.packing_choose_templates()}</FieldLegend>
             {templatesQuery.data?.map((template) => (
               <div key={template.id} className="flex items-center justify-between gap-2">
                 <Field className="contents">
@@ -146,7 +146,7 @@ export function ReuseDialog({
                 <Button
                   type="button"
                   className="secondary compact"
-                  aria-label={m.assets_delete({ p0: template.name })}
+                  aria-label={m.packing_delete({ p0: template.name })}
                   onClick={() => setTemplateToDelete(template.id)}
                 >
                   {m.owner_delete()}
@@ -156,11 +156,11 @@ export function ReuseDialog({
           </FieldSet>
         )}
         {(sourcesQuery.isError || templatesQuery.isError) && (
-          <p role="alert">{m.assets_loading_sources_failed_close_and_reopen_to_try_again()}</p>
+          <p role="alert">{m.packing_loading_sources_failed_close_and_reopen_to_try_again()}</p>
         )}
         <Field className="contents">
           <FieldLabel className="block">
-            {m.assets_new_packing_list_name()}
+            {m.packing_new_packing_list_name()}
             <Input
               required
               maxLength={160}
@@ -170,7 +170,7 @@ export function ReuseDialog({
           </FieldLabel>
         </Field>
         <p className="text-sm">
-          {m.assets_bags_order_categories_quantities_notes_and_assignments_are_preserved_all()}
+          {m.packing_bags_order_categories_quantities_notes_and_assignments_are_preserved_all()}
         </p>
         <Button
           type="submit"
@@ -178,18 +178,18 @@ export function ReuseDialog({
             busy || !name.trim() || (reuseMode === "copy" ? !sourceId : !templateIds.length)
           }
         >
-          {m.assets_create_new_packing_list()}
+          {m.packing_create_new_packing_list()}
         </Button>
       </form>
       {templateToDelete && (
         <DeleteConfirmation
-          title={m.assets_delete_template()}
+          title={m.packing_delete_template()}
           onCancel={() => setTemplateToDelete(null)}
           onConfirm={() => {
             void save(
               () =>
                 request(`/api/packing-templates/${encodeURIComponent(templateToDelete)}`, "DELETE"),
-              () => m.assets_template_deleted(),
+              () => m.packing_template_deleted(),
             ).then((ok) => {
               if (ok) {
                 setTemplateIds((current) => current.filter((id) => id !== templateToDelete));

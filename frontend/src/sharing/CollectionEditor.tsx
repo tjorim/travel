@@ -105,20 +105,20 @@ export function CollectionEditor({
       .then((result) => {
         mutations.activate.reset();
         if (result.token) setRevealed({ label: result.label, url: collectionUrl(result.token) });
-      }, fail(m.assets_the_secure_link_could_not_be_created));
+      }, fail(m.sharing_the_secure_link_could_not_be_created));
   }
 
   function revoke() {
     if (!collection) return;
     confirmation.ask({
-      title: () => m.assets_revoke_named_link({ name: collection.label }),
+      title: () => m.sharing_revoke_named_link({ name: collection.label }),
       description: () =>
-        m.assets_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h(),
-      confirmLabel: () => m.assets_revoke_link(),
+        m.sharing_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h(),
+      confirmLabel: () => m.sharing_revoke_link(),
       onConfirm: () =>
         mutations.revoke.mutateAsync({ collection, reason: reason.trim() || null }).then(() => {
           setNotice(textNotice(() => m.sharing_collection_revoked()));
-        }, fail(m.assets_the_link_could_not_be_revoked)),
+        }, fail(m.sharing_the_link_could_not_be_revoked)),
     });
   }
 
@@ -287,7 +287,7 @@ export function CollectionEditor({
           link={revealed}
           onCopy={() => {
             void navigator.clipboard.writeText(revealed.url);
-            setNotice(textNotice(() => m.assets_link_copied()));
+            setNotice(textNotice(() => m.sharing_link_copied()));
           }}
           onClose={() => setRevealed(null)}
         />

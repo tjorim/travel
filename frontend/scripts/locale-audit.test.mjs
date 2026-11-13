@@ -5,6 +5,7 @@ import {
   literalMessageArguments,
   unusedMessageKeys,
   fragmentMessageKeys,
+  retiredPrefixKeys,
 } from "./locale-audit.mjs";
 
 it("finds JSX copy, single-word labels, validators, enum prose and template fragments", () => {
@@ -93,4 +94,10 @@ it("reports one-word connectives and joined fragments but not whole labels", () 
     "van",
     "trailing",
   ]);
+});
+
+it("reports keys that start with a retired prefix", () => {
+  const keys = ["assets_save", "packing_save", "assets", "save"];
+  expect(retiredPrefixKeys(keys, { assets_: "retired" })).toEqual(["assets_save"]);
+  expect(retiredPrefixKeys(keys)).toEqual([]);
 });

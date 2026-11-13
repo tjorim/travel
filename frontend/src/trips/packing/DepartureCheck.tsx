@@ -31,14 +31,14 @@ export function DepartureCheck({ bags, items }: { bags: Bag[]; items: Item[] }) 
         aria-expanded={leavingSoon}
         onClick={() => setLeavingSoon(!leavingSoon)}
       >
-        {m.assets_departure_check()}
+        {m.packing_departure_check()}
       </Button>
       {leavingSoon && (
         <section
-          aria-label={m.assets_departure_check()}
+          aria-label={m.packing_departure_check()}
           className="space-y-3 rounded-xl border p-4"
         >
-          <h4 className="text-lg font-semibold">{m.assets_departure_check()}</h4>
+          <h4 className="text-lg font-semibold">{m.packing_departure_check()}</h4>
           <p>{count(items)}</p>
           <ul className="m-0 list-none space-y-1 p-0">
             {bags.map((bag) => {
@@ -49,13 +49,15 @@ export function DepartureCheck({ bags, items }: { bags: Bag[]; items: Item[] }) 
               );
               return (
                 <li key={bag.id}>
-                  {m.assets_known_line({
+                  {m.packing_known_line({
                     p0: bag.name,
                     p1: count(rows),
                     p2: grams(known),
-                    p3: bag.weight_limit_g ? m.assets_limit({ p0: grams(bag.weight_limit_g) }) : "",
+                    p3: bag.weight_limit_g
+                      ? m.packing_limit({ p0: grams(bag.weight_limit_g) })
+                      : "",
                     p4: rows.some((item) => item.weight_g === null)
-                      ? m.assets_weight_incomplete()
+                      ? m.packing_weight_incomplete()
                       : "",
                   })}
                 </li>
@@ -67,44 +69,44 @@ export function DepartureCheck({ bags, items }: { bags: Bag[]; items: Item[] }) 
             !unpackedLastMinute.length &&
             !unassigned.length &&
             !conflicts.length &&
-            !overweight.length && <p className="font-semibold">{m.assets_ready_to_leave()}</p>}
+            !overweight.length && <p className="font-semibold">{m.packing_ready_to_leave()}</p>}
           {!!unpackedEssentials.length && (
             <p>
-              {m.assets_essential_still_to_pack_line({
+              {m.packing_essential_still_to_pack_line({
                 p0: unpackedEssentials.map((item) => item.label).join(", "),
               })}
             </p>
           )}
           {!!unpackedLastMinute.length && (
             <p>
-              {m.assets_on_departure_day_line({
+              {m.packing_on_departure_day_line({
                 p0: unpackedLastMinute.map((item) => item.label).join(", "),
               })}
             </p>
           )}
           {!!unassigned.length && (
             <p>
-              {m.assets_still_without_a_bag_line({
+              {m.packing_still_without_a_bag_line({
                 p0: unassigned.map((item) => item.label).join(", "),
               })}
             </p>
           )}
           {!!overweight.length && (
             <p>
-              {m.assets_known_weight_above_the_set_limit_unknown_weights_are_not_included_line({
+              {m.packing_known_weight_above_the_set_limit_unknown_weights_are_not_included_line({
                 p0: overweight.map((bag) => bag.name).join(", "),
               })}
             </p>
           )}
           {!!conflicts.length && (
             <p>
-              {m.assets_check_your_own_baggage_choice_line({
+              {m.packing_check_your_own_baggage_choice_line({
                 p0: conflicts.map((item) => item.label).join(", "),
               })}
             </p>
           )}
           <p className="text-sm">
-            {m.assets_baggage_flags_are_your_own_notes_not_official_travel_rules()}
+            {m.packing_baggage_flags_are_your_own_notes_not_official_travel_rules()}
           </p>
         </section>
       )}

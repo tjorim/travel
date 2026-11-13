@@ -54,7 +54,7 @@ export function usePublicationCatalog(trip: Pick<Trip, "id">) {
         kind: "visit" as const,
         id: item.id,
         label: visitTitle(item),
-        detail: m.assets_visit_the_place_visitor_text_and_date_the_time_only_if_you_share_it(),
+        detail: m.publication_visit_the_place_visitor_text_and_date_the_time_only_if_you_share_it(),
         visibility: item.visibility,
       })),
       ...(placesQuery.data ?? []).map((item) => ({
@@ -70,23 +70,24 @@ export function usePublicationCatalog(trip: Pick<Trip, "id">) {
         .map((item) => ({
           kind: "location" as const,
           id: item.id,
-          label: item.label ?? m.assets_location_without_a_public_name(),
-          detail: m.assets_location_name_area_and_position_only(),
+          label: item.label ?? m.publication_location_without_a_public_name(),
+          detail: m.publication_location_name_area_and_position_only(),
           visibility: item.visibility,
         })),
       ...(routesQuery.data ?? []).map((item) => ({
         kind: "route" as const,
         id: item.id,
         label: `${ROUTE_MODE_LABELS[item.mode]}: ${routeTitle(item)}`,
-        detail: m.assets_visitors_see_the_areas_transport_mode_and_line_never_the_booking_code_tr(),
+        detail:
+          m.publication_visitors_see_the_areas_transport_mode_and_line_never_the_booking_code_tr(),
         visibility: item.visibility,
       })),
       ...(staysQuery.data ?? []).map((item) => ({
         kind: "stay" as const,
         id: item.id,
         label: stayLabel(item),
-        detail: m.assets_visitors_see_only_and_the_nights({
-          p0: item.area ? areaName(item.area) : m.assets_no_area_selected_yet(),
+        detail: m.publication_visitors_see_only_and_the_nights({
+          p0: item.area ? areaName(item.area) : m.publication_no_area_selected_yet(),
         }),
         visibility: item.visibility,
       })),
@@ -96,9 +97,11 @@ export function usePublicationCatalog(trip: Pick<Trip, "id">) {
           .map((item) => ({
             kind: "media_derivative" as const,
             id: item.id,
-            label: asset.original_filename ?? m.assets_approved_media_item(),
+            label: asset.original_filename ?? m.publication_approved_media_item(),
             detail:
-              asset.media_kind === "video" ? m.assets_approved_video() : m.assets_approved_photo(),
+              asset.media_kind === "video"
+                ? m.publication_approved_video()
+                : m.publication_approved_photo(),
             visibility: item.visibility,
             followsUpdate: updateTitles.get(item.travel_update_id ?? ""),
           })),

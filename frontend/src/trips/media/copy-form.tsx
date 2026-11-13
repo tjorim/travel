@@ -25,7 +25,7 @@ export const dimensionInRange = ({ value }: { value: string }) => {
   const size = Number(value);
   return value.trim() && Number.isInteger(size) && size >= 64 && size <= 4000
     ? undefined
-    : m.assets_choose_a_maximum_side_between_64_and_4000_px;
+    : m.media_choose_a_maximum_side_between_64_and_4000_px;
 };
 
 export type PresentationValues = {
@@ -52,7 +52,7 @@ export const fromDerivative = (derivative: MediaDerivative): PresentationValues 
 const percentage = ({ value }: { value: string }) =>
   value === "" || (Number(value) >= 0 && Number(value) <= 100)
     ? undefined
-    : m.assets_choose_a_value_between_0_and_100;
+    : m.media_choose_a_value_between_0_and_100;
 
 /** The copy's presentation fields, with a live focal-point preview when the copy can be shown inline. */
 export function PresentationFields({
@@ -80,7 +80,7 @@ export function PresentationFields({
           <OwnerImage
             session={session}
             url={previewUrl}
-            alt={m.assets_preview_of_the_copy()}
+            alt={m.media_preview_of_the_copy()}
             className="block max-h-55 w-full rounded-travel-media bg-travel-media-bg object-contain"
           />
           <span
@@ -94,9 +94,9 @@ export function PresentationFields({
       <record.form.Field name="travelUpdateId">
         {(field) => (
           <Field>
-            <FieldLabel>{m.assets_with_travel_update()}</FieldLabel>
+            <FieldLabel>{m.media_with_travel_update()}</FieldLabel>
             <AsyncSearchSelect
-              ariaLabel={m.assets_with_travel_update()}
+              ariaLabel={m.media_with_travel_update()}
               value={field.state.value}
               selectedOption={
                 field.state.value
@@ -110,7 +110,7 @@ export function PresentationFields({
                   : null
               }
               defaultOptions={[
-                { value: "", label: m.assets_standalone_gallery_photo() },
+                { value: "", label: m.media_standalone_gallery_photo() },
                 ...updates
                   .slice(0, 50)
                   .map((update) => ({ value: update.id, label: update.title })),
@@ -123,7 +123,7 @@ export function PresentationFields({
                   ...Object.fromEntries(matches.map((update) => [update.id, update.title])),
                 }));
                 return [
-                  { value: "", label: m.assets_standalone_gallery_photo() },
+                  { value: "", label: m.media_standalone_gallery_photo() },
                   ...matches.map((update) => ({ value: update.id, label: update.title })),
                 ];
               }}
@@ -136,14 +136,14 @@ export function PresentationFields({
           <MarkdownField
             field={field}
             format="inline"
-            label={m.assets_caption()}
+            label={m.media_caption()}
             maxLength={500}
             rows={2}
           />
         )}
       </record.form.Field>
       <record.form.Field name="altText">
-        {(field) => <TextField field={field} label={m.assets_alternative_text()} maxLength={300} />}
+        {(field) => <TextField field={field} label={m.media_alternative_text()} maxLength={300} />}
       </record.form.Field>
       <div className="field-row">
         <record.form.Field
@@ -153,7 +153,7 @@ export function PresentationFields({
           {(field) => (
             <TextField
               field={field}
-              label={m.assets_horizontal_focus()}
+              label={m.media_horizontal_focus()}
               type="number"
               min="0"
               max="100"
@@ -167,7 +167,7 @@ export function PresentationFields({
           {(field) => (
             <TextField
               field={field}
-              label={m.assets_vertical_focus()}
+              label={m.media_vertical_focus()}
               type="number"
               min="0"
               max="100"

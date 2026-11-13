@@ -26,7 +26,7 @@ export function TripExport({
   const owner = useOwner();
   const exportTrip = useMutation<void, Error>({
     mutationFn: async () => {
-      if (!owner) throw new ApiError(m.assets_sign_in_to_change_your_private_trips, 401);
+      if (!owner) throw new ApiError(m.publication_sign_in_to_change_your_private_trips, 401);
       const blob = await ownerFile(
         owner.session,
         `/api/trips/${encodeURIComponent(tripId)}/export`,

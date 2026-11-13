@@ -115,7 +115,7 @@ export function useCollectionMutations() {
     { collectionId: string; memberId: string; scope: ShareScope },
     ProjectionDocument
   >({
-    fallback: m.assets_the_link_preview_could_not_be_loaded,
+    fallback: m.sharing_the_link_preview_could_not_be_loaded,
     // The unsaved candidate scope is rendered and never stored.
     request: ({ collectionId, memberId, scope }) => ({
       path: `${collectionsPath}/${collectionId}/members/${memberId}/preview`,
@@ -127,7 +127,7 @@ export function useCollectionMutations() {
   });
   // The owner-managed URL stays in the owner-only in-memory cache; the PWA never persists it locally.
   const activate = useOwnerMutation<CollectionAction, Collection>({
-    fallback: m.assets_the_secure_link_could_not_be_created,
+    fallback: m.sharing_the_secure_link_could_not_be_created,
     request: ({ collection, action, expiresInDays, reason }) => ({
       path: `${collectionsPath}/${collection.id}/${action}`,
       method: "POST",
@@ -137,7 +137,7 @@ export function useCollectionMutations() {
     gcTime: 0,
   });
   const revoke = useOwnerMutation<{ collection: Collection; reason: string | null }, Collection>({
-    fallback: m.assets_the_link_could_not_be_revoked,
+    fallback: m.sharing_the_link_could_not_be_revoked,
     request: ({ collection, reason }) => ({
       path: `${collectionsPath}/${collection.id}/revoke`,
       method: "POST",

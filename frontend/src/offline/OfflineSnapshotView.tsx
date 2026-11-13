@@ -9,12 +9,12 @@ import type { OfflineResourceKind } from "./offline-store";
 
 /** Legacy emergency snapshots stored this schema-owned enum as a Dutch display label. */
 const emergencyKinds: Record<string, () => string> = {
-  contact: m.assets_contact_person,
-  Contactpersoon: m.assets_contact_person,
-  number: m.assets_phone_number,
-  Telefoonnummer: m.assets_phone_number,
-  medical_note: m.assets_medical_note,
-  "Medische notitie": m.assets_medical_note,
+  contact: m.library_contact_person,
+  Contactpersoon: m.library_contact_person,
+  number: m.library_phone_number,
+  Telefoonnummer: m.library_phone_number,
+  medical_note: m.library_medical_note,
+  "Medische notitie": m.library_medical_note,
 };
 
 export function OfflineSnapshotView({ kind, text }: { kind: OfflineResourceKind; text: string }) {
@@ -23,9 +23,10 @@ export function OfflineSnapshotView({ kind, text }: { kind: OfflineResourceKind;
   try {
     value = JSON.parse(text);
   } catch {
-    return <p role="alert">{m.assets_invalid_snapshot()}</p>;
+    return <p role="alert">{m.offline_invalid_snapshot()}</p>;
   }
-  if (!value || typeof value !== "object") return <p role="alert">{m.assets_invalid_snapshot()}</p>;
+  if (!value || typeof value !== "object")
+    return <p role="alert">{m.offline_invalid_snapshot()}</p>;
   const data = value as Record<string, unknown>;
   if (
     kind === "emergency_info" &&
@@ -36,13 +37,13 @@ export function OfflineSnapshotView({ kind, text }: { kind: OfflineResourceKind;
       <div className="grid gap-3">
         <p>
           {typeof data.kind === "string"
-            ? (emergencyKinds[data.kind]?.() ?? m.assets_emergency_information())
-            : m.assets_emergency_information()}
+            ? (emergencyKinds[data.kind]?.() ?? m.offline_emergency_information())
+            : m.offline_emergency_information()}
         </p>
         <dl>
-          <dt className="font-semibold">{m.assets_label()}</dt>
+          <dt className="font-semibold">{m.library_label()}</dt>
           <dd>{data.label}</dd>
-          <dt className="font-semibold">{m.assets_value()}</dt>
+          <dt className="font-semibold">{m.library_value()}</dt>
           <dd>{data.value}</dd>
         </dl>
         <Markdown text={typeof data.notes === "string" ? data.notes : null} />
@@ -78,5 +79,5 @@ export function OfflineSnapshotView({ kind, text }: { kind: OfflineResourceKind;
       </div>
     );
   }
-  return <p role="alert">{m.assets_invalid_snapshot()}</p>;
+  return <p role="alert">{m.offline_invalid_snapshot()}</p>;
 }

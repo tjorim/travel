@@ -19,13 +19,13 @@ import type { EmergencyInfoEntry, EmergencyInfoKind } from "../api-types";
 
 const KIND_LABELS: Record<EmergencyInfoKind, string> = {
   get contact() {
-    return m.assets_contact_person();
+    return m.library_contact_person();
   },
   get number() {
-    return m.assets_phone_number();
+    return m.library_phone_number();
   },
   get medical_note() {
-    return m.assets_medical_note();
+    return m.library_medical_note();
   },
 };
 
@@ -53,7 +53,7 @@ export function EmergencyInfoManager() {
     { id: string | null; payload: Record<string, unknown> },
     EmergencyInfoEntry
   >({
-    fallback: m.assets_the_emergency_information_could_not_be_saved,
+    fallback: m.library_the_emergency_information_could_not_be_saved,
     request: ({ id, payload }) => ({
       path: id ? `${path}/${id}` : path,
       method: id ? "PATCH" : "POST",
@@ -62,14 +62,14 @@ export function EmergencyInfoManager() {
     invalidate: refresh,
   });
   const remove = useOwnerMutation<EmergencyInfoEntry>({
-    fallback: m.assets_the_emergency_information_could_not_be_deleted,
+    fallback: m.library_the_emergency_information_could_not_be_deleted,
     request: (entry) => ({ path: `${path}/${entry.id}`, method: "DELETE" }),
     invalidate: refresh,
   });
 
   const record = useRecordForm<Values>({
     defaultValues: blank(),
-    fallback: m.assets_the_emergency_information_could_not_be_saved,
+    fallback: m.library_the_emergency_information_could_not_be_saved,
     serverFields: { kind: "kind", label: "label", value: "value", notes: "notes" },
     submit: async (values) => {
       await save.mutateAsync({
@@ -84,7 +84,7 @@ export function EmergencyInfoManager() {
     },
     onSuccess: () => {
       close();
-      setNotice(textNotice(() => m.assets_emergency_information_saved()));
+      setNotice(textNotice(() => m.library_emergency_information_saved()));
     },
   });
 
@@ -111,8 +111,8 @@ export function EmergencyInfoManager() {
     remove.mutateAsync(entry).then(async () => {
       await offline.removeByResource("emergency_info", entry.id);
       close();
-      setNotice(textNotice(() => m.assets_emergency_information_deleted()));
-    }, failInDialog(m.assets_the_emergency_information_could_not_be_deleted));
+      setNotice(textNotice(() => m.library_emergency_information_deleted()));
+    }, failInDialog(m.library_the_emergency_information_could_not_be_deleted));
   }
 
   async function togglePin(entry: EmergencyInfoEntry) {
@@ -142,10 +142,10 @@ export function EmergencyInfoManager() {
   const message =
     notice ??
     (entriesQuery.error
-      ? errorMessage(entriesQuery.error, m.assets_your_emergency_information_could_not_be_loaded)
+      ? errorMessage(entriesQuery.error, m.library_your_emergency_information_could_not_be_loaded)
       : entriesQuery.isPending
-        ? m.assets_loading_your_emergency_information()
-        : m.assets_contacts_numbers_and_medical_notes_are_visible_only_to_you());
+        ? m.library_loading_your_emergency_information()
+        : m.library_contacts_numbers_and_medical_notes_are_visible_only_to_you());
 
   const loading = notice == null && entriesQuery.isPending && !entriesQuery.error;
 
@@ -153,13 +153,13 @@ export function EmergencyInfoManager() {
     <section className="travel-card manager" aria-labelledby="emergency-info-title">
       <div className="capture-heading">
         <div>
-          <h3 id="emergency-info-title">{m.assets_emergency_information()}</h3>
+          <h3 id="emergency-info-title">{m.offline_emergency_information()}</h3>
           <p>
-            {m.assets_contacts_relevant_numbers_and_brief_medical_or_care_notes_separate_from_()}
+            {m.library_contacts_relevant_numbers_and_brief_medical_or_care_notes_separate_from_()}
           </p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
-          {m.assets_new_entry()}
+          {m.library_new_entry()}
         </Button>
       </div>
       <p className="help flex items-center gap-2" role="status">
@@ -174,7 +174,7 @@ export function EmergencyInfoManager() {
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(entry.id)}
-                aria-label={m.assets_view_emergency_information({ p0: entry.label })}
+                aria-label={m.library_view_emergency_information({ p0: entry.label })}
               >
                 <strong>{entry.label}</strong>
                 <span>
@@ -186,7 +186,7 @@ export function EmergencyInfoManager() {
                 <Button
                   className="secondary compact"
                   type="button"
-                  onClick={() => void togglePin(entry).catch(fail(m.assets_saving_offline_failed))}
+                  onClick={() => void togglePin(entry).catch(fail(m.offline_saving_offline_failed))}
                 >
                   {offline.isPinned("emergency_info", entry.id)
                     ? m.owner_remove_offline_copy()
@@ -198,16 +198,16 @@ export function EmergencyInfoManager() {
         </div>
       )}
       {!entries.length && !entriesQuery.isPending && (
-        <p>{m.assets_no_emergency_information_yet_add_a_contact_number_or_medical_note()}</p>
+        <p>{m.library_no_emergency_information_yet_add_a_contact_number_or_medical_note()}</p>
       )}
       <RecordDialog
         open={editing || selected !== null}
         title={
           editing
             ? editingId
-              ? m.assets_edit_emergency_information()
-              : m.assets_add_emergency_information()
-            : m.assets_emergency_information()
+              ? m.library_edit_emergency_information()
+              : m.library_add_emergency_information()
+            : m.offline_emergency_information()
         }
         dirty={editing && record.dirty}
         error={dialog.error}
@@ -246,13 +246,13 @@ export function EmergencyInfoManager() {
         {editing && (
           <RecordForm
             record={record}
-            submitLabel={editingId ? m.assets_save() : m.assets_add()}
+            submitLabel={editingId ? m.common_save() : m.common_add()}
             pendingLabel={m.owner_saving()}
           >
             <div className="field-row">
               <record.form.Field name="kind">
                 {(field) => (
-                  <SelectField field={field} label={m.assets_kind()}>
+                  <SelectField field={field} label={m.library_kind()}>
                     {Object.entries(KIND_LABELS).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
@@ -264,17 +264,17 @@ export function EmergencyInfoManager() {
               <record.form.Field
                 name="label"
                 validators={{
-                  onChange: requiredText(m.assets_give_the_entry_a_label),
-                  onSubmit: requiredText(m.assets_give_the_entry_a_label),
+                  onChange: requiredText(m.library_give_the_entry_a_label),
+                  onSubmit: requiredText(m.library_give_the_entry_a_label),
                 }}
               >
                 {(field) => (
                   <TextField
                     field={field}
-                    label={m.assets_label()}
+                    label={m.library_label()}
                     required
                     maxLength={160}
-                    placeholder={m.assets_for_example_mum_embassy_allergy()}
+                    placeholder={m.library_for_example_mum_embassy_allergy()}
                   />
                 )}
               </record.form.Field>
@@ -282,17 +282,17 @@ export function EmergencyInfoManager() {
             <record.form.Field
               name="value"
               validators={{
-                onChange: requiredText(m.assets_enter_a_value),
-                onSubmit: requiredText(m.assets_enter_a_value),
+                onChange: requiredText(m.library_enter_a_value),
+                onSubmit: requiredText(m.library_enter_a_value),
               }}
             >
               {(field) => (
                 <TextField
                   field={field}
-                  label={m.assets_value()}
+                  label={m.library_value()}
                   required
                   maxLength={255}
-                  placeholder={m.assets_phone_number_or_short_description()}
+                  placeholder={m.library_phone_number_or_short_description()}
                 />
               )}
             </record.form.Field>

@@ -20,9 +20,9 @@ export function CopyCreateFields({
     <div className="field-row">
       <record.form.Field name="purpose">
         {(field) => (
-          <SelectField field={field} label={m.assets_purpose()}>
+          <SelectField field={field} label={m.media_purpose()}>
             <option value="share">{m.owner_sharing()}</option>
-            <option value="owner_preview">{m.assets_private_preview()}</option>
+            <option value="owner_preview">{m.media_private_preview()}</option>
           </SelectField>
         )}
       </record.form.Field>
@@ -34,7 +34,7 @@ export function CopyCreateFields({
           {(field) => (
             <TextField
               field={field}
-              label={m.assets_maximum_side_px()}
+              label={m.media_maximum_side_px()}
               required
               min={64}
               max={4000}
@@ -52,7 +52,7 @@ export function CopyCreateFields({
                   checked={field.state.value}
                   onCheckedChange={(checked) => field.handleChange(checked)}
                 />
-                {m.assets_remove_audio()}
+                {m.media_remove_audio()}
               </FieldLabel>
             </Field>
           )}

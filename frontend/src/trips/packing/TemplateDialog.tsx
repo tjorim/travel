@@ -29,7 +29,7 @@ export function TemplateDialog({
   return (
     <RecordDialog
       open={name !== null}
-      title={m.assets_save_as_template()}
+      title={m.packing_save_as_template()}
       onDismiss={() => onClose()}
     >
       <form
@@ -39,7 +39,7 @@ export function TemplateDialog({
           if (!name?.trim()) return;
           void save(
             () => request(`${path}/templates`, "POST", { name: name.trim() }),
-            () => m.assets_template_saved(),
+            () => m.packing_template_saved(),
           ).then((ok) => {
             if (ok) onClose();
           });
@@ -47,7 +47,7 @@ export function TemplateDialog({
       >
         <Field className="contents">
           <FieldLabel className="block">
-            {m.assets_template_name()}
+            {m.packing_template_name()}
             <Input
               autoFocus
               required
@@ -58,7 +58,7 @@ export function TemplateDialog({
           </FieldLabel>
         </Field>
         <Button type="submit" disabled={busy || !name?.trim()}>
-          {m.assets_save_2()}
+          {m.packing_save_2()}
         </Button>
       </form>
     </RecordDialog>
