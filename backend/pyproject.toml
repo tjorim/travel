@@ -32,7 +32,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "pypdf==7.0.0",
+  "pypdf==7.0.1",
   "pytest==9.2.0",
   "python-travel",
   "ruff==0.17.4",
