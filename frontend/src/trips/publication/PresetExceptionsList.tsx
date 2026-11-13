@@ -3,12 +3,8 @@ import { useEffect, useState } from "react";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import {
-  presetRecordName,
-  type PresetExceptions,
-  type PresetRecordRef,
-  type ShareScope,
-} from "../../tracker-model";
+import { presetRecordName } from "../../records";
+import { type PresetExceptions, type PresetRecordRef, type ShareScope } from "../../api-types";
 import { useSetVisibility } from "../visibility";
 import { GROUP_TITLES, isExcluded, setShown, updateItem, type CatalogItem } from "./catalog";
 import { presetName } from "./use-sharing-presets";
@@ -53,7 +49,7 @@ export function PresetExceptionsList({
   useEffect(() => {
     if (!dirty) setTouched(new Set());
   }, [dirty]);
-  const keyOf = (record: PresetRecordRef) => `${record.kind}:${record.id}`;
+  const keyOf = (record: Pick<PresetRecordRef, "kind" | "id">) => `${record.kind}:${record.id}`;
   const find = (record: PresetRecordRef) =>
     catalog.find((item) => item.kind === record.kind && item.id === record.id);
   const listed = (item: CatalogItem) =>

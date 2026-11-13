@@ -9,7 +9,7 @@ import { isResourceInUse } from "../query/api";
 import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { useTripResource } from "../query/owner-queries";
 import { RecordDialog } from "../RecordDialog";
-import type { Area, Location, PlaceSearchResult, Trip } from "../tracker-model";
+import type { Area, Location, LocationInput, Trip } from "../api-types";
 import { duplicateLocations } from "./merge-candidates";
 import { mergedNotice, type MergeRequest } from "./MergeDialog";
 import { LocationDetails } from "./locations/LocationDetails";
@@ -55,7 +55,7 @@ export function LocationManager({
   const locations = locationsQuery.data ?? [];
   const dialog = useRecordDialog(locations);
   useDialogFocus(focusId, dialog.inspect);
-  const [suggestion, setSuggestion] = useState<PlaceSearchResult | null>(null);
+  const [suggestion, setSuggestion] = useState<LocationInput | null>(null);
   const [resume, setResume] = useState(false);
   const [merge, setMerge] = useState<MergeRequest | null>(null);
   // The last delete was refused because the location is still used, so merging is the way to tidy up.
@@ -182,7 +182,7 @@ export function LocationManager({
     } else create(request.areaId);
     // A request token is the deliberate trigger; form and dialog callbacks change each render.
   }, [request?.token]);
-  function choose(result: PlaceSearchResult) {
+  function choose(result: LocationInput) {
     setSuggestion(result);
     const proposed = {
       displayName: result.display_name,

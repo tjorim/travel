@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { useTripWithUpdates, useTripsQuery } from "../query/owner-queries";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
-import type { TravelUpdate, Trip } from "../tracker-model";
+import type { TravelUpdate, Trip } from "../api-types";
 import { TravelUpdateManager } from "./TravelUpdateManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
@@ -17,6 +17,9 @@ const update = (
   title: string,
   visibility: TravelUpdate["visibility"] = "private",
 ): TravelUpdate => ({
+  area: null,
+  body_html: null,
+  private_notes_html: null,
   id,
   occurred_at: "2054-11-16T10:00:00Z",
   date_precision: "day",
@@ -82,6 +85,10 @@ beforeEach(() => {
   auth.session = { accessToken: testToken() };
   state = {
     trip: {
+      owner_subject: "owner-1",
+      cover_derivative_id: null,
+      cover_url: null,
+      summary_html: null,
       id: "trip",
       title: "Exampleland",
       summary: null,

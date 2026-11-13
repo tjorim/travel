@@ -5,6 +5,7 @@ import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
 import { useAuth } from "../../auth-context";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
+import type { GeoJsonLineString } from "../../api-types";
 import { ownerRequest } from "../../query/api";
 import { RouteGeometryEditor, type RouteCoordinate } from "../RouteGeometryEditor";
 
@@ -53,7 +54,7 @@ export function FinishedTrackImport({
     controller.current = active;
     setBusy(true);
     try {
-      const result = await ownerRequest<{ coordinates: RouteCoordinate[] }>(
+      const result = await ownerRequest<GeoJsonLineString>(
         session,
         `/api/trips/${tripId}/route-line-import?start=${+start}&end=${+end}`,
         m.owner_track_error,

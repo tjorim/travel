@@ -12,13 +12,17 @@ import {
   stubObjectUrls,
   testToken,
 } from "../query/test-utils";
-import type { DocumentAsset, Trip } from "../tracker-model";
+import type { DocumentAsset, Trip } from "../api-types";
 import { DocumentManager } from "./DocumentManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 const trip: Trip = {
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id: "trip",
   title: "Exampleland",
   summary: null,

@@ -6,13 +6,17 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { server } from "../mocks/server";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
-import type { Area, Trip } from "../tracker-model";
+import type { Area, Trip } from "../api-types";
 import { FirstSteps } from "./FirstSteps";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 const trip: Trip = {
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id: "trip",
   title: "Exampleland",
   summary: null,

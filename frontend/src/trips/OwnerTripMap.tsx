@@ -9,7 +9,8 @@ import { errorMessage } from "../query/api";
 import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
 import { ownerKeys } from "../query/keys";
 import { TripMap, type MapLine, type MapPoint } from "../TripMap";
-import { locationName, routeTitle, type Area, type Trip, areaName } from "../tracker-model";
+import { locationName, routeTitle, areaName } from "../records";
+import { type Area, type Trip } from "../api-types";
 import type { CreateKind, CreatePrefill } from "./create-request";
 
 type OfflineSnapshot = { points: MapPoint[]; lines: MapLine[] };

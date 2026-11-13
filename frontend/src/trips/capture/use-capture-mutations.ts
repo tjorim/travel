@@ -1,7 +1,7 @@
 import { m } from "../../paraglide/messages.js";
 import { ownerKeys } from "../../query/keys";
 import { tripPath, useOwnerMutation } from "../../query/owner-queries";
-import type { TravelUpdate } from "../../tracker-model";
+import type { TravelUpdate } from "../../api-types";
 
 export const SAVE_FALLBACK = m.api_capture_save;
 

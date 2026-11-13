@@ -1,4 +1,4 @@
-import type { Projection } from "./projection-types";
+import type { Projection } from "./api-types";
 
 /**
  * A visitor-document record for a test. Tests name only the fields they are about, and some add a private one on

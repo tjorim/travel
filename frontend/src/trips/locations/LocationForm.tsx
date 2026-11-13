@@ -1,5 +1,5 @@
 import { AdvancedSection } from "../../forms/AdvancedSection";
-import { areaName } from "../../tracker-model";
+import { areaName } from "../../records";
 import { Button } from "@/ui/button";
 
 import {
@@ -13,7 +13,7 @@ import {
 import type { useRecordForm } from "../../forms/useRecordForm";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { Area, Location, PlaceSearchResult } from "../../tracker-model";
+import type { Area, Location, LocationInput } from "../../api-types";
 import { PlaceSearchField } from "../PlaceSearchField";
 import { MapTarget } from "./MapTarget";
 import {
@@ -44,14 +44,14 @@ export function LocationForm({
   record: ReturnType<typeof useRecordForm<Values, Location>>;
   editingId: string | null | undefined;
   selected: Location | null;
-  suggestion: PlaceSearchResult | null;
+  suggestion: LocationInput | null;
   areas: Area[];
   addressPreview: Record<string, string | null | undefined>;
   canShareAddress: boolean;
   recipients: string[];
   recipientState: RecipientState;
   onAddArea: () => void;
-  onChoose: (result: PlaceSearchResult) => void;
+  onChoose: (result: LocationInput) => void;
 }) {
   useLocale();
   // What this edit would change for the audiences that read the saved location today.

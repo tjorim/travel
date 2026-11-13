@@ -21,7 +21,8 @@ import {
   styleLabelFont,
   type MapCamera,
 } from "./map-style";
-import { ROUTE_MODE_LABELS, type RouteMode } from "./tracker-model";
+import { ROUTE_MODE_LABELS } from "./records";
+import { type RouteMode } from "./api-types";
 
 export type MapLink = { label: string; href?: string; onOpen?: () => void };
 export type MapPoint = {

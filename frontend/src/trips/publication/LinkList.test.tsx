@@ -2,7 +2,7 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import { changeLocale } from "../../locale";
-import type { ShareLink } from "../../tracker-model";
+import type { ShareLink } from "../../api-types";
 import { LinkList } from "./LinkList";
 
 const link = (id: string): ShareLink => ({
@@ -20,6 +20,12 @@ const link = (id: string): ShareLink => ({
   expires_at: null,
   created_at: "2026-01-01T00:00:00Z",
   activated_at: null,
+  feed_token: null,
+  feed_expires_at: null,
+  exclusions: { excluded: [], also_hidden: {}, stale: 0 },
+  applied_preset: null,
+  applied_preset_at: null,
+  preset_exceptions: null,
   revoked_at: null,
 });
 const show = (versions: number, current: ShareLink = link("current")) =>

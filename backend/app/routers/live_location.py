@@ -17,7 +17,7 @@ from ..database import get_session
 from ..errors import ApiException
 from ..models import LivePoint, LiveSession, ShareLink, Trip
 from ..request_limits import RequestRateLimiter
-from ..schemas import Identifier
+from ..schemas import CurrentLocation, Identifier
 from .trips import owned_trip
 
 router = APIRouter(prefix="/trips/{trip_id}/live-location", tags=["live-location"])
@@ -35,23 +35,52 @@ def aware(value: datetime) -> datetime:
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
-class Create(BaseModel):
+class LiveSessionCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     source: str = Field(pattern=r"^(person|device_tracker)\.[a-z0-9_]{1,100}$")
 
 
-class Configure(BaseModel):
+class LiveSessionConfigure(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     enabled: bool
     audiences: dict[str, Precision] = Field(default_factory=dict, max_length=100)
     delays: dict[str, Literal[0, 900, 1800, 3600, 7200, 86400]] | None = Field(default=None, max_length=100)
 
 
-class Position(BaseModel):
+class LivePositionInput(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     observed_at: AwareDatetime
     latitude: float = Field(ge=-90, le=90, allow_inf_nan=False)
     longitude: float = Field(ge=-180, le=180, allow_inf_nan=False)
+
+
+class LivePointResponse(BaseModel):
+    id: str
+    observed_at: AwareDatetime
+    latitude: float
+    longitude: float
+
+
+class LiveSessionResponse(BaseModel):
+    id: str
+    source: str
+    enabled: bool
+    audiences: dict[str, Precision]
+    delays: dict[str, int]
+    previews: dict[str, list[CurrentLocation]] = Field(
+        description="What each enabled audience receives right now, at its delivered precision and delay."
+    )
+    current: LivePointResponse | None
+    stale: bool = Field(description="The newest point is more than an hour old.")
+
+
+class LivePositionAccepted(BaseModel):
+    accepted: bool = Field(description="False when the same position was already stored (a retry).")
+
+
+class LiveTrackPage(BaseModel):
+    points: list[LivePointResponse]
+    next: str | None = Field(description="Pass as `after` for the next page; null on the last one.")
 
 
 def owned(session: Session, trip_id: str, session_id: str, subject: str, *, lock: bool = False) -> LiveSession:
@@ -88,7 +117,7 @@ def session_data(session: Session, row: LiveSession) -> dict:
     }
 
 
-@router.get("")
+@router.get("", response_model=list[LiveSessionResponse])
 def list_sessions(trip_id: Identifier, session: SessionDep, subject: SubjectDep, response: Response) -> list[dict]:
     owned_trip(session, trip_id, subject)
     response.headers["Cache-Control"] = "no-store, private"
@@ -97,8 +126,8 @@ def list_sessions(trip_id: Identifier, session: SessionDep, subject: SubjectDep,
     ]
 
 
-@router.post("", status_code=201)
-def create_session(trip_id: Identifier, data: Create, session: SessionDep, subject: SubjectDep) -> dict:
+@router.post("", status_code=201, response_model=LiveSessionResponse)
+def create_session(trip_id: Identifier, data: LiveSessionCreate, session: SessionDep, subject: SubjectDep) -> dict:
     owned_trip(session, trip_id, subject)
     session.execute(select(Trip.id).where(Trip.id == trip_id).with_for_update())
     # Bound per-trip configuration, without a global in-memory owner registry.
@@ -110,9 +139,9 @@ def create_session(trip_id: Identifier, data: Create, session: SessionDep, subje
     return session_data(session, row)
 
 
-@router.put("/{session_id}")
+@router.put("/{session_id}", response_model=LiveSessionResponse)
 def configure(
-    trip_id: Identifier, session_id: Identifier, data: Configure, session: SessionDep, subject: SubjectDep
+    trip_id: Identifier, session_id: Identifier, data: LiveSessionConfigure, session: SessionDep, subject: SubjectDep
 ) -> dict:
     row = owned(session, trip_id, session_id, subject, lock=True)
     if data.delays is not None and data.delays.keys() - data.audiences.keys():
@@ -134,7 +163,7 @@ def configure(
     return session_data(session, row)
 
 
-@router.post("/{session_id}/positions")
+@router.post("/{session_id}/positions", response_model=LivePositionAccepted)
 async def ingest(
     trip_id: Identifier, session_id: Identifier, request: Request, session: SessionDep, subject: SubjectDep
 ) -> dict:
@@ -148,14 +177,14 @@ async def ingest(
     from pydantic import ValidationError
 
     try:
-        data = Position.model_validate_json(body)
+        data = LivePositionInput.model_validate_json(body)
     except ValidationError:
         # Never echo JSON fragments, coordinates, unknown keys or source state.
         raise ApiException(422, "Invalid position", code="invalid_input") from None
     return await run_in_threadpool(accept_position, trip_id, session_id, data, session, subject)
 
 
-def accept_position(trip_id: str, session_id: str, data: Position, session: Session, subject: str) -> dict:
+def accept_position(trip_id: str, session_id: str, data: LivePositionInput, session: Session, subject: str) -> dict:
     row = owned(session, trip_id, session_id, subject, lock=True)
     if not row.enabled:
         raise ApiException(409, "Session disabled", code="live_disabled")
@@ -182,7 +211,7 @@ def accept_position(trip_id: str, session_id: str, data: Position, session: Sess
     return {"accepted": True}
 
 
-@router.get("/{session_id}/tracks")
+@router.get("/{session_id}/tracks", response_model=LiveTrackPage)
 def tracks(
     trip_id: Identifier,
     session_id: Identifier,

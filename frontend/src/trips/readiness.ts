@@ -1,12 +1,6 @@
-import {
-  browserTimeZone,
-  daysBetween,
-  localDate,
-  whereabouts,
-  type Stay,
-  type Route,
-  type TripTask,
-} from "../tracker-model";
+import { browserTimeZone, daysBetween, localDate } from "../dates";
+import { whereabouts } from "../whereabouts";
+import { type Stay, type Route, type TripTask } from "../api-types";
 
 /** Calendar days, never elapsed 24-hour periods (including across DST). */
 export function tripDay(

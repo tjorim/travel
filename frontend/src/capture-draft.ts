@@ -1,8 +1,32 @@
 import { captureSessionGeneration, decodeSubject, readSession } from "./auth";
-import type { UpdateDraft, LocationInput } from "./tracker-model";
+import type { LocationInput } from "./api-types";
 
 /** Editor metadata survives object spreads but is never serialized into tab recovery or API data. */
 export const DRAFT_FENCE: unique symbol = Symbol();
+
+/** What the owner is writing for a new reisupdate, kept in this tab and recoverable after a reload. */
+export type UpdateDraft = {
+  /** In-memory write fence; never sent or persisted with the payload. */
+  [DRAFT_FENCE]?: DraftFence;
+  tripId: string;
+  updateId: string | null;
+  occurredAt: string;
+  title: string;
+  /** Private notes: what the owner wants to remember. The text for visitors is written later. */
+  notes: string;
+  location: LocationInput | null;
+  mediaAssetIds: string[];
+};
+
+/** Photos the owner chose to start a reisupdate from, with what their metadata suggests. */
+export type TravelUpdateCandidateIntent = {
+  tripId: string;
+  mediaAssetIds: string[];
+  occurredAt?: string;
+  /** `occurredAt` is a camera wall-clock time rather than an instant. */
+  occurredAtLocal?: boolean;
+  gps?: { latitude: number; longitude: number };
+};
 
 const prefix = "travel-capture-draft-v3:";
 export type DraftFence = {

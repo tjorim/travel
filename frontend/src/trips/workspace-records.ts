@@ -1,9 +1,6 @@
 import { m } from "../paraglide/messages.js";
+import { ownerLocationName, routeTitle, stayLabel, visitTitle, areaName } from "../records";
 import {
-  ownerLocationName,
-  routeTitle,
-  stayLabel,
-  visitTitle,
   type Area,
   type DocumentAsset,
   type Location,
@@ -13,8 +10,7 @@ import {
   type TravelUpdate,
   type TripTask,
   type Visit,
-  areaName,
-} from "../tracker-model";
+} from "../api-types";
 import type { RecordKind } from "./record-focus";
 import { locateRecord } from "./workspace-sections";
 

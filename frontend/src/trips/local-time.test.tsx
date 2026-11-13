@@ -3,14 +3,9 @@ import { afterEach, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 
 import { LocalTimes } from "./TripOverview";
-import {
-  offsetLabel,
-  utcOffsetMinutes,
-  whereabouts,
-  type Location,
-  type Stay,
-  type Route,
-} from "../tracker-model";
+import { offsetLabel, utcOffsetMinutes } from "../dates";
+import { whereabouts } from "../whereabouts";
+import { type Location, type Stay, type Route } from "../api-types";
 
 afterEach(cleanup);
 
@@ -29,6 +24,8 @@ const city = (label: string) => ({
 
 function stay(label: string, check_in_date: string, check_out_date: string): Stay {
   return {
+    notes_html: null,
+    contact_details_html: null,
     id: label,
     check_in_date,
     check_out_date,
@@ -57,6 +54,7 @@ function route(
   arrival_timezone: string,
 ): Route {
   return {
+    notes_html: null,
     id: `${from}-${to}`,
     mode: "flight",
     status: "confirmed",

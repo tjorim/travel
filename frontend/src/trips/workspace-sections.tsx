@@ -11,7 +11,8 @@ import type { ComponentType } from "react";
 
 import { lazyView } from "../lazy-view";
 import { m } from "../paraglide/messages.js";
-import type { Area, TravelUpdateCandidateIntent, Trip } from "../tracker-model";
+import type { Area, Trip } from "../api-types";
+import type { TravelUpdateCandidateIntent } from "../capture-draft";
 import type { AgendaRecordKind } from "./AgendaView";
 import type { CreateKind, CreatePrefill, CreateRequest } from "./create-request";
 import type { MapRecordKind, RecordFocus, RecordKind } from "./record-focus";

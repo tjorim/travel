@@ -8,7 +8,7 @@ import { m } from "../paraglide/messages.js";
 import { errorMessage, openOwnerFile } from "../query/api";
 import { errorNotice, useFeedback } from "../query/feedback";
 import { useOwner } from "../query/owner-queries";
-import { formatDayRange } from "../tracker-model";
+import { formatDayRange } from "../dates";
 import { AreasBlock } from "../trips/detail/AreasBlock";
 import { DocumentsBlock } from "../trips/detail/DocumentsBlock";
 import { LocationsBlock } from "../trips/detail/LocationsBlock";

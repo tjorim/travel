@@ -7,7 +7,7 @@ import { changeLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { server } from "../../mocks/server";
 import { renderWithOwner, testToken } from "../../query/test-utils";
-import type { ShareLink } from "../../tracker-model";
+import type { ShareLink } from "../../api-types";
 import { FeedControls } from "./FeedControls";
 vi.mock("../../auth-context", () => ({
   useAuth: () => ({ session: { accessToken: testToken() } }),

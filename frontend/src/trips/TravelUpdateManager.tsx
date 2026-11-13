@@ -13,16 +13,15 @@ import { ownerKeys } from "../query/keys";
 import { tripPath, useOwner, useOwnerMutation } from "../query/owner-queries";
 import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
+import { localDateTime } from "../dates";
+import { locationName } from "../records";
 import {
-  localDateTime,
-  locationName,
   type Area,
   type LocationInput,
-  type PlaceSearchResult,
   type TravelUpdate,
   type Trip,
   type Visibility,
-} from "../tracker-model";
+} from "../api-types";
 import { UpdateRow } from "./UpdateRow";
 import { useUpdatePhotos } from "./UpdatePhotos";
 import { useUpdatePreview } from "./UpdatePreview";
@@ -165,7 +164,7 @@ export function TravelUpdateManager({
     record.load(fromUpdate(item));
     dialog.edit(item.id);
   }
-  function usePlaceResult(result: PlaceSearchResult) {
+  function usePlaceResult(result: LocationInput) {
     record.form.setFieldValue("location", result);
     record.form.setFieldValue("areaId", "");
   }

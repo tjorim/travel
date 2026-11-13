@@ -28,7 +28,8 @@ import {
   useTripsQuery,
 } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { bytesLabel, type OwnerDocument } from "../tracker-model";
+import { bytesLabel } from "../files";
+import { type OwnerDocument } from "../api-types";
 import { Field, FieldLabel } from "@/ui/field";
 
 type Values = { title: string; kind: OwnerDocument["document_kind"]; linkedTripId: string };

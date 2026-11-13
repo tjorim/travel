@@ -4,7 +4,7 @@ import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { errorNotice, textNotice, useFeedback } from "../../query/feedback";
 import { tripPath, useOwnerMutation } from "../../query/owner-queries";
-import type { PlaceSearchResponse } from "../../tracker-model";
+import type { PlaceSearchResponse } from "../../api-types";
 
 type Gps = { latitude: number; longitude: number };
 

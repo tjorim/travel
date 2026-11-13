@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { server } from "../mocks/server";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
-import type { ShareScope, Trip, TripSummary } from "../tracker-model";
+import type { ShareScope, Trip, TripSummary } from "../api-types";
 import type { Collection, CollectionMember } from "./collections";
 import { MemberScopeDialog } from "./MemberScopeDialog";
 

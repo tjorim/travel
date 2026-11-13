@@ -8,14 +8,9 @@ import type { useRecordForm } from "../../forms/useRecordForm";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { useTripResource } from "../../query/owner-queries";
-import {
-  addDays,
-  areaName,
-  daysBetween,
-  type DocumentAsset,
-  type PlaceSearchResult,
-  type Stay,
-} from "../../tracker-model";
+import { addDays, daysBetween } from "../../dates";
+import { areaName } from "../../records";
+import { type DocumentAsset, type LocationInput, type Stay } from "../../api-types";
 import { PLANNING_STATUS_LABELS } from "../labels";
 import { PlaceSearchField } from "../PlaceSearchField";
 import { recordPrecisionOptions } from "../record-precision";
@@ -54,7 +49,7 @@ export function StayForm({
 }) {
   useLocale();
   const areas = useTripResource(tripId, "areas").data ?? [];
-  function choosePlace(result: PlaceSearchResult, existingPlace?: Stay["location"]) {
+  function choosePlace(result: LocationInput, existingPlace?: Stay["location"]) {
     const place = existingPlace ?? result;
     record.form.setFieldValue("propertyName", place.display_name ?? "");
     record.form.setFieldValue("address", place.address_line1 ?? "");

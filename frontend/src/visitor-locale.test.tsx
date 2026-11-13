@@ -12,7 +12,7 @@ import {
 } from "./ProjectionView";
 import { fixture } from "./test-projection";
 import { VisitorRoutes } from "./visitor-routes";
-import type { ShareScope } from "./tracker-model";
+import type { ShareScope } from "./api-types";
 import { RenderedPreview } from "./trips/RenderedPreview";
 import { m } from "./paraglide/messages.js";
 import { rememberSharedTrip } from "./saved-shared-trips";

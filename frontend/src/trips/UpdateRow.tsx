@@ -2,8 +2,9 @@ import { Button } from "@/ui/button";
 
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import { updateDateLabel, type TravelUpdate } from "../tracker-model";
-import type { TrackerSession } from "../auth";
+import { updateDateLabel } from "../dates";
+import { type TravelUpdate } from "../api-types";
+import type { OwnerSession } from "../auth";
 import { previewBlocker } from "./UpdatePreview";
 import { UpdatePhotoStrip, type UpdatePhoto } from "./UpdatePhotos";
 import { visibilityLabel } from "./visibility";
@@ -20,7 +21,7 @@ export function UpdateRow({
 }: {
   item: TravelUpdate;
   photos: UpdatePhoto[];
-  session: TrackerSession | null;
+  session: OwnerSession | null;
   hasAudience: boolean;
   /** The audiences are still being read, so whether a preview exists is not known yet. */
   loading: boolean;

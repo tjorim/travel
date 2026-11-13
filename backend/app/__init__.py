@@ -1,1 +1,1 @@
-"""Travel tracker API package."""
+"""Travel API package."""

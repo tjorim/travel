@@ -37,6 +37,7 @@ from ..schemas import (
     CollectionMembershipResponse,
     CollectionResponse,
     CollectionUpdate,
+    ExclusionWideningConflict,
     Identifier,
     ProjectionDocument,
     SafeText,
@@ -354,7 +355,11 @@ def add_collection_member(
     return collection_response(session, collection)
 
 
-@router.put("/{collection_id}/members/{member_id}", response_model=CollectionResponse)
+@router.put(
+    "/{collection_id}/members/{member_id}",
+    response_model=CollectionResponse,
+    responses={409: {"model": ExclusionWideningConflict, "description": "A live audience would newly show records."}},
+)
 def set_collection_member_scope(
     collection_id: Identifier,
     member_id: Identifier,

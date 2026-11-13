@@ -7,7 +7,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { dayjs } from "../dayjs";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
-import { emptyDraft, readDraft, saveDraft, type TripSummary } from "../tracker-model";
+import { emptyDraft, readDraft, saveDraft } from "../capture-draft";
+import { type TripSummary } from "../api-types";
 import { CaptureDialog } from "./CaptureDialog";
 
 const auth = vi.hoisted(() => ({
@@ -22,6 +23,10 @@ const trip = (
   starts_on: string | null,
   ends_on: string | null,
 ): TripSummary => ({
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id,
   title,
   summary: null,

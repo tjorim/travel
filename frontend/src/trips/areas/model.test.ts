@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import type { Area } from "../../tracker-model";
+import type { Area } from "../../api-types";
 import {
   areaCoordinate,
   areaSummary,

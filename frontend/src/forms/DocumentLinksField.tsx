@@ -3,7 +3,7 @@ import { TravelCheckbox } from "@/ui/TravelCheckbox";
 
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import type { DocumentAsset } from "../tracker-model";
+import type { DocumentAsset } from "../api-types";
 
 /**
  * The owner's choice of which trip documents a record (a route or a stay) carries, such as its booking

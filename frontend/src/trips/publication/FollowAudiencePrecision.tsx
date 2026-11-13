@@ -6,7 +6,7 @@ import { useState } from "react";
 import { SearchSelect } from "../../forms/fields";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { FollowAudienceAudience, FollowAudienceResult } from "../../tracker-model";
+import type { FollowAudienceAudience, FollowAudienceResult } from "../../api-types";
 import { DeleteConfirmation } from "../../RecordDialog";
 import { usePublicationMutations } from "./use-publication-mutations";
 

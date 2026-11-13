@@ -10,7 +10,8 @@ import {
   visitTimes,
   type ProjectionVisit,
 } from "./ProjectionView";
-import { timeForViewer, type ShareScope } from "./tracker-model";
+import { timeForViewer } from "./dates";
+import { type ShareScope } from "./api-types";
 import { fixture, type SparseProjection } from "./test-projection";
 import { VisitorRoutes } from "./visitor-routes";
 import { RenderedPreview } from "./trips/RenderedPreview";

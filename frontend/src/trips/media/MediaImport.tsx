@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { useProviderConnections } from "../../query/owner-queries";
-import type { ImportSession } from "../../tracker-model";
+import type { ImportSession } from "../../api-types";
 import { providerLabel } from "./labels";
 
 /** Importing media from a connected provider: choose there, then copy the selection into the private trip. */

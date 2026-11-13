@@ -6,7 +6,7 @@ import type {
   ImportSession,
   MediaAsset,
   MediaDerivative,
-} from "../../tracker-model";
+} from "../../api-types";
 
 /** The owner API calls behind the media library: uploads, deletes, copies and provider imports. */
 export function useMediaMutations(tripId: string, selected: MediaAsset | null) {

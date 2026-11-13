@@ -11,7 +11,7 @@ import type {
   OverviewRecordPrecision,
   OverviewWarning,
   TripOverview,
-} from "../../tracker-model";
+} from "../../api-types";
 import { VisibilityControl } from "../visibility";
 import { presetLabelText } from "./PresetSection";
 import {

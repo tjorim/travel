@@ -19,21 +19,9 @@ import {
 } from "./create-request";
 
 import { useTripResource } from "../query/owner-queries";
-import {
-  addDays,
-  formatDayRange,
-  localDate,
-  routeTitle,
-  stayInPlan,
-  stayLabel,
-  visitTitle,
-  wallClock,
-  type Trip,
-  type Stay,
-  type Route,
-  type Visit,
-  areaName,
-} from "../tracker-model";
+import { addDays, formatDayRange, localDate, wallClock } from "../dates";
+import { routeTitle, stayInPlan, stayLabel, visitTitle, areaName } from "../records";
+import { type Trip, type Stay, type Route, type Visit } from "../api-types";
 
 export type AgendaRecordKind = "stay" | "route" | "visit";
 

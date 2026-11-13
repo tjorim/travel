@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import type { AlternativeGroup, Stay } from "../../tracker-model";
+import type { AlternativeGroup, Stay } from "../../api-types";
 import { comparisonRows, groupedIds, groupTitle, membersOf, spanLabel } from "./model";
 
 const area = { id: "a1", label: "Tainan" } as Stay["area"];

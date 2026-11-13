@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import type { Area, Location } from "../tracker-model";
+import type { Area, Location } from "../api-types";
 import { duplicateAreas, duplicateLocations, parseAudience } from "./merge-candidates";
 
 const place = (id: string, fields: Partial<Location> = {}) =>

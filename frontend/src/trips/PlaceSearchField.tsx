@@ -8,12 +8,8 @@ import { useRef, useState } from "react";
 import { AsyncSearchSelect } from "../forms/fields";
 
 import { tripPath, useLocationSearch, useOwnerMutation } from "../query/owner-queries";
-import {
-  locationName,
-  type Location,
-  type PlaceSearchResponse,
-  type PlaceSearchResult,
-} from "../tracker-model";
+import { locationName } from "../records";
+import { type Location, type PlaceSearchResponse, type LocationInput } from "../api-types";
 import { Field, FieldLabel, FieldSet, FieldLegend } from "@/ui/field";
 
 /** Owner-only place lookup that never persists a selected result by itself. */
@@ -34,7 +30,7 @@ export function PlaceSearchField({
   placeholder: string;
   help: string;
   /** Existing locations include their full owner-only data for pre-filling adjacent fields. */
-  onSelect: (result: PlaceSearchResult, existingPlace?: Location) => void;
+  onSelect: (result: LocationInput, existingPlace?: Location) => void;
   /** Location-based editors may reuse a saved private location; area search must not. */
   allowExisting?: boolean;
   /** Names the place the record is already linked to, shown until a new one is chosen. */
@@ -88,7 +84,7 @@ export function PlaceSearchField({
       },
     );
   }
-  function choose(result: PlaceSearchResult) {
+  function choose(result: LocationInput) {
     onSelect(result);
     setResults(null);
     setState(textNotice(() => m.owner_location_suggested_all_fields_remain_editable()));

@@ -1,4 +1,4 @@
-import type { TripSummary } from "../../tracker-model";
+import type { TripSummary } from "../../api-types";
 import { tripState } from "../trip-state";
 
 /** The newest moment saved to a trip, or an empty string when it has none. */

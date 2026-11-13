@@ -13,13 +13,13 @@ import type { Projection } from "../ProjectionView";
 import { RecordDialog } from "../RecordDialog";
 import type {
   ExclusionWidening,
-  ProjectionDocument,
   ShareLink,
   PublicProjectionStatus,
   ShareScope,
   SharingPresetId,
   Trip,
-} from "../tracker-model";
+} from "../api-types";
+import type { ProjectionDocument } from "../api-types";
 import { cloneScope, emptyScope, publicUrl, shareUrl } from "./publication/catalog";
 import { ExclusionWideningDialog, exclusionWidening } from "./publication/ExclusionWideningDialog";
 import { FollowAudiencePrecision } from "./publication/FollowAudiencePrecision";

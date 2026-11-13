@@ -13,13 +13,17 @@ import {
   testToken,
 } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
-import type { MediaAsset, MediaDerivative, Trip } from "../tracker-model";
+import type { MediaAsset, MediaDerivative, Trip } from "../api-types";
 import { MediaManager } from "./MediaManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 const trip: Trip = {
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id: "trip",
   title: "Exampleland",
   summary: null,
@@ -27,6 +31,9 @@ const trip: Trip = {
   ends_on: null,
   travel_updates: [
     {
+      area: null,
+      body_html: null,
+      private_notes_html: null,
       id: "e1",
       occurred_at: "2054-11-16T10:00:00Z",
       date_precision: "day",
@@ -71,6 +78,15 @@ const derivative = (
   visibility: "private",
   created_at: "2054-01-01T00:00:00Z",
   file_url: `/files/${id}`,
+  processing_state: "ready",
+  media_kind: "photo",
+  content_type: null,
+  byte_size: null,
+  duration_seconds: null,
+  poster_url: null,
+  remove_audio: false,
+  is_cover: false,
+  caption_html: null,
   ...extra,
 });
 

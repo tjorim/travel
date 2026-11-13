@@ -21,21 +21,16 @@ import {
   useOwner,
   useTripsQuery,
 } from "../query/owner-queries";
+import { addDays, daysBetween, formatDay, formatInstant, formatUpdateInstant } from "../dates";
+import { routeInPlan, stayCoversNight } from "../records";
 import {
-  addDays,
-  daysBetween,
-  formatDay,
-  formatInstant,
-  formatUpdateInstant,
-  routeInPlan,
-  stayCoversNight,
   type Stay,
   type Route,
   type TravelUpdate,
   type TripSummary,
   type TripTask,
   type TripTaskAlert,
-} from "../tracker-model";
+} from "../api-types";
 
 type TripSnapshot = {
   stays: Stay[];

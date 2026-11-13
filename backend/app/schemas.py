@@ -137,6 +137,14 @@ class InputModel(BaseModel):
         return value
 
 
+class ResponseModel(BaseModel):
+    """A record the API answers with. A field with a default is always sent, so the schema lists it as required
+    and the generated client types never make it optional. (Only a field that is left out when it has no value,
+    such as those of a visitor projection, is optional in the schema.)"""
+
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+
 class LocationFields(InputModel):
     """An owner-only location: address parts, coordinates, viewport and
     navigation/provider IDs. A shared location shows only what its allowlist says."""
@@ -343,7 +351,7 @@ class MergeRequest(InputModel):
     )
 
 
-class MergeAudience(BaseModel):
+class MergeAudience(ResponseModel):
     """A live audience of the trip: the public page or one active share link."""
 
     audience: str = Field(description="`public` or `link:<id>`.")
@@ -359,7 +367,7 @@ class MergeWidening(MergeAudience):
     travel_updates: int = 0
 
 
-class MergeWidenedRecord(BaseModel):
+class MergeWidenedRecord(ResponseModel):
     """A moved record that newly reaches an audience, and what making it private would do instead."""
 
     kind: Literal["stay", "visit", "route", "travel_update"]
@@ -375,7 +383,7 @@ class MergeWidenedRecord(BaseModel):
     make_private: bool = Field(description="Whether this request chose to make it private first.")
 
 
-class LocationMergeDuplicate(BaseModel):
+class LocationMergeDuplicate(ResponseModel):
     """What merging one duplicate moves to the kept location, and what it may hide."""
 
     id: str
@@ -395,14 +403,14 @@ class LocationMergeDuplicate(BaseModel):
     widened_records: list[MergeWidenedRecord] = []
 
 
-class LocationMergeResult(BaseModel):
+class LocationMergeResult(ResponseModel):
     keep_id: str
     applied: bool
     duplicates: list[LocationMergeDuplicate]
     warnings: list[str]
 
 
-class AreaMergeDuplicate(BaseModel):
+class AreaMergeDuplicate(ResponseModel):
     """What merging one duplicate area moves to the kept area, and what it may hide."""
 
     id: str
@@ -419,7 +427,7 @@ class AreaMergeDuplicate(BaseModel):
     widened_records: list[MergeWidenedRecord] = []
 
 
-class AreaMergeResult(BaseModel):
+class AreaMergeResult(ResponseModel):
     keep_id: str
     applied: bool
     duplicates: list[AreaMergeDuplicate]
@@ -432,9 +440,11 @@ class AreaMergeResult(BaseModel):
 class LocationResponse(LocationFields):
     id: str
     visibility: Visibility
+    # Every stored location belongs to an area (derived from its city when it was created).
+    area_id: str  # ty: ignore[invalid-mutable-override]
     osm_url: str | None
     # A response is read from stored data, not sent by a client.
-    model_config = ConfigDict(from_attributes=True, extra="ignore")
+    model_config = ConfigDict(from_attributes=True, extra="ignore", json_schema_serialization_defaults_required=True)
 
     @computed_field(description=_html_of("notes"))
     @property
@@ -476,7 +486,7 @@ class TranslationDraftRequest(InputModel):
         return self
 
 
-class TranslationDraftResponse(BaseModel):
+class TranslationDraftResponse(ResponseModel):
     text: str = Field(description="The translated draft. Nothing is stored; the owner reviews and edits it.")
     source: TranslationLanguage
     target: TranslationLanguage
@@ -492,7 +502,7 @@ class PlaceReverseGeocodeRequest(InputModel):
     longitude: float = Field(ge=-180, le=180)
 
 
-class PlaceSearchResult(BaseModel):
+class PlaceSearchResult(ResponseModel):
     osm_element_type: Literal["node", "way", "relation"]
     osm_element_id: str
     display_name: str
@@ -510,14 +520,14 @@ class PlaceSearchResult(BaseModel):
     viewport_west: float | None = Field(default=None, ge=-180, le=180)
 
 
-class PlaceSearchResponse(BaseModel):
+class PlaceSearchResponse(ResponseModel):
     provider: str
     attribution: str
     attribution_url: str
     results: list[PlaceSearchResult]
 
 
-class NavigationResponse(BaseModel):
+class NavigationResponse(ResponseModel):
     """Only returned to the owner. Shared navigation redirects directly."""
 
     url: str
@@ -565,7 +575,7 @@ class AreaSuggestRequest(PlaceReverseGeocodeRequest):
     city: str | None = Field(default=None, max_length=120)
 
 
-class AreaSuggestion(BaseModel):
+class AreaSuggestion(ResponseModel):
     existing_area_id: str | None = None
     area: AreaInput
 
@@ -573,7 +583,7 @@ class AreaSuggestion(BaseModel):
 class AreaResponse(AreaInput):
     id: str
     visibility: Visibility
-    model_config = ConfigDict(from_attributes=True, extra="ignore")
+    model_config = ConfigDict(from_attributes=True, extra="ignore", json_schema_serialization_defaults_required=True)
 
 
 class TripCreate(InputModel):
@@ -645,7 +655,7 @@ class TravelUpdatePatch(InputModel):
     _unique_media = field_validator("media_asset_ids")(_require_unique_media_assets)
 
 
-class TravelUpdateResponse(BaseModel):
+class TravelUpdateResponse(ResponseModel):
     id: str
     occurred_at: datetime
     date_precision: DatePrecision
@@ -778,7 +788,7 @@ class StayUpdate(InputModel):
         return None if values is None else require_unique_document_ids(values)
 
 
-class StayResponse(BaseModel):
+class StayResponse(ResponseModel):
     id: str
     check_in_date: date
     check_out_date: date
@@ -880,7 +890,7 @@ class VisitUpdate(InputModel):
     )
 
 
-class RouteReference(BaseModel):
+class RouteReference(ResponseModel):
     id: str
     title: str
 
@@ -896,7 +906,7 @@ class VisitRouteCheck(InputModel):
     ends_on: date | None = None
 
 
-class VisitResponse(BaseModel):
+class VisitResponse(ResponseModel):
     id: str
     area: AreaResponse
     location: LocationResponse | None
@@ -951,7 +961,7 @@ class PackingListUpdate(InputModel):
     name: str = Field(min_length=1, max_length=160)
 
 
-class PackingListResponse(BaseModel):
+class PackingListResponse(ResponseModel):
     id: str
     trip_id: str
     name: str
@@ -963,7 +973,7 @@ class PackingTemplateCreate(InputModel):
     name: str = Field(min_length=1, max_length=160)
 
 
-class PackingTemplateResponse(BaseModel):
+class PackingTemplateResponse(ResponseModel):
     id: str
     name: str
     created_at: datetime
@@ -986,7 +996,7 @@ class PackingBagUpdate(InputModel):
     weight_limit_g: int | None = Field(default=None, gt=0, le=INTEGER_MAX)
 
 
-class PackingBagResponse(BaseModel):
+class PackingBagResponse(ResponseModel):
     id: str
     list_id: str
     name: str
@@ -1041,7 +1051,7 @@ class PackingItemUpdate(InputModel):
     weight_g: int | None = Field(default=None, ge=0, le=INTEGER_MAX)
 
 
-class PackingItemResponse(BaseModel):
+class PackingItemResponse(ResponseModel):
     id: str
     list_id: str
     bag_id: str | None
@@ -1058,6 +1068,55 @@ class PackingItemResponse(BaseModel):
     notes: str | None
     weight_g: int | None
     model_config = ConfigDict(from_attributes=True)
+
+
+class PackingSuggestionResponse(ResponseModel):
+    label: str
+    category: str | None
+    prior_trips: int = Field(description="How many earlier trips had this item.")
+    usually_cabin: bool
+    usually_essential: bool
+
+
+class PackingListSourceResponse(ResponseModel):
+    id: str
+    name: str
+    trip_id: str
+    trip_title: str
+
+
+class OAuthStartResponse(ResponseModel):
+    authorization_url: str
+
+
+class OwnerIdentityResponse(ResponseModel):
+    subject: str
+    contract_version: int
+    capabilities: list[str]
+
+
+class HealthResponse(ResponseModel):
+    status: str
+    version: str
+    commit: str
+
+
+class McpToolCapability(ResponseModel):
+    name: str
+    effect: Literal["read", "write"]
+    requires_confirmation: bool
+    access: dict[str, str] = Field(description="Empty: Travel has one owner-only policy.")
+
+
+class McpCapabilitiesResponse(ResponseModel):
+    contract_version: int
+    enabled: bool
+    mount_path: str
+    version: str | None
+    tools: list[McpToolCapability]
+    visible_tools: list[str]
+    resources: list[str]
+    prompts: list[str]
 
 
 class TripTaskCreate(InputModel):
@@ -1079,7 +1138,7 @@ class TripTaskUpdate(InputModel):
     completed: bool | None = None
 
 
-class TripTaskResponse(BaseModel):
+class TripTaskResponse(ResponseModel):
     id: str
     title: str
     notes: str | None
@@ -1097,7 +1156,7 @@ class TripTaskResponse(BaseModel):
         return _html(self.notes)
 
 
-class TripTaskAlertResponse(BaseModel):
+class TripTaskAlertResponse(ResponseModel):
     id: str
     task_id: str
     kind: TaskAlertKind
@@ -1230,7 +1289,7 @@ class RouteUpdate(InputModel):
         return None if values is None else require_unique_document_ids(values)
 
 
-class RouteResponse(BaseModel):
+class RouteResponse(ResponseModel):
     id: str
     mode: RouteMode
     status: PlanningStatus
@@ -1267,7 +1326,7 @@ class RouteResponse(BaseModel):
         return value if value is None or value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
-class TripBase(BaseModel):
+class TripBase(ResponseModel):
     id: str
     owner_subject: str
     title: str
@@ -1298,7 +1357,7 @@ class TripResponse(TripBase):
     """One trip's own fields and cover. Every record kind, travel updates included, has its own list endpoint."""
 
 
-class OverviewRecordPrecision(BaseModel):
+class OverviewRecordPrecision(ResponseModel):
     """How the records of one kind an audience receives read their dates."""
 
     by_precision: dict[DatePrecision, int]
@@ -1307,7 +1366,7 @@ class OverviewRecordPrecision(BaseModel):
     default_applied: int
 
 
-class OverviewAudience(BaseModel):
+class OverviewAudience(ResponseModel):
     """What one audience (the public page or a draft/active link) receives right now."""
 
     kind: Literal["public", "share_link"]
@@ -1339,7 +1398,7 @@ class OverviewAudience(BaseModel):
     preset_exceptions: int = 0
 
 
-class OverviewWarning(BaseModel):
+class OverviewWarning(ResponseModel):
     code: str
     severity: Literal["warning", "info"]
     message: str
@@ -1354,7 +1413,7 @@ class OverviewWarning(BaseModel):
     count: int | None = None
 
 
-class FutureDisclosure(BaseModel):
+class FutureDisclosure(ResponseModel):
     """Owner-only: what a candidate audience scope shows of the future before the trip starts, in counts.
 
     Both are zero when the trip has started or ended, or when nothing qualifies. Nothing is stored."""
@@ -1363,7 +1422,7 @@ class FutureDisclosure(BaseModel):
     day_dates: int
 
 
-class TripOverviewResponse(BaseModel):
+class TripOverviewResponse(ResponseModel):
     """Owner-only: counts per kind, who receives what, and what to review before sharing."""
 
     trip_id: str
@@ -1479,7 +1538,7 @@ class ShareScopeInput(InputModel):
         return document
 
 
-class ExclusionRef(BaseModel):
+class ExclusionRef(ResponseModel):
     kind: ShareScopeKind
     id: str
 
@@ -1505,7 +1564,7 @@ class ExcludedRecord(ExclusionRef):
     also_hides: list[ExclusionRef] = Field(description="The same records, by kind and id.")
 
 
-class ScopeExclusions(BaseModel):
+class ScopeExclusions(ResponseModel):
     """What a hidden link or collection member leaves out of the public baseline, and what that also hides."""
 
     excluded: list[ExcludedRecord] = Field(default_factory=list, description="The exclusions that apply.")
@@ -1541,11 +1600,21 @@ class ExclusionReviewRequest(InputModel):
     )
 
 
-class ExclusionWidening(BaseModel):
+class ExclusionWidening(ResponseModel):
     """The records that removing exclusions from a scope would newly show its audience."""
 
     revealed: list[ExclusionRef] = Field(default_factory=list)
     counts: dict[str, int] = Field(default_factory=dict, description=KIND_COUNTS)
+
+
+class ExclusionWideningDetail(ExclusionWidening):
+    """The `detail` of the 409 that refuses a live audience's save until the owner acknowledges the widening."""
+
+    code: Literal["exclusion_widening_needs_acknowledgement"]
+
+
+class ExclusionWideningConflict(ResponseModel):
+    detail: ExclusionWideningDetail
 
 
 def _both_precision_kinds() -> list[Literal["visit", "stay"]]:
@@ -1577,12 +1646,12 @@ class FollowAudiencePrecisionRequest(InputModel):
     )
 
 
-class PrecisionCounts(BaseModel):
+class PrecisionCounts(ResponseModel):
     visits: int = 0
     stays: int = 0
 
 
-class FollowAudienceAudience(BaseModel):
+class FollowAudienceAudience(ResponseModel):
     """A live audience whose dates change: the records it receives that read finer, or coarser, afterwards."""
 
     audience: str = Field(description="`public`, `link:<id>` or `collection:<id>`.")
@@ -1591,7 +1660,7 @@ class FollowAudienceAudience(BaseModel):
     narrowed: PrecisionCounts
 
 
-class FollowAudiencePrecisionResult(BaseModel):
+class FollowAudiencePrecisionResult(ResponseModel):
     applied: bool
     # The records that follow the audience afterwards, and that had their own value before.
     changed: PrecisionCounts
@@ -1626,7 +1695,7 @@ class SharingPresetApplyRequest(InputModel):
     )
 
 
-class SharingPresetKindRule(BaseModel):
+class SharingPresetKindRule(ResponseModel):
     kind: str = Field(description="A kind of record the preset selects.")
     statuses: list[str] | None = Field(
         description="Only records with one of these statuses; null accepts any. A record that cannot be shared yet "
@@ -1634,7 +1703,7 @@ class SharingPresetKindRule(BaseModel):
     )
 
 
-class SharingPresetDefinition(BaseModel):
+class SharingPresetDefinition(ResponseModel):
     id: SharingPresetId
     extends: SharingPresetId | None = Field(description="The smaller preset this one adds to.")
     selects: list[SharingPresetKindRule]
@@ -1646,12 +1715,12 @@ class SharingPresetDefinition(BaseModel):
     )
 
 
-class SharingPresetCatalog(BaseModel):
+class SharingPresetCatalog(ResponseModel):
     schema_version: Literal["travel/sharing-preset@1"]
     presets: list[SharingPresetDefinition]
 
 
-class PresetRecordRef(BaseModel):
+class PresetRecordRef(ResponseModel):
     kind: ShareScopeKind
     id: str
     label: str | None = Field(description="The owner's own name for the record. Owner-only; never audited.")
@@ -1660,7 +1729,7 @@ class PresetRecordRef(BaseModel):
     )
 
 
-class PresetExceptions(BaseModel):
+class PresetExceptions(ResponseModel):
     """How an audience differs now from what its last-applied preset would select today. Owner-only: it names records.
 
     These are not stored: they are computed from the records and the audience's scope each time, so a manual edit,
@@ -1712,7 +1781,7 @@ class PresetReplacesException(PresetRecordRef):
     )
 
 
-class PresetPrecisionReview(BaseModel):
+class PresetPrecisionReview(ResponseModel):
     before: DatePrecision | None = Field(description="The audience's date cap now; null means no cap.")
     after: DatePrecision
     changed: bool
@@ -1722,7 +1791,7 @@ class PresetPrecisionReview(BaseModel):
     )
 
 
-class PresetComparison(BaseModel):
+class PresetComparison(ResponseModel):
     before: dict[str, int] = Field(description="Records the audience receives now, per kind.")
     after: dict[str, int] = Field(description="Records it would receive once the preset is applied, per kind.")
     added: dict[str, int]
@@ -1731,7 +1800,7 @@ class PresetComparison(BaseModel):
     narrowed: list[PresetRecordRef] = Field(description="Records the audience would stop receiving.")
 
 
-class PresetAudienceInfo(BaseModel):
+class PresetAudienceInfo(ResponseModel):
     id: str = Field(description="`public`, `link:<id>` or `collection:<member id>`.")
     kind: Literal["public", "link", "collection_member"]
     label: str | None = Field(description="The owner's link or collection label; null for the public page.")
@@ -1740,7 +1809,7 @@ class PresetAudienceInfo(BaseModel):
     )
 
 
-class PresetRefusal(BaseModel):
+class PresetRefusal(ResponseModel):
     code: Literal["preset_too_large"]
     items: int
     exclude: int
@@ -1748,7 +1817,7 @@ class PresetRefusal(BaseModel):
     max_exclude: int
 
 
-class SharingPresetReview(BaseModel):
+class SharingPresetReview(ResponseModel):
     """What a preset would do for one audience, computed without writing anything.
 
     Owner-only. It names records, so it is never part of a visitor response or the audit trail."""
@@ -2003,10 +2072,58 @@ class PublicTripCard(BaseModel):
         return markdown_text(self.summary)
 
 
-class PublicProjectionStatusResponse(BaseModel):
+class ShareScopeTrip(ResponseModel):
+    title: bool = True
+    summary: bool = True
+    dates: DatePrecision | None = None
+
+
+class ShareScopeDefaults(ResponseModel):
+    date_precision: DatePrecision | None = None
+
+
+class ShareScopeItem(ResponseModel):
+    kind: ShareScopeKind
+    id: str
+
+
+def _absent_when_none(value: object) -> bool:
+    return value is None
+
+
+class ShareScope(BaseModel):
+    """What one audience receives, as stored. A setting the owner never made is absent rather than null."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _fill_what_a_stored_scope_leaves_out(cls, value: object) -> object:
+        # A stored scope may hold only what its owner set; the response always names these three.
+        if isinstance(value, dict):
+            return {"schema_version": "travel/share-scope@1", "trip": {}, "items": [], **value}
+        return value
+
+    schema_version: Literal["travel/share-scope@1"]
+    trip: ShareScopeTrip
+    defaults: ShareScopeDefaults | None = Field(
+        default=None,
+        exclude_if=_absent_when_none,
+        description="The audience-level date cap. Absent when it sets none, so each record's own value applies.",
+    )
+    numbers: list[Literal["days", "areas", "countries", "nights"]] | None = Field(
+        default=None, exclude_if=_absent_when_none, description="The opt-in visitor figures; absent when none."
+    )
+    items: list[ShareScopeItem]
+    exclude: list[ShareScopeItem] | None = Field(
+        default=None,
+        exclude_if=_absent_when_none,
+        description="Records set to everyone that this hidden link or collection member does not receive.",
+    )
+
+
+class PublicProjectionStatusResponse(ResponseModel):
     revision: int
     trip_id: str
-    scope: dict
+    scope: ShareScope
     surface_state: SurfaceState
     slug: str | None
     # The sharing preset last applied here, as a display label (#241): it decides nothing about what is delivered.
@@ -2062,7 +2179,7 @@ class FeedEnableRequest(ShareLinkActivateRequest):
     acknowledge_copies: bool = False
 
 
-class ShareLinkResponse(BaseModel):
+class ShareLinkResponse(ResponseModel):
     feed_token: str | None = None
     feed_expires_at: datetime | None = None
     revision: int
@@ -2070,7 +2187,7 @@ class ShareLinkResponse(BaseModel):
     series_id: str
     label: str
     state: LinkState
-    scope: dict
+    scope: ShareScope
     token: str | None
     expires_at: datetime | None
     created_at: datetime
@@ -2097,7 +2214,7 @@ class McpShareLinkResponse(BaseModel):
     series_id: str
     label: str
     state: LinkState
-    scope: dict
+    scope: ShareScope
     expires_at: datetime | None
     created_at: datetime
     activated_at: datetime | None
@@ -2141,13 +2258,13 @@ class CollectionMemberUpdate(InputModel):
     scope: ShareScopeInput
 
 
-class CollectionMemberResponse(BaseModel):
+class CollectionMemberResponse(ResponseModel):
     revision: int
     id: str
     trip_id: str
     # Owner-only: the trip's own title, whatever the member scope shares.
     trip_title: str
-    scope: dict
+    scope: ShareScope
     # How many records this member delivers today; 0 means the audience sees at most the trip header.
     delivered_records: int
     exclusions: ScopeExclusions = Field(default_factory=ScopeExclusions)
@@ -2161,7 +2278,7 @@ class CollectionMemberResponse(BaseModel):
     updated_at: datetime
 
 
-class CollectionResponse(BaseModel):
+class CollectionResponse(ResponseModel):
     id: str
     label: str
     title: str | None
@@ -2176,7 +2293,7 @@ class CollectionResponse(BaseModel):
     members: list[CollectionMemberResponse]
 
 
-class SharingPresetApplyResult(BaseModel):
+class SharingPresetApplyResult(ResponseModel):
     """What an apply did. `applied` is false when the audience already matched: nothing was written, no revision was
     claimed and no audit event was recorded."""
 
@@ -2211,7 +2328,7 @@ class McpCollectionResponse(BaseModel):
     members: list[CollectionMemberResponse]
 
 
-class CollectionMembershipResponse(BaseModel):
+class CollectionMembershipResponse(ResponseModel):
     """Which collection reaches a trip, for the owner's trip screens."""
 
     collection_id: str
@@ -2221,7 +2338,7 @@ class CollectionMembershipResponse(BaseModel):
     expires_at: datetime | None
 
 
-class CollectionAuditEventResponse(BaseModel):
+class CollectionAuditEventResponse(ResponseModel):
     id: str
     collection_id: str
     trip_id: str | None
@@ -2256,13 +2373,91 @@ class AuditReasonInput(InputModel):
     reason: str | None = Field(default=None, max_length=500)
 
 
-class AuditEventResponse(BaseModel):
+class AuditPart(BaseModel):
+    """A part of an event's details; it may carry counts or ids beyond the ones named."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class AuditChangedField(AuditPart):
+    field: str
+    audiences: list[str]
+
+
+class AuditAudienceRef(AuditPart):
+    audience: str
+
+
+class AuditMergedRecord(AuditPart):
+    id: str
+    widened: list[AuditAudienceRef] | None = Field(default=None, exclude_if=_absent_when_none)
+
+
+class AuditPrecisionAudience(AuditPart):
+    audience: str
+    widened: PrecisionCounts
+    narrowed: PrecisionCounts
+
+
+class AuditExclusionChange(AuditPart):
+    added: list[ShareScopeItem]
+    removed: list[ShareScopeItem]
+    widened: dict[ShareScopeKind, int]
+
+
+class AuditEventDetails(AuditPart):
+    """What an event records, never authored content. Only the keys an event kind sets are present; the keys named
+    here are the ones clients read, and an event may carry further ids or counts of its own."""
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    scope_version_before: str | None = Field(default=None, exclude_if=_absent_when_none)
+    scope_version_after: str | None = Field(default=None, exclude_if=_absent_when_none)
+    record_kind: ShareScopeKind | None = Field(default=None, exclude_if=_absent_when_none)
+    from_: Visibility | None = Field(default=None, alias="from", exclude_if=_absent_when_none)
+    to: Visibility | None = Field(default=None, exclude_if=_absent_when_none)
+    newly_reached: list[str] | None = Field(default=None, exclude_if=_absent_when_none)
+    no_longer_reached: list[str] | None = Field(default=None, exclude_if=_absent_when_none)
+    changes: list[AuditChangedField] | dict[str, int] | None = Field(
+        default=None,
+        exclude_if=_absent_when_none,
+        description="A `location.update`: the visitor-facing fields changed and the audience ids that read each. "
+        "A sharing preset's apply: the number of changes per action.",
+    )
+    merged: list[AuditMergedRecord] | None = Field(
+        default=None,
+        exclude_if=_absent_when_none,
+        description="A `location.merge` or `area.merge`: per duplicate, the audiences that newly read the kept record.",
+    )
+    changed: PrecisionCounts | None = Field(
+        default=None,
+        exclude_if=_absent_when_none,
+        description="A `record.precision_follow_audience`: the records that now follow the audience.",
+    )
+    audiences: list[AuditPrecisionAudience] | None = Field(
+        default=None,
+        exclude_if=_absent_when_none,
+        description="A `record.precision_follow_audience`: who reads those records differently.",
+    )
+    exclusions: AuditExclusionChange | None = Field(
+        default=None,
+        exclude_if=_absent_when_none,
+        description="A live scope change that added or removed exclusions, and what removing them newly showed.",
+    )
+    others: Literal["cancel", "remove"] | None = Field(
+        default=None,
+        exclude_if=_absent_when_none,
+        description="An `alternative_group.choose`: what happened to the other members.",
+    )
+
+
+class AuditEventResponse(ResponseModel):
     id: str
     kind: AuditEventKind
     target_type: AuditTargetType
     target_id: str
     occurred_at: datetime
-    details: dict
+    details: AuditEventDetails
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -2308,7 +2503,7 @@ class AlternativeUndo(InputModel):
     )
 
 
-class AlternativeMemberResponse(BaseModel):
+class AlternativeMemberResponse(ResponseModel):
     record_id: str
     chosen: bool
     stay: StayResponse | None = None
@@ -2317,7 +2512,7 @@ class AlternativeMemberResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class AlternativeGroupResponse(BaseModel):
+class AlternativeGroupResponse(ResponseModel):
     id: str
     kind: AlternativeGroupKind
     label: str | None
@@ -2327,7 +2522,7 @@ class AlternativeGroupResponse(BaseModel):
     updated_at: datetime
 
 
-class AlternativeSuggestion(BaseModel):
+class AlternativeSuggestion(ResponseModel):
     """Ideas that look like alternatives. Nothing is stored until the owner confirms the group."""
 
     kind: AlternativeGroupKind
@@ -2338,7 +2533,7 @@ class AlternativeSuggestion(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class AlternativeChoiceResponse(BaseModel):
+class AlternativeChoiceResponse(ResponseModel):
     group: AlternativeGroupResponse
     event_id: str
     chosen_id: str
@@ -2358,12 +2553,12 @@ class AlternativeChoiceResponse(BaseModel):
 # (the future share-scope projection) that never reuses this one.
 
 
-class MediaGpsCoordinates(BaseModel):
+class MediaGpsCoordinates(ResponseModel):
     latitude: float
     longitude: float
 
 
-class MediaAssetResponse(BaseModel):
+class MediaAssetResponse(ResponseModel):
     id: str
     media_kind: MediaKind
     byte_size: int
@@ -2382,7 +2577,7 @@ class MediaAssetResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class MediaDerivativeResponse(BaseModel):
+class MediaDerivativeResponse(ResponseModel):
     id: str
     media_asset_id: str
     purpose: DerivativePurpose
@@ -2443,7 +2638,7 @@ class MediaTravelUpdateCandidatesRequest(InputModel):
         return values
 
 
-class MediaTravelUpdateTimeOption(BaseModel):
+class MediaTravelUpdateTimeOption(ResponseModel):
     media_asset_id: str
     captured_at: datetime
     captured_local: bool = False
@@ -2453,7 +2648,7 @@ class MediaTravelUpdateLocationOption(MediaGpsCoordinates):
     media_asset_ids: list[str]
 
 
-class MediaTravelUpdateCandidateResponse(BaseModel):
+class MediaTravelUpdateCandidateResponse(ResponseModel):
     id: str
     media_asset_ids: list[str]
     starts_at: datetime | None
@@ -2463,7 +2658,7 @@ class MediaTravelUpdateCandidateResponse(BaseModel):
     location_options: list[MediaTravelUpdateLocationOption]
 
 
-class MediaTravelUpdateCandidatesResponse(BaseModel):
+class MediaTravelUpdateCandidatesResponse(ResponseModel):
     """Ephemeral owner-only review data; it is never a published resource."""
 
     grouping_window_minutes: int
@@ -2475,7 +2670,7 @@ class MediaTravelUpdateCandidatesResponse(BaseModel):
 # --- Owner-managed documents --------------------------------------------------------
 
 
-class DocumentAssetResponse(BaseModel):
+class DocumentAssetResponse(ResponseModel):
     id: str
     document_kind: DocumentKind
     title: str
@@ -2499,7 +2694,7 @@ class OwnerDocumentUpdate(InputModel):
     linked_trip_id: Identifier | None = Field(default=None)
 
 
-class OwnerDocumentResponse(BaseModel):
+class OwnerDocumentResponse(ResponseModel):
     id: str
     document_kind: DocumentKind
     title: str
@@ -2529,7 +2724,7 @@ class EmergencyInfoEntryUpdate(InputModel):
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
 
 
-class EmergencyInfoEntryResponse(BaseModel):
+class EmergencyInfoEntryResponse(ResponseModel):
     id: str
     kind: EmergencyInfoKind
     label: str
@@ -2550,30 +2745,34 @@ class EmergencyInfoEntryResponse(BaseModel):
         return markdown_text(self.notes)
 
 
-class ImportSessionResponse(BaseModel):
+# The providers a library is imported from; a direct device upload has no session or connection.
+ImportSourceProvider = Literal[ImportProvider.GOOGLE_PHOTOS_PICKER, ImportProvider.GOPRO_CLOUD]
+
+
+class ImportSessionResponse(ResponseModel):
     id: str
-    provider: ImportProvider
+    provider: ImportSourceProvider
     state: ImportSessionState
     picker_uri: str | None = None
     expires_at: datetime | None
     model_config = ConfigDict(from_attributes=True)
 
 
-class ImportFailureItem(BaseModel):
+class ImportFailureItem(ResponseModel):
     provider_item_id: str
     failure_code: str
 
 
-class ImportSessionCompleteResponse(BaseModel):
+class ImportSessionCompleteResponse(ResponseModel):
     ready: bool
     imported: list[MediaAssetResponse]
     failed: list[ImportFailureItem]
 
 
-class ProviderConnectionStatus(BaseModel):
+class ProviderConnectionStatus(ResponseModel):
     """A deliberately non-secret view of an owner's provider connection."""
 
-    provider: ImportProvider
+    provider: ImportSourceProvider
     # Whether this server offers the provider at all (GoPro Cloud needs beta access switched on).
     # An unavailable provider is not shown; an available one still needs the owner's token.
     available: bool

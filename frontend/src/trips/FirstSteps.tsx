@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { useTripResource } from "../query/owner-queries";
-import type { Area, Trip } from "../tracker-model";
+import type { Area, Trip } from "../api-types";
 import { sectionPath } from "./workspace-sections";
 
 /**

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
-import type { ShareScope, TravelUpdate, Trip } from "../tracker-model";
+import type { ShareScope, TravelUpdate, Trip } from "../api-types";
 import { TravelUpdateManager } from "./TravelUpdateManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
@@ -34,9 +34,16 @@ const update = (
   location: null,
   media_asset_ids: [],
   visibility,
+  area: null,
+  body_html: null,
+  private_notes_html: null,
   ...extra,
 });
 const trip = (updates: TravelUpdate[]): Trip => ({
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id: "trip",
   title: "Exampleland",
   summary: null,

@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import { parseFlagParam } from "../router/search-params";
-import type { Trip } from "../tracker-model";
+import type { Trip } from "../api-types";
 import { TripWorkspace, TripWorkspaceView } from "./TripWorkspace";
 import { changeLocale } from "../locale";
 import { Trips } from "./Trips";
@@ -104,6 +104,10 @@ const trip = (id: string, title: string, extra: Partial<Trip> = {}): Trip => ({
   starts_on: null,
   ends_on: null,
   travel_updates: [],
+  owner_subject: "owner-1",
+  summary_html: null,
+  cover_derivative_id: null,
+  cover_url: null,
   ...extra,
 });
 let trips: Trip[];

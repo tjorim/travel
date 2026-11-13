@@ -4,7 +4,7 @@ import { m } from "../../paraglide/messages.js";
 import { ownerRequest } from "../../query/api";
 import { ownerKeys } from "../../query/keys";
 import { tripPath, useOwner } from "../../query/owner-queries";
-import type { ExclusionReview, ShareScope } from "../../tracker-model";
+import type { ExclusionReview, ShareScope } from "../../api-types";
 
 /**
  * What a hidden link or collection member would leave out of the public baseline, from the server: the records an

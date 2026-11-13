@@ -1,6 +1,6 @@
 import { dayjs } from "./dayjs";
-import type { ProjectionRoute, ProjectionStay, ProjectionVisit } from "./projection-types";
-import { addDays } from "./tracker-model";
+import type { ProjectionRoute, ProjectionStay, ProjectionVisit } from "./api-types";
+import { addDays } from "./dates";
 
 /** Where one stay is on a given day: arriving, sleeping there (a night) or leaving. */
 export type StayPhase = "check-in" | "night" | "check-out";

@@ -2,7 +2,7 @@ import { RecordForm, requiredText, TextField, TimeZoneField } from "../../forms/
 import type { useRecordForm } from "../../forms/useRecordForm";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { Area, PlaceSearchResult } from "../../tracker-model";
+import type { Area, LocationInput } from "../../api-types";
 import { PlaceSearchField } from "../PlaceSearchField";
 import {
   areaCoordinate,
@@ -22,7 +22,7 @@ export function AreaForm({
   record: ReturnType<typeof useRecordForm<Values, Area>>;
 }) {
   useLocale();
-  function fillFromSearch(result: PlaceSearchResult) {
+  function fillFromSearch(result: LocationInput) {
     record.form.setFieldValue(
       "label",
       result.locality ?? result.admin_area ?? result.display_name ?? "",

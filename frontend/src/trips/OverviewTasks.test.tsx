@@ -6,13 +6,17 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { server } from "../mocks/server";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
-import type { Trip, TripTask } from "../tracker-model";
+import type { Trip, TripTask } from "../api-types";
 import { OverviewTasks } from "./OverviewTasks";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 const trip: Trip = {
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id: "trip",
   title: "Exampleland",
   summary: null,
@@ -30,6 +34,7 @@ const task = (id: string, title: string, extra: Partial<TripTask> = {}): TripTas
   links: [],
   completed_at: null,
   created_at: "2054-09-01T00:00:00Z",
+  notes_html: null,
   ...extra,
 });
 

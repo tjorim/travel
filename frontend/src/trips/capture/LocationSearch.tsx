@@ -3,7 +3,8 @@ import { Input } from "@/ui/input";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { PlaceSearchResponse, PlaceSearchResult, UpdateDraft } from "../../tracker-model";
+import type { PlaceSearchResponse, LocationInput } from "../../api-types";
+import type { UpdateDraft } from "../../capture-draft";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
 import { SuggestionAside } from "./SuggestionAside";
 
@@ -30,7 +31,7 @@ export function LocationSearch({
   results: PlaceSearchResponse | null;
   onQueryChange: (query: string) => void;
   onSearch: () => void;
-  onSelect: (result: PlaceSearchResult) => void;
+  onSelect: (result: LocationInput) => void;
   onClear: () => void;
   onFindPlace: (gps: Gps) => void;
   onDismissCandidate: () => void;

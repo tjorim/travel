@@ -3,7 +3,7 @@ import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 
 import { changeLocale } from "../../locale";
-import type { OverviewWarning, TripOverview } from "../../tracker-model";
+import type { OverviewWarning, TripOverview } from "../../api-types";
 import { futureDisclosureLines, SharingReview } from "./SharingReview";
 
 const warning = (overrides: Partial<OverviewWarning>): OverviewWarning => ({
@@ -19,6 +19,9 @@ const warning = (overrides: Partial<OverviewWarning>): OverviewWarning => ({
   ...overrides,
 });
 const overview = (warnings: OverviewWarning[]): TripOverview => ({
+  title: "Titel",
+  starts_on: null,
+  ends_on: null,
   trip_id: "trip",
   counts: {},
   visibility: {},

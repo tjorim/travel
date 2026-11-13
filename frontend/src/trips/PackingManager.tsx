@@ -9,7 +9,7 @@ import { m } from "../paraglide/messages.js";
 import { ownerRequest } from "../query/api";
 import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { tripPath, useOwner } from "../query/owner-queries";
-import type { Trip } from "../tracker-model";
+import type { Trip } from "../api-types";
 import { Field, FieldLabel } from "@/ui/field";
 import { BagDialog } from "./packing/BagDialog";
 import { BagSummaries } from "./packing/BagSummaries";

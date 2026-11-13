@@ -1,11 +1,11 @@
 import { Collapsible } from "@/ui/collapsible";
 
-import type { TrackerSession } from "../../auth";
+import type { OwnerSession } from "../../auth";
 import type { Projection } from "../../ProjectionView";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { RecordDialog } from "../../RecordDialog";
-import type { ShareLink, ShareScope } from "../../tracker-model";
+import type { ShareLink, ShareScope } from "../../api-types";
 import { RenderedPreview } from "../RenderedPreview";
 import { kindCountsText, LINK_STATE_LABELS, projectionSummary } from "./catalog";
 import { futureDisclosureLines } from "./SharingReview";
@@ -36,7 +36,7 @@ export function PreviewDialog({
   links: ShareLink[];
   isPublished: boolean;
   tripId: string;
-  session: TrackerSession;
+  session: OwnerSession;
   onClose: () => void;
 }) {
   useLocale();

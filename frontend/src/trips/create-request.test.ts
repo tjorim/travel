@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import type { Location, Stay, Trip } from "../tracker-model";
+import type { Location, Stay, Trip } from "../api-types";
 import { prefillForLocation, stayOnDay } from "./create-request";
 import { emptyPlace, placeOfPrefill } from "./PlacePicker";
 import { routeFromPrefill } from "./routes/model";

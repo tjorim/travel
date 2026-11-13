@@ -12,7 +12,7 @@ import {
   selectedOption,
   testToken,
 } from "../query/test-utils";
-import type { Area, Location, Stay, Trip, Visit } from "../tracker-model";
+import type { Area, Location, Stay, Trip, Visit } from "../api-types";
 import { visitWhen } from "./labels";
 import { VisitManager } from "./VisitManager";
 import { overnights } from "./visits/model";
@@ -48,6 +48,10 @@ const spring = {
   longitude: 121.5,
 } as unknown as Location;
 const trip: Trip = {
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id: "trip",
   title: "Exampleland",
   summary: null,
@@ -71,6 +75,9 @@ const visit = (id: string, overrides: Partial<Visit> = {}): Visit => ({
   visibility: "private",
   share_time: false,
   share_date_precision: "month",
+  notes_html: null,
+  summary_html: null,
+  possible_route_duplicates: [],
   ...overrides,
 });
 const stay = {

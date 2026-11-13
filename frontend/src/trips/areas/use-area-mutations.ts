@@ -1,6 +1,6 @@
 import { m } from "../../paraglide/messages.js";
 import { ownerKeys } from "../../query/keys";
-import type { Area } from "../../tracker-model";
+import type { Area } from "../../api-types";
 import { useTripRecordMutations } from "../use-record-mutations";
 
 /** The owner API calls behind the area editor: save (create or update) and delete. */

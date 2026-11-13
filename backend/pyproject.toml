@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "travel-api"
 version = "0.0.0"
-description = "Privacy-first FastAPI backend for the Travel tracker"
+description = "Privacy-first FastAPI backend for Travel"
 requires-python = ">=3.15"
 dependencies = [
   "alembic==1.20.1",

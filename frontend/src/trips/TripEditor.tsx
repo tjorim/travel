@@ -13,7 +13,7 @@ import { ownerKeys } from "../query/keys";
 import { useOwnerMutation, useRefreshTrip } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { TripExport } from "./TripExport";
-import type { Trip } from "../tracker-model";
+import type { Trip } from "../api-types";
 
 type Values = { title: string; summary: string; startsOn: string; endsOn: string };
 

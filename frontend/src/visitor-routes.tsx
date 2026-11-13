@@ -23,7 +23,7 @@ import {
   type Audience,
   type Projection,
 } from "./ProjectionView";
-import type { ProjectionDates } from "./projection-types";
+import type { CollectionIndex, PublicTripCard } from "./api-types";
 import {
   forgetAllSharedTrips,
   forgetSharedTrip,
@@ -36,20 +36,6 @@ import {
 const LONG_TITLE_LENGTH = 40;
 const LONG_TITLE_CLASS =
   "text-travel-title-long leading-travel-title-long tracking-travel-title-long min-[680px]:max-w-none";
-
-/** One member of a collection link, only as far as its member scope allows. `id` is a collection-local path id. */
-type CollectionEntry = {
-  id: string;
-  title: string | null;
-  summary_text: string | null;
-  dates: ProjectionDates | null;
-  cover: string | null;
-};
-type CollectionIndex = {
-  schema_version: "travel/collection@1";
-  title: string | null;
-  trips: CollectionEntry[];
-};
 
 function isCollectionIndex(value: unknown): value is CollectionIndex {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -79,22 +65,6 @@ type LoadState =
   | { kind: "unavailable" }
   | { kind: "error"; failure?: ApiError };
 
-/** `summary` is Markdown; a card shows its one-line plain-text `summary_text` instead. */
-type PublicTripCard = {
-  cover?: {
-    url: string;
-    width: number | null;
-    height: number | null;
-    alt_text: string | null;
-    focal_x: number | null;
-    focal_y: number | null;
-  } | null;
-  slug: string;
-  title: string | null;
-  summary: string | null;
-  summary_text?: string | null;
-  dates?: ProjectionDates | null;
-};
 function PublicCard({ trip }: { trip: PublicTripCard }) {
   useLocale();
   const [failedUrl, setFailedUrl] = useState<string | null>(null);

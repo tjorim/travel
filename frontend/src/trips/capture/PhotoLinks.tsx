@@ -2,7 +2,8 @@ import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import { formatCapture, type MediaAsset } from "../../tracker-model";
+import { formatCapture } from "../../dates";
+import { type MediaAsset } from "../../api-types";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { SuggestionAside } from "./SuggestionAside";

@@ -5,24 +5,24 @@ import {
   renewSession,
   readSession,
   shouldRestoreSession,
-  type TrackerSession,
+  type OwnerSession,
 } from "./auth";
 
 type AuthContextValue = {
-  session: TrackerSession | null;
-  setSession: (session: TrackerSession | null) => void;
+  session: OwnerSession | null;
+  setSession: (session: OwnerSession | null) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("Travel tracker authentication context is missing.");
+  if (!context) throw new Error("Travel authentication context is missing.");
   return context;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<TrackerSession | null>(() => readSession());
+  const [session, setSession] = useState<OwnerSession | null>(() => readSession());
   const restoring = useRef(false);
 
   useEffect(() => {

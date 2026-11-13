@@ -1,6 +1,6 @@
 import { m } from "../../paraglide/messages.js";
 import { ownerKeys } from "../../query/keys";
-import type { Visit } from "../../tracker-model";
+import type { Visit } from "../../api-types";
 import { useTripRecordMutations } from "../use-record-mutations";
 
 /** The owner API calls behind the visit editor: save (create or update) and delete. */

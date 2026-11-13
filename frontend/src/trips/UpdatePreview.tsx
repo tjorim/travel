@@ -10,7 +10,7 @@ import type {
   TravelUpdate,
   Trip,
   PublicProjectionStatus,
-} from "../tracker-model";
+} from "../api-types";
 import { PreviewDialog, type Preview } from "./publication/PreviewDialog";
 import { usePublicationMutations } from "./publication/use-publication-mutations";
 

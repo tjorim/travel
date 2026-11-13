@@ -11,7 +11,7 @@ import { ownerRequest } from "../query/api";
 import { ownerKeys } from "../query/keys";
 import { useOwnerMutation, useProviderConnections } from "../query/owner-queries";
 import { EmptyState } from "@/ui/EmptyState";
-import type { ProviderConnectionStatus } from "../tracker-model";
+import type { OAuthStartResponse, ProviderConnectionStatus } from "../api-types";
 
 const labels = { google_photos_picker: "Google Photos", gopro_cloud: "GoPro Cloud" } as const;
 type Provider = ProviderConnectionStatus["provider"];
@@ -77,7 +77,7 @@ export function Settings() {
     if (!session) return;
     setConnecting(true);
     try {
-      const result = await ownerRequest<{ authorization_url: string }>(
+      const result = await ownerRequest<OAuthStartResponse>(
         session,
         "/api/provider-tokens/google_photos_picker/oauth/start",
         m.provider_start_error(),

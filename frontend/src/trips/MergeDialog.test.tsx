@@ -6,13 +6,17 @@ import { changeLocale } from "../locale";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
-import type { Area, Location, Trip } from "../tracker-model";
+import type { Area, Location, Trip } from "../api-types";
 import { AreaManager } from "./AreaManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 const trip: Trip = {
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id: "trip",
   title: "Exampleland",
   summary: null,

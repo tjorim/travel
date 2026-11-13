@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
-import type { Area, Route, Stay, Trip, Visit } from "../tracker-model";
+import type { Area, Route, Stay, Trip, Visit } from "../api-types";
 import { AgendaView } from "./AgendaView";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
@@ -23,6 +23,10 @@ const area = (id: string, label: string): Area => ({
 const taipei = area("taipei", "Taipei"),
   linkou = area("linkou", "Linkou");
 const trip: Trip = {
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id: "trip",
   title: "Exampleland",
   summary: null,

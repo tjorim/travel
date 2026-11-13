@@ -1,5 +1,5 @@
 import { m } from "../../paraglide/messages.js";
-import type { Area } from "../../tracker-model";
+import type { Area } from "../../api-types";
 import type { FormContext } from "../../forms/form-context";
 
 export type Values = {

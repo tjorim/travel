@@ -12,13 +12,8 @@ import { errorMessage, openOwnerFile, ownerFile, type ErrorFallback } from "../q
 import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { tripPath, useDerivatives, useOwner, useTripResource } from "../query/owner-queries";
 import { RecordDialog } from "../RecordDialog";
-import type {
-  ImportSession,
-  MediaAsset,
-  MediaDerivative,
-  Trip,
-  TravelUpdateCandidateIntent,
-} from "../tracker-model";
+import type { ImportSession, MediaAsset, MediaDerivative, Trip } from "../api-types";
+import type { TravelUpdateCandidateIntent } from "../capture-draft";
 import { Field, FieldLabel } from "@/ui/field";
 import { AssetView } from "./media/AssetView";
 import { CandidateReview } from "./media/CandidateReview";
@@ -399,7 +394,7 @@ export function MediaManager({
       : mediaQuery.isPending
         ? m.assets_loading_your_private_media()
         : assets.length
-          ? m.assets_originals_exif_and_links_stay_in_your_private_tracker()
+          ? m.assets_originals_exif_and_links_stay_in_your_private_travel_app()
           : m.assets_upload_photos_or_videos_from_this_device_or_import_your_selected_media());
 
   const dialogOpen = selected !== null;

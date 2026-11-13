@@ -1,6 +1,6 @@
 import { m } from "../../paraglide/messages.js";
 import { ownerKeys } from "../../query/keys";
-import type { Location } from "../../tracker-model";
+import type { Location } from "../../api-types";
 import { useTripRecordMutations } from "../use-record-mutations";
 
 /** The owner API calls behind the location editor: save (create or update) and delete. */

@@ -1,6 +1,8 @@
 import { expect, it } from "vitest";
 
-import { stayCoversNight, whereabouts, type Route, type Stay } from "../tracker-model";
+import { stayCoversNight } from "../records";
+import { whereabouts } from "../whereabouts";
+import { type Route, type Stay } from "../api-types";
 import { tripBadges } from "./TripOverview";
 
 const area = {
@@ -37,6 +39,7 @@ function route(id: string, changes: Partial<Route> = {}): Route {
     document_asset_ids: [],
     geometry: null,
     visibility: "private",
+    notes_html: null,
     ...changes,
   };
 }

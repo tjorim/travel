@@ -8,7 +8,7 @@ import { m } from "../paraglide/messages.js";
 import type { Projection } from "../ProjectionView";
 import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { RecordDialog } from "../RecordDialog";
-import type { ExclusionWidening, ShareScope, TripSummary } from "../tracker-model";
+import type { ExclusionWidening, ShareScope, TripSummary } from "../api-types";
 import { RenderedPreview } from "../trips/RenderedPreview";
 import { cloneScope } from "../trips/publication/catalog";
 import {

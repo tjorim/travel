@@ -8,18 +8,17 @@ import type { ErrorFallback } from "../../query/api";
 import { errorNotice, textNotice, type Notice } from "../../query/feedback";
 import { ownerKeys } from "../../query/keys";
 import { tripPath, useOwnerMutation, useTravelUpdateSearch } from "../../query/owner-queries";
+import { formatCapture } from "../../dates";
+import { visitTitle, areaName } from "../../records";
 import {
-  formatCapture,
-  visitTitle,
   type AreaSuggestion,
   type MediaAsset,
   type TravelUpdate,
   type TravelUpdateCandidate,
-  type TravelUpdateCandidateIntent,
   type TravelUpdateCandidatesResponse,
   type Visit,
-  areaName,
-} from "../../tracker-model";
+} from "../../api-types";
+import { type TravelUpdateCandidateIntent } from "../../capture-draft";
 import { Field, FieldLabel } from "@/ui/field";
 
 /**

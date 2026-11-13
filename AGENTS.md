@@ -56,6 +56,19 @@ Vitest suites mock the API with MSW (`frontend/src/mocks/server.ts`, started in
 A request nobody handles fails the test. Older suites still stub `fetch`; move
 them over when you touch them.
 
+The frontend's API types are generated, never written by hand. `frontend/openapi.json` is a
+committed snapshot of the backend's OpenAPI document (`backend/app/openapi_export.py`) and
+`frontend/src/api-schema.ts` is generated from it with the pinned `openapi-typescript`. After
+changing a response model or an endpoint in `backend/`, run `pnpm api:generate` in `frontend/`
+(it needs `uv`) and commit both files. `pnpm typecheck` runs `pnpm api:check` and fails when
+`api-schema.ts` is stale; the backend test `test_openapi_snapshot` fails when `openapi.json` is stale.
+Name a generated record for the screens in `frontend/src/api-types.ts`; do not declare an API
+record type in the frontend. Every JSON endpoint needs a `response_model` (a test enforces it),
+and a response model derives from `ResponseModel` in `backend/app/schemas.py` so a field with a
+default is required in the generated type. `python-travel` is published on its own and keeps a
+small hand-written copy of the wire models it reads; `backend/tests/test_python_client_models.py`
+holds that copy to the OpenAPI schema instead of generating it.
+
 GitHub Actions runs each affected component's checks on pull requests and all
 of them on every push to `main`.
 

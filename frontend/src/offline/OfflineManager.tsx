@@ -5,7 +5,8 @@ import { Button } from "@/ui/button";
 import { useEffect, useState } from "react";
 
 import { useConfirmation } from "../forms/useConfirmation";
-import { bytesLabel, formatInstant, openBlobInNewTab } from "../tracker-model";
+import { bytesLabel, openBlobInNewTab } from "../files";
+import { formatInstant } from "../dates";
 import { useOfflineCopies } from "./useOfflineCopies";
 import type { OfflineCopySummary, OfflineResourceKind } from "./offline-store";
 import { OfflineSnapshotView } from "./OfflineSnapshotView";

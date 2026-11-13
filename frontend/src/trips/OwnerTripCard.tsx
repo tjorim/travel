@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import type { TripSummary } from "../tracker-model";
+import type { TripSummary } from "../api-types";
 import { TripCover } from "./TripCover";
 import { tripDateRange, type TripState } from "./trip-state";
 import { TripStatePill } from "./TripStatePill";

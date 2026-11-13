@@ -9,14 +9,8 @@ import {
   useTripResource,
   useTripUpdates,
 } from "../../query/owner-queries";
-import {
-  ROUTE_MODE_LABELS,
-  routeTitle,
-  stayLabel,
-  visitTitle,
-  type Trip,
-  areaName,
-} from "../../tracker-model";
+import { ROUTE_MODE_LABELS, routeTitle, stayLabel, visitTitle, areaName } from "../../records";
+import { type Trip } from "../../api-types";
 import type { CatalogItem } from "./catalog";
 
 function combineDerivatives<T>(results: { data: T | undefined; error: Error | null }[]) {

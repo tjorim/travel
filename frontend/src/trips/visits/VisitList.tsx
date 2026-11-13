@@ -2,8 +2,8 @@ import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import type { Stay, Trip, Visit } from "../../tracker-model";
-import { visitTitle } from "../../tracker-model";
+import type { Stay, Trip, Visit } from "../../api-types";
+import { visitTitle } from "../../records";
 import { visibilityLabel } from "../visibility";
 import { RestatedRoutesNote } from "../VisitRouteHint";
 import { dayLine, visitPlace } from "./model";

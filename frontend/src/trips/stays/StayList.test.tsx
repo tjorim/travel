@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
-import type { Stay } from "../../tracker-model";
+import type { Stay } from "../../api-types";
 import { StayList } from "./StayList";
 
 const stay = (id: string, fields: Partial<Stay> = {}) =>

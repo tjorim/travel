@@ -5,7 +5,7 @@ import { cn } from "cn";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import PublicationState from "./PublicationState";
-import type { Trip } from "../tracker-model";
+import type { Trip } from "../api-types";
 import { today, tripDateRange, tripState } from "./trip-state";
 import { sectionById, type TripWorkspaceSection } from "./workspace-sections";
 import { TripCover } from "./TripCover";

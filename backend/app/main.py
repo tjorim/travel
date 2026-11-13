@@ -50,6 +50,7 @@ from .routers.translation import router as translation_router
 from .routers.trips import router as trips_router
 from .routers.visibility import router as visibility_router
 from .routers.visits import router as visits_router
+from .schemas import HealthResponse, McpCapabilitiesResponse, OwnerIdentityResponse
 from .version import APP_COMMIT, APP_VERSION
 
 if mcp_http_enabled():
@@ -69,8 +70,8 @@ _lifespan = (
 )
 
 app = FastAPI(
-    title="Travel tracker API",
-    description="Private-by-default trip and reisupdate tracking API.",
+    title="Travel API",
+    description="Private-by-default API for trips, reisupdates and what visitors may read of them.",
     version="2026.11.2",
     lifespan=_lifespan,
 )
@@ -115,7 +116,7 @@ if _mcp is not None and _mcp_app is not None:
     mount_mcp(app, _mcp, _mcp_app)
 
 
-@app.get("/api/mcp/capabilities", tags=["mcp"])
+@app.get("/api/mcp/capabilities", tags=["mcp"], response_model=McpCapabilitiesResponse)
 def mcp_capabilities() -> dict[str, object]:
     """Describe the MCP surface actually mounted in this process.
 
@@ -141,7 +142,7 @@ def mcp_capabilities() -> dict[str, object]:
     }
 
 
-@app.get("/api/health", tags=["health"])
+@app.get("/api/health", tags=["health"], response_model=HealthResponse)
 def health() -> dict[str, str]:
     try:
         with SessionLocal() as session:
@@ -153,7 +154,7 @@ def health() -> dict[str, str]:
     return {"status": "ok", "version": APP_VERSION, "commit": APP_COMMIT}
 
 
-@app.get("/api/identity", tags=["owner"])
+@app.get("/api/identity", tags=["owner"], response_model=OwnerIdentityResponse)
 def owner_identity(subject: Annotated[str, Depends(current_subject)]) -> dict[str, object]:
     """Authenticated ordinary API identity, never part of visitor projections."""
     return {

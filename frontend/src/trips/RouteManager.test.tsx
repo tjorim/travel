@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
-import type { Area, DocumentAsset, Location, Route, Trip } from "../tracker-model";
+import type { Area, DocumentAsset, Location, Route, Trip } from "../api-types";
 import { changeLocale } from "../locale";
 import { RouteManager } from "./RouteManager";
 
@@ -30,6 +30,10 @@ const area = (
 const taipei = area("taipei", "Taipei", 25.03, 121.56),
   tainan = area("tainan", "Tainan", 23.0, 120.2);
 const trip: Trip = {
+  owner_subject: "owner-1",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
   id: "trip",
   title: "Exampleland",
   summary: null,
@@ -69,6 +73,7 @@ const route = (id: string, label: string | null, overrides: Partial<Route> = {})
   document_asset_ids: [],
   geometry: null,
   visibility: "private",
+  notes_html: null,
   ...overrides,
 });
 const flight = route("r-flight", null, {

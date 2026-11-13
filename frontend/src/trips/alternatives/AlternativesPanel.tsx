@@ -8,12 +8,12 @@ import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { errorMessage } from "../../query/api";
 import { DeleteConfirmation, RecordDialog } from "../../RecordDialog";
+import { formatDay } from "../../dates";
 import {
-  formatDay,
   type AlternativeGroup,
   type AlternativeKind,
   type AlternativeSuggestion,
-} from "../../tracker-model";
+} from "../../api-types";
 import {
   groupedIds,
   groupTitle,

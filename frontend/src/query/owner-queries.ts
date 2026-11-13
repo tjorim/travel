@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import { decodeSubject, readSession, type TrackerSession } from "../auth";
+import { decodeSubject, readSession, type OwnerSession } from "../auth";
 import { useAuth } from "../auth-context";
 import type {
   AlternativeGroup,
@@ -32,13 +32,13 @@ import type {
   TripOverview,
   TripTask,
   TripTaskAlert,
-} from "../tracker-model";
+} from "../api-types";
 import { ApiError, ownerRequest, type OwnerRequest, type ErrorFallback } from "./api";
 import { ownerKeys, type DerivativeParent, type LibraryResource, type TripResource } from "./keys";
 
-export type Owner = { session: TrackerSession; subject: string };
+export type Owner = { session: OwnerSession; subject: string };
 
-function ownerFromSession(session: TrackerSession | null): Owner | null {
+function ownerFromSession(session: OwnerSession | null): Owner | null {
   const subject = session ? decodeSubject(session.accessToken) : null;
   return session && subject ? { session, subject } : null;
 }
@@ -171,20 +171,7 @@ export function useTripWithUpdates(tripId: string | undefined) {
   const updatesQuery = useTripUpdates(summary?.id ?? null);
   const updates = updatesQuery.data;
   const trip = useMemo<Trip | null>(
-    () =>
-      summary
-        ? {
-            id: summary.id,
-            title: summary.title,
-            summary: summary.summary,
-            summary_html: summary.summary_html,
-            starts_on: summary.starts_on,
-            ends_on: summary.ends_on,
-            cover_derivative_id: summary.cover_derivative_id,
-            cover_url: summary.cover_url,
-            travel_updates: updates ?? NO_UPDATES,
-          }
-        : null,
+    () => (summary ? { ...summary, travel_updates: updates ?? NO_UPDATES } : null),
     [summary, updates],
   );
   return { tripsQuery, updatesQuery, trip };

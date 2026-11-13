@@ -9,7 +9,7 @@ import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { useFeedback } from "../query/feedback";
 import { useTripResource, useTripWithUpdates } from "../query/owner-queries";
-import type { TravelUpdateCandidateIntent } from "../tracker-model";
+import type { TravelUpdateCandidateIntent } from "../capture-draft";
 import { EmptyState } from "@/ui/EmptyState";
 import type { AgendaRecordKind } from "../trips/AgendaView";
 import type { CreateKind, CreatePrefill, CreateRequest } from "../trips/create-request";

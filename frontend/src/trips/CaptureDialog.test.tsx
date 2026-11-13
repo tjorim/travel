@@ -8,7 +8,8 @@ import { vi, afterEach, beforeEach, expect, it } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
-import { emptyDraft, readDraft, saveDraft, type Trip } from "../tracker-model";
+import { emptyDraft, readDraft, saveDraft } from "../capture-draft";
+import { type Trip } from "../api-types";
 import { CaptureDialog } from "./CaptureDialog";
 
 const auth = vi.hoisted(() => ({
@@ -36,6 +37,10 @@ beforeEach(() => {
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   trips = [
     {
+      owner_subject: "owner-1",
+      cover_derivative_id: null,
+      cover_url: null,
+      summary_html: null,
       id: "t1",
       title: "Exampleland",
       summary: null,
@@ -44,6 +49,10 @@ beforeEach(() => {
       travel_updates: [],
     },
     {
+      owner_subject: "owner-1",
+      cover_derivative_id: null,
+      cover_url: null,
+      summary_html: null,
       id: "t2",
       title: "IJsland",
       summary: null,

@@ -1,6 +1,6 @@
 import { VisitorNumbers } from "./VisitorNumbers";
 import type {
-  DateRange,
+  DatePrecision,
   Projection,
   ProjectionArea,
   ProjectionItem,
@@ -9,7 +9,7 @@ import type {
   ProjectionStay,
   ProjectionUpdate,
   ProjectionVisit,
-} from "./projection-types";
+} from "./api-types";
 import { Spinner } from "@/ui/spinner";
 import { Alert } from "@/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
@@ -39,7 +39,9 @@ import { TripMap, type MapLine, type MapPhoto, type MapPoint } from "./TripMap";
 import { TripHeader, type TripCover } from "./TripHeader";
 import { groupStoryContext, type UpdateContext } from "./visitor-context";
 import { localDay, planByDay, type DayEntry, type PlanDay, type PlanRecords } from "./visitor-days";
-import { ROUTE_MODE_LABELS, timeForViewer, zoneName, type RouteMode } from "./tracker-model";
+import { ROUTE_MODE_LABELS } from "./records";
+import { timeForViewer, zoneName } from "./dates";
+import { type RouteMode } from "./api-types";
 
 const CurrentLocations = lazy(() => import("./CurrentLocations"));
 
@@ -54,7 +56,7 @@ export type {
   ProjectionStay,
   ProjectionUpdate,
   ProjectionVisit,
-} from "./projection-types";
+} from "./api-types";
 
 export type Audience = "public" | "share";
 export type PreviewResources = {
@@ -237,6 +239,13 @@ function storyDate(
       ? date.format("MMMM YYYY")
       : date.format("D MMMM YYYY");
 }
+
+/** The dates a record states about itself: its own range, with the precision it was shared at. */
+type DateRange = {
+  starts_on?: string | null;
+  ends_on?: string | null;
+  date_precision?: DatePrecision | null;
+};
 
 /** "november 2026 – december 2026" at whatever precision the owner shared. */
 export function tripDates(dates: DateRange | null | undefined): string | null {
@@ -1765,7 +1774,7 @@ export function ProjectionView({
         destinations={tripDestinations(projection)}
         cover={cover}
       />
-      <VisitorNumbers numbers={projection.numbers} />
+      <VisitorNumbers numbers={projection.numbers ?? undefined} />
       {!!projection.current_locations?.length && (
         <Suspense fallback={null}>
           <CurrentLocations positions={projection.current_locations} />

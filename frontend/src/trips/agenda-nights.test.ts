@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import type { Area, Stay } from "../tracker-model";
+import type { Area, Stay } from "../api-types";
 import { buildAgendaItems } from "./AgendaView";
 
 const area = { id: "linkou", label: "Linkou", timezone: "Asia/Taipei" } as Area;

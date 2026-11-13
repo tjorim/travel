@@ -20,7 +20,9 @@ from ..schemas import (
     PackingItemUpdate,
     PackingListCreate,
     PackingListResponse,
+    PackingListSourceResponse,
     PackingListUpdate,
+    PackingSuggestionResponse,
     PackingTemplateCreate,
     PackingTemplateResponse,
 )
@@ -243,7 +245,7 @@ def list_packing_templates(session: SessionDep, subject: SubjectDep) -> list[Pac
     )
 
 
-@sources_router.get("")
+@sources_router.get("", response_model=list[PackingListSourceResponse])
 def list_packing_sources(session: SessionDep, subject: SubjectDep) -> list[dict[str, str]]:
     rows = session.execute(
         select(PackingList.id, PackingList.name, Trip.title, Trip.id)
@@ -256,7 +258,7 @@ def list_packing_sources(session: SessionDep, subject: SubjectDep) -> list[dict[
     ]
 
 
-@router.get("/{list_id}/suggestions")
+@router.get("/{list_id}/suggestions", response_model=list[PackingSuggestionResponse])
 def packing_suggestions(
     trip_id: Identifier, list_id: Identifier, session: SessionDep, subject: SubjectDep
 ) -> list[dict]:

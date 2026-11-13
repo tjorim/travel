@@ -4,7 +4,7 @@ import { m } from "../../paraglide/messages.js";
 import { ownerRequest } from "../../query/api";
 import { ownerKeys } from "../../query/keys";
 import { tripPath, useOwner } from "../../query/owner-queries";
-import type { FutureDisclosure, ShareScope } from "../../tracker-model";
+import type { FutureDisclosure, ShareScope } from "../../api-types";
 
 /**
  * What a candidate scope would show of a trip that has not started yet: routes with exact times or a carrier, and

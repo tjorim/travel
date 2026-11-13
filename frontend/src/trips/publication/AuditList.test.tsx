@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { changeLocale, formatDate } from "../../locale";
 import { server } from "../../mocks/server";
 import { renderWithOwner, testToken } from "../../query/test-utils";
-import type { AuditEvent } from "../../tracker-model";
+import type { AuditEvent } from "../../api-types";
 import { AuditList } from "./AuditList";
 
 vi.mock("../../auth-context", () => ({

@@ -1,5 +1,5 @@
 import { numberLabels } from "../../VisitorNumbers";
-import type { VisitorNumber } from "../../tracker-model";
+import type { VisitorNumber } from "../../api-types";
 import { Button } from "@/ui/button";
 import { Collapsible } from "@/ui/collapsible";
 import { useState } from "react";
@@ -10,7 +10,7 @@ import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { errorMessage } from "../../query/api";
 import { FeedbackError } from "../../query/feedback";
-import type { DatePrecision, ShareScope, ShareScopeKind } from "../../tracker-model";
+import type { DatePrecision, ShareScope, ShareScopeKind } from "../../api-types";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { useSetVisibility } from "../visibility";

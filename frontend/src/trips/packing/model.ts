@@ -1,40 +1,17 @@
 import { formatNumber } from "../../locale";
 import { m } from "../../paraglide/messages.js";
+import type {
+  Bag,
+  Item,
+  PackingList,
+  PackingSource,
+  PackingSuggestion,
+  PackingTemplate,
+} from "../../api-types";
 
-export type PackingList = { id: string; name: string };
-export type PackingSource = PackingList & { trip_id: string; trip_title: string };
-export type PackingTemplate = PackingList;
-export type PackingSuggestion = {
-  label: string;
-  category: string | null;
-  prior_trips: number;
-  usually_cabin: boolean;
-  usually_essential: boolean;
-};
-export type Bag = {
-  id: string;
-  name: string;
-  type: string | null;
-  position: number;
-  weight_limit_g: number | null;
-};
-export type Item = {
-  id: string;
-  label: string;
-  quantity: number;
-  category: string | null;
-  bag_id: string | null;
-  position: number;
-  packed: boolean;
-  weight_g: number | null;
-  notes: string | null;
-  essential: boolean;
-  last_minute: boolean;
-  valuable: boolean;
-  cabin_only: boolean;
-  checked_only: boolean;
-};
-export type ItemDraft = Omit<Item, "id" | "position" | "packed">;
+export type { Bag, Item, PackingList, PackingSource, PackingSuggestion, PackingTemplate };
+
+export type ItemDraft = Omit<Item, "id" | "list_id" | "position" | "packed">;
 export type BagDraft = Pick<Bag, "name" | "type" | "weight_limit_g">;
 export type Group = "bag" | "category";
 export type Filter = "all" | "unpacked" | "packed" | "last-minute";

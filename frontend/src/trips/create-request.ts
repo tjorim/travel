@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
-import { stayCoversNight, stayInPlan, type Location, type Stay } from "../tracker-model";
+import { stayCoversNight, stayInPlan } from "../records";
+import { type Location, type Stay } from "../api-types";
 
 /** The record kinds the agenda and the map can start in place. */
 export type CreateKind = "visit" | "stay" | "route";
