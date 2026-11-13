@@ -1,11 +1,16 @@
-"""Copy-verify-record handling for private trip documents."""
+"""Copy-verify-record handling for private trip documents.
+
+Nothing here commits (``docs/object-storage.md``): an upload writes and verifies the bytes, then flushes the
+row, and the caller commits after, so the bytes exist before the row does (rule 1). A removal marks the
+object ``purge_pending`` and returns a ``PendingPurge`` the caller finalises after its commit (rule 3).
+"""
 
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..errors import Refusal
-from ..media.service import MediaImportError, _object_is_referenced, _purge_pending_objects, store_uploaded_object
+from ..media.service import MediaImportError, PendingPurge, _object_is_referenced, store_uploaded_object
 from ..models import DocumentAsset, DocumentKind, ObjectState, StoredObject
 from ..schemas import DocumentTitle
 from ..storage import ObjectStorage, StagedUpload
@@ -62,7 +67,6 @@ def direct_upload(
         select(DocumentAsset).where(DocumentAsset.trip_id == trip_id, DocumentAsset.original_object_id == stored.id)
     )
     if existing is not None:
-        session.commit()
         return existing, False
 
     asset = DocumentAsset(
@@ -73,16 +77,16 @@ def direct_upload(
         owner_metadata={"original_filename": filename},
     )
     session.add(asset)
-    session.commit()
+    session.flush()
     return asset, True
 
 
-def delete_document_asset(session: Session, storage: ObjectStorage, *, document_asset: DocumentAsset) -> None:
-    """Remove a trip document and purge its unreferenced stored original."""
+def delete_document_asset(session: Session, *, document_asset: DocumentAsset) -> PendingPurge:
+    """Remove a trip document and mark its unreferenced stored original ``purge_pending``."""
     object_id = document_asset.original_object_id
     session.delete(document_asset)
     session.flush()
     if not _object_is_referenced(session, object_id):
         session.get_one(StoredObject, object_id).state = ObjectState.PURGE_PENDING
-    session.commit()
-    _purge_pending_objects(session, storage, object_ids=[object_id])
+    session.flush()
+    return PendingPurge(trip_objects=(object_id,))

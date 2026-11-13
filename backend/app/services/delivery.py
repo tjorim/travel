@@ -1,15 +1,16 @@
-"""What anonymous delivery shares: its privacy headers, path checks and the helpers that answer a request."""
+"""What anonymous delivery shares with the owner's previews: the privacy headers, the path patterns and the lookup of
+a file or a navigation target among what a scope delivers.
+
+Nothing here knows of HTTP requests or responses: ``app.http_delivery`` shapes these answers for the routers, and
+the MCP tools report them as data.
+"""
 
 import re
+from dataclasses import dataclass
 
-from fastapi import Request, Response, status
-from fastapi.responses import JSONResponse
-
-from ..errors import ApiException
-from ..media.ranges import media_response
-from ..models import Trip
+from ..errors import RecordNotFound
+from ..models import StoredObject, Trip
 from ..projection import scoped_file, scoped_navigation_url
-from ..schemas import SafeText
 from ..storage import ObjectStorage
 
 UNLISTED_HEADERS = {
@@ -26,56 +27,43 @@ PATH_PATTERNS = {
     "local_id": re.compile(r"[A-Za-z0-9_-]{1,80}"),
 }
 
-
-def malformed_path(request: Request, names: set[str]) -> bool:
-    return any(
-        PATH_PATTERNS[name].fullmatch(value) is None for name, value in request.path_params.items() if name in names
-    )
+# Displayed in the page; everything else is offered as a download.
+INLINE_TYPES = {"image/jpeg", "image/png", "image/webp", "video/mp4"}
 
 
-def validate_public_path(request: Request) -> None:
-    # Validate before any lookup. Do not include submitted values in diagnostics:
-    # these paths are anonymous. Share-token routes validate inside the handler
-    # (see reject_malformed_token) so the rate limiter still counts them.
-    if malformed_path(request, {"slug", "local_id"}) and "token" not in request.path_params:
-        raise ApiException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Not found",
-            headers={"Cache-Control": "no-store"},
-            code="not_found",
-        )
+@dataclass(frozen=True)
+class DeliveredFile:
+    """A file the scope delivers: its stored object and how a visitor's browser may show it."""
+
+    stored: StoredObject
+    disposition: str
+
+    @property
+    def content_type(self) -> str:
+        return self.stored.content_type
 
 
-def reject_malformed_token(request: Request, not_found: ApiException) -> None:
-    if malformed_path(request, {"token", "local_id", "member_id"}):
-        raise not_found
-
-
-def file_response(
-    trip: Trip, scope: dict, local_id: str, storage: ObjectStorage, headers: dict, request: Request
-) -> Response:
+def delivered_file(trip: Trip, scope: dict, local_id: str) -> DeliveredFile:
+    """The file a projection-local marker names among what ``scope`` delivers, or a not-found refusal."""
     resolved = scoped_file(trip, scope, local_id)
     if resolved is None:
-        raise ApiException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="File not found", headers=headers, code="not_found"
-        )
-    kind, object_row = resolved
-    media_type = object_row.content_type
-    disposition = (
-        "inline"
-        if kind == "media_derivative" and media_type in {"image/jpeg", "image/png", "image/webp", "video/mp4"}
-        else "attachment"
-    )
-    return media_response(storage, object_row, request, {**headers, "Content-Disposition": disposition})
+        raise RecordNotFound("File not found")
+    kind, stored = resolved
+    inline = kind == "media_derivative" and stored.content_type in INLINE_TYPES
+    return DeliveredFile(stored, "inline" if inline else "attachment")
 
 
-def preview_navigation(trip: Trip, scope: dict, local_id: SafeText) -> JSONResponse:
+def inspect_delivered_file(trip: Trip, scope: dict, local_id: str, storage: ObjectStorage) -> dict[str, str | None]:
+    """Confirm a delivered file can be read from storage and report how it would be served, without its bytes."""
+    found = delivered_file(trip, scope, local_id)
+    with storage.open(found.stored.object_key):
+        pass
+    return {"content_type": found.content_type, "cache_control": UNLISTED_HEADERS["Cache-Control"]}
+
+
+def navigation_target(trip: Trip, scope: dict, local_id: str) -> str:
+    """The destination a projection-local navigation marker names among the delivered places."""
     target = scoped_navigation_url(trip, scope, local_id)
     if target is None:
-        raise ApiException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Navigation target not found",
-            headers=UNLISTED_HEADERS,
-            code="not_found",
-        )
-    return JSONResponse({"url": target}, headers=UNLISTED_HEADERS)
+        raise RecordNotFound("Navigation target not found")
+    return target

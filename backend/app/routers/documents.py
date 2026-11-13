@@ -43,6 +43,7 @@ def upload_document(
         content_type=file.content_type,
         file=file.file,
     )
+    session.commit()
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return uploaded
 
@@ -63,7 +64,9 @@ def get_document(
 def remove_document(
     trip_id: Identifier, document_id: Identifier, session: SessionDep, subject: SubjectDep, storage: StorageDep
 ) -> Response:
-    service.remove_document(session, storage, subject, trip_id, document_id)
+    purge = service.remove_document(session, subject, trip_id, document_id)
+    session.commit()
+    purge.finalise(session, storage)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

@@ -1,29 +1,27 @@
 """Collection links: one owner-wide capability that opens several trips.
 
-A collection has its own token and keyed verifier and never reuses a per-trip
-link's. Each member is a ``(trip, scope)`` pair; the member's scope decides what
-that trip delivers, through the same projection code as every other audience.
-``state`` gates the whole collection, and removing a member or deleting its trip
-ends that trip's page at once.
+The owner routes are thin: ``app.services.collections`` holds the operations, shared with the MCP tools, and each
+route commits once. Anonymous delivery of a collection's trips stays here because it is HTTP only.
 """
 
-from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..audit import record_collection_event, scope_fingerprint
 from ..auth import current_subject
-from ..capability import generate_token, verifier_for
 from ..database import get_session
-from ..errors import ApiException, service_exception
-from ..exclusion_review import exclusion_changes, widening
-from ..models import Collection, CollectionAuditEvent, CollectionMember, LinkState, Trip
-from ..projection import ScopeError, prepare_scope, render_projection, scoped_navigation_url
+from ..errors import ApiException
+from ..http_delivery import (
+    file_response,
+    persist_lazy_expiry,
+    preview_navigation,
+    reject_malformed_token,
+    validate_public_path,
+)
+from ..models import CollectionAuditEvent, CollectionMember, Trip
+from ..projection import render_projection, scoped_navigation_url
 from ..ratelimit import shared_delivery_limit
 from ..schemas import (
     AuditReasonInput,
@@ -41,25 +39,10 @@ from ..schemas import (
     ShareLinkActivateRequest,
     ShareScopeInput,
 )
-from ..services.delivery import (
-    UNLISTED_HEADERS,
-    file_response,
-    preview_navigation,
-    reject_malformed_token,
-    validate_public_path,
-)
-from ..services.sharing import (
-    active_collection,
-    aware_utc,
-    claim_member_revision,
-    collection_index,
-    expire_collection,
-    member_response,
-    refuse_unacknowledged_widening,
-    trips_by_id,
-)
-from ..services.trips import owned_trip, trip_query
-from ..sharing_presets import apply_preset
+from ..services import collections as service
+from ..services.delivery import UNLISTED_HEADERS
+from ..services.sharing import active_collection
+from ..services.trips import trip_query
 from ..storage import ObjectStorage, get_storage
 
 router = APIRouter(prefix="/collections", tags=["collections"])
@@ -70,230 +53,59 @@ SessionDep = Annotated[Session, Depends(get_session)]
 SubjectDep = Annotated[str, Depends(current_subject)]
 StorageDep = Annotated[ObjectStorage, Depends(get_storage)]
 
-EDITABLE_STATES = (LinkState.DRAFT, LinkState.ACTIVE)
-MAX_MEMBERS = 50
-
-
-def _not_found() -> ApiException:
-    return ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Collection not found", code="not_found")
-
 
 # --- Owner -----------------------------------------------------------------------
 
 
-def _settle_expired(session: Session, collections: list[Collection]) -> None:
-    now = datetime.now(UTC)
-    for collection in collections:
-        if (
-            collection.state == LinkState.ACTIVE
-            and collection.expires_at is not None
-            and aware_utc(collection.expires_at) <= now
-        ):
-            expire_collection(session, collection)
-
-
-def owned_collection(session: Session, subject: str, collection_id: Identifier) -> Collection:
-    collection = session.scalar(
-        select(Collection).where(Collection.id == collection_id, Collection.owner_subject == subject)
-    )
-    if collection is None:
-        raise _not_found()
-    _settle_expired(session, [collection])
-    return collection
-
-
-def collection_response(session: Session, collection: Collection) -> CollectionResponse:
-    trips = trips_by_id(session, collection)
-    return CollectionResponse(
-        id=collection.id,
-        label=collection.label,
-        title=collection.title,
-        state=collection.state,
-        token=collection.token,
-        expires_at=collection.expires_at,
-        rotations=collection.rotations,
-        created_at=collection.created_at,
-        updated_at=collection.updated_at,
-        activated_at=collection.activated_at,
-        revoked_at=collection.revoked_at,
-        members=[
-            member_response(member, trips[member.trip_id]) for member in collection.members if member.trip_id in trips
-        ],
-    )
-
-
-def _scope_for(
-    session: Session, subject: str, trip_id: Identifier, scope: ShareScopeInput, stored: dict | None = None
-) -> tuple[Trip, dict]:
-    """The member's trip and the scope to store; ``stored`` is its current scope, ``None`` for a new member."""
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    scope_dict = scope.document(stored)
-    try:
-        return trip, prepare_scope(trip, scope_dict, stored)
-    except ScopeError as error:
-        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
-
-
 @router.post("", response_model=CollectionResponse, status_code=status.HTTP_201_CREATED)
 def create_collection(payload: CollectionCreate, session: SessionDep, subject: SubjectDep) -> CollectionResponse:
-    collection = Collection(owner_subject=subject, label=payload.label, title=payload.title, state=LinkState.DRAFT)
-    session.add(collection)
-    session.flush()
-    record_collection_event(
-        session,
-        owner_subject=subject,
-        actor_subject=subject,
-        collection_id=collection.id,
-        kind="collection.create",
-        details={"label": collection.label},
-    )
+    result = service.create_collection(session, subject, payload)
     session.commit()
-    return collection_response(session, collection)
+    return result
 
 
 @router.get("/audit-events", response_model=list[CollectionAuditEventResponse])
 def list_collection_audit_events(session: SessionDep, subject: SubjectDep) -> list[CollectionAuditEvent]:
-    return list(
-        session.scalars(
-            select(CollectionAuditEvent)
-            .where(CollectionAuditEvent.owner_subject == subject)
-            .order_by(CollectionAuditEvent.occurred_at.desc())
-        )
-    )
+    return service.list_collection_audit_events(session, subject)
 
 
 @router.get("", response_model=list[CollectionResponse])
 def list_collections(session: SessionDep, subject: SubjectDep) -> list[CollectionResponse]:
-    collections = list(
-        session.scalars(
-            select(Collection).where(Collection.owner_subject == subject).order_by(Collection.created_at.desc())
-        )
-    )
-    _settle_expired(session, collections)
-    return [collection_response(session, collection) for collection in collections]
+    result = service.list_collections(session, subject)
+    session.commit()
+    return result
 
 
 @router.get("/{collection_id}", response_model=CollectionResponse)
 def get_collection(collection_id: Identifier, session: SessionDep, subject: SubjectDep) -> CollectionResponse:
-    return collection_response(session, owned_collection(session, subject, collection_id))
+    result = service.get_collection(session, subject, collection_id)
+    session.commit()
+    return result
 
 
 @router.patch("/{collection_id}", response_model=CollectionResponse)
 def update_collection(
     collection_id: Identifier, payload: CollectionUpdate, session: SessionDep, subject: SubjectDep
 ) -> CollectionResponse:
-    collection = owned_collection(session, subject, collection_id)
-    if collection.state not in EDITABLE_STATES:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A revoked or expired collection cannot be edited",
-            code="a_revoked_or_expired_collection_cannot_be_edited",
-        )
-    fields = payload.model_fields_set
-    if "label" in fields and payload.label is not None:
-        collection.label = payload.label
-    if "title" in fields:
-        collection.title = payload.title
-    record_collection_event(
-        session,
-        owner_subject=subject,
-        actor_subject=subject,
-        collection_id=collection.id,
-        kind="collection.update",
-        details={"fields": sorted(fields)},
-    )
+    result = service.update_collection(session, subject, collection_id, payload)
     session.commit()
-    return collection_response(session, collection)
+    return result
 
 
 @router.delete("/{collection_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_collection(collection_id: Identifier, session: SessionDep, subject: SubjectDep) -> Response:
-    collection = owned_collection(session, subject, collection_id)
-    if collection.state == LinkState.ACTIVE:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Revoke an active collection before deleting it",
-            code="revoke_an_active_collection_before_deleting_it",
-        )
-    record_collection_event(
-        session,
-        owner_subject=subject,
-        actor_subject=subject,
-        collection_id=collection.id,
-        kind="collection.delete",
-        details={"label": collection.label},
-    )
-    session.delete(collection)
+    service.delete_collection(session, subject, collection_id)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-def _owned_member(session: Session, collection: Collection, member_id: Identifier) -> CollectionMember:
-    member = next((item for item in collection.members if item.id == member_id), None)
-    if member is None:
-        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found", code="not_found")
-    return member
 
 
 @router.post("/{collection_id}/members", response_model=CollectionResponse, status_code=status.HTTP_201_CREATED)
 def add_collection_member(
     collection_id: Identifier, payload: CollectionMemberCreate, session: SessionDep, subject: SubjectDep
 ) -> CollectionResponse:
-    collection = owned_collection(session, subject, collection_id)
-    if collection.state not in EDITABLE_STATES:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A revoked or expired collection cannot be edited",
-            code="a_revoked_or_expired_collection_cannot_be_edited",
-        )
-    trip, scope = _scope_for(session, subject, payload.trip_id, payload.scope)
-    if any(member.trip_id == payload.trip_id for member in collection.members):
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This trip is already in the collection",
-            code="this_trip_is_already_in_the_collection",
-        )
-    if len(collection.members) >= MAX_MEMBERS:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A collection holds at most 50 trips",
-            code="a_collection_holds_at_most_50_trips",
-        )
-    member = CollectionMember(collection_id=collection.id, trip_id=payload.trip_id, scope=scope)
-    try:
-        with session.begin_nested():
-            collection.members.append(member)
-            session.flush()
-    except IntegrityError as error:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This trip is already in the collection",
-            code="this_trip_is_already_in_the_collection",
-        ) from error
-    record_collection_event(
-        session,
-        owner_subject=subject,
-        actor_subject=subject,
-        collection_id=collection.id,
-        trip_id=payload.trip_id,
-        kind="collection.member_add",
-        details={"member_id": member.id, "scope_version": scope_fingerprint(scope)},
-    )
-    if payload.preset is not None:
-        # In the same transaction, through the same code as the apply route: a new member has received nothing yet.
-        apply_preset(
-            session,
-            trip,
-            subject,
-            member,
-            payload.preset,
-            fingerprint=None,
-            confirm_widening=False,
-            claim=None,
-            new=True,
-        )
+    result = service.add_collection_member(session, subject, collection_id, payload)
     session.commit()
-    return collection_response(session, collection)
+    return result
 
 
 @router.put(
@@ -317,76 +129,20 @@ def set_collection_member_scope(
         ),
     ] = False,
 ) -> CollectionResponse:
-    collection = owned_collection(session, subject, collection_id)
-    if collection.state not in EDITABLE_STATES:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A revoked or expired collection cannot be edited",
-            code="a_revoked_or_expired_collection_cannot_be_edited",
-        )
-    member = _owned_member(session, collection, member_id)
-    trip, scope = _scope_for(session, subject, member.trip_id, payload, member.scope)
-    live = collection.state == LinkState.ACTIVE
-    # Before the revision is claimed: a refused widening changes nothing, not even the revision.
-    refuse_unacknowledged_widening(trip, member.scope, scope, live=live, confirmed=confirm_widening)
-    claim_member_revision(session, member, if_match)
-    previous = member.scope
-    before = scope_fingerprint(previous)
-    member.scope = scope
-    after = scope_fingerprint(scope)
-    # A draft collection delivers nothing yet; its activation records the scopes.
-    if live and before != after:
-        details: dict = {"member_id": member.id, "scope_version_before": before, "scope_version_after": after}
-        if changes := exclusion_changes(previous, scope):
-            details["exclusions"] = {**changes, "widened": widening(trip, previous, scope).counts}
-        record_collection_event(
-            session,
-            owner_subject=subject,
-            actor_subject=subject,
-            collection_id=collection.id,
-            trip_id=member.trip_id,
-            kind="collection.member_scope_change",
-            details=details,
-        )
+    result = service.set_collection_member_scope(
+        session, subject, collection_id, member_id, payload, if_match, confirm_widening
+    )
     session.commit()
-    return collection_response(session, collection)
+    return result
 
 
 @router.delete("/{collection_id}/members/{member_id}", response_model=CollectionResponse)
 def remove_collection_member(
     collection_id: Identifier, member_id: Identifier, session: SessionDep, subject: SubjectDep
 ) -> CollectionResponse:
-    collection = owned_collection(session, subject, collection_id)
-    if collection.state not in EDITABLE_STATES:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A revoked or expired collection cannot be edited",
-            code="a_revoked_or_expired_collection_cannot_be_edited",
-        )
-    member = _owned_member(session, collection, member_id)
-    record_collection_event(
-        session,
-        owner_subject=subject,
-        actor_subject=subject,
-        collection_id=collection.id,
-        trip_id=member.trip_id,
-        kind="collection.member_remove",
-        details={"member_id": member.id, "scope_version": scope_fingerprint(member.scope)},
-    )
-    collection.members.remove(member)
+    result = service.remove_collection_member(session, subject, collection_id, member_id)
     session.commit()
-    return collection_response(session, collection)
-
-
-def _member_preview_scope(
-    session: Session, subject: str, member: CollectionMember, candidate: ShareScopeInput | None
-) -> tuple[Trip, dict]:
-    """The member's trip and the scope a preview renders: a validated unsaved candidate, else the saved one.
-
-    Nothing is stored and no audit event is recorded."""
-    if candidate is not None:
-        return _scope_for(session, subject, member.trip_id, candidate, member.scope)
-    return owned_trip(session, member.trip_id, subject, load_relations=True), member.scope
+    return result
 
 
 @router.post("/{collection_id}/members/{member_id}/preview", response_model=ProjectionDocument)
@@ -398,10 +154,10 @@ def preview_collection_member(
     response: Response,
     payload: ShareScopeInput | None = None,
 ) -> dict:
-    member = _owned_member(session, owned_collection(session, subject, collection_id), member_id)
-    trip, scope = _member_preview_scope(session, subject, member, payload)
+    document = service.preview_collection_member(session, subject, collection_id, member_id, payload)
+    persist_lazy_expiry(session)
     response.headers["Cache-Control"] = "no-store"
-    return render_projection(trip, scope, "travel/unlisted-trip@1")
+    return document
 
 
 @router.post("/{collection_id}/members/{member_id}/preview/files/{local_id}")
@@ -415,8 +171,8 @@ def preview_collection_member_file(
     request: Request,
     payload: ShareScopeInput | None = None,
 ) -> Response:
-    member = _owned_member(session, owned_collection(session, subject, collection_id), member_id)
-    trip, scope = _member_preview_scope(session, subject, member, payload)
+    trip, scope = service.member_preview(session, subject, collection_id, member_id, payload)
+    persist_lazy_expiry(session)
     return file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
 
 
@@ -442,8 +198,8 @@ def preview_collection_member_navigation(
     subject: SubjectDep,
     payload: ShareScopeInput | None = None,
 ) -> JSONResponse:
-    member = _owned_member(session, owned_collection(session, subject, collection_id), member_id)
-    trip, scope = _member_preview_scope(session, subject, member, payload)
+    trip, scope = service.member_preview(session, subject, collection_id, member_id, payload)
+    persist_lazy_expiry(session)
     return preview_navigation(trip, scope, local_id)
 
 
@@ -459,53 +215,19 @@ def preview_collection_index(
     collection_id: Identifier, session: SessionDep, subject: SubjectDep, response: Response
 ) -> CollectionIndexDocument:
     """The index exactly as a visitor of this collection would receive it."""
+    result = service.preview_collection_index(session, subject, collection_id)
+    persist_lazy_expiry(session)
     response.headers["Cache-Control"] = "no-store"
-    return collection_index(session, owned_collection(session, subject, collection_id))
-
-
-def _activate(collection: Collection, expires_in_days: int | None) -> None:
-    token = generate_token()
-    now = datetime.now(UTC)
-    collection.token = token
-    collection.token_verifier = verifier_for(token)
-    collection.expires_at = now + timedelta(days=expires_in_days) if expires_in_days is not None else None
-    collection.state = LinkState.ACTIVE
-    collection.activated_at = now
-
-
-def _member_fingerprint(collection: Collection) -> str:
-    return scope_fingerprint({member.id: member.scope for member in collection.members})
+    return result
 
 
 @router.post("/{collection_id}/activate", response_model=CollectionResponse)
 def activate_collection(
     collection_id: Identifier, payload: ShareLinkActivateRequest, session: SessionDep, subject: SubjectDep
 ) -> CollectionResponse:
-    collection = owned_collection(session, subject, collection_id)
-    if collection.state != LinkState.DRAFT:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Only a draft collection can be activated",
-            code="only_a_draft_collection_can_be_activated",
-        )
-    _activate(collection, payload.expires_in_days)
-    details: dict = {
-        "members": len(collection.members),
-        "scope_version": _member_fingerprint(collection),
-        "expires_at": collection.expires_at.isoformat() if collection.expires_at else None,
-    }
-    if payload.reason:
-        details["reason"] = payload.reason
-    record_collection_event(
-        session,
-        owner_subject=subject,
-        actor_subject=subject,
-        collection_id=collection.id,
-        kind="collection.activate",
-        details=details,
-    )
+    result = service.activate_collection(session, subject, collection_id, payload)
     session.commit()
-    return collection_response(session, collection)
+    return result
 
 
 @router.post("/{collection_id}/revoke", response_model=CollectionResponse)
@@ -515,29 +237,9 @@ def revoke_collection(
     subject: SubjectDep,
     payload: AuditReasonInput = AuditReasonInput(),
 ) -> CollectionResponse:
-    collection = owned_collection(session, subject, collection_id)
-    if collection.state != LinkState.ACTIVE:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Only an active collection can be revoked",
-            code="only_an_active_collection_can_be_revoked",
-        )
-    collection.state = LinkState.REVOKED
-    collection.token = None
-    collection.revoked_at = datetime.now(UTC)
-    details: dict = {}
-    if payload.reason:
-        details["reason"] = payload.reason
-    record_collection_event(
-        session,
-        owner_subject=subject,
-        actor_subject=subject,
-        collection_id=collection.id,
-        kind="collection.revoke",
-        details=details,
-    )
+    result = service.revoke_collection(session, subject, collection_id, payload)
     session.commit()
-    return collection_response(session, collection)
+    return result
 
 
 @router.post("/{collection_id}/rotate", response_model=CollectionResponse)
@@ -545,32 +247,9 @@ def rotate_collection(
     collection_id: Identifier, payload: ShareLinkActivateRequest, session: SessionDep, subject: SubjectDep
 ) -> CollectionResponse:
     """Replace the capability in place: the old token stops working, members and scopes stay."""
-    collection = owned_collection(session, subject, collection_id)
-    if collection.state != LinkState.ACTIVE:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Only an active collection can be rotated",
-            code="only_an_active_collection_can_be_rotated",
-        )
-    _activate(collection, payload.expires_in_days)
-    collection.rotations += 1
-    details: dict = {
-        "rotation": collection.rotations,
-        "scope_version": _member_fingerprint(collection),
-        "expires_at": collection.expires_at.isoformat() if collection.expires_at else None,
-    }
-    if payload.reason:
-        details["reason"] = payload.reason
-    record_collection_event(
-        session,
-        owner_subject=subject,
-        actor_subject=subject,
-        collection_id=collection.id,
-        kind="collection.rotate",
-        details=details,
-    )
+    result = service.rotate_collection(session, subject, collection_id, payload)
     session.commit()
-    return collection_response(session, collection)
+    return result
 
 
 @membership_router.get("/collections", response_model=list[CollectionMembershipResponse])
@@ -578,24 +257,9 @@ def list_trip_collections(
     trip_id: Identifier, session: SessionDep, subject: SubjectDep
 ) -> list[CollectionMembershipResponse]:
     """Which collections reach this trip, so the owner sees every way it can be opened."""
-    owned_trip(session, trip_id, subject)
-    rows = session.execute(
-        select(CollectionMember, Collection)
-        .join(Collection, Collection.id == CollectionMember.collection_id)
-        .where(CollectionMember.trip_id == trip_id, Collection.owner_subject == subject)
-        .order_by(Collection.created_at.desc())
-    ).all()
-    _settle_expired(session, [collection for _, collection in rows])
-    return [
-        CollectionMembershipResponse(
-            collection_id=collection.id,
-            member_id=member.id,
-            label=collection.label,
-            state=collection.state,
-            expires_at=collection.expires_at,
-        )
-        for member, collection in rows
-    ]
+    result = service.list_trip_collections(session, subject, trip_id)
+    session.commit()
+    return result
 
 
 # --- Anonymous delivery ----------------------------------------------------------
@@ -605,6 +269,7 @@ def _member_of_active_collection(
     session: Session, token: str, member_id: str, not_found: ApiException
 ) -> tuple[Trip, CollectionMember]:
     collection = active_collection(session, token)
+    persist_lazy_expiry(session)
     if collection is None:
         raise not_found
     member = next((item for item in collection.members if item.id == member_id), None)

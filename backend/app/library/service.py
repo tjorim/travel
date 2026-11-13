@@ -4,6 +4,10 @@ Deliberately a separate, trip-independent inventory: :class:`OwnerStoredObject`
 mirrors :class:`~app.models.StoredObject`'s dedup/checksum/opaque-key rules,
 but keyed by ``owner_subject`` instead of ``trip_id`` so this pipeline never
 touches the trip-scoped media/document pipeline in ``app.media.service``.
+
+Nothing here commits (``docs/object-storage.md``): an upload writes and verifies the bytes, then flushes the
+row, and the caller commits after (rule 1). A removal marks the object ``purge_pending`` and returns a
+``PendingPurge`` the caller finalises after its commit (rule 3).
 """
 
 from pydantic import TypeAdapter, ValidationError
@@ -11,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import settings
-from ..media.service import MediaImportError, upload_too_large_error
+from ..media.service import MediaImportError, PendingPurge, upload_too_large_error
 from ..models import DocumentKind, ObjectState, OwnerDocument, OwnerStoredObject, opaque_id
 from ..schemas import DocumentTitle
 from ..storage import ObjectStorage, StagedUpload, lock_object_deletion, sha256_hex, verify_object
@@ -91,7 +95,6 @@ def direct_upload(
         )
     )
     if existing is not None:
-        session.commit()
         return existing, False
 
     document = OwnerDocument(
@@ -103,7 +106,7 @@ def direct_upload(
         linked_trip_id=linked_trip_id,
     )
     session.add(document)
-    session.commit()
+    session.flush()
     return document, True
 
 
@@ -131,13 +134,13 @@ def purge_owner_objects(session: Session, storage: ObjectStorage, *, object_ids:
     return purged
 
 
-def delete_owner_document(session: Session, storage: ObjectStorage, *, document: OwnerDocument) -> None:
-    """Remove an owner-wide document and purge its stored original."""
+def delete_owner_document(session: Session, *, document: OwnerDocument) -> PendingPurge:
+    """Remove an owner-wide document and mark its stored original ``purge_pending`` when nothing else uses it."""
     object_id = document.original_object_id
     session.delete(document)
     session.flush()
     stored = session.get_one(OwnerStoredObject, object_id)
     if session.scalar(select(OwnerDocument.id).where(OwnerDocument.original_object_id == object_id)) is None:
         stored.state = ObjectState.PURGE_PENDING
-    session.commit()
-    purge_owner_objects(session, storage, object_ids=[object_id])
+    session.flush()
+    return PendingPurge(owner_objects=(object_id,))

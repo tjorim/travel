@@ -36,13 +36,12 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 
-from fastapi import status
 from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
 from .access import COLLECTIONS, set_visibility, sharing_blocker
 from .audit import record_audit_event, record_collection_event, scope_fingerprint
-from .errors import ApiException, ServiceError, service_exception
+from .errors import Conflict, ServiceError, service_error
 from .exclusions import KIND_ORDER, closure, is_excludable, stored_exclusions
 from .models import (
     AuditEventKind,
@@ -681,10 +680,10 @@ def exceptions_of(trip: Trip, holder: Holder) -> PresetExceptions | None:
 # --- applying a preset ------------------------------------------------------------------------------------
 
 
-def _refuse(code: str, detail: dict[str, Any], session: Session) -> ApiException:
+def _refuse(code: str, detail: dict[str, Any], session: Session) -> Conflict:
     """A 409 that stores nothing: the caller's transaction (and the revision it claimed) is rolled back."""
     session.rollback()
-    return ApiException(status_code=status.HTTP_409_CONFLICT, detail={"code": code, **detail}, code=code)
+    return Conflict(f"Sharing preset refused ({code})", code=code, detail={"code": code, **detail})
 
 
 def _never_everyone(plan: PresetPlan, index: dict[Ref, Any]) -> None:
@@ -786,7 +785,7 @@ def apply_preset(
         scope = prepare_scope(trip, plan.scope_after, audience.scope, allow_exclusions=audience.can_exclude)
     except (ScopeError, ServiceError) as error:
         session.rollback()
-        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
+        raise service_error(error) from error
     holder.scope = scope
     holder.applied_preset = preset_id
     holder.applied_preset_at = datetime.now(UTC)

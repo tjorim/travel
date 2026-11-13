@@ -57,6 +57,7 @@ def upload_library_document(
         file=file.file,
         linked_trip_id=linked_trip_id,
     )
+    session.commit()
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return uploaded
 
@@ -86,7 +87,9 @@ def update_library_document(
 def remove_library_document(
     document_id: Identifier, session: SessionDep, subject: SubjectDep, storage: StorageDep
 ) -> Response:
-    service.remove_library_document(session, storage, subject, document_id)
+    purge = service.remove_library_document(session, subject, document_id)
+    session.commit()
+    purge.finalise(session, storage)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

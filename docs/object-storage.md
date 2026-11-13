@@ -39,6 +39,24 @@ restore.
 A new feature that stores files must use `ObjectStorage` and an object row, or
 add its own location to the apps backup.
 
+## Where the commit sits
+
+The services under `app/services` never commit; the HTTP route or the MCP tool owns the transaction. The
+rules hold because the lifecycle is split around that commit:
+
+- **Upload.** `direct_upload` (media, trip documents, the library) writes and verifies the bytes, then
+  flushes the row. The transport commits after, so rule 1 holds; a rolled-back upload leaves an
+  unreferenced file that `reconcile-objects` removes.
+- **Removal.** A service marks the object `purge_pending` and returns a `PendingPurge`. The transport
+  commits, then calls `finalise(session, storage)`, which deletes the bytes under
+  `lock_object_deletion` and commits the row deletions itself (rules 3 and 4). A transport that skips or
+  fails `finalise` leaves the row `purge_pending`, which the scheduled purge retries. The MCP tools pass
+  `after_commit=` to `_call` for this.
+- **Provider import.** Each item is fetched from the provider and can be slow, so
+  `complete_import_session` takes the transport's commit as `checkpoint` and calls it after every item.
+- The only functions that commit inside the storage modules are the purges (`_purge_pending_objects`,
+  `purge_owner_objects`, `purge_deleted_media`); a test fails for any other.
+
 ## Unreferenced files
 
 A crash between rule 1's write and the commit leaves a file no row names, and
