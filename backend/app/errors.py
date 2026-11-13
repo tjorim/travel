@@ -57,8 +57,33 @@ class RecordNotFound(Refusal):
 
     status_code = status.HTTP_404_NOT_FOUND
 
-    def __init__(self, message: str):
-        super().__init__(message, code="not_found")
+    def __init__(self, message: str, *, code: str = "not_found", params: dict | None = None):
+        super().__init__(message, code=code, params=params)
+
+
+class BadGateway(Refusal):
+    """A provider outside Travel failed (HTTP 502)."""
+
+    status_code = status.HTTP_502_BAD_GATEWAY
+
+
+class InvalidRevision(Refusal):
+    """An ``If-Match`` that is not a revision this API issued (HTTP 400)."""
+
+    status_code = status.HTTP_400_BAD_REQUEST
+
+    def __init__(self) -> None:
+        super().__init__("Invalid revision", code="invalid_revision")
+
+
+class RevisionConflict(Refusal):
+    """A write that lost its revision race (HTTP 412); ``detail`` carries the winner's current record."""
+
+    status_code = status.HTTP_412_PRECONDITION_FAILED
+
+    def __init__(self, current: Any) -> None:
+        code = "scope_revision_conflict"
+        super().__init__("The record changed since it was read", code=code, detail={"code": code, "current": current})
 
 
 class ApiException(HTTPException):

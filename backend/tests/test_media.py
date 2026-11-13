@@ -169,9 +169,11 @@ def test_video_job_left_processing_by_the_retired_local_encoder_becomes_retryabl
             content_type="video/quicktime",
             data=video_with_telemetry(tmp_path),
         )
+        session.commit()
         derivative = service.queue_video_derivative(
             session, media_asset=asset, purpose=DerivativePurpose.SHARE, remove_audio=False
         )
+        session.commit()
         derivative_id, asset_id = derivative.id, asset.id
         derivative.processing_backend = DerivativeProcessingBackend.LOCAL
         derivative.processing_started_at = datetime.now(UTC) - timedelta(
@@ -196,9 +198,12 @@ def _queue_video(session: Session, tmp_path: Path, trip_id: str, *, filename: st
         content_type="video/quicktime",
         data=video_with_telemetry(tmp_path),
     )
-    return service.queue_video_derivative(
+    session.commit()
+    derivative = service.queue_video_derivative(
         session, media_asset=asset, purpose=DerivativePurpose.SHARE, remove_audio=False
     )
+    session.commit()
+    return derivative
 
 
 # --- Fake providers: no test ever makes a real network call -----------------------
@@ -338,6 +343,7 @@ def test_video_asset_has_no_thumbnail(tmp_path: Path) -> None:
             content_type="video/quicktime",
             data=b"not-a-real-video",
         )
+        session.commit()
         asset_id = asset.id
 
     listing = owner.get(f"/api/trips/{trip['id']}/media")
@@ -931,7 +937,9 @@ def test_purge_deleted_media_keeps_a_recent_deletion_within_the_recovery_window(
         asset, _ = direct_upload(
             session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes()
         )
+        session.commit()
         delete_media_asset(session, media_asset=asset)
+        session.commit()
 
         purged = purge_deleted_media(session, storage, older_than=timedelta(days=30))
         assert purged == 0
@@ -953,13 +961,16 @@ def test_purge_deleted_media_reclaims_original_and_derivative_objects_after_the_
         asset, _ = direct_upload(
             session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes()
         )
+        session.commit()
         derivative = create_derivative(session, storage, media_asset=asset, purpose=DerivativePurpose.SHARE)
+        session.commit()
         original_key = asset.original_object.object_key
         derivative_key = derivative.object.object_key
         assert storage.exists(original_key)
         assert storage.exists(derivative_key)
 
         delete_media_asset(session, media_asset=asset)
+        session.commit()
         purged = purge_deleted_media(session, storage, older_than=timedelta(seconds=-1))
         assert purged == 2
         assert not storage.exists(original_key)
@@ -979,9 +990,12 @@ def test_purge_deleted_media_retries_after_storage_failure_without_dangling_refe
         asset, _ = direct_upload(
             session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes()
         )
+        session.commit()
         derivative = create_derivative(session, storage, media_asset=asset, purpose=DerivativePurpose.SHARE)
+        session.commit()
         object_keys = {asset.original_object.object_key, derivative.object.object_key}
         delete_media_asset(session, media_asset=asset)
+        session.commit()
 
         class FailingStorage(LocalObjectStorage):
             def __init__(self) -> None:
@@ -1022,6 +1036,7 @@ def test_purge_deleted_media_keeps_a_shared_document_object(tmp_path: Path) -> N
         asset, _ = direct_upload(
             session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=data
         )
+        session.commit()
         document, _ = upload_document(
             session,
             storage,
@@ -1036,6 +1051,7 @@ def test_purge_deleted_media_keeps_a_shared_document_object(tmp_path: Path) -> N
         assert document.original_object_id == asset.original_object_id
 
         delete_media_asset(session, media_asset=asset)
+        session.commit()
         assert purge_deleted_media(session, storage, older_than=timedelta(seconds=-1)) == 0
         assert storage.exists(key)
         assert session.get(StoredObject, document.original_object_id).state == ObjectState.AVAILABLE
@@ -1052,9 +1068,11 @@ def test_purge_deleted_media_retries_when_commit_fails_after_file_deletion(tmp_p
         asset, _ = direct_upload(
             session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes()
         )
+        session.commit()
         object_id = asset.original_object_id
         key = asset.original_object.object_key
         delete_media_asset(session, media_asset=asset)
+        session.commit()
 
         commit = session.commit
         calls = 0
@@ -1091,7 +1109,9 @@ def test_derivative_deletion_failure_leaves_retryable_object(tmp_path: Path) -> 
         asset, _ = direct_upload(
             session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes()
         )
+        session.commit()
         derivative = create_derivative(session, storage, media_asset=asset, purpose=DerivativePurpose.SHARE)
+        session.commit()
         derivative_id = derivative.id
         object_id = derivative.object_id
         key = derivative.object.object_key
@@ -1100,8 +1120,10 @@ def test_derivative_deletion_failure_leaves_retryable_object(tmp_path: Path) -> 
             def delete(self, _key: str) -> None:
                 raise OSError("simulated storage failure")
 
+        purge = delete_media_derivative(session, derivative=derivative)
+        session.commit()
         with pytest.raises(OSError, match="simulated storage failure"):
-            delete_media_derivative(session, FailingStorage(root=str(tmp_path)), derivative=derivative)
+            purge.finalise(session, FailingStorage(root=str(tmp_path)))
         session.rollback()
 
         assert session.get(MediaDerivative, derivative_id) is None
@@ -1167,6 +1189,7 @@ def test_legacy_corrupt_photos_return_handled_errors(tmp_path: Path, operation: 
         asset, _ = direct_upload(
             session, storage, trip_id=trip["id"], filename="test.jpg", content_type="image/jpeg", data=jpeg_bytes()
         )
+        session.commit()
         # Simulate a legacy original without rewriting a referenced storage key.
         from unittest.mock import patch
 
@@ -1176,6 +1199,7 @@ def test_legacy_corrupt_photos_return_handled_errors(tmp_path: Path, operation: 
                     generate_thumbnail(storage, media_asset=asset)
                 else:
                     create_derivative(session, storage, media_asset=asset, purpose=DerivativePurpose.SHARE)
+                    session.commit()
             assert error.value.code == "invalid_image"
 
 

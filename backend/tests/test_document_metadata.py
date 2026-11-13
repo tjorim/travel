@@ -5,11 +5,11 @@ import pytest
 from pydantic import ValidationError
 from test_documents import TestingSessionLocal, client_for, create_trip, setup_function, teardown_function
 
-from app import mcp_server
 from app.document import service as documents
 from app.library import service as library
 from app.main import app
 from app.mcp_server import BinaryUpload, TravelMcpBackend
+from app.mcp_server import core as mcp_core
 from app.models import DocumentKind
 from app.storage import LocalObjectStorage, get_storage
 
@@ -24,9 +24,9 @@ def test_invalid_title_never_writes_storage(title, kind, transport, tmp_path, mo
     trip_id = create_trip(client)["id"]
     storage = Mock(wraps=LocalObjectStorage(root=str(tmp_path)))
     app.dependency_overrides[get_storage] = lambda: storage
-    monkeypatch.setattr(mcp_server, "get_storage", lambda: storage)
-    monkeypatch.setattr(mcp_server.settings, "mcp_development_subject", "owner-1")
-    monkeypatch.setattr(mcp_server.settings, "environment", "development")
+    monkeypatch.setattr(mcp_core, "get_storage", lambda: storage)
+    monkeypatch.setattr(mcp_core.settings, "mcp_development_subject", "owner-1")
+    monkeypatch.setattr(mcp_core.settings, "environment", "development")
     data = f"synthetic-{kind}-{transport}-{ascii(title)}".encode()
     if transport == "http":
         if "\ud800" in title:

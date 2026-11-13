@@ -1,4 +1,10 @@
-from datetime import UTC, datetime, timedelta
+"""Owner publication routes (the public page, named share links) and anonymous delivery of what they share.
+
+The owner routes are thin: ``app.services.publication`` holds the operations, shared with the MCP tools, and each
+route commits once. Anonymous delivery stays here because it is HTTP only.
+"""
+
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Request, Response, status
@@ -8,29 +14,27 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..atom import atom_document
-from ..audit import SYSTEM_ACTOR, record_audit_event, scope_fingerprint
 from ..auth import current_subject
-from ..capability import generate_token, verifier_for
+from ..capability import verifier_for
 from ..database import get_session
-from ..errors import ApiException, service_exception
-from ..exclusion_review import exclusion_review
+from ..errors import ApiException
+from ..http_delivery import (
+    file_response,
+    malformed_path,
+    persist_lazy_expiry,
+    preview_navigation,
+    reject_malformed_token,
+    validate_public_path,
+)
 from ..models import (
     AuditEvent,
-    AuditEventKind,
-    AuditTargetType,
     LinkState,
     PublicSurface,
     ShareLink,
     SurfaceState,
     Trip,
 )
-from ..overview import future_counts
-from ..projection import (
-    ScopeError,
-    prepare_scope,
-    render_projection,
-    scoped_navigation_url,
-)
+from ..projection import render_projection, scoped_navigation_url
 from ..ratelimit import public_delivery_limit, retry_after_seconds, shared_delivery_limit
 from ..request_limits import RateLimitExceeded
 from ..schemas import (
@@ -54,29 +58,11 @@ from ..schemas import (
     ShareLinkUpdate,
     ShareScopeInput,
 )
-from ..services.delivery import (
-    UNLISTED_HEADERS,
-    file_response,
-    malformed_path,
-    preview_navigation,
-    reject_malformed_token,
-    validate_public_path,
-)
+from ..services import publication as service
+from ..services.delivery import UNLISTED_HEADERS
 from ..services.live_location import current_for_audience
-from ..services.sharing import (
-    activation_response,
-    active_collection,
-    aware_utc,
-    claim_revision,
-    collection_index,
-    get_or_create_surface,
-    link_response,
-    public_status,
-    refuse_unacknowledged_widening,
-    scope_change_details,
-)
-from ..services.trips import owned_trip, trip_query
-from ..sharing_presets import apply_preset
+from ..services.sharing import active_collection, aware_utc, collection_index
+from ..services.trips import trip_query
 from ..storage import ObjectStorage, get_storage
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["publication"])
@@ -105,53 +91,7 @@ async def delivery_rate_limit_handler(request: Request, error: RateLimitExceeded
     )
 
 
-def _apply_scope(
-    session: Session,
-    trip_id: Identifier,
-    subject: str,
-    scope: ShareScopeInput,
-    stored: dict | None = None,
-    *,
-    public: bool = False,
-) -> dict:
-    """Validate a submitted scope and return it as stored.
-
-    ``stored`` is the audience's current scope; a new audience passes ``None`` and so starts with the
-    conservative default date precision (see ``ShareScopeInput.document``). The public view is the
-    baseline every other audience subtracts from, so it cannot exclude records (``public=True``)."""
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    scope_dict = scope.document(stored)
-    try:
-        return prepare_scope(trip, scope_dict, stored, allow_exclusions=not public)
-    except ScopeError as error:
-        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
-
-
-def _preview_scope(
-    session: Session,
-    trip_id: Identifier,
-    subject: str,
-    candidate: ShareScopeInput | None,
-    saved: dict | None,
-    *,
-    public: bool = False,
-) -> dict:
-    """The scope a preview renders: the owner's unsaved candidate, validated like a save, else the saved one.
-
-    Nothing is stored and no audit event is recorded, so a preview never changes what a live audience receives.
-    """
-    if candidate is None:
-        return saved or {}
-    return _apply_scope(session, trip_id, subject, candidate, saved, public=public)
-
-
 # --- Owner: public follower view -------------------------------------------------
-#
-# `state` is the only gate: it controls whether this trip is served publicly
-# at all. While published (or before first publishing), `scope` is a live
-# field — editing it takes effect immediately, and delivery always renders
-# current trip content filtered to it. There is no frozen snapshot to
-# republish: widening scope is a live edit, same as narrowing it.
 
 
 @router.put("/public-projection", response_model=PublicProjectionStatusResponse)
@@ -162,25 +102,9 @@ def set_public_projection_scope(
     subject: SubjectDep,
     if_match: Annotated[str | None, Header()] = None,
 ) -> PublicProjectionStatusResponse:
-    surface = get_or_create_surface(session, trip_id)
-    scope = _apply_scope(session, trip_id, subject, payload, surface.scope, public=True)
-    claim_revision(session, surface, if_match)
-    before = scope_fingerprint(surface.scope)
-    surface.scope = scope
-    after = scope_fingerprint(scope)
-    # An unpublished page delivers nothing, so only a live page's edit counts.
-    if surface.state == SurfaceState.PUBLISHED and before != after:
-        record_audit_event(
-            session,
-            trip_id=trip_id,
-            actor_subject=subject,
-            kind=AuditEventKind.PUBLIC_PROJECTION_SCOPE_CHANGE,
-            target_type=AuditTargetType.PUBLIC_SURFACE,
-            target_id=surface.trip_id,
-            details={"scope_version_before": before, "scope_version_after": after},
-        )
+    result = service.set_public_projection_scope(session, subject, trip_id, payload, if_match)
     session.commit()
-    return public_status(session, surface)
+    return result
 
 
 @router.post("/public-projection/preview", response_model=ProjectionDocument)
@@ -191,14 +115,8 @@ def preview_public_projection(
     response: Response,
     payload: ShareScopeInput | None = None,
 ) -> dict:
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    surface = session.get(PublicSurface, trip_id)
-    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
+    document = service.preview_public_projection(session, subject, trip_id, payload)
     response.headers["Cache-Control"] = "no-store"
-
-    document = render_projection(trip, scope, "travel/public-trip@1")
-    if positions := current_for_audience(session, trip_id, "public"):
-        document["current_locations"] = positions
     return document
 
 
@@ -211,9 +129,8 @@ def preview_public_file(
     storage: StorageDep,
     request: Request,
 ) -> Response:
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    surface = session.get(PublicSurface, trip_id)
-    return file_response(trip, surface.scope if surface else {}, local_id, storage, UNLISTED_HEADERS, request)
+    trip, scope = service.public_preview(session, subject, trip_id)
+    return file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
 
 
 @router.post("/public-projection/future-disclosure", response_model=FutureDisclosure)
@@ -224,10 +141,7 @@ def review_public_future(
 
     The same scope the preview renders, counted from the same document, so the preview's review and the
     delivered fields cannot disagree. Stores nothing and records no audit event."""
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    surface = session.get(PublicSurface, trip_id)
-    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
-    return _future_disclosure(trip, scope)
+    return service.review_public_future(session, subject, trip_id, payload)
 
 
 @router.post("/share-links/{link_id}/future-disclosure", response_model=FutureDisclosure)
@@ -239,14 +153,9 @@ def review_link_future(
     payload: ShareScopeInput | None = None,
 ) -> FutureDisclosure:
     """The same review as the public one, for a hidden link's candidate scope. Stores nothing."""
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    link = owned_link(session, trip_id, subject, link_id)
-    return _future_disclosure(trip, _preview_scope(session, trip_id, subject, payload, link.scope))
-
-
-def _future_disclosure(trip: Trip, scope: dict) -> FutureDisclosure:
-    document = render_projection(trip, scope, "travel/unlisted-trip@1")
-    return FutureDisclosure(**future_counts(trip, document, datetime.now(UTC).date()))
+    result = service.review_link_future(session, subject, trip_id, link_id, payload)
+    session.commit()
+    return result
 
 
 @router.post("/public-projection/preview/files/{local_id}")
@@ -259,9 +168,7 @@ def preview_public_candidate_file(
     request: Request,
     payload: ShareScopeInput | None = None,
 ) -> Response:
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    surface = session.get(PublicSurface, trip_id)
-    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
+    trip, scope = service.public_preview(session, subject, trip_id, payload)
     return file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
 
 
@@ -273,9 +180,7 @@ def preview_public_candidate_navigation(
     subject: SubjectDep,
     payload: ShareScopeInput | None = None,
 ) -> JSONResponse:
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    surface = session.get(PublicSurface, trip_id)
-    scope = _preview_scope(session, trip_id, subject, payload, surface.scope if surface else None, public=True)
+    trip, scope = service.public_preview(session, subject, trip_id, payload)
     return preview_navigation(trip, scope, local_id)
 
 
@@ -283,166 +188,68 @@ def preview_public_candidate_navigation(
 def preview_public_navigation(
     trip_id: Identifier, local_id: SafeText, session: SessionDep, subject: SubjectDep
 ) -> JSONResponse:
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    surface = session.get(PublicSurface, trip_id)
-    return preview_navigation(trip, surface.scope if surface else {}, local_id)
+    trip, scope = service.public_preview(session, subject, trip_id)
+    return preview_navigation(trip, scope, local_id)
 
 
 @router.post("/public-projection/publish", response_model=PublicProjectionStatusResponse)
 def publish_public_projection(
     trip_id: Identifier, session: SessionDep, subject: SubjectDep
 ) -> PublicProjectionStatusResponse:
-    owned_trip(session, trip_id, subject)
-    surface = get_or_create_surface(session, trip_id)
-    surface.state = SurfaceState.PUBLISHED
-    record_audit_event(
-        session,
-        trip_id=trip_id,
-        actor_subject=subject,
-        kind=AuditEventKind.PUBLIC_PROJECTION_PUBLISH,
-        target_type=AuditTargetType.PUBLIC_SURFACE,
-        target_id=surface.trip_id,
-        details={"scope_version": scope_fingerprint(surface.scope)},
-    )
+    result = service.publish_public_projection(session, subject, trip_id)
     session.commit()
-    return public_status(session, surface)
+    return result
 
 
 @router.post("/public-projection/unpublish", response_model=PublicProjectionStatusResponse)
 def unpublish_public_projection(
     trip_id: Identifier, session: SessionDep, subject: SubjectDep, payload: AuditReasonInput = AuditReasonInput()
 ) -> PublicProjectionStatusResponse:
-    owned_trip(session, trip_id, subject)
-    surface = session.get(PublicSurface, trip_id)
-    if surface is None or surface.state != SurfaceState.PUBLISHED:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT, detail="This trip is not published", code="this_trip_is_not_published"
-        )
-    surface.state = SurfaceState.UNPUBLISHED
-    details: dict = {"scope_version": scope_fingerprint(surface.scope)}
-    if payload.reason:
-        details["reason"] = payload.reason
-    record_audit_event(
-        session,
-        trip_id=trip_id,
-        actor_subject=subject,
-        kind=AuditEventKind.PUBLIC_PROJECTION_UNPUBLISH,
-        target_type=AuditTargetType.PUBLIC_SURFACE,
-        target_id=surface.trip_id,
-        details=details,
-    )
+    result = service.unpublish_public_projection(session, subject, trip_id, payload)
     session.commit()
-    return public_status(session, surface)
+    return result
 
 
 @router.get("/public-projection", response_model=PublicProjectionStatusResponse)
 def get_public_projection_status(
     trip_id: Identifier, session: SessionDep, subject: SubjectDep
 ) -> PublicProjectionStatusResponse:
-    owned_trip(session, trip_id, subject)
-    surface = get_or_create_surface(session, trip_id)
+    result = service.get_public_projection_status(session, subject, trip_id)
     session.commit()
-    return public_status(session, surface)
+    return result
 
 
 # --- Owner: named unlisted share links --------------------------------------------
-#
-# `state` gates whether the token works at all. While `active`, `scope` is
-# likewise live: editing it takes effect immediately for anyone already
-# holding the token. `activate` is the only step that mints the URL; `rotate`
-# remains useful on its own (a fresh URL for a suspected-leaked one) since
-# scope changes no longer need it.
-
-EDITABLE_LINK_STATES = (LinkState.DRAFT, LinkState.ACTIVE)
-
-
-def _expire_link(session: Session, link: ShareLink) -> None:
-    """Persist the active -> expired transition, stamping the audit event with
-    the real expiry time rather than the time someone noticed."""
-    link.state = LinkState.EXPIRED
-    record_audit_event(
-        session,
-        trip_id=link.trip_id,
-        actor_subject=SYSTEM_ACTOR,
-        kind=AuditEventKind.SHARE_LINK_EXPIRE,
-        target_type=AuditTargetType.SHARE_LINK,
-        target_id=link.id,
-        details={},
-        occurred_at=link.expires_at,
-    )
-    session.commit()
-
-
-def _settle_expired(session: Session, links: list[ShareLink]) -> None:
-    """Lazy write for owner reads: an active link past `expires_at` is stored as
-    expired the first time the owner (or a visitor) sees it. No sweep job runs."""
-    now = datetime.now(UTC)
-    for link in links:
-        if link.state == LinkState.ACTIVE and link.expires_at is not None and aware_utc(link.expires_at) <= now:
-            _expire_link(session, link)
-
-
-def owned_link(session: Session, trip_id: Identifier, subject: str, link_id: Identifier) -> ShareLink:
-    owned_trip(session, trip_id, subject)
-    link = session.scalar(select(ShareLink).where(ShareLink.id == link_id, ShareLink.trip_id == trip_id))
-    if link is None:
-        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Share link not found", code="not_found")
-    _settle_expired(session, [link])
-    return link
 
 
 @router.post("/share-links", response_model=ShareLinkResponse, status_code=status.HTTP_201_CREATED)
 def create_share_link(
     trip_id: Identifier, payload: ShareLinkCreate, session: SessionDep, subject: SubjectDep
 ) -> ShareLinkResponse:
-    scope = _apply_scope(session, trip_id, subject, payload.scope, None)
-    link = ShareLink(trip_id=trip_id, label=payload.label, series_id="", scope=scope, state=LinkState.DRAFT)
-    session.add(link)
-    session.flush()
-    link.series_id = link.id
-    record_audit_event(
-        session,
-        trip_id=trip_id,
-        actor_subject=subject,
-        kind=AuditEventKind.SHARE_LINK_CREATE,
-        target_type=AuditTargetType.SHARE_LINK,
-        target_id=link.id,
-        details={"label": link.label, "scope_version": scope_fingerprint(scope)},
-    )
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    if payload.preset is not None:
-        # In the same transaction, through the same code as the apply route: a new link has received nothing yet.
-        apply_preset(
-            session, trip, subject, link, payload.preset, fingerprint=None, confirm_widening=False, claim=None, new=True
-        )
+    result = service.create_share_link(session, subject, trip_id, payload)
     session.commit()
-    return link_response(link, trip)
+    return result
 
 
 @router.get("/audit-events", response_model=list[AuditEventResponse])
 def list_audit_events(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[AuditEvent]:
-    owned_trip(session, trip_id, subject)
-    return list(
-        session.scalars(select(AuditEvent).where(AuditEvent.trip_id == trip_id).order_by(AuditEvent.occurred_at.desc()))
-    )
+    return service.list_audit_events(session, subject, trip_id)
 
 
 @router.get("/share-links", response_model=list[ShareLinkResponse])
 def list_share_links(trip_id: Identifier, session: SessionDep, subject: SubjectDep) -> list[ShareLinkResponse]:
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    links = list(
-        session.scalars(select(ShareLink).where(ShareLink.trip_id == trip_id).order_by(ShareLink.created_at.desc()))
-    )
-    _settle_expired(session, links)
-    return [link_response(link, trip) for link in links]
+    result = service.list_share_links(session, subject, trip_id)
+    session.commit()
+    return result
 
 
 @router.get("/share-links/{link_id}", response_model=ShareLinkResponse)
 def get_share_link(
     trip_id: Identifier, link_id: Identifier, session: SessionDep, subject: SubjectDep
 ) -> ShareLinkResponse:
-    link = owned_link(session, trip_id, subject, link_id)
-    return link_response(link, owned_trip(session, trip_id, subject, load_relations=True))
+    result = service.get_share_link(session, subject, trip_id, link_id)
+    session.commit()
+    return result
 
 
 @router.patch(
@@ -458,41 +265,9 @@ def update_share_link(
     subject: SubjectDep,
     if_match: Annotated[str | None, Header()] = None,
 ) -> ShareLinkResponse:
-    link = owned_link(session, trip_id, subject, link_id)
-    if link.state not in EDITABLE_LINK_STATES:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A revoked or expired link cannot be edited",
-            code="a_revoked_or_expired_link_cannot_be_edited",
-        )
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    new_scope = (
-        _apply_scope(session, trip_id, subject, payload.scope, link.scope) if payload.scope is not None else None
-    )
-    if new_scope is not None:
-        # Before the revision is claimed: a refused widening changes nothing, not even the revision.
-        refuse_unacknowledged_widening(
-            trip, link.scope, new_scope, live=link.state == LinkState.ACTIVE, confirmed=payload.confirm_widening
-        )
-    claim_revision(session, link, if_match)
-    if payload.label is not None:
-        link.label = payload.label
-    if new_scope is not None:
-        previous = link.scope
-        link.scope = new_scope
-        # A draft link delivers nothing yet; its activation records the scope.
-        if link.state == LinkState.ACTIVE and scope_fingerprint(previous) != scope_fingerprint(new_scope):
-            record_audit_event(
-                session,
-                trip_id=trip_id,
-                actor_subject=subject,
-                kind=AuditEventKind.SHARE_LINK_SCOPE_CHANGE,
-                target_type=AuditTargetType.SHARE_LINK,
-                target_id=link.id,
-                details=scope_change_details(trip, previous, new_scope),
-            )
+    result = service.update_share_link(session, subject, trip_id, link_id, payload, if_match)
     session.commit()
-    return link_response(link, trip)
+    return result
 
 
 @router.post("/share-scope/exclusion-review", response_model=ExclusionReview)
@@ -506,12 +281,7 @@ def review_exclusions(
     routes and updates that use it; an excluded update hides its photos), and how many stored entries are
     stale. ``items`` is the audience's own custom selection, so the counts are what its visitors would lose.
     Stores nothing and records no audit event."""
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    scope = {
-        "items": [item.model_dump(mode="json") for item in payload.items],
-        "exclude": [item.model_dump(mode="json") for item in payload.exclude],
-    }
-    return exclusion_review(trip, scope)
+    return service.review_exclusions(session, subject, trip_id, payload)
 
 
 @router.post("/share-links/{link_id}/preview", response_model=ProjectionDocument)
@@ -523,14 +293,9 @@ def preview_share_link(
     response: Response,
     payload: ShareScopeInput | None = None,
 ) -> dict:
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    link = owned_link(session, trip_id, subject, link_id)
-    scope = _preview_scope(session, trip_id, subject, payload, link.scope)
+    document = service.preview_share_link(session, subject, trip_id, link_id, payload)
+    session.commit()
     response.headers["Cache-Control"] = "no-store"
-
-    document = render_projection(trip, scope, "travel/unlisted-trip@1")
-    if positions := current_for_audience(session, trip_id, link_id):
-        document["current_locations"] = positions
     return document
 
 
@@ -544,9 +309,9 @@ def preview_share_file(
     storage: StorageDep,
     request: Request,
 ) -> Response:
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    link = owned_link(session, trip_id, subject, link_id)
-    return file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS, request)
+    trip, _link, scope = service.link_preview(session, subject, trip_id, link_id)
+    persist_lazy_expiry(session)
+    return file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
 
 
 @router.post("/share-links/{link_id}/preview/files/{local_id}")
@@ -560,9 +325,8 @@ def preview_share_candidate_file(
     request: Request,
     payload: ShareScopeInput | None = None,
 ) -> Response:
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    link = owned_link(session, trip_id, subject, link_id)
-    scope = _preview_scope(session, trip_id, subject, payload, link.scope)
+    trip, _link, scope = service.link_preview(session, subject, trip_id, link_id, payload)
+    persist_lazy_expiry(session)
     return file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
 
 
@@ -575,9 +339,8 @@ def preview_share_candidate_navigation(
     subject: SubjectDep,
     payload: ShareScopeInput | None = None,
 ) -> JSONResponse:
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    link = owned_link(session, trip_id, subject, link_id)
-    scope = _preview_scope(session, trip_id, subject, payload, link.scope)
+    trip, _link, scope = service.link_preview(session, subject, trip_id, link_id, payload)
+    persist_lazy_expiry(session)
     return preview_navigation(trip, scope, local_id)
 
 
@@ -585,20 +348,9 @@ def preview_share_candidate_navigation(
 def preview_share_navigation(
     trip_id: Identifier, link_id: Identifier, local_id: SafeText, session: SessionDep, subject: SubjectDep
 ) -> JSONResponse:
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    link = owned_link(session, trip_id, subject, link_id)
-    return preview_navigation(trip, link.scope, local_id)
-
-
-def _activate_link(link: ShareLink, expires_in_days: int | None) -> str:
-    token = generate_token()
-    now = datetime.now(UTC)
-    link.token = token
-    link.token_verifier = verifier_for(token)
-    link.expires_at = now + timedelta(days=expires_in_days) if expires_in_days is not None else None
-    link.state = LinkState.ACTIVE
-    link.activated_at = now
-    return token
+    trip, _link, scope = service.link_preview(session, subject, trip_id, link_id)
+    persist_lazy_expiry(session)
+    return preview_navigation(trip, scope, local_id)
 
 
 @router.post("/share-links/{link_id}/activate", response_model=ShareLinkActivateResponse)
@@ -609,31 +361,9 @@ def activate_share_link(
     session: SessionDep,
     subject: SubjectDep,
 ) -> ShareLinkActivateResponse:
-    link = owned_link(session, trip_id, subject, link_id)
-    if link.state != LinkState.DRAFT:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Only a draft link can be activated",
-            code="only_a_draft_link_can_be_activated",
-        )
-    _activate_link(link, payload.expires_in_days)
-    details: dict = {
-        "scope_version": scope_fingerprint(link.scope),
-        "expires_at": link.expires_at.isoformat() if link.expires_at else None,
-    }
-    if payload.reason:
-        details["reason"] = payload.reason
-    record_audit_event(
-        session,
-        trip_id=trip_id,
-        actor_subject=subject,
-        kind=AuditEventKind.SHARE_LINK_ACTIVATE,
-        target_type=AuditTargetType.SHARE_LINK,
-        target_id=link.id,
-        details=details,
-    )
+    result = service.activate_share_link(session, subject, trip_id, link_id, payload)
     session.commit()
-    return activation_response(link, owned_trip(session, trip_id, subject, load_relations=True))
+    return result
 
 
 @router.post("/share-links/{link_id}/revoke", response_model=ShareLinkResponse)
@@ -644,30 +374,9 @@ def revoke_share_link(
     subject: SubjectDep,
     payload: AuditReasonInput = AuditReasonInput(),
 ) -> ShareLinkResponse:
-    link = owned_link(session, trip_id, subject, link_id)
-    if link.state != LinkState.ACTIVE:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Only an active link can be revoked",
-            code="only_an_active_link_can_be_revoked",
-        )
-    link.state = LinkState.REVOKED
-    link.token = None
-    link.revoked_at = datetime.now(UTC)
-    details: dict = {}
-    if payload.reason:
-        details["reason"] = payload.reason
-    record_audit_event(
-        session,
-        trip_id=trip_id,
-        actor_subject=subject,
-        kind=AuditEventKind.SHARE_LINK_REVOKE,
-        target_type=AuditTargetType.SHARE_LINK,
-        target_id=link.id,
-        details=details,
-    )
+    result = service.revoke_share_link(session, subject, trip_id, link_id, payload)
     session.commit()
-    return link_response(link, owned_trip(session, trip_id, subject, load_relations=True))
+    return result
 
 
 @router.post("/share-links/{link_id}/rotate", response_model=ShareLinkActivateResponse)
@@ -678,48 +387,23 @@ def rotate_share_link(
     session: SessionDep,
     subject: SubjectDep,
 ) -> ShareLinkActivateResponse:
-    old_link = owned_link(session, trip_id, subject, link_id)
-    if old_link.state != LinkState.ACTIVE:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Only an active link can be rotated",
-            code="only_an_active_link_can_be_rotated",
-        )
-    old_link.state = LinkState.REVOKED
-    old_link.token = None
-    old_link.revoked_at = datetime.now(UTC)
-
-    new_link = ShareLink(
-        trip_id=trip_id,
-        label=old_link.label,
-        series_id=old_link.series_id or old_link.id,
-        scope=old_link.scope,
-        state=LinkState.DRAFT,
-        # The same scope under a new URL: the display label carries over with it.
-        applied_preset=old_link.applied_preset,
-        applied_preset_at=old_link.applied_preset_at,
-    )
-    session.add(new_link)
-    session.flush()
-    _activate_link(new_link, payload.expires_in_days)
-    details: dict = {
-        "predecessor_id": old_link.id,
-        "scope_version": scope_fingerprint(new_link.scope),
-        "expires_at": new_link.expires_at.isoformat() if new_link.expires_at else None,
-    }
-    if payload.reason:
-        details["reason"] = payload.reason
-    record_audit_event(
-        session,
-        trip_id=trip_id,
-        actor_subject=subject,
-        kind=AuditEventKind.SHARE_LINK_ROTATE,
-        target_type=AuditTargetType.SHARE_LINK,
-        target_id=new_link.id,
-        details=details,
-    )
+    result = service.rotate_share_link(session, subject, trip_id, link_id, payload)
     session.commit()
-    return activation_response(new_link, owned_trip(session, trip_id, subject, load_relations=True))
+    return result
+
+
+@router.post("/share-links/{link_id}/feed/{action}", response_model=ShareLinkResponse)
+def manage_feed(
+    trip_id: Identifier,
+    link_id: Identifier,
+    action: str,
+    session: SessionDep,
+    subject: SubjectDep,
+    payload: FeedEnableRequest,
+) -> ShareLinkResponse:
+    result = service.manage_feed(session, subject, trip_id, link_id, action, payload)
+    session.commit()
+    return result
 
 
 delivery_router = APIRouter(tags=["sharing-delivery"], dependencies=[Depends(validate_public_path)])
@@ -846,6 +530,7 @@ def get_shared_trip(request: Request, token: str, session: SessionDep, response:
     if link is None:
         # Not a per-trip link: a collection capability opens an index of its members instead.
         collection = active_collection(session, token)
+        persist_lazy_expiry(session)
         if collection is None:
             raise not_found
         for header, value in UNLISTED_HEADERS.items():
@@ -854,7 +539,8 @@ def get_shared_trip(request: Request, token: str, session: SessionDep, response:
     if link.state != LinkState.ACTIVE:
         raise not_found
     if link.expires_at is not None and aware_utc(link.expires_at) <= datetime.now(UTC):
-        _expire_link(session, link)
+        service.expire_link(session, link)
+        session.commit()
         raise not_found
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
     if trip is None:
@@ -882,7 +568,8 @@ def get_shared_navigation(request: Request, token: str, local_id: str, session: 
     if link is None or link.state != LinkState.ACTIVE:
         raise not_found
     if link.expires_at is not None and aware_utc(link.expires_at) <= datetime.now(UTC):
-        _expire_link(session, link)
+        service.expire_link(session, link)
+        session.commit()
         raise not_found
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
     target = scoped_navigation_url(trip, link.scope, local_id) if trip is not None else None
@@ -911,48 +598,6 @@ def get_shared_file(token: str, local_id: str, session: SessionDep, storage: Sto
     if trip is None:
         raise not_found
     return file_response(trip, link.scope, local_id, storage, UNLISTED_HEADERS, request)
-
-
-@router.post("/share-links/{link_id}/feed/{action}", response_model=ShareLinkResponse)
-def manage_feed(
-    trip_id: Identifier,
-    link_id: Identifier,
-    action: str,
-    session: SessionDep,
-    subject: SubjectDep,
-    payload: FeedEnableRequest,
-) -> ShareLinkResponse:
-    link = owned_link(session, trip_id, subject, link_id)
-    session.refresh(link, with_for_update=True)
-    if action not in {"enable", "rotate", "revoke"}:
-        raise ApiException(404, "Not found", code="not_found")
-    if action != "revoke" and (
-        link.state != LinkState.ACTIVE or (link.expires_at and aware_utc(link.expires_at) <= datetime.now(UTC))
-    ):
-        raise ApiException(409, "Link is not active", code="invalid_state")
-    if (action == "enable" and link.feed_token) or (action != "enable" and not link.feed_token):
-        raise ApiException(409, "Feed state conflict", code="invalid_state")
-    if action != "revoke" and not payload.acknowledge_copies:
-        raise ApiException(422, "Acknowledgement required", code="invalid_input")
-    token = generate_token() if action != "revoke" else None
-    link.feed_token = token
-    link.feed_verifier = verifier_for(token) if token else None
-    link.feed_expires_at = (
-        datetime.now(UTC) + timedelta(days=payload.expires_in_days)
-        if token and payload.expires_in_days is not None
-        else None
-    )
-    record_audit_event(
-        session,
-        trip_id=trip_id,
-        actor_subject=subject,
-        kind=AuditEventKind(f"feed.{action}"),
-        target_type=AuditTargetType.SHARE_LINK,
-        target_id=link.id,
-        details={},
-    )
-    session.commit()
-    return link_response(link, owned_trip(session, trip_id, subject, load_relations=True))
 
 
 @delivery_router.get("/public/trips/{slug}/feed.atom", dependencies=[Depends(public_delivery_limit)])

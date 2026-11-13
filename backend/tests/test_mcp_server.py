@@ -233,7 +233,7 @@ def test_mcp_share_activation_and_rotation_return_complete_visitor_urls(
 
 @pytest.mark.parametrize("lifecycle", ["draft", "active", "revoked", "rotated"])
 def test_mcp_share_metadata_never_returns_capabilities(backend: TravelMcpBackend, lifecycle: str) -> None:
-    from app.routers import publication
+    from app.services import publication as publication_service
 
     trip_id = backend.create_trip(schemas.TripCreate(title="Share metadata"))["id"]
     created = backend.create_share_link(trip_id, schemas.ShareLinkCreate(label="Family"), confirm=True)
@@ -280,7 +280,7 @@ def test_mcp_share_metadata_never_returns_capabilities(backend: TravelMcpBackend
     with TestingSessionLocal() as session:
         rest_links = [
             schemas.ShareLinkResponse.model_validate(link).model_dump()
-            for link in publication.list_share_links(trip_id, session, "owner-1")
+            for link in publication_service.list_share_links(session, "owner-1", trip_id)
         ]
     assert all("token" in link for link in rest_links)
     if lifecycle in {"active", "rotated"}:

@@ -319,7 +319,11 @@ def direct_upload(
     data: bytes | StagedUpload,
     captured_at: datetime | None = None,
 ) -> tuple[MediaAsset, bool]:
-    """Copy a directly uploaded file into storage and record it.
+    """Copy a directly uploaded file into storage and record it; the caller commits.
+
+    The bytes are written and verified before the row is flushed, and the caller commits after: that is object
+    storage rule 1 (``docs/object-storage.md``), so a rolled-back upload leaves only an unreferenced file that
+    ``reconcile-objects`` removes.
 
     Returns `(asset, created)`; `created` is `False` when identical bytes
     were already imported for this trip (retry-safe, no duplicate record).
@@ -333,7 +337,6 @@ def direct_upload(
     stored = store_uploaded_object(session, storage, trip_id=trip_id, data=data, content_type=content_type)
     existing_asset = _existing_media_asset_for_object(session, trip_id, stored.id)
     if existing_asset is not None:
-        session.commit()
         return existing_asset, False
 
     record = ImportRecord(
@@ -359,7 +362,6 @@ def direct_upload(
     session.add(asset)
     session.flush()
     record.media_asset_id = asset.id
-    session.commit()
     return asset, True
 
 
@@ -393,7 +395,7 @@ def create_import_session(
         expires_at=provider_session.expires_at,
     )
     session.add(row)
-    session.commit()
+    session.flush()
     return CreatedImportSession(session=row, picker_uri=provider_session.picker_uri)
 
 
@@ -413,6 +415,7 @@ def complete_import_session(
     trip_id: str,
     subject: str,
     import_session: ImportSession,
+    checkpoint: Callable[[], None],
 ) -> ImportOutcome:
     """Import every item the owner selected in `import_session`.
 
@@ -420,12 +423,16 @@ def complete_import_session(
     `completed` is skipped (its existing `MediaAsset` is still returned), and
     one item's failure records `failed`/`failure_code` on its own record
     without blocking the rest — a later retry only reattempts the failures.
+
+    Each item is fetched from the provider and can take long, so a finished item is made durable at once rather
+    than at the end: ``checkpoint`` is the caller's commit, called after every item and after the failure record.
+    This function never commits itself; a transport that wants one transaction passes ``session.flush``.
     """
     if import_session.state == ImportSessionState.EXPIRED:
         raise ImportSessionExpiredError("This import session has expired", code="this_import_session_has_expired")
     if import_session.expires_at is not None and _aware_utc(import_session.expires_at) <= datetime.now(UTC):
         import_session.state = ImportSessionState.EXPIRED
-        session.commit()
+        checkpoint()
         raise ImportSessionExpiredError("This import session has expired", code="this_import_session_has_expired")
     token = access_token(subject, import_session.provider.value, secret_store)
     media_provider = resolver(import_session.provider)
@@ -498,7 +505,7 @@ def complete_import_session(
             record.failure_code = None
             asset.import_id = record.id if asset.import_id is None else asset.import_id
             session.flush()
-            session.commit()
+            checkpoint()
             imported.append(asset)
         except (ProviderError, MediaImportError) as error:
             session.rollback()
@@ -522,7 +529,7 @@ def complete_import_session(
             else:
                 record.state = ImportState.FAILED
                 record.failure_code = failure_code
-            session.commit()
+            checkpoint()
             failed.append((item.provider_item_id, failure_code))
 
         finally:
@@ -530,7 +537,7 @@ def complete_import_session(
                 data.close()
 
     import_session.state = ImportSessionState.COMPLETED
-    session.commit()
+    checkpoint()
 
     return ImportOutcome(ready=True, imported=imported, failed=failed)
 
@@ -588,7 +595,7 @@ def queue_video_derivative(
     from .worker import enqueue
 
     enqueue(session, derivative)
-    session.commit()
+    session.flush()
     return derivative
 
 
@@ -618,7 +625,9 @@ def _copy_bounded(storage: ObjectStorage, key: str, target: Path) -> None:
 
 
 def expire_stalled_video_derivatives(session: Session, derivatives: list[MediaDerivative]) -> None:
-    """Fail derivatives left PROCESSING by the retired in-process encoder; the worker owns remote deadlines."""
+    """Fail derivatives left PROCESSING by the retired in-process encoder; the worker owns remote deadlines.
+
+    The caller commits."""
     cutoff = datetime.now(UTC) - timedelta(seconds=VIDEO_STALLED_AFTER_SECONDS)
     stale = [
         item
@@ -631,7 +640,7 @@ def expire_stalled_video_derivatives(session: Session, derivatives: list[MediaDe
     if stale:
         for item in stale:
             item.processing_state = DerivativeProcessingState.FAILED
-        session.commit()
+        session.flush()
 
 
 THUMBNAIL_DIMENSION = 320
@@ -658,7 +667,8 @@ def cached_thumbnail(session: Session, storage: ObjectStorage, *, media_asset: M
     """Serialize lazy creation with other requests and soft deletion.
 
     Cached previews use existing derivative/object inventory and therefore the
-    same recoverable-deletion window and locked purge as their original.
+    same recoverable-deletion window and locked purge as their original. A new
+    preview is flushed, not committed: the caller commits after the response is built.
     """
     session.scalar(select(MediaAsset).where(MediaAsset.id == media_asset.id).with_for_update())
     session.refresh(media_asset)
@@ -685,7 +695,7 @@ def cached_thumbnail(session: Session, storage: ObjectStorage, *, media_asset: M
             metadata_stripped_at=datetime.now(UTC),
         )
     )
-    session.commit()
+    session.flush()
     return data, content_type
 
 
@@ -704,7 +714,7 @@ def create_derivative(
     EXIF/XMP/IPTC — Pillow does not carry that data over implicitly, so a
     plain re-encode is sufficient and there is nothing to explicitly scrub
     for it to leak. Orientation is preserved by baking in the EXIF rotation
-    before the tag itself is dropped.
+    before the tag itself is dropped. The caller commits.
     """
     original = media_asset.original_object
     if original.state != ObjectState.AVAILABLE:
@@ -735,14 +745,14 @@ def create_derivative(
         height=height,
     )
     session.add(derivative)
-    session.commit()
+    session.flush()
     return derivative
 
 
 def delete_media_asset(session: Session, *, media_asset: MediaAsset) -> None:
     """Soft-delete: gone from owner queries immediately. Physical bytes are
     purged later by `purge_deleted_media`, after the recoverable-deletion
-    window, never synchronously here."""
+    window, never synchronously here. The caller commits."""
     session.scalar(select(MediaAsset).where(MediaAsset.id == media_asset.id).with_for_update())
     session.refresh(media_asset)
     # A removed original is no longer an attachment. Keep no hidden link on a
@@ -757,14 +767,37 @@ def delete_media_asset(session: Session, *, media_asset: MediaAsset) -> None:
             if derivative.processing_state == DerivativeProcessingState.PROCESSING:
                 derivative.processing_state = DerivativeProcessingState.FAILED
     media_asset.deleted_at = datetime.now(UTC)
-    session.commit()
+    session.flush()
 
 
-def delete_media_derivative(session: Session, storage: ObjectStorage, *, derivative: MediaDerivative) -> None:
-    """Remove a disposable derivative and its now-unreferenced stored copy.
+@dataclass(frozen=True)
+class PendingPurge:
+    """Stored objects whose rows are marked ``purge_pending``, awaiting the caller's commit.
+
+    Object storage rule 3 (``docs/object-storage.md``): bytes are removed only for a row already committed as
+    ``purge_pending``. A service therefore marks the rows and returns this; its transport commits and then calls
+    ``finalise``, which deletes the bytes under the deletion lock and commits the row deletions itself. A failed
+    or skipped finalise leaves the rows ``purge_pending``, which the scheduled purge retries.
+    """
+
+    trip_objects: tuple[str, ...] = ()
+    owner_objects: tuple[str, ...] = ()
+
+    def finalise(self, session: Session, storage: ObjectStorage) -> None:
+        if self.trip_objects:
+            _purge_pending_objects(session, storage, object_ids=list(self.trip_objects))
+        if self.owner_objects:
+            from ..library.service import purge_owner_objects
+
+            purge_owner_objects(session, storage, object_ids=list(self.owner_objects))
+
+
+def delete_media_derivative(session: Session, *, derivative: MediaDerivative) -> PendingPurge:
+    """Remove a disposable derivative and mark its now-unreferenced stored copy ``purge_pending``.
 
     Original media gets a recoverable-deletion period. Generated derivatives
-    do not: once the owner deletes one it must disappear immediately.
+    do not: once the owner deletes one it must disappear immediately. The caller commits and then finalises the
+    returned purge, so the bytes go only after the mark is durable.
     """
     from .worker import retire
 
@@ -777,8 +810,8 @@ def delete_media_derivative(session: Session, storage: ObjectStorage, *, derivat
     for object_id in object_ids:
         if not _object_is_referenced(session, object_id):
             session.get_one(StoredObject, object_id).state = ObjectState.PURGE_PENDING
-    session.commit()
-    _purge_pending_objects(session, storage, object_ids=object_ids)
+    session.flush()
+    return PendingPurge(trip_objects=tuple(object_ids))
 
 
 def purge_deleted_media(session: Session, storage: ObjectStorage, *, older_than: timedelta) -> int:

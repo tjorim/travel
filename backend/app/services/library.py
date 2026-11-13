@@ -4,8 +4,9 @@ Both resources are scoped directly to the authenticated owner subject rather tha
 needs a dummy trip to hold reusable documents or emergency contacts. Neither resource is ever projected onto a
 public/unlisted trip response.
 
-Uploading and removing a stored original follow the object-storage lifecycle (``docs/object-storage.md``), so those
-two operations commit inside ``app.library.service``. Every other operation here leaves the commit to the caller.
+Like every service this never commits. Uploading and removing a stored original follow the object-storage
+lifecycle (``docs/object-storage.md``): an upload writes the bytes before the caller commits the row, and a removal
+marks the object ``purge_pending`` and returns a ``PendingPurge`` that the caller finalises after its commit.
 """
 
 from typing import BinaryIO
@@ -15,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from ..errors import RecordNotFound, Refusal, service_error
 from ..library.service import LibraryError, delete_owner_document, direct_upload
-from ..media.service import read_bounded_upload
+from ..media.service import PendingPurge, read_bounded_upload
 from ..models import DocumentKind, EmergencyInfoEntry, OwnerDocument
 from ..schemas import (
     EmergencyInfoEntryCreate,
@@ -78,7 +79,7 @@ def upload_library_document(
     file: BinaryIO,
     linked_trip_id: Identifier | None = None,
 ) -> tuple[OwnerDocumentResponse, bool]:
-    """Store a library document original; the flag says whether the document is new."""
+    """Store a library document original; the caller commits after (the flag says whether the document is new)."""
     if linked_trip_id:
         owned_trip(session, linked_trip_id, subject)
     if not content_type:
@@ -129,8 +130,9 @@ def update_library_document(
     return document_response(document)
 
 
-def remove_library_document(session: Session, storage: ObjectStorage, subject: str, document_id: Identifier) -> None:
-    delete_owner_document(session, storage, document=owned_library_document(session, subject, document_id))
+def remove_library_document(session: Session, subject: str, document_id: Identifier) -> PendingPurge:
+    """Remove a library document; the caller commits, then finalises the returned purge with its storage."""
+    return delete_owner_document(session, document=owned_library_document(session, subject, document_id))
 
 
 def list_emergency_info(session: Session, subject: str) -> list[EmergencyInfoEntry]:

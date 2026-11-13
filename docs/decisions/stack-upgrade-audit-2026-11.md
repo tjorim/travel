@@ -202,7 +202,7 @@ Effort: S under a day, M a few days, L more.
   (PEP 810: `lazy import x` / `lazy from m import n`, module scope only, not
   inside `try`, functions or classes; `__lazy_modules__`; `-X lazy_imports`).
 - Measured locally on Python 3.15.0 with `-X importtime`: `import app.main`
-  takes about 1.4 s cumulative. The `fastmcp` cost is not removable: `app/mcp_server.py`
+  takes about 1.4 s cumulative. The `fastmcp` cost is not removable: `app/mcp_server/`
   builds the `FastMCP` object, decorators and `BM25SearchTransform` at import
   and `app/main.py` mounts it, so first access happens at start-up anyway.
   `PIL` cost is 0.35 ms (cumulative) and `timezonefinder` 0.9 ms to import.

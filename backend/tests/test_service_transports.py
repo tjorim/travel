@@ -4,6 +4,8 @@ import ast
 import asyncio
 import json
 from collections.abc import Callable, Generator
+from datetime import UTC, datetime, timedelta
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
@@ -18,12 +20,29 @@ from app import schemas
 from app.auth import current_subject
 from app.config import settings
 from app.database import Base, get_session
-from app.errors import ServiceError
+from app.errors import Refusal, ServiceError
 from app.main import app
-from app.mcp_server import TravelMcpBackend, create_mcp_server
-from app.models import McpAuditEvent, PackingList, Visit
+from app.mcp_server import BinaryUpload, TravelMcpBackend, create_mcp_server
+from app.mcp_server import core as mcp_core
+from app.models import (
+    Collection,
+    CollectionAuditEvent,
+    DocumentAsset,
+    DocumentKind,
+    LinkState,
+    McpAuditEvent,
+    ObjectState,
+    PackingList,
+    ShareLink,
+    StoredObject,
+    Visit,
+)
+from app.services import collections as collection_service
+from app.services import documents as document_service
 from app.services import packing as packing_service
+from app.services import publication as publication_service
 from app.services import visits as visit_service
+from app.storage import LocalObjectStorage
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -403,31 +422,52 @@ def test_no_router_imports_another_router_and_no_service_imports_a_router() -> N
     assert offenders == {}
 
 
-# What each module outside ``routers/`` may still import from them (#369). ``main.py`` mounts every router. The
-# MCP tools of a feature call its service; the ones listed here still call the router function, so remove an
-# entry when its service exists and never add one.
-ROUTER_IMPORTS_STILL_ALLOWED = {
-    "app/main.py": None,  # everything: it includes the routers
-    "app/mcp_server.py": {
-        "app.routers.collections",
-        "app.routers.media",
-        "app.routers.precision",
-        "app.routers.publication",
-        "app.routers.sharing_presets",
-    },
-}
+# No module outside ``routers/`` imports from them, except ``main.py``, which mounts every router (#369). The MCP
+# tools call the services; never add an entry here.
+ROUTER_IMPORTS_ALLOWED = {"app/main.py"}
 
 
-def test_only_the_application_and_the_unmoved_mcp_tools_import_routers() -> None:
+def test_only_the_application_imports_routers() -> None:
     importing = {
-        str(path.relative_to(APP.parent)): {name for name in _imports_a_router(path) if name.count(".") == 2}
+        str(path.relative_to(APP.parent))
         for path in APP.rglob("*.py")
         if path.parent.name != "routers" and _imports_a_router(path)
     }
-    assert importing.keys() <= ROUTER_IMPORTS_STILL_ALLOWED.keys()
-    for module, routers in importing.items():
-        allowed = ROUTER_IMPORTS_STILL_ALLOWED[module]
-        assert allowed is None or routers <= allowed, module
+    assert importing <= ROUTER_IMPORTS_ALLOWED
+
+
+def _commit_calls(tree: ast.AST) -> list[ast.Call]:
+    """The calls of ``.commit()`` in a tree: a reference such as ``checkpoint=session.commit`` is no call."""
+    return [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "commit"
+    ]
+
+
+def test_no_service_commits_so_the_transport_owns_the_transaction() -> None:
+    offenders = {
+        str(path.relative_to(APP)): [call.lineno for call in calls]
+        for path in (APP / "services").glob("*.py")
+        if (calls := _commit_calls(ast.parse(path.read_text())))
+    }
+    assert offenders == {}
+
+
+def test_the_storage_lifecycle_commits_only_when_it_purges() -> None:
+    """The object-storage lifecycle (docs/object-storage.md) is split around the caller's commit, not inside it.
+
+    Uploads write bytes and flush rows (rule 1), a removal marks ``purge_pending`` and returns a ``PendingPurge``
+    (rule 3), and only the purges commit themselves: they run after the caller's commit, under the deletion lock,
+    and delete their own rows."""
+    for module in ("document/service.py", "library/service.py", "media/service.py"):
+        tree = ast.parse((APP / module).read_text())
+        committing = {
+            function.name
+            for function in ast.walk(tree)
+            if isinstance(function, ast.FunctionDef) and _commit_calls(function)
+        }
+        assert committing <= {"purge_deleted_media", "_purge_pending_objects", "purge_owner_objects"}, module
 
 
 def test_the_mcp_batch_commit_is_never_replaced() -> None:
@@ -436,3 +476,406 @@ def test_the_mcp_batch_commit_is_never_replaced() -> None:
             targets = node.targets if isinstance(node, ast.Assign) else []
             assert not any(isinstance(t, ast.Attribute) and t.attr == "commit" for t in targets), path
         assert "del session.commit" not in path.read_text(), path
+
+
+# --- Publication, collections, presets, precision and media (the third slice of #369) -----------------------------
+
+
+def _link(http: TestClient, trip_id: str, *, activate: bool = False) -> str:
+    created = http.post(f"/api/trips/{trip_id}/share-links", json={"label": "Family"})
+    assert created.status_code == 201, created.text
+    link_id = created.json()["id"]
+    if activate:
+        assert http.post(f"/api/trips/{trip_id}/share-links/{link_id}/activate", json={}).status_code == 200
+    return link_id
+
+
+def test_publication_refusals_have_the_same_code_over_http_and_mcp(http: TestClient, backend: TravelMcpBackend) -> None:
+    trip_id, area_id = _trip_with_area(http)
+    base = f"/api/trips/{trip_id}"
+    draft = _link(http, trip_id)
+    active = _link(http, trip_id, activate=True)
+    revoked = _link(http, trip_id, activate=True)
+    assert http.post(f"{base}/share-links/{revoked}/revoke", json={}).status_code == 200
+
+    codes = {
+        "unpublish a page that is not published": _same_refusal(
+            http.post(f"{base}/public-projection/unpublish", json={}),
+            lambda: backend.unpublish_public_projection(trip_id, confirm=True),
+        ),
+        "an exclusion on the public view": _same_refusal(
+            http.put(f"{base}/public-projection", json={"exclude": [{"kind": "area", "id": area_id}]}),
+            lambda: backend.set_public_projection_scope(
+                trip_id,
+                schemas.ShareScopeInput(exclude=[schemas.ShareScopeItemInput(kind="area", id=area_id)]),
+                confirm=True,
+            ),
+        ),
+        "an unknown link": _same_refusal(
+            http.get(f"{base}/share-links/missing"), lambda: backend.get_share_link(trip_id, "missing")
+        ),
+        "activate a link twice": _same_refusal(
+            http.post(f"{base}/share-links/{active}/activate", json={}),
+            lambda: backend.activate_share_link(trip_id, active, schemas.ShareLinkActivateRequest(), confirm=True),
+        ),
+        "revoke a draft": _same_refusal(
+            http.post(f"{base}/share-links/{draft}/revoke", json={}),
+            lambda: backend.revoke_share_link(trip_id, draft, confirm=True),
+        ),
+        "rotate a draft": _same_refusal(
+            http.post(f"{base}/share-links/{draft}/rotate", json={}),
+            lambda: backend.rotate_share_link(trip_id, draft, schemas.ShareLinkActivateRequest(), confirm=True),
+        ),
+        "edit a revoked link": _same_refusal(
+            http.patch(f"{base}/share-links/{revoked}", json={"label": "Friends"}),
+            lambda: backend.update_share_link(trip_id, revoked, schemas.ShareLinkUpdate(label="Friends"), confirm=True),
+        ),
+        "preview an unknown file": _same_refusal(
+            http.get(f"{base}/public-projection/preview/files/missing"),
+            lambda: backend.inspect_public_preview_file(trip_id, "missing"),
+        ),
+    }
+    assert codes == {
+        "unpublish a page that is not published": "this_trip_is_not_published",
+        "an exclusion on the public view": "scope_exclusion_not_allowed",
+        "an unknown link": "not_found",
+        "activate a link twice": "only_a_draft_link_can_be_activated",
+        "revoke a draft": "only_an_active_link_can_be_revoked",
+        "rotate a draft": "only_an_active_link_can_be_rotated",
+        "edit a revoked link": "a_revoked_or_expired_link_cannot_be_edited",
+        "preview an unknown file": "not_found",
+    }
+
+
+def test_collection_refusals_have_the_same_code_over_http_and_mcp(http: TestClient, backend: TravelMcpBackend) -> None:
+    trip_id, _ = _trip_with_area(http)
+    collection_id = http.post("/api/collections", json={"label": "Family"}).json()["id"]
+    assert http.post(f"/api/collections/{collection_id}/members", json={"trip_id": trip_id}).status_code == 201
+    base = f"/api/collections/{collection_id}"
+
+    codes = {
+        "unknown collection": _same_refusal(
+            http.get("/api/collections/missing"), lambda: backend.get_collection("missing")
+        ),
+        "the same trip twice": _same_refusal(
+            http.post(f"{base}/members", json={"trip_id": trip_id}),
+            lambda: backend.add_collection_member(
+                collection_id, schemas.CollectionMemberCreate(trip_id=trip_id), confirm=True
+            ),
+        ),
+        "an unknown member": _same_refusal(
+            http.delete(f"{base}/members/missing"),
+            lambda: backend.remove_collection_member(collection_id, "missing", confirm=True),
+        ),
+        "revoke a draft": _same_refusal(
+            http.post(f"{base}/revoke", json={}), lambda: backend.revoke_collection(collection_id, confirm=True)
+        ),
+        "rotate a draft": _same_refusal(
+            http.post(f"{base}/rotate", json={}),
+            lambda: backend.rotate_collection(collection_id, schemas.ShareLinkActivateRequest(), confirm=True),
+        ),
+    }
+    assert codes == {
+        "unknown collection": "not_found",
+        "the same trip twice": "this_trip_is_already_in_the_collection",
+        "an unknown member": "not_found",
+        "revoke a draft": "only_an_active_collection_can_be_revoked",
+        "rotate a draft": "only_an_active_collection_can_be_rotated",
+    }
+
+
+def test_a_collection_member_of_a_revoked_collection_cannot_be_edited_over_either_transport(
+    http: TestClient, backend: TravelMcpBackend
+) -> None:
+    trip_id, _ = _trip_with_area(http)
+    collection_id = http.post("/api/collections", json={"label": "Family"}).json()["id"]
+    member = http.post(f"/api/collections/{collection_id}/members", json={"trip_id": trip_id}).json()["members"][0]
+    assert http.post(f"/api/collections/{collection_id}/activate", json={}).status_code == 200
+    assert http.post(f"/api/collections/{collection_id}/revoke", json={}).status_code == 200
+
+    assert (
+        _same_refusal(
+            http.put(f"/api/collections/{collection_id}/members/{member['id']}", json={}),
+            lambda: backend.update_collection_member(collection_id, member["id"], schemas.ShareScopeInput(), True),
+        )
+        == "a_revoked_or_expired_collection_cannot_be_edited"
+    )
+
+
+def test_a_structured_preset_refusal_carries_the_same_review_over_http_and_mcp(
+    http: TestClient, backend: TravelMcpBackend
+) -> None:
+    trip_id, _ = _trip_with_area(http)
+    base = f"/api/trips/{trip_id}"
+    http.post(f"{base}/travel-updates", json={"occurred_at": "2054-12-01T12:00:00Z", "title": "Arrived"})
+
+    assert (
+        _same_refusal(
+            http.post(f"{base}/share-links/missing/preset/review", json={"preset": "story_only"}),
+            lambda: backend.preview_sharing_preset(trip_id, "story_only", "link:missing"),
+        )
+        == "not_found"
+    )
+    response = http.post(
+        f"{base}/public-projection/preset",
+        json={"preset": "story_only", "fingerprint": "stale", "confirm_widening": False},
+    )
+    with pytest.raises(ServiceError) as refused:
+        backend.apply_sharing_preset(trip_id, "story_only", "stale", confirm=True)
+
+    assert response.status_code == 409
+    review = response.json()["detail"]
+    assert review["code"] == "preset_preview_is_stale" == http_code(response) == refused.value.code
+    assert json.loads(str(refused.value)) == review
+
+
+def test_a_stale_revision_is_the_same_conflict_for_the_service_as_over_http(http: TestClient) -> None:
+    trip_id, _ = _trip_with_area(http)
+    base = f"/api/trips/{trip_id}/public-projection"
+    assert http.get(base).status_code == 200
+
+    stale = http.put(base, json={}, headers={"If-Match": '"99"'})
+    malformed = http.put(base, json={}, headers={"If-Match": "nonsense"})
+    with TestingSessionLocal() as session:
+        with pytest.raises(Refusal) as conflict:
+            publication_service.set_public_projection_scope(
+                session, "owner-1", trip_id, schemas.ShareScopeInput(), '"99"'
+            )
+        with pytest.raises(Refusal) as invalid:
+            publication_service.set_public_projection_scope(
+                session, "owner-1", trip_id, schemas.ShareScopeInput(), "nonsense"
+            )
+
+    assert stale.status_code == conflict.value.status_code == 412
+    assert stale.json()["errors"][0]["code"] == conflict.value.code == "scope_revision_conflict"
+    assert stale.json()["detail"] == conflict.value.detail
+    assert malformed.status_code == invalid.value.status_code == 400
+    assert malformed.json()["errors"][0]["code"] == invalid.value.code == "invalid_revision"
+
+
+def test_a_confirmed_precision_change_that_widens_a_live_audience_is_refused_the_same_way(
+    http: TestClient, backend: TravelMcpBackend
+) -> None:
+    trip_id, area_id = _trip_with_area(http)
+    base = f"/api/trips/{trip_id}"
+    visit = http.post(
+        f"{base}/visits",
+        json={"area_id": area_id, "title": "Old town", "starts_on": "2054-12-01", "share_date_precision": "year"},
+    ).json()
+    assert http.put(f"{base}/visibility/visit/{visit['id']}", json={"visibility": "everyone"}).status_code == 200
+    assert http.put(f"{base}/public-projection", json={"defaults": {"date_precision": "day"}}).status_code == 200
+    assert http.post(f"{base}/public-projection/publish", json={}).status_code == 200
+
+    response = http.post(f"{base}/date-precision/follow-audience", json={"kinds": ["visit"], "confirm": True})
+    with pytest.raises(ServiceError) as refused:
+        backend.follow_audience_date_precision(trip_id, ["visit"], confirm=True)
+
+    assert response.status_code == 409
+    review = response.json()["detail"]
+    assert review["code"] == "precision_widening_needs_acknowledgement" == refused.value.code == http_code(response)
+    assert json.loads(str(refused.value)) == review
+
+
+def test_media_refusals_have_the_same_code_over_http_and_mcp(http: TestClient, backend: TravelMcpBackend) -> None:
+    trip_id, _ = _trip_with_area(http)
+    base = f"/api/trips/{trip_id}/media"
+
+    codes = {
+        "unknown media": _same_refusal(http.get(f"{base}/missing"), lambda: backend.get_media(trip_id, "missing")),
+        "candidates for media of another trip": _same_refusal(
+            http.post(f"{base}/travel-update-candidates", json={"media_asset_ids": ["missing"]}),
+            lambda: backend.suggest_media_travel_update_candidates(
+                trip_id, schemas.MediaTravelUpdateCandidatesRequest(media_asset_ids=["missing"])
+            ),
+        ),
+        "a derivative of unknown media": _same_refusal(
+            http.post(f"{base}/missing/derivatives", json={}),
+            lambda: backend.create_media_derivative(trip_id, "missing", schemas.MediaDerivativeCreate()),
+        ),
+        "an import from a provider that is no source": _same_refusal(
+            http.post(f"{base}/imports/direct_device/sessions"),
+            lambda: backend.start_media_import_session(trip_id, "direct_device"),
+        ),
+    }
+    assert codes == {
+        "unknown media": "not_found",
+        "candidates for media of another trip": "selected_media_must_belong_to_this_trip",
+        "a derivative of unknown media": "not_found",
+        "an import from a provider that is no source": "not_an_importable_provider",
+    }
+
+
+def test_the_moved_services_never_commit_so_a_rolled_back_call_changes_nothing(http: TestClient) -> None:
+    trip_id, _ = _trip_with_area(http)
+
+    with TestingSessionLocal() as session:
+        publication_service.create_share_link(session, "owner-1", trip_id, schemas.ShareLinkCreate(label="Rolled back"))
+        collection_service.create_collection(session, "owner-1", schemas.CollectionCreate(label="Rolled back"))
+        session.rollback()
+    with TestingSessionLocal() as session:
+        assert session.scalar(select(func.count()).select_from(ShareLink)) == 0
+        assert session.scalar(select(func.count()).select_from(Collection)) == 0
+
+    with TestingSessionLocal() as session:
+        publication_service.create_share_link(session, "owner-1", trip_id, schemas.ShareLinkCreate(label="Kept"))
+        session.commit()
+    with TestingSessionLocal() as session:
+        assert session.scalar(select(func.count()).select_from(ShareLink)) == 1
+
+
+def test_an_expired_link_found_by_a_read_is_recorded_in_the_callers_transaction(http: TestClient) -> None:
+    trip_id, _ = _trip_with_area(http)
+    link_id = _link(http, trip_id, activate=True)
+    with TestingSessionLocal() as session:
+        link = session.get(ShareLink, link_id)
+        link.expires_at = datetime.now(UTC) - timedelta(days=1)
+        session.commit()
+
+    with TestingSessionLocal() as session:
+        shown = publication_service.get_share_link(session, "owner-1", trip_id, link_id)
+        assert shown.state == LinkState.EXPIRED
+        session.rollback()  # the service did not commit the expiry itself
+    with TestingSessionLocal() as session:
+        assert session.get(ShareLink, link_id).state == LinkState.ACTIVE
+        publication_service.get_share_link(session, "owner-1", trip_id, link_id)
+        session.commit()
+    with TestingSessionLocal() as session:
+        assert session.get(ShareLink, link_id).state == LinkState.EXPIRED
+
+
+# --- The object-storage lifecycle around the caller's commit (docs/object-storage.md) ------------------------------
+
+
+def _uploaded_document(session: Session, storage: LocalObjectStorage, trip_id: str, data: bytes) -> str:
+    uploaded, _ = document_service.upload_document(
+        session,
+        storage,
+        "owner-1",
+        trip_id,
+        title="Ticket",
+        document_kind=DocumentKind.OTHER,
+        filename="ticket.txt",
+        content_type="text/plain",
+        file=BytesIO(data),
+    )
+    return uploaded.id
+
+
+def test_an_upload_writes_its_bytes_before_the_row_commits_and_a_rollback_keeps_no_row(
+    http: TestClient, tmp_path: Path
+) -> None:
+    trip_id, _ = _trip_with_area(http)
+    storage = LocalObjectStorage(str(tmp_path))
+
+    with TestingSessionLocal() as session:
+        _uploaded_document(session, storage, trip_id, b"private booking")
+        written = [path for path in tmp_path.rglob("*") if path.is_file()]
+        assert len(written) == 1  # rule 1: the bytes exist before anything commits
+        session.rollback()
+    with TestingSessionLocal() as session:
+        assert session.scalar(select(func.count()).select_from(DocumentAsset)) == 0
+        assert session.scalar(select(func.count()).select_from(StoredObject)) == 0
+
+    with TestingSessionLocal() as session:
+        _uploaded_document(session, storage, trip_id, b"private booking")
+        session.commit()
+    with TestingSessionLocal() as session:
+        assert session.scalar(select(func.count()).select_from(DocumentAsset)) == 1
+        # The rolled-back write left an unreferenced file (`reconcile-objects` removes it); the committed row names the other.
+        assert len([path for path in tmp_path.rglob("*") if path.is_file()]) == 2
+        assert session.scalar(select(func.count()).select_from(StoredObject)) == 1
+
+
+def test_a_removal_deletes_the_bytes_only_after_the_caller_commits_the_purge_mark(
+    http: TestClient, tmp_path: Path
+) -> None:
+    trip_id, _ = _trip_with_area(http)
+    storage = LocalObjectStorage(str(tmp_path))
+    with TestingSessionLocal() as session:
+        document_id = _uploaded_document(session, storage, trip_id, b"private booking")
+        session.commit()
+
+    with TestingSessionLocal() as session:
+        document_service.remove_document(session, "owner-1", trip_id, document_id)
+        session.rollback()  # the caller gave up: nothing was marked, nothing was deleted
+    with TestingSessionLocal() as session:
+        assert session.scalar(select(func.count()).select_from(DocumentAsset)) == 1
+        assert session.scalars(select(StoredObject.state)).one() == ObjectState.AVAILABLE
+        assert len([path for path in tmp_path.rglob("*") if path.is_file()]) == 1
+
+    with TestingSessionLocal() as session:
+        purge = document_service.remove_document(session, "owner-1", trip_id, document_id)
+        session.commit()
+        # Rule 3: the mark is committed, the bytes are still there until the purge runs.
+        assert session.scalars(select(StoredObject.state)).one() == ObjectState.PURGE_PENDING
+        assert len([path for path in tmp_path.rglob("*") if path.is_file()]) == 1
+        purge.finalise(session, storage)
+    with TestingSessionLocal() as session:
+        assert session.scalar(select(func.count()).select_from(StoredObject)) == 0
+        assert [path for path in tmp_path.rglob("*") if path.is_file()] == []
+
+
+def test_the_mcp_tool_finalises_a_removal_only_after_its_own_commit(
+    http: TestClient, backend: TravelMcpBackend, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(mcp_core, "get_storage", lambda: LocalObjectStorage(str(tmp_path)))
+    trip_id, _ = _trip_with_area(http)
+    upload = BinaryUpload(filename="ticket.txt", content_type="text/plain", data_base64="cHJpdmF0ZSBib29raW5n")
+    document = backend.upload_document(trip_id, "Ticket", DocumentKind.OTHER, upload)
+    assert len([path for path in tmp_path.rglob("*") if path.is_file()]) == 1
+
+    with pytest.raises(ValueError, match="confirm"):
+        backend.delete_document(trip_id, document["id"])
+    assert len([path for path in tmp_path.rglob("*") if path.is_file()]) == 1
+
+    assert backend.delete_document(trip_id, document["id"], confirm=True) == {"status": "deleted"}
+    assert [path for path in tmp_path.rglob("*") if path.is_file()] == []
+    with TestingSessionLocal() as session:
+        assert session.scalar(select(func.count()).select_from(StoredObject)) == 0
+
+
+def test_a_visitor_who_finds_an_expired_collection_leaves_the_expiry_recorded(http: TestClient) -> None:
+    trip_id, _ = _trip_with_area(http)
+    collection_id = http.post("/api/collections", json={"label": "Family"}).json()["id"]
+    assert http.post(f"/api/collections/{collection_id}/members", json={"trip_id": trip_id}).status_code == 201
+    token = http.post(f"/api/collections/{collection_id}/activate", json={}).json()["token"]
+    with TestingSessionLocal() as session:
+        session.get(Collection, collection_id).expires_at = datetime.now(UTC) - timedelta(days=1)
+        session.commit()
+
+    assert http.get(f"/api/shared/{token}").status_code == 404
+
+    with TestingSessionLocal() as session:
+        assert session.get(Collection, collection_id).state == LinkState.EXPIRED
+        kinds = list(
+            session.scalars(
+                select(CollectionAuditEvent.kind).where(CollectionAuditEvent.collection_id == collection_id)
+            )
+        )
+    assert kinds.count("collection.expire") == 1
+
+
+@pytest.mark.parametrize(
+    ("http_path", "tool", "arguments", "field"),
+    [
+        ("/api/collections/{id}", "get_collection", {"collection_id": "{id}"}, "collection_id"),
+        ("/api/trips/{id}/share-links", "list_share_links", {"trip_id": "{id}"}, "trip_id"),
+        ("/api/trips/{id}/sharing-presets", "list_sharing_presets", {"trip_id": "{id}"}, "trip_id"),
+    ],
+)
+def test_a_malformed_id_of_a_moved_feature_fails_the_same_way_through_the_tool_as_the_path(
+    http: TestClient, http_path: str, tool: str, arguments: dict, field: str
+) -> None:
+    too_long = "x" * 33
+    code = http_code(http.get(http_path.format(id=too_long)))
+
+    async def run() -> object:
+        async with Client(create_mcp_server(TestingSessionLocal)) as client:
+            return await client.call_tool(
+                tool, {key: value.format(id=too_long) for key, value in arguments.items()}, raise_on_error=False
+            )
+
+    result = asyncio.run(run())
+
+    assert code == "too_long"
+    assert result.is_error and f"{field}:{code}" in result.content[0].text

@@ -1,20 +1,21 @@
 """Audiences of a trip: public view, named links and collection members.
 
 Shared by the owner routers, the preset service and the MCP tools. A write that loses its revision race rolls
-the transaction back, so the caller sees the winner's state in the conflict it receives.
+the transaction back, so the caller sees the winner's state in the conflict it receives. Nothing here commits:
+the caller owns the transaction, including the lazy expiry write of a link or collection a reader found past its
+``expires_at``.
 """
 
 import re
 from datetime import UTC, datetime
 
-from fastapi import status
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..audit import SYSTEM_ACTOR, record_collection_event, scope_fingerprint
 from ..capability import verifier_for
-from ..errors import ApiException
+from ..errors import Conflict, InvalidRevision, RevisionConflict
 from ..exclusion_review import exclusion_changes, scope_exclusions, widening
 from ..models import Collection, CollectionMember, LinkState, PublicSurface, ShareLink, Trip
 from ..projection import delivered, render_projection
@@ -29,6 +30,10 @@ from ..schemas import (
 )
 from ..sharing_presets import exceptions_of
 from .trips import trip_query
+
+# Set on the session when a read recorded an expiry (see ``expire_collection`` and ``services.publication``): the
+# caller commits before it answers, and ``http_delivery.persist_lazy_expiry`` does so for the routers.
+LAZY_EXPIRY = "lazy_expiry"
 
 
 def aware_utc(value: datetime) -> datetime:
@@ -103,10 +108,10 @@ def refuse_unacknowledged_widening(trip: Trip, before: dict, after: dict, *, liv
         return
     revealed = widening(trip, before, after)
     if revealed.revealed:
-        raise ApiException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={"code": EXCLUSION_WIDENING_CODE, **revealed.model_dump(mode="json")},
+        raise Conflict(
+            "Removing these exclusions shows the audience records it did not receive",
             code=EXCLUSION_WIDENING_CODE,
+            detail={"code": EXCLUSION_WIDENING_CODE, **revealed.model_dump(mode="json")},
         )
 
 
@@ -126,7 +131,7 @@ def claim_revision(session: Session, record: PublicSurface | ShareLink, expected
     statement = update(model).where(key == identity)
     if expected is not None:
         if not re.fullmatch(r'"[0-9]+"', expected):
-            raise ApiException(status_code=400, detail="Invalid revision", code="invalid_revision")
+            raise InvalidRevision
         statement = statement.where(model.revision == int(expected[1:-1]))
     result = session.execute(
         statement.values(revision=model.revision + 1)
@@ -142,11 +147,7 @@ def claim_revision(session: Session, record: PublicSurface | ShareLink, expected
             if isinstance(record, PublicSurface)
             else (link_response(record, trip) if trip is not None else ShareLinkResponse.model_validate(record))
         )
-        raise ApiException(
-            code="scope_revision_conflict",
-            status_code=412,
-            detail={"code": "scope_revision_conflict", "current": current.model_dump(mode="json")},
-        )
+        raise RevisionConflict(current.model_dump(mode="json"))
     session.refresh(record)
 
 
@@ -171,7 +172,7 @@ def claim_member_revision(session: Session, member: CollectionMember, expected: 
     statement = update(CollectionMember).where(CollectionMember.id == member.id)
     if expected is not None:
         if not re.fullmatch(r'"[0-9]+"', expected):
-            raise ApiException(status_code=400, detail="Invalid revision", code="invalid_revision")
+            raise InvalidRevision
         statement = statement.where(CollectionMember.revision == int(expected[1:-1]))
     result = session.execute(
         statement.values(revision=CollectionMember.revision + 1)
@@ -183,19 +184,12 @@ def claim_member_revision(session: Session, member: CollectionMember, expected: 
         session.refresh(member)
         trip = session.scalar(trip_query().where(Trip.id == member.trip_id))
         current = member_response(member, trip) if trip is not None else None
-        raise ApiException(
-            code="scope_revision_conflict",
-            status_code=412,
-            detail={
-                "code": "scope_revision_conflict",
-                "current": current.model_dump(mode="json") if current is not None else None,
-            },
-        )
+        raise RevisionConflict(current.model_dump(mode="json") if current is not None else None)
     session.refresh(member)
 
 
 def expire_collection(session: Session, collection: Collection) -> None:
-    """Persist active -> expired, stamping the audit event with the real expiry time."""
+    """Record active -> expired, stamping the audit event with the real expiry time; the caller commits."""
     collection.state = LinkState.EXPIRED
     record_collection_event(
         session,
@@ -205,7 +199,8 @@ def expire_collection(session: Session, collection: Collection) -> None:
         kind="collection.expire",
         occurred_at=collection.expires_at,
     )
-    session.commit()
+    session.flush()
+    session.info[LAZY_EXPIRY] = True
 
 
 def trips_by_id(session: Session, collection: Collection) -> dict[str, Trip]:
@@ -216,7 +211,9 @@ def trips_by_id(session: Session, collection: Collection) -> dict[str, Trip]:
 
 
 def active_collection(session: Session, token: str) -> Collection | None:
-    """The collection this token opens right now, or nothing (unknown, draft, revoked, expired)."""
+    """The collection this token opens right now, or nothing (unknown, draft, revoked, expired).
+
+    A collection found past its expiry is marked expired in the caller's transaction: commit before answering."""
     collection = session.scalar(select(Collection).where(Collection.token_verifier == verifier_for(token)))
     if collection is None or collection.state != LinkState.ACTIVE:
         return None

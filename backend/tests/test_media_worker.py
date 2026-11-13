@@ -54,6 +54,7 @@ def queued(tmp_path, monkeypatch):
             content_type="video/quicktime",
             data=video_with_telemetry(tmp_path),
         )
+        session.commit()
         path = f"/api/trips/{trip['id']}/media/{asset.id}/derivatives"
     # API requests create only durable work; encoding happens in the worker.
     response = client.post(path, json={"purpose": "share", "remove_audio": True})
@@ -512,9 +513,11 @@ def test_real_worker_privacy_audio_rotation_parity(tmp_path, monkeypatch, remove
         asset, _ = service.direct_upload(
             session, storage, trip_id=trip["id"], filename="private.mov", content_type="video/quicktime", data=source
         )
+        session.commit()
         derivative = service.queue_video_derivative(
             session, media_asset=asset, purpose=DerivativePurpose.SHARE, remove_audio=remove_audio
         )
+        session.commit()
         derivative_id = derivative.id
     client = worker.WorkerClient()
     try:

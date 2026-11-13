@@ -1,46 +1,24 @@
-from datetime import UTC, datetime
+"""Trip media routes and the owner's provider connections.
+
+The media routes are thin: ``app.services.media`` holds the operations, shared with the MCP tools. Each route
+commits once; the object-storage lifecycle (``docs/object-storage.md``) is kept around that commit: uploads write
+their bytes before it, and a removal finalises its purge only after it.
+"""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException, service_exception
 from ..media import oauth
-from ..media.candidates import GPS_AGREEMENT_METRES, GROUPING_WINDOW, build_travel_update_candidates
-from ..media.providers import ProviderError, ProviderUnavailableError, get_provider_resolver, provider_available
+from ..media.providers import ProviderUnavailableError, get_provider_resolver, provider_available
 from ..media.ranges import media_response, private_original_headers
-from ..media.service import (
-    CreatedImportSession,
-    ImportOutcome,
-    ImportSessionExpiredError,
-    MediaImportError,
-    ProviderResolver,
-    cached_thumbnail,
-    complete_import_session,
-    create_derivative,
-    create_import_session,
-    delete_media_asset,
-    delete_media_derivative,
-    direct_upload,
-    expire_stalled_video_derivatives,
-    queue_video_derivative,
-    read_bounded_upload,
-)
-from ..models import (
-    DerivativeProcessingBackend,
-    DerivativeProcessingState,
-    DerivativeReviewState,
-    ImportProvider,
-    ImportSession,
-    MediaAsset,
-    MediaDerivative,
-    MediaKind,
-    TravelUpdate,
-)
+from ..media.service import ProviderResolver
+from ..models import ImportProvider
 from ..schemas import (
     ImportSessionCompleteResponse,
     ImportSessionResponse,
@@ -49,17 +27,13 @@ from ..schemas import (
     MediaDerivativeCreate,
     MediaDerivativePresentationUpdate,
     MediaDerivativeResponse,
-    MediaGpsCoordinates,
-    MediaTravelUpdateCandidateResponse,
     MediaTravelUpdateCandidatesRequest,
     MediaTravelUpdateCandidatesResponse,
-    MediaTravelUpdateLocationOption,
-    MediaTravelUpdateTimeOption,
     OAuthStartResponse,
     ProviderConnectionStatus,
 )
 from ..secrets import SecretStore, get_secret_store
-from ..services.trips import owned_trip
+from ..services import media as service
 from ..storage import ObjectStorage, get_storage
 
 router = APIRouter(prefix="/trips/{trip_id}/media", tags=["media"])
@@ -70,96 +44,6 @@ SubjectDep = Annotated[str, Depends(current_subject)]
 StorageDep = Annotated[ObjectStorage, Depends(get_storage)]
 SecretStoreDep = Annotated[SecretStore, Depends(get_secret_store)]
 ProviderResolverDep = Annotated[ProviderResolver, Depends(get_provider_resolver)]
-
-IMPORT_PROVIDERS = (ImportProvider.GOOGLE_PHOTOS_PICKER, ImportProvider.GOPRO_CLOUD)
-
-
-def _asset_response(asset: MediaAsset, trip_id: str) -> MediaAssetResponse:
-    original = asset.original_object
-    exif = asset.raw_metadata.get("exif") or {}
-    gps = exif.get("gps")
-    return MediaAssetResponse(
-        id=asset.id,
-        media_kind=asset.media_kind,
-        byte_size=original.byte_size,
-        content_type=original.content_type,
-        captured_at=asset.captured_at,
-        captured_local=asset.captured_local,
-        created_at=asset.created_at,
-        deleted_at=asset.deleted_at,
-        original_filename=asset.raw_metadata.get("original_filename"),
-        camera_make=exif.get("camera_make"),
-        camera_model=exif.get("camera_model"),
-        gps=MediaGpsCoordinates(**gps) if gps else None,
-        file_url=f"/api/trips/{trip_id}/media/{asset.id}/original",
-        thumbnail_url=(
-            f"/api/trips/{trip_id}/media/{asset.id}/thumbnail" if asset.media_kind == MediaKind.PHOTO else None
-        ),
-    )
-
-
-def _derivative_response(derivative: MediaDerivative, trip_id: str) -> MediaDerivativeResponse:
-    return MediaDerivativeResponse(
-        id=derivative.id,
-        media_asset_id=derivative.media_asset_id,
-        purpose=derivative.purpose,
-        review_state=derivative.review_state,
-        processing_state=derivative.processing_state.value,
-        media_kind=derivative.media_asset.media_kind,
-        content_type=derivative.object.content_type if derivative.object else None,
-        byte_size=derivative.object.byte_size if derivative.object else None,
-        duration_seconds=derivative.duration_seconds,
-        poster_url=(
-            f"/api/trips/{trip_id}/media/{derivative.media_asset_id}/derivatives/{derivative.id}/poster"
-            if derivative.poster_object_id
-            else None
-        ),
-        remove_audio=derivative.remove_audio,
-        metadata_stripped_at=derivative.metadata_stripped_at,
-        width=derivative.width,
-        height=derivative.height,
-        travel_update_id=derivative.travel_update_id,
-        caption=derivative.caption,
-        alt_text=derivative.alt_text,
-        focal_x=derivative.focal_x,
-        focal_y=derivative.focal_y,
-        visibility=derivative.visibility,
-        is_cover=derivative.is_cover,
-        created_at=derivative.created_at,
-        file_url=f"/api/trips/{trip_id}/media/{derivative.media_asset_id}/derivatives/{derivative.id}/file",
-    )
-
-
-def owned_media_asset(session: Session, trip_id: str, subject: str, media_id: str) -> MediaAsset:
-    owned_trip(session, trip_id, subject)
-    asset = session.scalar(
-        select(MediaAsset).where(
-            MediaAsset.id == media_id, MediaAsset.trip_id == trip_id, MediaAsset.deleted_at.is_(None)
-        )
-    )
-    if asset is None:
-        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Media not found", code="not_found")
-    return asset
-
-
-def owned_derivative(
-    session: Session, trip_id: str, subject: str, media_id: str, derivative_id: str
-) -> MediaDerivative:
-    asset = owned_media_asset(session, trip_id, subject, media_id)
-    derivative = session.scalar(
-        select(MediaDerivative).where(MediaDerivative.id == derivative_id, MediaDerivative.media_asset_id == asset.id)
-    )
-    if derivative is None:
-        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Derivative not found", code="not_found")
-    return derivative
-
-
-def owned_import_session(session: Session, trip_id: str, subject: str, session_id: str) -> ImportSession:
-    owned_trip(session, trip_id, subject)
-    row = session.scalar(select(ImportSession).where(ImportSession.id == session_id, ImportSession.trip_id == trip_id))
-    if row is None:
-        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Import session not found", code="not_found")
-    return row
 
 
 # --- Direct device upload: the durable fallback, always available -----------------
@@ -174,38 +58,23 @@ def upload_media(
     response: Response,
     file: Annotated[UploadFile, File()],
 ) -> MediaAssetResponse:
-    owned_trip(session, trip_id, subject)
-    if not file.content_type:
-        raise ApiException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="A content type is required",
-            code="a_content_type_is_required",
-        )
-    try:
-        with read_bounded_upload(file.file) as data:
-            asset, created = direct_upload(
-                session,
-                storage,
-                trip_id=trip_id,
-                filename=file.filename or "upload",
-                content_type=file.content_type,
-                data=data,
-            )
-    except MediaImportError as error:
-        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
+    uploaded, created = service.upload_media(
+        session,
+        storage,
+        subject,
+        trip_id,
+        filename=file.filename,
+        content_type=file.content_type,
+        file=file.file,
+    )
+    session.commit()
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-    return _asset_response(asset, trip_id)
+    return uploaded
 
 
 @router.get("", response_model=list[MediaAssetResponse])
 def list_media(trip_id: str, session: SessionDep, subject: SubjectDep) -> list[MediaAssetResponse]:
-    owned_trip(session, trip_id, subject)
-    assets = session.scalars(
-        select(MediaAsset)
-        .where(MediaAsset.trip_id == trip_id, MediaAsset.deleted_at.is_(None))
-        .order_by(MediaAsset.created_at.desc())
-    )
-    return [_asset_response(asset, trip_id) for asset in assets]
+    return service.list_media(session, subject, trip_id)
 
 
 @router.post("/travel-update-candidates", response_model=MediaTravelUpdateCandidatesResponse)
@@ -213,64 +82,18 @@ def suggest_travel_update_candidates(
     trip_id: str, payload: MediaTravelUpdateCandidatesRequest, session: SessionDep, subject: SubjectDep
 ) -> MediaTravelUpdateCandidatesResponse:
     """Calculate owner-requested review groups; no candidate is persisted."""
-    owned_trip(session, trip_id, subject)
-    assets = list(
-        session.scalars(
-            select(MediaAsset).where(
-                MediaAsset.trip_id == trip_id,
-                MediaAsset.id.in_(payload.media_asset_ids),
-                MediaAsset.deleted_at.is_(None),
-            )
-        )
-    )
-    found_ids = {asset.id for asset in assets}
-    if found_ids != set(payload.media_asset_ids):
-        raise ApiException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Selected media must belong to this trip",
-            code="selected_media_must_belong_to_this_trip",
-        )
-    candidates, unavailable = build_travel_update_candidates(assets)
-    return MediaTravelUpdateCandidatesResponse(
-        grouping_window_minutes=int(GROUPING_WINDOW.total_seconds() // 60),
-        gps_agreement_metres=GPS_AGREEMENT_METRES,
-        candidates=[
-            MediaTravelUpdateCandidateResponse(
-                id=candidate.id,
-                media_asset_ids=candidate.media_asset_ids,
-                starts_at=candidate.starts_at,
-                ends_at=candidate.ends_at,
-                captured_local=candidate.captured_local,
-                time_options=[
-                    MediaTravelUpdateTimeOption(
-                        media_asset_id=asset_id, captured_at=captured_at, captured_local=captured_local
-                    )
-                    for asset_id, captured_at, captured_local in candidate.time_options
-                ],
-                location_options=[
-                    MediaTravelUpdateLocationOption(
-                        latitude=location.latitude,
-                        longitude=location.longitude,
-                        media_asset_ids=location.media_asset_ids,
-                    )
-                    for location in candidate.location_options
-                ],
-            )
-            for candidate in candidates
-        ],
-        unavailable_media_asset_ids=unavailable,
-    )
+    return service.suggest_travel_update_candidates(session, subject, trip_id, payload)
 
 
 @router.get("/{media_id}", response_model=MediaAssetResponse)
 def get_media(trip_id: str, media_id: str, session: SessionDep, subject: SubjectDep) -> MediaAssetResponse:
-    return _asset_response(owned_media_asset(session, trip_id, subject, media_id), trip_id)
+    return service.get_media(session, subject, trip_id, media_id)
 
 
 @router.delete("/{media_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_media(trip_id: str, media_id: str, session: SessionDep, subject: SubjectDep) -> Response:
-    asset = owned_media_asset(session, trip_id, subject, media_id)
-    delete_media_asset(session, media_asset=asset)
+    service.remove_media(session, subject, trip_id, media_id)
+    session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -278,7 +101,7 @@ def remove_media(trip_id: str, media_id: str, session: SessionDep, subject: Subj
 def get_media_original(
     trip_id: str, media_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
 ) -> StreamingResponse:
-    asset = owned_media_asset(session, trip_id, subject, media_id)
+    asset = service.owned_media_asset(session, subject, trip_id, media_id)
     original = asset.original_object
     data = storage.get(original.object_key)
     return StreamingResponse(
@@ -290,12 +113,9 @@ def get_media_original(
 def get_media_thumbnail(
     trip_id: str, media_id: str, request: Request, session: SessionDep, subject: SubjectDep, storage: StorageDep
 ) -> Response:
-    asset = owned_media_asset(session, trip_id, subject, media_id)
-    try:
-        data, content_type = cached_thumbnail(session, storage, media_asset=asset)
-    except MediaImportError as error:
-        raise service_exception(status.HTTP_404_NOT_FOUND, error) from error
+    asset, data, content_type = service.media_thumbnail(session, storage, subject, trip_id, media_id)
     etag = f'"thumbnail-v1-{asset.original_object.sha256}"'
+    session.commit()
     headers = {"Cache-Control": "private, max-age=300", "ETag": etag, "Vary": "Cookie, Authorization"}
     validators = [value.strip().removeprefix("W/") for value in request.headers.get("if-none-match", "").split(",")]
     if etag in validators or "*" in validators:
@@ -315,19 +135,9 @@ def add_derivative(
     subject: SubjectDep,
     storage: StorageDep,
 ) -> MediaDerivativeResponse:
-    asset = owned_media_asset(session, trip_id, subject, media_id)
-    try:
-        if asset.media_kind == MediaKind.VIDEO:
-            derivative = queue_video_derivative(
-                session, media_asset=asset, purpose=payload.purpose, remove_audio=payload.remove_audio
-            )
-        else:
-            derivative = create_derivative(
-                session, storage, media_asset=asset, purpose=payload.purpose, max_dimension=payload.max_dimension
-            )
-    except MediaImportError as error:
-        raise service_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, error) from error
-    return _derivative_response(derivative, trip_id)
+    result = service.add_derivative(session, storage, subject, trip_id, media_id, payload)
+    session.commit()
+    return result
 
 
 @router.post("/{media_id}/derivatives/{derivative_id}/retry", response_model=MediaDerivativeResponse)
@@ -338,59 +148,36 @@ def retry_derivative(
     session: SessionDep,
     subject: SubjectDep,
 ) -> MediaDerivativeResponse:
-    derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
-    if (
-        derivative.media_asset.media_kind != MediaKind.VIDEO
-        or derivative.processing_state != DerivativeProcessingState.FAILED
-    ):
-        raise ApiException(
-            status_code=409, detail="Only failed videos can be retried", code="only_failed_videos_can_be_retried"
-        )
-    from ..media.worker import enqueue, retire
-
-    retire(session, derivative.id)
-    derivative.processing_backend = DerivativeProcessingBackend.REMOTE
-    derivative.processing_state = DerivativeProcessingState.PROCESSING
-    enqueue(session, derivative)
-    derivative.processing_started_at = datetime.now(UTC)
+    result = service.retry_derivative(session, subject, trip_id, media_id, derivative_id)
     session.commit()
-    return _derivative_response(derivative, trip_id)
+    return result
 
 
 @router.get("/{media_id}/derivatives", response_model=list[MediaDerivativeResponse])
 def list_derivatives(
     trip_id: str, media_id: str, session: SessionDep, subject: SubjectDep
 ) -> list[MediaDerivativeResponse]:
-    asset = owned_media_asset(session, trip_id, subject, media_id)
-    expire_stalled_video_derivatives(session, asset.derivatives)
-    return [
-        _derivative_response(derivative, trip_id)
-        for derivative in asset.derivatives
-        if derivative.processing_backend != DerivativeProcessingBackend.THUMBNAIL
-    ]
+    result = service.list_derivatives(session, subject, trip_id, media_id)
+    session.commit()
+    return result
 
 
 @router.get("/{media_id}/derivatives/{derivative_id}", response_model=MediaDerivativeResponse)
 def get_derivative(
     trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep
 ) -> MediaDerivativeResponse:
-    derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
-    expire_stalled_video_derivatives(session, [derivative])
-    return _derivative_response(derivative, trip_id)
+    result = service.get_derivative(session, subject, trip_id, media_id, derivative_id)
+    session.commit()
+    return result
 
 
 @router.post("/{media_id}/derivatives/{derivative_id}/approve", response_model=MediaDerivativeResponse)
 def approve_derivative(
     trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep
 ) -> MediaDerivativeResponse:
-    derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
-    if derivative.processing_state != DerivativeProcessingState.READY or derivative.object_id is None:
-        raise ApiException(
-            status_code=409, detail="Derivative is not ready for review", code="derivative_is_not_ready_for_review"
-        )
-    derivative.review_state = DerivativeReviewState.APPROVED
+    result = service.approve_derivative(session, subject, trip_id, media_id, derivative_id)
     session.commit()
-    return _derivative_response(derivative, trip_id)
+    return result
 
 
 @router.patch("/{media_id}/derivatives/{derivative_id}/presentation", response_model=MediaDerivativeResponse)
@@ -402,28 +189,18 @@ def update_derivative_presentation(
     session: SessionDep,
     subject: SubjectDep,
 ) -> MediaDerivativeResponse:
-    derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
-    values = payload.model_dump(exclude_unset=True)
-    if values.get("travel_update_id") is not None:
-        update = session.get(TravelUpdate, values["travel_update_id"])
-        if update is None or update.trip_id != trip_id:
-            raise ApiException(
-                status_code=422,
-                detail="Travel update is unavailable for this trip",
-                code="travel_update_is_unavailable_for_this_trip",
-            )
-    for field, value in values.items():
-        setattr(derivative, field, value)
+    result = service.update_derivative_presentation(session, subject, trip_id, media_id, derivative_id, payload)
     session.commit()
-    return _derivative_response(derivative, trip_id)
+    return result
 
 
 @router.delete("/{media_id}/derivatives/{derivative_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_derivative(
     trip_id: str, media_id: str, derivative_id: str, session: SessionDep, subject: SubjectDep, storage: StorageDep
 ) -> Response:
-    derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
-    delete_media_derivative(session, storage, derivative=derivative)
+    purge = service.remove_derivative(session, subject, trip_id, media_id, derivative_id)
+    session.commit()
+    purge.finalise(session, storage)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -437,10 +214,8 @@ def get_derivative_file(
     storage: StorageDep,
     request: Request,
 ) -> Response:
-    derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
-    if derivative.object is None:
-        raise ApiException(status_code=404, detail="Derivative is not ready", code="derivative_is_not_ready")
-    return media_response(storage, derivative.object, request, {"Cache-Control": "no-store"})
+    stored = service.derivative_file_object(session, subject, trip_id, media_id, derivative_id)
+    return media_response(storage, stored, request, {"Cache-Control": "no-store"})
 
 
 @router.get("/{media_id}/derivatives/{derivative_id}/poster")
@@ -453,10 +228,8 @@ def get_derivative_poster(
     storage: StorageDep,
     request: Request,
 ) -> Response:
-    derivative = owned_derivative(session, trip_id, subject, media_id, derivative_id)
-    if derivative.poster_object is None:
-        raise ApiException(status_code=404, detail="Poster is not ready", code="poster_is_not_ready")
-    return media_response(storage, derivative.poster_object, request, {"Cache-Control": "no-store"})
+    stored = service.derivative_file_object(session, subject, trip_id, media_id, derivative_id, poster=True)
+    return media_response(storage, stored, request, {"Cache-Control": "no-store"})
 
 
 # --- Provider-mediated imports: owner-explicit selection only ---------------------
@@ -471,36 +244,9 @@ def start_import_session(
     secret_store: SecretStoreDep,
     resolver: ProviderResolverDep,
 ) -> ImportSessionResponse:
-    owned_trip(session, trip_id, subject)
-    if provider not in IMPORT_PROVIDERS:
-        raise ApiException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Not an importable provider",
-            code="not_an_importable_provider",
-        )
-    if not provider_available(provider):
-        raise ApiException(
-            status_code=409,
-            detail="Provider connection is not configured",
-            code="provider_connection_is_not_configured",
-        )
-    try:
-        created: CreatedImportSession = create_import_session(
-            session, secret_store, resolver, trip_id=trip_id, subject=subject, provider=provider
-        )
-    except ProviderUnavailableError as error:
-        raise service_exception(status.HTTP_409_CONFLICT, error) from error
-    except ProviderError as error:
-        raise service_exception(status.HTTP_502_BAD_GATEWAY, error) from error
-    return ImportSessionResponse.model_validate(
-        {
-            "id": created.session.id,
-            "provider": created.session.provider,
-            "state": created.session.state,
-            "picker_uri": created.picker_uri,
-            "expires_at": created.session.expires_at,
-        }
-    )
+    result = service.start_import_session(session, subject, trip_id, provider, secret_store, resolver)
+    session.commit()
+    return result
 
 
 @router.post("/imports/{provider}/sessions/{session_id}/complete", response_model=ImportSessionCompleteResponse)
@@ -514,21 +260,16 @@ def complete_import(
     secret_store: SecretStoreDep,
     resolver: ProviderResolverDep,
 ) -> ImportSessionCompleteResponse:
-    import_session = owned_import_session(session, trip_id, subject, session_id)
-    if import_session.provider != provider:
-        raise ApiException(status_code=status.HTTP_404_NOT_FOUND, detail="Import session not found", code="not_found")
-    try:
-        outcome: ImportOutcome = complete_import_session(
-            session, storage, secret_store, resolver, trip_id=trip_id, subject=subject, import_session=import_session
-        )
-    except (ProviderUnavailableError, ImportSessionExpiredError) as error:
-        raise service_exception(status.HTTP_409_CONFLICT, error) from error
-    except (ProviderError, MediaImportError) as error:
-        raise service_exception(status.HTTP_502_BAD_GATEWAY, error) from error
-    return ImportSessionCompleteResponse(
-        ready=outcome.ready,
-        imported=[_asset_response(asset, trip_id) for asset in outcome.imported],
-        failed=[{"provider_item_id": item_id, "failure_code": code} for item_id, code in outcome.failed],
+    return service.complete_import(
+        session,
+        storage,
+        subject,
+        trip_id,
+        provider,
+        session_id,
+        secret_store,
+        resolver,
+        checkpoint=session.commit,
     )
 
 
@@ -540,14 +281,7 @@ def list_provider_connection_status(
     subject: SubjectDep, secret_store: SecretStoreDep
 ) -> list[ProviderConnectionStatus]:
     """Expose connection state without ever returning an access token."""
-    return [
-        ProviderConnectionStatus(
-            provider=provider,
-            available=provider_available(provider),
-            connected=secret_store.get_credential(subject=subject, provider=provider.value) is not None,
-        )
-        for provider in IMPORT_PROVIDERS
-    ]
+    return service.list_provider_connection_status(subject, secret_store)
 
 
 @provider_tokens_router.delete("/{provider}", status_code=status.HTTP_204_NO_CONTENT)

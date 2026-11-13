@@ -1491,8 +1491,7 @@ def test_scope_revisions_reject_stale_owner_writes() -> None:
 
 
 def test_concurrent_scope_claims_use_database_revision() -> None:
-    from fastapi import HTTPException
-
+    from app.errors import RevisionConflict
     from app.models import PublicSurface
     from app.services.sharing import claim_revision
 
@@ -1509,7 +1508,7 @@ def test_concurrent_scope_claims_use_database_revision() -> None:
         # Both sessions loaded before either save: the stale identity-map value cannot win.
         import pytest
 
-        with pytest.raises(HTTPException) as conflict:
+        with pytest.raises(RevisionConflict) as conflict:
             claim_revision(second, second_record, expected)
         assert conflict.value.status_code == 412
 

@@ -20,18 +20,22 @@ original trip-only ownership rule.
 
 - #119 implemented with owner approval on 2026-11-01 as a JSON-records-only owner export of one trip: see [the export format](../export-format.md). Files, originals, library documents, audit history and deleted rows are excluded; linking to this status does not change the proposed boundary below, which is historical analysis.
 - #115 resolved: trip and library upload services validate the shared `DocumentTitle` constraint before storing objects. Synthetic HTTP/MCP/service regression tests cover empty, oversized and unsafe titles; surrogate strings are tested at MCP/service boundaries because HTTP UTF-8 cannot encode them. Historical source evidence below describes the reviewed baseline.
-- #369 in progress (2026-11-13): visits, stays, routes, travel updates and tasks, the trip ownership check, place
-  resolution and visibility choice (first slice), then trips, areas, locations, place search, packing, alternative
-  groups, trip documents and the owner library with its emergency information (second slice) live in
+- #369 resolved (2026-11-13): visits, stays, routes, travel updates and tasks, the trip ownership check, place
+  resolution and visibility choice (first slice), trips, areas, locations, place search, packing, alternative
+  groups, trip documents and the owner library with its emergency information (second slice), then publication,
+  share links, collections, sharing presets, date precision and media (third slice) live in
   `backend/app/services/`. A service takes a session, the subject and typed
   input, never commits, and raises `Refusal` (a `ServiceError`; `Conflict` for a 409, which can carry a structured
-  review); the HTTP router and the MCP tool each own their transaction, one
-  commit per request and one per call or batch. `batch_create` no longer replaces `session.commit`. The one
-  exception is the storage lifecycle of an upload or removal of a document or library original, which commits inside
-  `document/service.py` and `library/service.py` as `docs/object-storage.md` requires. The statements
-  below about MCP calling router functions describe the baseline for publication, collections, media, precision and
-  sharing presets, which still do (see the issue's Progress section). Historical source evidence below describes the
-  reviewed baseline.
+  review; `RevisionConflict` for a 412); the HTTP router and the MCP tool each own their transaction, one
+  commit per request and one per call or batch. `batch_create` no longer replaces `session.commit`. The storage
+  lifecycle of `docs/object-storage.md` is kept around that commit rather than inside it: an upload writes and
+  verifies its bytes and flushes its row before the transport commits (rule 1), a removal marks the object
+  `purge_pending` and returns a `PendingPurge` that the transport finalises only after its commit, under the
+  deletion lock (rules 3 and 4), and a provider import commits each finished item through the transport's
+  `checkpoint`. The statements below about MCP calling router functions describe the reviewed baseline, not the
+  code. No module outside `routers/` imports a router except `main.py`, `test_service_transports.py` fails for a
+  service that commits, and the MCP tools live in `backend/app/mcp_server/`, one module per tool family.
+  Historical source evidence below describes the reviewed baseline.
 - #116 resolved with owner approval on 2026-11-01: MCP audit retention is 730
   days, matching sharing audits. `purge-expired-audit-events` now purges both
   tables in one transaction with the same strict cutoff; rows exactly at the

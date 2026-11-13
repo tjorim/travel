@@ -218,7 +218,7 @@ reported separately. Rows are **not equivalent end-to-end benchmarks**.
    schema/storage changes separately. This priority is owner direction, not a
    newly verified Polarsteps gap.
    **Admin editing includes authenticated MCP tools alongside the PWA**
-   (`backend/app/mcp_server.py`). Review equivalent mutations through both:
+   (`backend/app/mcp_server/`). Review equivalent mutations through both:
    shared validation, trip ownership, publication effects, audit and file
    lifecycle. Keep presentation separate from the canonical model. This is
    the existing owner-authorized editing path (first-pass C7), not a new

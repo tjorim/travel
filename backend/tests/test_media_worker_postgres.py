@@ -43,9 +43,11 @@ def postgres(tmp_path):
                 content_type="video/quicktime",
                 data=b"synthetic original",
             )
+            session.commit()
             derivative = service.queue_video_derivative(
                 session, media_asset=asset, purpose=DerivativePurpose.SHARE, remove_audio=True
             )
+            session.commit()
             job = session.scalar(select(MediaWorkerJob))
             job.worker_id = "a" * 32
             job.state = "running"
@@ -91,7 +93,9 @@ def test_delete_waiting_for_import_removes_both_committed_outputs(postgres, tmp_
             derivative = session.get(MediaDerivative, derivative_id)
             assert derivative.object_id is None
             deleting.set()
-            service.delete_media_derivative(session, storage, derivative=derivative)
+            purge = service.delete_media_derivative(session, derivative=derivative)
+            session.commit()
+            purge.finalise(session, storage)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         dispatched = pool.submit(dispatch)
@@ -132,7 +136,9 @@ def test_delete_completes_while_upload_is_paused(postgres):
     def delete():
         with sessions() as session:
             derivative = session.get(MediaDerivative, derivative_id)
-            service.delete_media_derivative(session, storage, derivative=derivative)
+            purge = service.delete_media_derivative(session, derivative=derivative)
+            session.commit()
+            purge.finalise(session, storage)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         dispatched = pool.submit(dispatch)

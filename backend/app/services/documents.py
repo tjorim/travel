@@ -1,8 +1,9 @@
 """Trip documents: owner-only files kept with a trip.
 
-Uploading and removing a stored original follow the object-storage lifecycle (``docs/object-storage.md``: write
-before the row commits, delete only after ``purge_pending`` commits), so those two operations commit inside
-``app.document.service``. Every other operation here leaves the commit to the caller.
+Like every service this never commits. Uploading and removing a stored original follow the object-storage
+lifecycle (``docs/object-storage.md``): an upload writes the bytes before the caller commits the row, and a removal
+marks the object ``purge_pending`` and returns a ``PendingPurge`` that the caller finalises after its commit, because
+bytes may be deleted only for a row already committed as ``purge_pending``.
 """
 
 from typing import BinaryIO
@@ -12,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from ..document.service import delete_document_asset, direct_upload
 from ..errors import RecordNotFound, Refusal, service_error
-from ..media.service import MediaImportError, read_bounded_upload
+from ..media.service import MediaImportError, PendingPurge, read_bounded_upload
 from ..models import DocumentAsset, DocumentKind
 from ..schemas import DocumentAssetResponse, Identifier
 from ..storage import ObjectStorage
@@ -60,7 +61,8 @@ def upload_document(
     content_type: str | None,
     file: BinaryIO,
 ) -> tuple[DocumentAssetResponse, bool]:
-    """Store a document original; the flag says whether the document is new (the same bytes are stored once)."""
+    """Store a document original; the caller commits after (the flag says whether the document is new: the same
+    bytes are stored once)."""
     owned_trip(session, trip_id, subject)
     if not content_type:
         raise Refusal("A content type is required", code="a_content_type_is_required")
@@ -95,7 +97,6 @@ def get_document(session: Session, subject: str, trip_id: Identifier, document_i
     return document_response(owned_document_asset(session, subject, trip_id, document_id), trip_id)
 
 
-def remove_document(
-    session: Session, storage: ObjectStorage, subject: str, trip_id: Identifier, document_id: Identifier
-) -> None:
-    delete_document_asset(session, storage, document_asset=owned_document_asset(session, subject, trip_id, document_id))
+def remove_document(session: Session, subject: str, trip_id: Identifier, document_id: Identifier) -> PendingPurge:
+    """Remove a document; the caller commits, then finalises the returned purge with its storage."""
+    return delete_document_asset(session, document_asset=owned_document_asset(session, subject, trip_id, document_id))
