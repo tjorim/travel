@@ -24,6 +24,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 
 from .database import Base
+from .update_day import ZoneSpan, update_day, update_zone
 
 
 def opaque_id() -> str:
@@ -423,10 +424,11 @@ class TravelUpdate(Base):
 
     Shared, once ``visibility`` allows it: ``title``, ``body`` (written for
     visitors and empty until the owner writes it), the date at
-    ``date_precision``, and the ``chosen_area``. ``area_id``
+    ``share_date_precision``, and the ``chosen_area``. ``area_id``
     always references an area, never a location."""
 
     __tablename__ = "travel_updates"
+    __allow_unmapped__ = True  # ``zone_spans`` is a plain attribute, not a column
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     share_id: Mapped[str] = mapped_column(String(32), unique=True, nullable=False, default=opaque_id)
@@ -434,7 +436,7 @@ class TravelUpdate(Base):
     area_id: Mapped[str | None] = mapped_column(ForeignKey("areas.id"), nullable=True)
     location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id"), nullable=True)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    date_precision: Mapped[DatePrecision] = mapped_column(_enum_column(DatePrecision, "travel_date_precision"))
+    share_date_precision: Mapped[DatePrecision] = mapped_column(_enum_column(DatePrecision, "travel_date_precision"))
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False, default="")
     private_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -459,6 +461,20 @@ class TravelUpdate(Base):
     def area(self) -> Area | None:
         """The update's area: its location wins; location-less updates name one directly."""
         return (self.location.area if self.location is not None else None) or self.chosen_area
+
+    # The trip's zoned stay and visit days, set by the service that lists updates so that reading each one does not
+    # reload them; without them the update reads them from its trip (see ``app.update_day``).
+    zone_spans: tuple[ZoneSpan, ...] | None = None
+
+    @property
+    def timezone(self) -> str:
+        """The zone the update's day is read in: its area's, else the trip's nearest stay or visit, else UTC."""
+        return update_zone(self, self.zone_spans)
+
+    @property
+    def local_date(self) -> date:
+        """The calendar day of ``occurred_at`` in ``timezone``: the day every surface shows for the update."""
+        return update_day(self, self.zone_spans)
 
 
 class Stay(Base):

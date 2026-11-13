@@ -29,7 +29,7 @@ import {
   type TravelUpdateCandidateIntent,
   type UpdateDraft,
 } from "../capture-draft";
-import { captureInputValue, localDateTime } from "../dates";
+import { captureInputValue, localDateTime, updateWallClock, zoneName } from "../dates";
 import {
   type MediaAsset,
   type LocationInput,
@@ -67,6 +67,17 @@ export function CaptureDialog(props: CaptureDialogProps) {
   const { session } = useAuth();
   const owner = session ? decodeSubject(session.accessToken) : null;
   return <OwnerCaptureDialog key={owner ?? "signed-out"} {...props} />;
+}
+
+/**
+ * What `occurred_at` carries: the wall clock typed, which the server reads in the place's own zone (the area's, else
+ * the trip's nearest stay or visit), never the browser's. A photo's exact instant is the exception while the owner
+ * leaves the time it seeded alone, because the photo's place and zone are not known here.
+ */
+function occurredAtToSend(draft: UpdateDraft): string {
+  if (draft.occurredInstant && draft.occurredAt === captureInputValue(draft.occurredInstant, false))
+    return draft.occurredInstant;
+  return draft.occurredAt;
 }
 
 function OwnerCaptureDialog({
@@ -118,7 +129,7 @@ function OwnerCaptureDialog({
         tripId: values.tripId,
         updateId: values.updateId,
         payload: {
-          occurred_at: new Date(values.occurredAt).toISOString(),
+          occurred_at: occurredAtToSend(values),
           title: values.title.trim(),
           private_notes: values.notes.trim() || null,
           ...(keepsLocation ? {} : { location: values.location }),
@@ -159,6 +170,10 @@ function OwnerCaptureDialog({
     [lockedTripId, trips],
   );
   const savedUpdates = useTripUpdates(selectedTrip?.id ?? null).data;
+  // The zone a saved update's time is read in; a new update's depends on the place chosen, known once saved.
+  const editedZone = draft.updateId
+    ? savedUpdates?.find((item) => item.id === draft.updateId)?.timezone
+    : undefined;
   const uploads = useCaptureUploads(selectedTrip?.id ?? null, (asset) => {
     form.setFieldValue("mediaAssetIds", (current: string[]) =>
       current.includes(asset.id) ? current : [...current, asset.id],
@@ -205,6 +220,9 @@ function OwnerCaptureDialog({
         occurredAt: candidate.occurredAt
           ? captureInputValue(candidate.occurredAt, candidate.occurredAtLocal ?? false)
           : localDateTime(),
+        ...(candidate.occurredAt && !candidate.occurredAtLocal
+          ? { occurredInstant: candidate.occurredAt }
+          : {}),
         mediaAssetIds: candidate.mediaAssetIds,
       });
       places.setCandidateGps(candidate.gps ?? null);
@@ -307,7 +325,7 @@ function OwnerCaptureDialog({
       ...emptyDraft(selectedTrip?.id ?? ""),
       tripId: selectedTrip?.id ?? "",
       updateId: update.id,
-      occurredAt: localDateTime(new Date(update.occurred_at)),
+      occurredAt: updateWallClock(update),
       title: update.title,
       notes: update.private_notes ?? "",
       location: update.location,
@@ -329,7 +347,10 @@ function OwnerCaptureDialog({
   }
 
   function adoptCaptureDate(asset: MediaAsset) {
-    updateDraft({ occurredAt: captureInputValue(asset.captured_at!, asset.captured_local) });
+    updateDraft({
+      occurredAt: captureInputValue(asset.captured_at!, asset.captured_local),
+      occurredInstant: asset.captured_local ? undefined : asset.captured_at!,
+    });
     setSaveState(
       textNotice(() => m.owner_capture_date_used_as_a_suggestion_feel_free_to_change_it()),
     );
@@ -520,6 +541,11 @@ function OwnerCaptureDialog({
                     <DateTimeField field={field} label={m.owner_date_and_time()} required stacked />
                   )}
                 </form.Field>
+                <p className="help">
+                  {editedZone
+                    ? m.owner_update_time_local_in_zone({ zone: zoneName(editedZone) })
+                    : m.owner_update_time_local()}
+                </p>
                 <form.Field name="notes" listeners={clearSaveState}>
                   {(field) => (
                     <MarkdownField

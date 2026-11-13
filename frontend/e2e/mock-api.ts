@@ -116,13 +116,8 @@ export async function mockApi(page: Page): Promise<MockApiRecord> {
       return json(
         route,
         {
-          id: `update-${record.updates.length}`,
-          date_precision: "day",
-          body: "",
-          area_id: null,
-          visibility: "private",
-          location: null,
-          ...body,
+          ...savedDefaults(`update-${record.updates.length}`),
+          ...withInstant(body),
         },
         201,
       );
@@ -165,16 +160,28 @@ export async function mockApi(page: Page): Promise<MockApiRecord> {
   return record;
 }
 
-const saved = (body: Record<string, unknown>, index: number) => ({
-  id: `update-${index + 1}`,
-  date_precision: "day",
+/** The server reads a wall clock typed without an offset in the update's zone, which these mocks always keep as UTC. */
+const withInstant = (body: Record<string, unknown>) => {
+  const typed = String(body.occurred_at ?? "");
+  const occurred_at = /(Z|[+-]\d\d:\d\d)$/.test(typed) ? typed : `${typed}:00Z`;
+  return { ...body, occurred_at, local_date: occurred_at.slice(0, 10) };
+};
+
+const savedDefaults = (id: string) => ({
+  id,
+  timezone: "UTC",
+  share_date_precision: "day",
   body: "",
   area_id: null,
   visibility: "private",
   location: null,
   private_notes: null,
   media_asset_ids: [],
-  ...body,
+});
+
+const saved = (body: Record<string, unknown>, index: number) => ({
+  ...savedDefaults(`update-${index + 1}`),
+  ...withInstant(body),
 });
 
 /** The unsigned token the dev server seeds (`devSession` in vite.config.ts); the mocked API never checks it. */

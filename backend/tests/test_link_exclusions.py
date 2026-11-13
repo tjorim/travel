@@ -176,7 +176,7 @@ class World:
     def _update(title: str, **place) -> dict:
         return {
             "occurred_at": "2054-04-04T10:00:00Z",
-            "date_precision": "day",
+            "share_date_precision": "day",
             "title": title,
             "body": f"A safe note about {title}.",
             "private_notes": f"PRIVATE NOTE for {title}",

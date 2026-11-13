@@ -7,7 +7,7 @@ migration does to each: a private, unnamed city-level placeholder used by stays 
 every other location is kept with its stays attached."""
 
 import os
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from alembic import command
 from app.config import settings
-from app.models import Area, DatePrecision, Location, PublicSurface, Route, TravelUpdate, Trip, Visibility
+from app.models import Area, Location, PublicSurface, Route, Trip, Visibility
 
 
 @pytest.fixture
@@ -164,16 +164,20 @@ def _seed(engine) -> dict:
                     )
                 )
             elif use == "update":
-                session.add(
-                    TravelUpdate(
-                        trip_id=trip.id,
-                        area_id=area.id,
-                        location_id=location.id,
-                        occurred_at=datetime(2054, 4, 2, tzinfo=UTC),
-                        date_precision=DatePrecision.DAY,
-                        title="Here",
-                        body="Hello.",
-                    )
+                # Raw SQL: the TravelUpdate model describes the head schema, whose column is share_date_precision.
+                session.execute(
+                    text(
+                        "INSERT INTO travel_updates (id, share_id, trip_id, area_id, location_id, occurred_at, "
+                        "date_precision, title, body, visibility) VALUES (:id, :share, :trip, :area, :location, "
+                        "'2054-04-02T00:00:00+00', 'day', 'Here', 'Hello.', 'private')"
+                    ),
+                    {
+                        "id": uuid4().hex,
+                        "share": uuid4().hex,
+                        "trip": trip.id,
+                        "area": area.id,
+                        "location": location.id,
+                    },
                 )
             elif use == "scope":
                 scope_items.append({"kind": "location", "id": location.id})

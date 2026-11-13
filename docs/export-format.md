@@ -67,6 +67,16 @@ hand; they are listed by day, then time, then creation, with undated visits last
 the order the app shows them in. A consumer that read `visits[].position` can use
 the array order (or `starts_on`, `start_time` and `created_at`) instead.
 
+`travel_updates[].date_precision` was renamed `travel_updates[].share_date_precision` in
+`travel/trip-export@2` (#386), the name a visit or stay already uses for its own cap on the date a visitor
+sees; the same version raise as the visit `position` removal covers it. A consumer that read
+`travel_updates[].date_precision` reads `share_date_precision` instead (same values: `day`, `month`, `year`).
+
+`travel_updates[].local_date` is the update's calendar day in its zone, and `travel_updates[].timezone` is that
+zone (the area's, else the zone of the trip's nearest dated stay or visit, else `UTC`; see
+[the domain model](domain-model.md)). `timezone` was added without changing the schema
+version, because adding a field is compatible.
+
 Each record lists its columns explicitly in `backend/app/export.py`. A column
 added to a model later is **not** exported until reviewed and added there.
 Records are ordered stably (creation time, position or the record's own date order, then id). The document

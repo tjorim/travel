@@ -24,7 +24,7 @@ def fixture():
         title="Synthetic",
         body="Story",
         occurred_at=datetime(2054, 4, 4, tzinfo=UTC),
-        date_precision=DatePrecision.DAY,
+        share_date_precision=DatePrecision.DAY,
         visibility=Visibility.EVERYONE,
     )
     for i, (start, end) in enumerate([(1, 5), (3, 7)]):
@@ -66,7 +66,7 @@ def test_projection_only_and_private_unshared_invariance():
             title="Secret",
             body="Secret",
             occurred_at=datetime(2050, 1, 1, tzinfo=UTC),
-            date_precision=DatePrecision.DAY,
+            share_date_precision=DatePrecision.DAY,
             visibility=visibility,
         )
         assert render_projection(trip, scope, "test") == before
@@ -128,11 +128,11 @@ def test_selection_validation_legacy_and_presets():
 def test_record_precision_and_duplicate_days_countries():
     trip = fixture()
     scope = {"numbers": ALL, "defaults": {"date_precision": "day"}}
-    trip.travel_updates[0].date_precision = DatePrecision.MONTH
+    trip.travel_updates[0].share_date_precision = DatePrecision.MONTH
     trip.stays[0].share_date_precision = DatePrecision.YEAR
     result = render_projection(trip, scope, "test")["numbers"]
     assert result == {"days": 0, "areas": 1, "countries": 1, "nights": 4}
-    trip.travel_updates[0].date_precision = DatePrecision.DAY
+    trip.travel_updates[0].share_date_precision = DatePrecision.DAY
     trip.areas.append(
         Area(id="second", trip_id="trip", label="Another area", country_code="BE", visibility=Visibility.EVERYONE)
     )
@@ -143,7 +143,7 @@ def test_record_precision_and_duplicate_days_countries():
         title="Another story",
         body="Story",
         occurred_at=datetime(2054, 4, 4, 22, tzinfo=UTC),
-        date_precision=DatePrecision.DAY,
+        share_date_precision=DatePrecision.DAY,
         visibility=Visibility.EVERYONE,
     )
     assert render_projection(trip, scope, "test")["numbers"] == {

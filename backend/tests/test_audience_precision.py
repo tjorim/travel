@@ -98,7 +98,7 @@ class Fixture:
             f"{self.base}/travel-updates",
             json={
                 "occurred_at": "2054-04-04T10:00:00Z",
-                "date_precision": "day",
+                "share_date_precision": "day",
                 "title": "Arrival",
                 "body": "We landed.",
                 "area_id": area["id"],

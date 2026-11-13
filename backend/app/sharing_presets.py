@@ -467,7 +467,7 @@ def _coarser_dates(trip: Trip, before_scope: dict, after_scope: dict, kept: dict
             counts[kind] += is_finer(was, now)
     for update in trip.travel_updates:
         if update.id in kept["travel_update"]:
-            own = update.date_precision.value
+            own = update.share_date_precision.value
             was = coarser(own, cap_before) or own
             now = coarser(own, cap_after) or own
             counts["travel_update"] += is_finer(was, now)

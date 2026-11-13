@@ -49,33 +49,41 @@ export function formatInstantDate(instant: string): string {
 }
 
 /**
- * A reisupdate's instant read in the zone of its area, so the owner sees the same day a visitor is
- * given (the backend's `update_day`). An area without a (usable) zone reads in the browser's zone.
+ * A reisupdate's instant read in the zone the server derived for it (`timezone`: its area's, else the trip's
+ * nearest stay or visit, else UTC), so the owner sees the same day a visitor is given (the backend's
+ * `update_day`), whatever zone the browser is in.
  */
-function inUpdateZone(update: Pick<TravelUpdate, "occurred_at" | "area">) {
-  const zone = update.area?.timezone;
-  if (zone) {
-    try {
-      return dayjs(update.occurred_at).tz(zone);
-    } catch {
-      // An unknown zone name: read the instant as the browser does.
-    }
+function inUpdateZone(update: Pick<TravelUpdate, "occurred_at" | "timezone">) {
+  try {
+    return dayjs(update.occurred_at).tz(update.timezone);
+  } catch {
+    // A zone name this browser does not know: read the instant in UTC, as the server does without a zone.
+    return dayjs.utc(update.occurred_at);
   }
-  return dayjs(update.occurred_at);
 }
 
-/** A reisupdate's date and time, "16 nov 2026, 14:32", on the day of its area's zone. */
-export function formatUpdateInstant(update: Pick<TravelUpdate, "occurred_at" | "area">): string {
+/** A reisupdate's date and time, "16 nov 2026, 14:32", on the day of its zone. */
+export function formatUpdateInstant(
+  update: Pick<TravelUpdate, "occurred_at" | "timezone">,
+): string {
   return inUpdateZone(update).format("D MMM YYYY, HH:mm");
 }
 
 /** A reisupdate's date at its own precision, e.g. "14 maart 2026" or just "2026" — never the raw enum. */
 export function updateDateLabel(
-  update: Pick<TravelUpdate, "occurred_at" | "area" | "date_precision">,
+  update: Pick<TravelUpdate, "occurred_at" | "timezone" | "share_date_precision">,
 ): string {
-  if (update.date_precision === "year") return inUpdateZone(update).format("YYYY");
-  if (update.date_precision === "month") return inUpdateZone(update).format("MMMM YYYY");
+  if (update.share_date_precision === "year") return inUpdateZone(update).format("YYYY");
+  if (update.share_date_precision === "month") return inUpdateZone(update).format("MMMM YYYY");
   return formatUpdateInstant(update);
+}
+
+/**
+ * A reisupdate's time as a `YYYY-MM-DDTHH:mm` form value: the wall clock in the update's own zone, which the
+ * server reads back in that same zone when the form sends it without an offset.
+ */
+export function updateWallClock(update: Pick<TravelUpdate, "occurred_at" | "timezone">): string {
+  return inUpdateZone(update).format("YYYY-MM-DDTHH:mm");
 }
 
 export function browserTimeZone(): string {

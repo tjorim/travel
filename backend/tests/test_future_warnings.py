@@ -161,7 +161,7 @@ def test_day_dates_follow_the_coarser_of_the_record_and_the_audience() -> None:
         f"/api/trips/{trip['id']}/travel-updates",
         json={
             "occurred_at": "2054-04-04T10:00:00Z",
-            "date_precision": "day",
+            "share_date_precision": "day",
             "title": "Arrival",
             "body": "We landed.",
             "area_id": _area(owner, trip["id"], "Kaohsiung"),

@@ -54,7 +54,7 @@ def add_update(client: TestClient, trip_id: str, title: str, visibility: str = "
         f"/api/trips/{trip_id}/travel-updates",
         json={
             "occurred_at": "2054-04-04T10:00:00Z",
-            "date_precision": "day",
+            "share_date_precision": "day",
             "title": title,
             "body": f"A safe note about {title}.",
             "private_notes": f"PRIVATE NOTE for {title}",

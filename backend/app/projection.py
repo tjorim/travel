@@ -48,7 +48,7 @@ from .schemas import (
     ProjectionUpdate,
     ProjectionVisit,
 )
-from .update_day import update_day
+from .update_day import update_day, zone_spans
 
 
 class ScopeError(ServiceError):
@@ -376,7 +376,9 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
             **values,
         )
     elif kind == "travel_update":
-        precision = coarser(item.date_precision.value, context["date_precision"]) or item.date_precision.value
+        precision = (
+            coarser(item.share_date_precision.value, context["date_precision"]) or item.share_date_precision.value
+        )
         values = {}
         if location := _embedded_location(item.location, context):
             values["location"] = location
@@ -386,7 +388,7 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
             body=item.body,
             body_html=render_markdown(item.body),
             date_precision=DatePrecision(precision),
-            story_date=_safe_date(update_day(item), precision),
+            story_date=_safe_date(update_day(item, context["zone_spans"]), precision),
             place=_share_place(item.area, context["areas"]),
             **values,
         )
@@ -468,6 +470,8 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
         "areas": {item.id for item in records["area"]},
         # The audience's own cap on every date; the coarser of it and a record's own value is shown.
         "date_precision": audience_precision(scope),
+        # The trip's zoned stay and visit days: the fallback zone of an update whose area has none.
+        "zone_spans": zone_spans(trip),
     }
     # Markdown fields carry their source, sanitized HTML for display, and, for
     # the trip summary shown on cards, a one-line plain-text preview.

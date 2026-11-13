@@ -241,7 +241,7 @@ def test_other_subject_cannot_read_or_change_a_travel_update() -> None:
         f"/api/trips/{trip['id']}/travel-updates",
         json={
             "occurred_at": "2054-04-04T10:00:00Z",
-            "date_precision": "month",
+            "share_date_precision": "month",
             "title": "A trip highlight",
             "body": "Text.",
         },
@@ -275,7 +275,7 @@ def test_travel_update_rejects_a_location_or_an_area_from_another_trip() -> None
         json={
             "occurred_at": "2054-04-04T10:00:00Z",
             "area_id": location_id,
-            "date_precision": "day",
+            "share_date_precision": "day",
             "title": "T",
             "body": "B",
         },
@@ -292,7 +292,7 @@ def test_travel_update_rejects_a_location_or_an_area_from_another_trip() -> None
         json={
             "occurred_at": "2054-04-04T10:00:00Z",
             "area_id": foreign_area_id,
-            "date_precision": "day",
+            "share_date_precision": "day",
             "title": "T",
             "body": "B",
         },

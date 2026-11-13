@@ -166,8 +166,8 @@ visits, places, days or times are inferred. See [decision 243](decisions/243-fin
 The convention agreed in [#358](https://github.com/tjorim/travel/issues/358)
 (2026-11-12). It describes the names in use at that date, marks what is already
 decided to change, and lists every exception with its reason. It renames nothing
-by itself; the one rename it chooses is tracked in
-[#386](https://github.com/tjorim/travel/issues/386).
+by itself; the one rename it chooses (the update's `date_precision` to `share_date_precision`) was
+made in [#386](https://github.com/tjorim/travel/issues/386).
 
 ### Date ranges
 
@@ -198,7 +198,7 @@ A **local time is a wall clock plus the zone of the area it happens in.**
 | Visit | `start_time`, `end_time` (wall clock) | the area's `timezone` (delivered beside the times as `timezone`, only when the owner shares the time) |
 | Stay | `check_in_time`, `check_out_time` (wall clock) | the area's `timezone`; never delivered |
 | Route | `departs_at`, `arrives_at` (UTC instants) with `departs_on` (the local day of departure) | the only record that stores its own: `departure_timezone` and `arrival_timezone`, because one route crosses two zones |
-| Travel update | `occurred_at` (UTC instant) | none stored. [#357](https://github.com/tjorim/travel/issues/357) derives the shared day from the zone of the update's area; `area_id` is optional, so that issue also decides the fallback |
+| Travel update | `occurred_at` (UTC instant) | none stored. The zone is derived: the update's area, else the nearest dated stay or visit of the trip, else UTC (see "The update's day" below); a time typed without an offset is read in it |
 | Task | `due_date` (a local day), `remind_at` (an instant) | none |
 | Media asset | `captured_at` | none; see below |
 
@@ -219,20 +219,20 @@ Two names exist, for two ideas that are easy to confuse:
 - `share_date_precision` on a visit or stay is **the audience-facing cap of that
   record**: the coarsest reading (`day`, `month`, `year`) it allows a visitor,
   or `null` for "follow the audience". It never changes what the owner sees.
-- `date_precision` on a travel update is the **same idea** (the update's own cap
-  on its shared date), stored as a required value that defaults to `day`. It has
-  a different name only because it was added first.
+- `share_date_precision` on a travel update is the **same idea** (the update's own
+  cap on its shared date), but stored as a required value that defaults to `day`
+  instead of `null`. It was called `date_precision` until
+  [#386](https://github.com/tjorim/travel/issues/386); the owner API and MCP tools
+  still read the old key on write for one release.
 - `date_precision` in the visitor document (and in the trip dates of the scope's
   `defaults`) is the **delivered value**: what the coarser-wins rule
   ([Date precision](#date-precision) above) produced for that audience. It is
   an output, not a setting.
 
-Because the update's setting shares its name with the delivered value, a
-`date_precision` field in the owner API means "a setting" on an update and "a
-result" in a projection. The rename to `share_date_precision` is chosen in
-[#386](https://github.com/tjorim/travel/issues/386). Renaming `share_date_precision` on visits and stays
-instead is not worth it: it is the name the sharing editor, presets and
-documents already use.
+So a `share_date_precision` in the owner API is always a setting and a
+`date_precision` in a projection is always a result. Renaming
+`share_date_precision` on visits and stays instead was not worth it: it is the
+name the sharing editor, presets and documents already use.
 
 ### Ordering
 
@@ -286,10 +286,10 @@ Documented exceptions:
 
 Renames touch the owner API, MCP, the trip export, `python-travel`, the Home
 Assistant integration and the PWA's saved offline copies at once, so the default
-is a documented exception. Only the update's `date_precision`
+is a documented exception. Only the update's `date_precision` (now `share_date_precision`)
 ([#386](https://github.com/tjorim/travel/issues/386)) is chosen, and it ships with the
-phase 4 model changes together with #367 and #357 so the export `schema_version`
-changes once.
+phase 4 model changes together with #367 and #357, which is why `travel/trip-export@2`
+carries all three.
 
 ## Words
 
@@ -358,7 +358,7 @@ renderers, from the finished audience document alone:
 
 | Figure | Allowed projected input | Meaning |
 | --- | --- | --- |
-| `days` | `updates[].story_date`, `date_precision` | Distinct local dates (in each update's area zone, see *The reisupdate*) with shared updates at day precision; not elapsed trip days |
+| `days` | `updates[].story_date`, `date_precision` | Distinct local dates (in each update's zone, see *The reisupdate*) with shared updates at day precision; not elapsed trip days |
 | `areas` | `places[].id` with the `area-` prefix | Count of explicit shared area records; excludes locations and embedded place mentions |
 | `countries` | Those same areas' `country_code` | Distinct nonempty country codes; no geocoding, inferred borders or private areas |
 | `nights` | `stays[].starts_on`, `ends_on`, `date_precision` | Union of day-precise half-open check-in/check-out date intervals; overlapping nights counted once |
@@ -444,7 +444,7 @@ receives a finer date than either the record or the audience allows.
 |---|---|---|
 | Audience | `defaults.date_precision` in the share scope of the public view, a hidden link or a collection member (*Dates shown to this audience*) | `day`, `month`, `year`, or absent |
 | Visit, stay | its own `share_date_precision` (*Dates for visitors*) | `day`, `month`, `year`, or `null` = same as the audience |
-| Reisupdate | its own `date_precision` | `day`, `month`, `year` |
+| Reisupdate | its own `share_date_precision` | `day`, `month`, `year` |
 | Route | none of its own: it follows the audience's cap alone (decided in [#262](decisions/36-privacy-sharing-offline-policy.md#routes-follow-the-audiences-date-setting-262)) | the audience's value, or `day` when the audience sets none |
 | Trip dates | `trip.dates` in the scope, also capped by the audience | `day`, `month`, `year`, or absent (hidden) |
 
@@ -527,13 +527,26 @@ sees it.
 **The update's day.** An update is stored as one UTC instant (`occurred_at`) with no zone of its own. The
 day a visitor reads (`story_date`, and from it the `days` figure, the "N days later" connector and the rule that
 hides plan records shown with an update of the same area and day) is the calendar day of that instant **in the
-time zone of the update's area**: an update at 07:00 in Taipei stays on its Taipei day, not the UTC day before.
-An area without a zone, or one whose name the server cannot resolve, falls back to the instant's UTC date; it
-never fails. `backend/app/update_day.py` is the one place that derives it, and the visitor projection, the
-change summaries, the owner's PDF and export (`local_date`) and the owner's own lists all use it, so the owner
-and the visitor read the same day ([#357](https://github.com/tjorim/travel/issues/357)). Nothing is stored for
-it, so **editing an area's time zone, or moving an update to another area, moves the day of its updates**
-(and of the audiences that read them). An area's zone itself is never shared.
+update's zone**: an update at 07:00 in Taipei stays on its Taipei day, not the UTC day before. The zone is, in order:
+
+1. the time zone of the update's own area (its location's area wins);
+2. else the zone of the trip's stay or visit whose days are nearest to the update's UTC date (one that covers the
+   day wins, then the closest by days; a tie goes to the earlier one), because an update with no area of its own
+   was written where the traveller was;
+3. else UTC, only for a trip with no zoned area on any dated stay or visit.
+
+A zone name the server cannot resolve counts as no zone, and the derivation never fails.
+`backend/app/update_day.py` is the one place that derives it, and the visitor projection, the change summaries,
+the owner's PDF and export (`local_date` and `timezone`), and the owner API (`local_date` and `timezone` on every
+update) all use it, so the owner and the visitor read the same day
+([#357](https://github.com/tjorim/travel/issues/357), [#391](https://github.com/tjorim/travel/issues/391)).
+Nothing is stored for it, so **editing an area's time zone, the dates or area of a stay or visit, or moving an
+update to another area, moves the day of the updates that follow it** (and of the audiences that read them). An
+area's zone itself is never shared.
+
+The owner reads and writes an update's time in that zone. `occurred_at` may be sent as an instant with an offset,
+or as a wall-clock time without one (`2054-11-20T07:00`), which the server reads in the update's zone once its
+area is known; the owner's forms send the wall clock they show, so the browser's own zone never matters.
 
 A photo attached to a reisupdate travels with it (its approval is still the
 gate); a loose gallery photo follows its own visibility.

@@ -150,7 +150,7 @@ def build_rich_trip(owner: str = "owner-1") -> dict[str, str]:
             trip_id=trip.id,
             area_id=area.id,
             occurred_at=datetime(2054, 5, 2, 9, tzinfo=UTC),
-            date_precision=DatePrecision.DAY,
+            share_date_precision=DatePrecision.DAY,
             title="Arrived",
             body="Public body",
             private_notes="private update note",

@@ -723,6 +723,8 @@
   "owner_save_travel_update": "Save travel update",
   "owner_give_the_travel_update_a_title": "Give the travel update a title.",
   "owner_enter_the_date_and_time": "Enter the date and time.",
+  "owner_update_time_local": "Local time at the place.",
+  "owner_update_time_local_in_zone": "Local time at the place ({zone}).",
   "owner_date_and_time": "Date and time",
   "owner_date_for_visitors": "Date for visitors",
   "owner_full_date": "Full date",

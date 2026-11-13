@@ -44,7 +44,8 @@ from .models import (
     TripTask,
     Visit,
 )
-from .update_day import local_day
+from .update_day import fallback_zone, local_day, usable_zone
+from .update_zones import trip_zone_spans
 
 logger = logging.getLogger("travel.export")
 
@@ -79,7 +80,7 @@ ROUTE = (
     "updated_at",
 )  # fmt: skip
 TRAVEL_UPDATE = (
-    "id", "visibility", "share_id", "area_id", "location_id", "occurred_at", "date_precision", "title", "body",
+    "id", "visibility", "share_id", "area_id", "location_id", "occurred_at", "share_date_precision", "title", "body",
     "private_notes", "created_at", "updated_at",
 )  # fmt: skip
 MEDIA_ASSET = (
@@ -180,15 +181,19 @@ def _sections(session: Session, trip: Trip) -> Iterator[Iterator[str]]:
         ):
             links.setdefault(link.travel_update_id, []).append(link.media_asset_id)
         # The local day each update belongs to, so a reader of the file needs no zone logic: the zone of the
-        # update's area (its location's area wins), as everywhere else (see ``update_day``).
+        # update's area (its location's area wins), else the trip's nearest stay or visit, as everywhere else
+        # (see ``update_day``).
         zones = dict(session.execute(select(Area.id, Area.timezone).where(Area.trip_id == trip_id)).all())
+        spans = trip_zone_spans(session, trip_id)
         location_areas = dict(
             session.execute(select(Location.id, Location.area_id).where(Location.trip_id == trip_id)).all()
         )
         for (row,) in _batched(session, owned(TravelUpdate).order_by(*TRAVEL_UPDATE_ORDER)):
             area_id = location_areas.get(row.location_id) if row.location_id else row.area_id
+            zone = usable_zone(zones.get(area_id)) or fallback_zone(row.occurred_at, spans)
             yield _record(row, TRAVEL_UPDATE) | {
-                "local_date": local_day(row.occurred_at, zones.get(area_id)),
+                "local_date": local_day(row.occurred_at, zone),
+                "timezone": zone or "UTC",
                 "media_asset_ids": links.get(row.id, []),
             }
 

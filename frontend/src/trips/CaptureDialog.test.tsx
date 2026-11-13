@@ -3,7 +3,7 @@ import { mockCaptureLocks } from "../capture-draft-test-utils";
 import { http, HttpResponse } from "msw/http";
 import { server } from "../mocks/server";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { vi, afterEach, beforeEach, expect, it } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
@@ -68,6 +68,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
@@ -244,7 +245,9 @@ it("keeps another tab's newer draft when a delayed server save succeeds", async 
       return HttpResponse.json({
         id: "saved",
         occurred_at: "2054-11-01T12:00:00Z",
-        date_precision: "day",
+        timezone: "UTC",
+        local_date: "2054-11-01",
+        share_date_precision: "day",
         title: "Submitted",
         body: "",
         private_notes: null,
@@ -274,4 +277,58 @@ it("restores a locked trip's draft before allowing its initial empty form to per
     expect(screen.getByLabelText("Titel")).toHaveValue("Synthetic locked trip draft"),
   );
   await waitFor(() => expect(readDraft("t1")?.title).toBe("Synthetic locked trip draft"));
+});
+
+const savedUpdate = (body: object) => ({
+  id: "saved",
+  occurred_at: "2054-11-20T10:15:00Z",
+  timezone: "UTC",
+  local_date: "2054-11-20",
+  share_date_precision: "day",
+  title: "Saved",
+  body: "",
+  private_notes: null,
+  area_id: null,
+  location: null,
+  media_asset_ids: [],
+  visibility: "private",
+  ...body,
+});
+
+const dialogFor = (candidate?: Parameters<typeof CaptureDialog>[0]["candidate"]) => (
+  <CaptureDialog open lockedTripId="t1" candidate={candidate} onDismiss={() => undefined} />
+);
+
+it("sends the typed time as the wall clock at the place, not as the browser's instant", async () => {
+  vi.stubEnv("TZ", "Pacific/Auckland");
+  api.collection("/api/trips/t1/travel-updates", []);
+  api.on("POST", /^\/api\/trips\/t1\/travel-updates$/, (body) => savedUpdate(body as object));
+  renderWithOwner(dialogFor());
+  fireEvent.change(await screen.findByLabelText("Titel"), { target: { value: "Ontbijt" } });
+  await openMore();
+  const time = within(screen.getByRole("group", { name: /Datum en tijd/ })).getAllByRole(
+    "textbox",
+  )[1];
+  fireEvent.change(time, { target: { value: "07:00" } });
+  fireEvent.blur(time);
+  fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));
+  await waitFor(() => expect(api.count("POST /api/trips/t1/travel-updates")).toBe(1));
+  const body = api.lastBody<{ occurred_at: string }>("POST /api/trips/t1/travel-updates")!;
+  expect(body.occurred_at).toMatch(/^\d{4}-\d\d-\d\dT07:00$/);
+});
+
+it("keeps a photo's exact instant until the owner changes the time it seeded", async () => {
+  vi.stubEnv("TZ", "Europe/Brussels");
+  api.collection("/api/trips/t1/travel-updates", []);
+  api.on("POST", /^\/api\/trips\/t1\/travel-updates$/, (body) => savedUpdate(body as object));
+  renderWithOwner(
+    dialogFor({ tripId: "t1", mediaAssetIds: [], occurredAt: "2054-11-20T10:15:00Z" }),
+  );
+  fireEvent.change(await screen.findByLabelText("Titel"), { target: { value: "Kust" } });
+  await waitFor(() => expect(readDraft("t1")?.occurredInstant).toBe("2054-11-20T10:15:00Z"));
+  fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));
+  await waitFor(() => expect(api.count("POST /api/trips/t1/travel-updates")).toBe(1));
+  expect(api.lastBody("POST /api/trips/t1/travel-updates")).toMatchObject({
+    occurred_at: "2054-11-20T10:15:00Z",
+  });
 });

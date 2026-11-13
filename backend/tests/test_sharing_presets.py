@@ -604,7 +604,7 @@ def _bulk_updates(world: World, count: int) -> None:
                 TravelUpdate(
                     trip_id=world.id,
                     occurred_at=base.occurred_at,
-                    date_precision=base.date_precision,
+                    share_date_precision=base.share_date_precision,
                     title=f"Bulk {number}",
                     body="A safe note.",
                     visibility=Visibility.PRIVATE,

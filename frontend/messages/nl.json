@@ -723,6 +723,8 @@
   "owner_save_travel_update": "Reisupdate opslaan",
   "owner_give_the_travel_update_a_title": "Geef de reisupdate een titel.",
   "owner_enter_the_date_and_time": "Geef de datum en tijd op.",
+  "owner_update_time_local": "Lokale tijd ter plaatse.",
+  "owner_update_time_local_in_zone": "Lokale tijd ter plaatse ({zone}).",
   "owner_date_and_time": "Datum en tijd",
   "owner_date_for_visitors": "Datum voor bezoekers",
   "owner_full_date": "Volledige datum",
