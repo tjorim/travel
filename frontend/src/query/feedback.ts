@@ -16,6 +16,9 @@ export const errorNotice = (
 export type MessageNotice = { message: () => string };
 export const textNotice = (message: () => string): MessageNotice => ({ message });
 
+/** How an editor tells the block around it what happened (saved, deleted, failed), without rendering its own status line. */
+export type ReportNotice = (notice: ErrorNotice | MessageNotice) => void;
+
 /** Anything a feedback state accepts: plain text, a message to translate later, or a thrown error. */
 export type Notice = string | null | ErrorNotice | MessageNotice;
 

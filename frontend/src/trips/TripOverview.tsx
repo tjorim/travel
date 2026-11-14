@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { buildAgendaItems } from "./AgendaView";
+import { buildAgendaItems, isUndated } from "./agenda-items";
 import { isOverdue, tripDay, tripProgress } from "./readiness";
 import { sectionPath } from "./workspace-sections";
 import { Badge as StatusBadge } from "@/ui/badge";
@@ -280,7 +280,7 @@ export function TripOverview({ trip, action }: { trip: Trip; action?: ReactNode 
         <div className="grid gap-3 sm:grid-cols-2">
           {[today, addDays(today, 1)].map((date, index) => {
             const entries = agenda.filter(
-              (item) => item.first <= date && (item.last ?? item.first) >= date,
+              (item) => !isUndated(item) && item.first <= date && (item.last ?? item.first) >= date,
             );
             return (
               <section key={date}>

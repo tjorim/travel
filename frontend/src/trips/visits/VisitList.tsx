@@ -6,7 +6,7 @@ import type { Stay, Trip, Visit } from "../../api-types";
 import { visitTitle } from "../../records";
 import { visibilityLabel } from "../visibility";
 import { RestatedRoutesNote } from "../VisitRouteHint";
-import { dayLine, visitPlace } from "./model";
+import { visitLine } from "./model";
 import { Overnight } from "./Overnight";
 
 /** The saved visits in the server's order (day, time, creation), each with where it sleeps and its map and offline actions. */
@@ -40,7 +40,9 @@ export function VisitList({
           >
             <strong>{visitTitle(visit)}</strong>
             <span>
-              {[dayLine(visit), visitPlace(visit), visibilityLabel(visit.visibility)].join(" · ")}
+              {[visitLine(visit, { withStatus: true }), visibilityLabel(visit.visibility)].join(
+                " · ",
+              )}
             </span>
           </Button>
           <Overnight visit={visit} stays={stays} trip={trip} />
