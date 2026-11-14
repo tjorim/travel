@@ -12701,9 +12701,11 @@
           "record.precision_follow_audience",
           "alternative_group.choose",
           "alternative_group.undo_choice",
-          "audience.preset_apply"
+          "public_projection.preset_apply",
+          "share_link.preset_apply"
         ],
-        "title": "AuditEventKind"
+        "title": "AuditEventKind",
+        "description": "The code list of sharing audit events. The column is a plain string checked against this list when a row is\nwritten, so adding a kind needs no migration."
       },
       "AuditEventResponse": {
         "properties": {

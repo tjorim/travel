@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from ..access import set_cover
+from ..audit import scrub_trip_audit_text
 from ..errors import RecordNotFound, Refusal, ServiceError, service_error
 from ..models import (
     Location,
@@ -54,6 +55,22 @@ def owned_trip(session: Session, trip_id: Identifier, subject: str, *, load_rela
     if trip is None:
         raise RecordNotFound("Trip not found")
     return trip
+
+
+def lock_trip(session: Session, trip_id: Identifier, subject: str) -> None:
+    """Take the owner's trip row lock until the transaction ends, or 404 when the trip is gone or not theirs.
+
+    Deleting a trip scrubs the owner's text (link labels, reasons) from its retained sharing events under this lock,
+    and a writer of such an event takes it before writing, so no label or reason can land after the scrub. It is
+    ``FOR NO KEY UPDATE``: a child row's foreign-key check (``FOR KEY SHARE``) does not wait for it, which keeps the
+    media worker's import and the delete from deadlocking."""
+    if (
+        session.scalar(
+            select(Trip.id).where(Trip.id == trip_id, Trip.owner_subject == subject).with_for_update(key_share=True)
+        )
+        is None
+    ):
+        raise RecordNotFound("Trip not found")
 
 
 def _covers(session: Session, trip_ids: list[str]) -> dict[str, MediaDerivative]:
@@ -149,6 +166,8 @@ def update_trip(session: Session, subject: str, trip_id: Identifier, payload: Tr
 
 def delete_trip(session: Session, subject: str, trip_id: Identifier) -> None:
     """Delete the trip and everything it holds; its stored objects wait for the purge (``docs/object-storage.md``)."""
+    # First, so a writer of a sharing event with owner text either finishes before the scrub below or finds no trip.
+    lock_trip(session, trip_id, subject)
     # The delete cascades through the records and their links, so read them together instead of one by one.
     trip = owned_trip(session, trip_id, subject, load_relations=True)
     # Serialize with result attachment before taking the final object inventory.
@@ -159,5 +178,6 @@ def delete_trip(session: Session, subject: str, trip_id: Identifier) -> None:
         stored.state = ObjectState.PURGE_PENDING
         stored.trip_id = None
     session.flush()
+    scrub_trip_audit_text(session, trip_id)
     session.delete(trip)
     session.flush()

@@ -113,14 +113,14 @@ Excluded by design, and covered by canary tests in `backend/tests/test_export.py
 - Visitor projections and other derived views (agenda, map viewports, rendered
   Markdown, thumbnails).
 - Soft-deleted media and documents, and trip task alerts (notification state).
-- Sharing audit events and MCP audit rows. The export itself is recorded in the
-  MCP audit table (see below).
+- Sharing, collection and owner activity audit events. The export itself is recorded in the
+  owner activity table (see below).
 
 ## Audit
 
-Each successful request writes one `McpAuditEvent` row (`action: trip.export`,
+Each successful request writes one `OwnerActivityEvent` row (`transport: http`, `action: trip.export`,
 `resource_type: trip`, the trip id, `result: success`, details
-`{"schema_version", "transport": "http"}`) and a log line with the trip id. No
+`{"schema_version"}`) and a log line with the trip id. No
 payload, filename or content is recorded. The row follows the existing 730-day
 retention and is written before the response starts; if it cannot be written the
 export does not start. A client that disconnects mid-stream still counts as a
@@ -196,9 +196,9 @@ server artifact. Cleanup releases admission on rendering, database or audit
 failure, completed delivery and disconnect. Temporary disk needs include
 encoded copies, normalized images and output, bounded by the limits above;
 process termination relies on the host's temporary-directory housekeeping.
-A successful generation writes a payload-free `McpAuditEvent` with
-`action: trip.export_pdf`, trip/resource id, `result: success`, and only
-`{"transport":"http"}` as details before starting delivery. Disconnect still
+A successful generation writes a payload-free `OwnerActivityEvent` with
+`transport: http`, `action: trip.export_pdf`, trip/resource id, `result: success`
+and empty details before starting delivery. Disconnect still
 counts as a request; audit failure prevents delivery.
 
 ### Dependency and layout review

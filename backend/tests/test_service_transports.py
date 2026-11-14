@@ -30,8 +30,8 @@ from app.models import (
     DocumentAsset,
     DocumentKind,
     LinkState,
-    McpAuditEvent,
     ObjectState,
+    OwnerActivityEvent,
     PackingList,
     ShareLink,
     StoredObject,
@@ -192,7 +192,7 @@ def test_a_malformed_id_fails_the_same_way_through_the_mcp_tool_as_through_the_h
     assert code == "too_long"
     assert result.is_error and f"trip_id:{code}" in result.content[0].text
     with TestingSessionLocal() as session:
-        rejected = session.scalars(select(McpAuditEvent).where(McpAuditEvent.result == "rejected")).one()
+        rejected = session.scalars(select(OwnerActivityEvent).where(OwnerActivityEvent.result == "rejected")).one()
     assert rejected.details["error"] == f"Validation failed (trip_id:{code})"
 
 

@@ -97,15 +97,13 @@ def _seed(engine) -> dict[str, str]:
             ),
         ):
             session.execute(text(statement), values)
-        session.add(
-            AuditEvent(
-                trip_id=trip.id,
-                actor_subject="owner-1",
-                kind=AuditEventKind.PUBLIC_PROJECTION_PUBLISH,
-                target_type=AuditTargetType.PUBLIC_SURFACE,
-                target_id=trip.id,
-                details={},
-            )
+        # Raw SQL: the kind is a PostgreSQL enum at this revision.
+        session.execute(
+            text(
+                "INSERT INTO audit_events (id, trip_id, actor_subject, kind, target_type, target_id, details) "
+                "VALUES (:id, :trip, 'owner-1', 'public_projection.publish', 'public_surface', :trip, CAST('{}' AS json))"
+            ),
+            {"id": uuid4().hex, "trip": trip.id},
         )
         session.add(
             CollectionAuditEvent(
@@ -166,7 +164,7 @@ def test_the_label_columns_are_added_nullable_and_the_downgrade_removes_what_dep
             AuditEvent(
                 trip_id=ids["trip"],
                 actor_subject="owner-1",
-                kind=AuditEventKind.AUDIENCE_PRESET_APPLY,
+                kind=AuditEventKind.SHARE_LINK_PRESET_APPLY,
                 target_type=AuditTargetType.SHARE_LINK,
                 target_id=ids["link"],
                 details={"preset": "story_only"},

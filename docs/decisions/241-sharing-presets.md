@@ -208,7 +208,9 @@ widening refusal is decided before the revision is claimed, as for exclusions.
 
 ### Audit
 
-One event per apply, never one per record:
+One event per apply, never one per record
+(migration 031, #364, split the original kind `audience.preset_apply` into `public_projection.preset_apply` and
+`share_link.preset_apply`, named after the audience like the scope changes; read the name below as the pair):
 a new kind, `audience.preset_apply` (the existing scope-change kinds keep their
 meaning, and a preset does not also write them), whose details hold the preset id,
 the audience id, the counts per kind of widened, narrowed, left-as-is,

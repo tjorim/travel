@@ -662,6 +662,10 @@ def test_a_refused_widening_does_not_claim_the_revision(world: World) -> None:
 # --- the audit event ---------------------------------------------------------------------------------
 
 
+def preset_kind(kind: str) -> AuditEventKind:
+    return AuditEventKind.PUBLIC_PROJECTION_PRESET_APPLY if kind == "public" else AuditEventKind.SHARE_LINK_PRESET_APPLY
+
+
 def audit_count(world: World, kind: str) -> int:
     with Session(engine) as session:
         if kind == "member":
@@ -670,9 +674,7 @@ def audit_count(world: World, kind: str) -> int:
                 .select_from(CollectionAuditEvent)
                 .where(CollectionAuditEvent.kind == "collection.member_preset_apply")
             )
-        return session.scalar(
-            select(func.count()).select_from(AuditEvent).where(AuditEvent.kind == AuditEventKind.AUDIENCE_PRESET_APPLY)
-        )
+        return session.scalar(select(func.count()).select_from(AuditEvent).where(AuditEvent.kind == preset_kind(kind)))
 
 
 def audit_details(world: World, kind: str) -> dict:
@@ -685,9 +687,7 @@ def audit_details(world: World, kind: str) -> dict:
             ).first()
         else:
             event = session.scalars(
-                select(AuditEvent)
-                .where(AuditEvent.kind == AuditEventKind.AUDIENCE_PRESET_APPLY)
-                .order_by(AuditEvent.occurred_at.desc())
+                select(AuditEvent).where(AuditEvent.kind == preset_kind(kind)).order_by(AuditEvent.occurred_at.desc())
             ).first()
         assert event is not None
         return event.details
@@ -816,7 +816,9 @@ def test_a_new_link_can_start_from_a_preset_in_the_same_transaction(world: World
     assert "everyone" not in stored(world)["visibility"].values()
     with Session(engine) as session:
         kinds = [event.kind for event in session.scalars(select(AuditEvent).order_by(AuditEvent.occurred_at))]
-    assert kinds.count(AuditEventKind.SHARE_LINK_CREATE) == 1 and kinds.count(AuditEventKind.AUDIENCE_PRESET_APPLY) == 1
+    assert (
+        kinds.count(AuditEventKind.SHARE_LINK_CREATE) == 1 and kinds.count(AuditEventKind.SHARE_LINK_PRESET_APPLY) == 1
+    )
     assert audit_details(world, "link")["on_creation"] is True
 
 

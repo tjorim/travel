@@ -2889,9 +2889,11 @@ export interface components {
         };
         /**
          * AuditEventKind
+         * @description The code list of sharing audit events. The column is a plain string checked against this list when a row is
+         *     written, so adding a kind needs no migration.
          * @enum {string}
          */
-        AuditEventKind: "public_projection.publish" | "public_projection.unpublish" | "share_link.create" | "share_link.activate" | "share_link.revoke" | "share_link.rotate" | "feed.enable" | "feed.rotate" | "feed.revoke" | "share_link.expire" | "location.merge" | "area.merge" | "location.update" | "public_projection.scope_change" | "share_link.scope_change" | "record.visibility_change" | "record.precision_follow_audience" | "alternative_group.choose" | "alternative_group.undo_choice" | "audience.preset_apply";
+        AuditEventKind: "public_projection.publish" | "public_projection.unpublish" | "share_link.create" | "share_link.activate" | "share_link.revoke" | "share_link.rotate" | "feed.enable" | "feed.rotate" | "feed.revoke" | "share_link.expire" | "location.merge" | "area.merge" | "location.update" | "public_projection.scope_change" | "share_link.scope_change" | "record.visibility_change" | "record.precision_follow_audience" | "alternative_group.choose" | "alternative_group.undo_choice" | "public_projection.preset_apply" | "share_link.preset_apply";
         /** AuditEventResponse */
         AuditEventResponse: {
             /** Id */

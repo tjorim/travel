@@ -625,7 +625,7 @@ read and never stored: `shown` (records the audience receives that the preset wo
 (records the preset would select that it does not receive, including records created since), `count` in total, for
 areas, visits, stays, routes and updates. A visitor response carries neither. Re-applying resets the exceptions
 (the review lists them first as `replaces_exceptions`). Each apply writes one audit event
-(`audience.preset_apply`, or `collection.member_preset_apply` for a member) with the preset and audience ids, the
+(`public_projection.preset_apply` or `share_link.preset_apply`, or `collection.member_preset_apply` for a member) with the preset and audience ids, the
 counts per kind of widened, narrowed, left-as-is, needs-decision and replaced records, the precision before and
 after, whether a widening was acknowledged and the scope fingerprints, never a title, label or note; the per-record
 visibility events are not written for the promotions. Rotating a link keeps its label; the Sharing check's audience

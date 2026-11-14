@@ -37,6 +37,7 @@ const events = [
     no_longer_reached: ["link:secret-link-c"],
   }),
   event("share_link.revoke"),
+  event("share_link.preset_apply"),
   event("location.merge", {
     merged: [
       { id: "secret-a", widened: [{ audience: "public" }, { audience: "link:secret-link-a" }] },
@@ -115,6 +116,11 @@ it.each(["en", "nl"] as const)(
         locale === "en"
           ? "No longer visible on the public page: 0; share links no longer reached: 1."
           : "Niet meer zichtbaar op de openbare pagina: 0; niet meer bereikte deellinks: 1.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        locale === "en" ? "A sharing preset was applied." : "Er is een voorinstelling toegepast.",
       ),
     ).toBeVisible();
     expect(

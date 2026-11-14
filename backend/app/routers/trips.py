@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from ..auth import current_subject
 from ..database import get_session
 from ..export import EXPORT_SCHEMA_VERSION, record_export, stream_trip_export
-from ..models import McpAuditEvent, TravelUpdate
+from ..models import ActivityTransport, OwnerActivityEvent, TravelUpdate
 from ..schemas import (
     Identifier,
     TravelUpdateCreate,
@@ -120,14 +120,15 @@ def export_trip_pdf(
                 trip = owned_trip(snapshot, trip_id, subject)
                 output = generate_pdf(snapshot, trip, payload, storage, Path(temporary.name), deadline=deadline)
         session.add(
-            McpAuditEvent(
+            OwnerActivityEvent(
                 owner_subject=subject,
+                transport=ActivityTransport.HTTP,
                 action="trip.export_pdf",
                 resource_type="trip",
                 resource_id=trip_id,
                 trip_id=trip_id,
                 result="success",
-                details={"transport": "http"},
+                details={},
             )
         )
         session.commit()
