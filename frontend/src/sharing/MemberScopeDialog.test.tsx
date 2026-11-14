@@ -271,3 +271,63 @@ it("shows no review when the previewed member scope shows nothing of the future"
   expect(screen.getByText("Weergegeven preview")).toBeTruthy();
   expect(screen.queryByText(/kan vóór de reis lezen/)).toBeNull();
 });
+
+it("says when the member review fails, never as an empty review, and retries it", async () => {
+  api.on("POST", /\/api\/collections\/c1\/members\/m1\/preview$/, () => ({
+    schema_version: "travel/unlisted-trip@1",
+    title: "Exampleland",
+  }));
+  server.use(
+    http.post(
+      "/api/collections/c1/members/m1/future-disclosure",
+      () => HttpResponse.json({ detail: "Boom" }, { status: 500 }),
+      { once: true },
+    ),
+  );
+  api.on("POST", /\/api\/collections\/c1\/members\/m1\/future-disclosure$/, () => ({
+    transport: 1,
+    day_dates: 0,
+  }));
+  renderWithOwner(
+    <MemberScopeDialog
+      collection={collection("active")}
+      member={member}
+      trip={trip}
+      onClose={() => undefined}
+    />,
+  );
+  await screen.findByRole("region", { name: "Weggelaten voor dit publiek" });
+  fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
+  const failed = await screen.findByRole("alert");
+  expect(failed.textContent).toMatch(/kon niet worden gecontroleerd/);
+  expect(screen.queryByText(/kan vóór de reis lezen/)).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Opnieuw proberen" }));
+  expect(await screen.findByText(/Verzamellink “Familie” kan vóór de reis lezen/)).toBeTruthy();
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+it("counts the review again for each preview, also when the scope did not change", async () => {
+  api.on("POST", /\/api\/collections\/c1\/members\/m1\/preview$/, () => ({
+    schema_version: "travel/unlisted-trip@1",
+    title: "Exampleland",
+  }));
+  let transport = 1;
+  api.on("POST", /\/api\/collections\/c1\/members\/m1\/future-disclosure$/, () => ({
+    transport: transport++,
+    day_dates: 0,
+  }));
+  renderWithOwner(
+    <MemberScopeDialog
+      collection={collection("active")}
+      member={member}
+      trip={trip}
+      onClose={() => undefined}
+    />,
+  );
+  await screen.findByRole("region", { name: "Weggelaten voor dit publiek" });
+  fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
+  expect(await screen.findByText(/1 vervoersverbinding met tijd/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
+  expect(await screen.findByText(/2 vervoersverbindingen met tijd/)).toBeTruthy();
+  expect(api.count("POST /api/collections/c1/members/m1/future-disclosure")).toBe(2);
+});

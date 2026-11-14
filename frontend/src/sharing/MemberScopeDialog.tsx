@@ -16,8 +16,11 @@ import {
   exclusionWidening,
 } from "../trips/publication/ExclusionWideningDialog";
 import { ScopeEditor } from "../trips/publication/ScopeEditor";
-import { FutureDisclosureList, futureDisclosureLines } from "../trips/publication/SharingReview";
-import { useFutureDisclosure } from "../trips/publication/use-future-disclosure";
+import { FutureDisclosureReview } from "../trips/publication/SharingReview";
+import {
+  useFutureDisclosure,
+  useRefreshFutureDisclosure,
+} from "../trips/publication/use-future-disclosure";
 import type { PresetAppliedAudience } from "../trips/publication/use-sharing-presets";
 import { usePublicationCatalog } from "../trips/publication/use-publication-catalog";
 import {
@@ -46,11 +49,9 @@ function MemberFutureDisclosure({
     scope,
   );
   return (
-    <FutureDisclosureList
-      lines={futureDisclosureLines(
-        future.data ?? { transport: 0, day_dates: 0 },
-        m.publication_collection_member({ name: collection.label }),
-      )}
+    <FutureDisclosureReview
+      review={future}
+      name={m.publication_collection_member({ name: collection.label })}
     />
   );
 }
@@ -71,6 +72,7 @@ export function MemberScopeDialog({
   const { session } = useAuth();
   const { catalog } = usePublicationCatalog(trip);
   const { setMemberScope, previewMember } = useCollectionMutations();
+  const refreshFutureDisclosure = useRefreshFutureDisclosure(trip.id);
   const [scope, setScope] = useState<ShareScope>(() => cloneScope(member.scope));
   // What the member holds on the server; the editor has unsaved edits when its scope differs.
   const dirty = JSON.stringify(scope) !== JSON.stringify(cloneScope(member.scope));
@@ -92,6 +94,8 @@ export function MemberScopeDialog({
         scope: candidate,
       });
       setPreview({ document: document as Projection, scope: candidate });
+      // The review counts the same server state as this preview, also when the scope did not change since the last one.
+      void refreshFutureDisclosure();
     } catch (error) {
       setNotice(errorNotice(error, m.sharing_the_link_preview_could_not_be_loaded));
     }

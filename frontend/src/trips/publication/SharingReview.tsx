@@ -1,5 +1,9 @@
 import { LiveLocation } from "../LiveLocation";
 import { VisitorNumbers } from "../../VisitorNumbers";
+import type { UseQueryResult } from "@tanstack/react-query";
+
+import { Alert } from "@/ui/alert";
+import { Button } from "@/ui/button";
 import { Collapsible } from "@/ui/collapsible";
 
 import { useLocale } from "../../locale";
@@ -124,8 +128,33 @@ export function futureDisclosureLines(disclosure: FutureDisclosure, name: string
   ];
 }
 
-/** The lines of `futureDisclosureLines` as one list; nothing when the audience shows nothing of the future. */
-export function FutureDisclosureList({ lines }: { lines: string[] }) {
+/**
+ * The review of what an audience would show of a trip that has not started: the lines of `futureDisclosureLines`,
+ * a status while the server counts, or an error with a retry. A failed or pending check never reads as an empty
+ * one, because "nothing will be disclosed" is only true once the server said so.
+ */
+export function FutureDisclosureReview({
+  review,
+  name,
+}: {
+  review: Pick<UseQueryResult<FutureDisclosure>, "data" | "isError" | "isFetching" | "refetch">;
+  name: string;
+}) {
+  useLocale();
+  if (review.isFetching)
+    return <Alert role="status">{m.publication_future_disclosure_checking()}</Alert>;
+  if (review.isError || !review.data)
+    return (
+      <div className="grid justify-items-start gap-2">
+        <Alert role="alert" variant="error">
+          {m.publication_future_disclosure_error()}
+        </Alert>
+        <Button type="button" className="secondary" onClick={() => void review.refetch()}>
+          {m.retry()}
+        </Button>
+      </div>
+    );
+  const lines = futureDisclosureLines(review.data, name);
   if (lines.length === 0) return null;
   return (
     <ul className="m-0 grid list-disc gap-0.5 pl-5 text-travel-review-warning">

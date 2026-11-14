@@ -1701,6 +1701,8 @@
   "publication_for_example_family": "For example: family",
   "publication_full_dates": "Full dates",
   "publication_future_day_dates": "{audience} shows dates by day for {count} before the trip starts. Until you leave, set “Dates shown to this audience” to month.",
+  "publication_future_disclosure_checking": "Checking what this audience shows of the trip before it starts…",
+  "publication_future_disclosure_error": "What this audience shows of the trip before it starts could not be checked. Do not assume it shows nothing.",
   "publication_future_transport_times": "{audience} can read when and how you travel before the trip starts: {count}. Until you leave, set those routes to private.",
   "publication_hidden_share_links": "Hidden share links",
   "publication_hide": "Hide",

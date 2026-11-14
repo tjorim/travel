@@ -1701,6 +1701,8 @@
   "publication_for_example_family": "Bijvoorbeeld: familie",
   "publication_full_dates": "Volledige datums",
   "publication_future_day_dates": "{audience} toont datums per dag bij {count} vóór de reis. Zet tot uw vertrek “Datums die dit publiek ziet” op maand.",
+  "publication_future_disclosure_checking": "Controleren wat dit publiek van de reis toont vóór de reis begint…",
+  "publication_future_disclosure_error": "Wat dit publiek van de reis toont vóór de reis begint, kon niet worden gecontroleerd. Ga er niet van uit dat er niets getoond wordt.",
   "publication_future_transport_times": "{audience} kan vóór de reis lezen wanneer en hoe u reist: {count}. Zet die routes tot uw vertrek op privé.",
   "publication_hidden_share_links": "Verborgen deellinks",
   "publication_hide": "Niet tonen",
