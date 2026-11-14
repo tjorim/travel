@@ -9,18 +9,16 @@ Shared by the HTTP routers and the MCP tools. Nothing here commits: a reader tha
 ``expires_at`` marks it expired in the caller's transaction, so the caller commits after every call (reads too).
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from ..audience import MemberAudience
 from ..audit import record_collection_event, scope_fingerprint
-from ..capability import generate_token, verifier_for
-from ..errors import Conflict, RecordNotFound, service_error
-from ..exclusion_review import exclusion_changes, widening
+from ..errors import Conflict
 from ..models import Collection, CollectionAuditEvent, CollectionAuditKind, CollectionMember, LinkState, Trip
-from ..projection import ScopeError, prepare_scope, render_projection
 from ..schemas import (
     AuditReasonInput,
     CollectionCreate,
@@ -29,54 +27,18 @@ from ..schemas import (
     CollectionMembershipResponse,
     CollectionResponse,
     CollectionUpdate,
+    FutureDisclosure,
     Identifier,
     ShareLinkActivateRequest,
     ShareScopeInput,
 )
 from ..sharing_presets import apply_preset
-from .delivery import navigation_target
-from .sharing import (
-    aware_utc,
-    claim_member_revision,
-    collection_index,
-    expire_collection,
-    member_response,
-    refuse_unacknowledged_widening,
-    trips_by_id,
-)
+from . import audiences
+from .audiences import owned_collection, require_collection_editable
+from .sharing import collection_index, member_response, mint_capability, settle_expired, trips_by_id
 from .trips import owned_trip
 
-EDITABLE_STATES = (LinkState.DRAFT, LinkState.ACTIVE)
 MAX_MEMBERS = 50
-
-
-def _not_editable() -> Conflict:
-    return Conflict(
-        "A revoked or expired collection cannot be edited", code="a_revoked_or_expired_collection_cannot_be_edited"
-    )
-
-
-def settle_expired(session: Session, collections: list[Collection]) -> None:
-    """Lazy write for owner reads: an active collection past `expires_at` is stored as expired the first time
-    anyone sees it. The caller commits."""
-    now = datetime.now(UTC)
-    for collection in collections:
-        if (
-            collection.state == LinkState.ACTIVE
-            and collection.expires_at is not None
-            and aware_utc(collection.expires_at) <= now
-        ):
-            expire_collection(session, collection)
-
-
-def owned_collection(session: Session, subject: str, collection_id: Identifier) -> Collection:
-    collection = session.scalar(
-        select(Collection).where(Collection.id == collection_id, Collection.owner_subject == subject)
-    )
-    if collection is None:
-        raise RecordNotFound("Collection not found")
-    settle_expired(session, [collection])
-    return collection
 
 
 def collection_response(session: Session, collection: Collection) -> CollectionResponse:
@@ -97,18 +59,6 @@ def collection_response(session: Session, collection: Collection) -> CollectionR
             member_response(member, trips[member.trip_id]) for member in collection.members if member.trip_id in trips
         ],
     )
-
-
-def _scope_for(
-    session: Session, subject: str, trip_id: Identifier, scope: ShareScopeInput, stored: dict | None = None
-) -> tuple[Trip, dict]:
-    """The member's trip and the scope to store; ``stored`` is its current scope, ``None`` for a new member."""
-    trip = owned_trip(session, trip_id, subject, load_relations=True)
-    scope_dict = scope.document(stored)
-    try:
-        return trip, prepare_scope(trip, scope_dict, stored)
-    except ScopeError as error:
-        raise service_error(error) from error
 
 
 def create_collection(session: Session, subject: str, payload: CollectionCreate) -> CollectionResponse:
@@ -154,8 +104,7 @@ def update_collection(
     session: Session, subject: str, collection_id: Identifier, payload: CollectionUpdate
 ) -> CollectionResponse:
     collection = owned_collection(session, subject, collection_id)
-    if collection.state not in EDITABLE_STATES:
-        raise _not_editable()
+    require_collection_editable(collection)
     fields = payload.model_fields_set
     if "label" in fields and payload.label is not None:
         collection.label = payload.label
@@ -190,20 +139,13 @@ def delete_collection(session: Session, subject: str, collection_id: Identifier)
     session.flush()
 
 
-def owned_member(collection: Collection, member_id: Identifier) -> CollectionMember:
-    member = next((item for item in collection.members if item.id == member_id), None)
-    if member is None:
-        raise RecordNotFound("Member not found")
-    return member
-
-
 def add_collection_member(
     session: Session, subject: str, collection_id: Identifier, payload: CollectionMemberCreate
 ) -> CollectionResponse:
     collection = owned_collection(session, subject, collection_id)
-    if collection.state not in EDITABLE_STATES:
-        raise _not_editable()
-    trip, scope = _scope_for(session, subject, payload.trip_id, payload.scope)
+    require_collection_editable(collection)
+    trip = owned_trip(session, payload.trip_id, subject, load_relations=True)
+    scope = audiences.new_scope(trip, payload.scope, None, can_exclude=True)
     already_in = Conflict("This trip is already in the collection", code="this_trip_is_already_in_the_collection")
     if any(member.trip_id == payload.trip_id for member in collection.members):
         raise already_in
@@ -231,7 +173,7 @@ def add_collection_member(
             session,
             trip,
             subject,
-            member,
+            MemberAudience(member, collection),
             payload.preset,
             fingerprint=None,
             confirm_widening=False,
@@ -251,32 +193,12 @@ def set_collection_member_scope(
     confirm_widening: bool = False,
 ) -> CollectionResponse:
     collection = owned_collection(session, subject, collection_id)
-    if collection.state not in EDITABLE_STATES:
-        raise _not_editable()
-    member = owned_member(collection, member_id)
-    trip, scope = _scope_for(session, subject, member.trip_id, payload, member.scope)
-    live = collection.state == LinkState.ACTIVE
-    # Before the revision is claimed: a refused widening changes nothing, not even the revision.
-    refuse_unacknowledged_widening(trip, member.scope, scope, live=live, confirmed=confirm_widening)
-    claim_member_revision(session, member, if_match)
-    previous = member.scope
-    before = scope_fingerprint(previous)
-    member.scope = scope
-    after = scope_fingerprint(scope)
-    # A draft collection delivers nothing yet; its activation records the scopes.
-    if live and before != after:
-        details: dict = {"member_id": member.id, "scope_version_before": before, "scope_version_after": after}
-        if changes := exclusion_changes(previous, scope):
-            details["exclusions"] = {**changes, "widened": widening(trip, previous, scope).counts}
-        record_collection_event(
-            session,
-            owner_subject=subject,
-            actor_subject=subject,
-            collection_id=collection.id,
-            trip_id=member.trip_id,
-            kind=CollectionAuditKind.MEMBER_SCOPE_CHANGE,
-            details=details,
-        )
+    require_collection_editable(collection)
+    audience = audiences.member_of(collection, member_id)
+    trip = owned_trip(session, audience.trip_id, subject, load_relations=True)
+    audiences.edit_scope(
+        session, subject, audience, trip, payload, if_match=if_match, confirm_widening=confirm_widening
+    )
     session.flush()
     return collection_response(session, collection)
 
@@ -285,9 +207,8 @@ def remove_collection_member(
     session: Session, subject: str, collection_id: Identifier, member_id: Identifier
 ) -> CollectionResponse:
     collection = owned_collection(session, subject, collection_id)
-    if collection.state not in EDITABLE_STATES:
-        raise _not_editable()
-    member = owned_member(collection, member_id)
+    require_collection_editable(collection)
+    member = audiences.member_of(collection, member_id).member
     record_collection_event(
         session,
         owner_subject=subject,
@@ -312,10 +233,9 @@ def member_preview(
     """The member's trip and the scope a preview renders: a validated unsaved candidate, else the saved one.
 
     Nothing is stored and no audit event is recorded."""
-    member = owned_member(owned_collection(session, subject, collection_id), member_id)
-    if candidate is not None:
-        return _scope_for(session, subject, member.trip_id, candidate, member.scope)
-    return owned_trip(session, member.trip_id, subject, load_relations=True), member.scope
+    return audiences.preview_scope(
+        session, subject, audiences.owned_member(session, subject, collection_id, member_id), candidate
+    )
 
 
 def preview_collection_member(
@@ -325,8 +245,24 @@ def preview_collection_member(
     member_id: Identifier,
     candidate: ShareScopeInput | None = None,
 ) -> dict:
-    trip, scope = member_preview(session, subject, collection_id, member_id, candidate)
-    return render_projection(trip, scope, "travel/unlisted-trip@1")
+    return audiences.preview_document(
+        session, subject, audiences.owned_member(session, subject, collection_id, member_id), candidate
+    )
+
+
+def review_member_future(
+    session: Session,
+    subject: str,
+    collection_id: Identifier,
+    member_id: Identifier,
+    candidate: ShareScopeInput | None = None,
+) -> FutureDisclosure:
+    """What a member's candidate scope would show of a trip that has not started yet. Stores nothing.
+
+    The same review as a hidden link has; no route, MCP tool or screen asks for it for a member yet (decision 360)."""
+    return audiences.review_future(
+        session, subject, audiences.owned_member(session, subject, collection_id, member_id), candidate
+    )
 
 
 def member_preview_navigation(
@@ -337,23 +273,14 @@ def member_preview_navigation(
     local_id: str,
     candidate: ShareScopeInput | None = None,
 ) -> str:
-    trip, scope = member_preview(session, subject, collection_id, member_id, candidate)
-    return navigation_target(trip, scope, local_id)
+    return audiences.preview_navigation_target(
+        session, subject, audiences.owned_member(session, subject, collection_id, member_id), local_id, candidate
+    )
 
 
 def preview_collection_index(session: Session, subject: str, collection_id: Identifier) -> CollectionIndexDocument:
     """The index exactly as a visitor of this collection would receive it."""
     return collection_index(session, owned_collection(session, subject, collection_id))
-
-
-def _activate(collection: Collection, expires_in_days: int | None) -> None:
-    token = generate_token()
-    now = datetime.now(UTC)
-    collection.token = token
-    collection.token_verifier = verifier_for(token)
-    collection.expires_at = now + timedelta(days=expires_in_days) if expires_in_days is not None else None
-    collection.state = LinkState.ACTIVE
-    collection.activated_at = now
 
 
 def _member_fingerprint(collection: Collection) -> str:
@@ -366,7 +293,7 @@ def activate_collection(
     collection = owned_collection(session, subject, collection_id)
     if collection.state != LinkState.DRAFT:
         raise Conflict("Only a draft collection can be activated", code="only_a_draft_collection_can_be_activated")
-    _activate(collection, payload.expires_in_days)
+    mint_capability(collection, payload.expires_in_days)
     details: dict = {
         "members": len(collection.members),
         "scope_version": _member_fingerprint(collection),
@@ -415,7 +342,7 @@ def rotate_collection(
     collection = owned_collection(session, subject, collection_id)
     if collection.state != LinkState.ACTIVE:
         raise Conflict("Only an active collection can be rotated", code="only_an_active_collection_can_be_rotated")
-    _activate(collection, payload.expires_in_days)
+    mint_capability(collection, payload.expires_in_days)
     collection.rotations += 1
     details: dict = {
         "rotation": collection.rotations,

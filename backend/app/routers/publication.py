@@ -4,7 +4,6 @@ The owner routes are thin: ``app.services.publication`` holds the operations, sh
 route commits once. Anonymous delivery stays here because it is HTTP only.
 """
 
-from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Request, Response, status
@@ -14,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..atom import atom_document
+from ..audience import LinkAudience, PublicAudience, has_expired
 from ..auth import current_subject
 from ..capability import verifier_for
 from ..database import get_session
@@ -59,9 +59,9 @@ from ..schemas import (
     ShareScopeInput,
 )
 from ..services import publication as service
+from ..services.audiences import render_document
 from ..services.delivery import UNLISTED_HEADERS
-from ..services.live_location import current_for_audience
-from ..services.sharing import active_collection, aware_utc, collection_index
+from ..services.sharing import active_collection, collection_index, expire_link
 from ..services.trips import trip_query
 from ..storage import ObjectStorage, get_storage
 
@@ -309,7 +309,7 @@ def preview_share_file(
     storage: StorageDep,
     request: Request,
 ) -> Response:
-    trip, _link, scope = service.link_preview(session, subject, trip_id, link_id)
+    trip, scope = service.link_preview(session, subject, trip_id, link_id)
     persist_lazy_expiry(session)
     return file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
 
@@ -325,7 +325,7 @@ def preview_share_candidate_file(
     request: Request,
     payload: ShareScopeInput | None = None,
 ) -> Response:
-    trip, _link, scope = service.link_preview(session, subject, trip_id, link_id, payload)
+    trip, scope = service.link_preview(session, subject, trip_id, link_id, payload)
     persist_lazy_expiry(session)
     return file_response(trip, scope, local_id, storage, UNLISTED_HEADERS, request)
 
@@ -339,7 +339,7 @@ def preview_share_candidate_navigation(
     subject: SubjectDep,
     payload: ShareScopeInput | None = None,
 ) -> JSONResponse:
-    trip, _link, scope = service.link_preview(session, subject, trip_id, link_id, payload)
+    trip, scope = service.link_preview(session, subject, trip_id, link_id, payload)
     persist_lazy_expiry(session)
     return preview_navigation(trip, scope, local_id)
 
@@ -348,7 +348,7 @@ def preview_share_candidate_navigation(
 def preview_share_navigation(
     trip_id: Identifier, link_id: Identifier, local_id: SafeText, session: SessionDep, subject: SubjectDep
 ) -> JSONResponse:
-    trip, _link, scope = service.link_preview(session, subject, trip_id, link_id)
+    trip, scope = service.link_preview(session, subject, trip_id, link_id)
     persist_lazy_expiry(session)
     return preview_navigation(trip, scope, local_id)
 
@@ -472,10 +472,7 @@ def get_public_trip(request: Request, slug: str, session: SessionDep, response: 
     # projection without asking the API again.
     response.headers["Cache-Control"] = "no-store"
 
-    document = render_projection(trip, surface.scope, "travel/public-trip@1")
-    if positions := current_for_audience(session, trip.id, "public"):
-        document["current_locations"] = positions
-    return document
+    return render_document(session, PublicAudience(surface), trip, surface.scope)
 
 
 @delivery_router.get(
@@ -538,8 +535,8 @@ def get_shared_trip(request: Request, token: str, session: SessionDep, response:
         return collection_index(session, collection)
     if link.state != LinkState.ACTIVE:
         raise not_found
-    if link.expires_at is not None and aware_utc(link.expires_at) <= datetime.now(UTC):
-        service.expire_link(session, link)
+    if has_expired(link.expires_at):
+        expire_link(session, link)
         session.commit()
         raise not_found
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
@@ -548,10 +545,7 @@ def get_shared_trip(request: Request, token: str, session: SessionDep, response:
     for header, value in UNLISTED_HEADERS.items():
         response.headers[header] = value
 
-    document = render_projection(trip, link.scope, "travel/unlisted-trip@1")
-    if positions := current_for_audience(session, trip.id, link.id):
-        document["current_locations"] = positions
-    return document
+    return render_document(session, LinkAudience(link), trip, link.scope)
 
 
 @delivery_router.get(
@@ -567,8 +561,8 @@ def get_shared_navigation(request: Request, token: str, local_id: str, session: 
     link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
     if link is None or link.state != LinkState.ACTIVE:
         raise not_found
-    if link.expires_at is not None and aware_utc(link.expires_at) <= datetime.now(UTC):
-        service.expire_link(session, link)
+    if has_expired(link.expires_at):
+        expire_link(session, link)
         session.commit()
         raise not_found
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
@@ -592,7 +586,7 @@ def get_shared_file(token: str, local_id: str, session: SessionDep, storage: Sto
     link = session.scalar(select(ShareLink).where(ShareLink.token_verifier == verifier_for(token)))
     if link is None or link.state != LinkState.ACTIVE:
         raise not_found
-    if link.expires_at is not None and aware_utc(link.expires_at) <= datetime.now(UTC):
+    if has_expired(link.expires_at):
         raise not_found
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
     if trip is None:
@@ -628,12 +622,11 @@ def link_feed(request: Request, token: str, session: SessionDep) -> Response:
         if malformed_path(request, {"token"})
         else session.scalar(select(ShareLink).where(ShareLink.feed_verifier == verifier_for(token)))
     )
-    now = datetime.now(UTC)
     if (
         link is None
         or link.state != LinkState.ACTIVE
-        or (link.expires_at is not None and aware_utc(link.expires_at) <= now)
-        or (link.feed_expires_at is not None and aware_utc(link.feed_expires_at) <= now)
+        or has_expired(link.expires_at)
+        or has_expired(link.feed_expires_at)
     ):
         failed_authentication.record_failure(request)
         raise ApiException(404, "Link not found", headers=UNLISTED_HEADERS, code="not_found")

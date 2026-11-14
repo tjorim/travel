@@ -7,27 +7,21 @@ event and the state transition it records land together or not at all.
 
 import hashlib
 import json
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from sqlalchemy import CursorResult, delete, select
 from sqlalchemy.orm import Session
 
 from .access import receivers
+from .audience import Audience, Reach, audiences_of_trip
 from .models import (
     AuditEvent,
     AuditEventKind,
     AuditTargetType,
-    Collection,
     CollectionAuditEvent,
     CollectionAuditKind,
-    CollectionMember,
-    LinkState,
     OwnerActivityEvent,
-    PublicSurface,
-    ShareLink,
-    SurfaceState,
     Visibility,
 )
 
@@ -70,6 +64,41 @@ def record_audit_event(
     session.add(event)
     session.flush()
     return event
+
+
+def record_audience_event(
+    session: Session,
+    *,
+    subject: str,
+    audience: Audience,
+    event: Literal["scope_change", "preset_apply"],
+    details: dict[str, Any],
+) -> None:
+    """Record a change to one audience on the trail its kind writes to (see ``Audience.audit_target``)."""
+    target = audience.audit_target
+    kind = target.scope_change if event == "scope_change" else target.preset_apply
+    if target.collection_id is not None:
+        assert isinstance(kind, CollectionAuditKind)
+        record_collection_event(
+            session,
+            owner_subject=subject,
+            actor_subject=subject,
+            collection_id=target.collection_id,
+            trip_id=audience.trip_id,
+            kind=kind,
+            details={"member_id": target.target_id, **details},
+        )
+    else:
+        assert isinstance(kind, AuditEventKind) and target.target_type is not None
+        record_audit_event(
+            session,
+            trip_id=audience.trip_id,
+            actor_subject=subject,
+            kind=kind,
+            target_type=target.target_type,
+            target_id=target.target_id,
+            details=details,
+        )
 
 
 def record_collection_event(
@@ -130,40 +159,11 @@ def purge_expired_audit_events(session: Session, *, older_than: timedelta = RETE
     return purged
 
 
-PUBLIC_AUDIENCE = "public"
-
-
-@dataclass(frozen=True)
-class LiveAudience:
-    """An audience that delivers today: its id, the owner's link label (none for the public page) and live scope."""
-
-    id: str
-    label: str | None
-    scope: dict
-
-
-def live_audiences(session: Session, trip_id: str) -> list[LiveAudience]:
+def live_audiences(session: Session, trip_id: str) -> list[Audience]:
     """Audiences that deliver today: the published public page, active links and active collections.
     Drafts and an unpublished page deliver nothing, so changes to them are not
     recorded and need no acknowledgement."""
-    audiences: list[LiveAudience] = []
-    surface = session.get(PublicSurface, trip_id)
-    if surface is not None and surface.state == SurfaceState.PUBLISHED:
-        audiences.append(LiveAudience(PUBLIC_AUDIENCE, None, surface.scope))
-    for link in session.scalars(
-        select(ShareLink)
-        .where(ShareLink.trip_id == trip_id, ShareLink.state == LinkState.ACTIVE)
-        .order_by(ShareLink.created_at)
-    ):
-        audiences.append(LiveAudience(f"link:{link.id}", link.label, link.scope))
-    for member, collection in session.execute(
-        select(CollectionMember, Collection)
-        .join(Collection, Collection.id == CollectionMember.collection_id)
-        .where(CollectionMember.trip_id == trip_id, Collection.state == LinkState.ACTIVE)
-        .order_by(CollectionMember.created_at)
-    ):
-        audiences.append(LiveAudience(f"collection:{member.id}", collection.label, member.scope))
-    return audiences
+    return audiences_of_trip(session, trip_id, Reach.DELIVERING)
 
 
 def delivering_audiences(session: Session, trip_id: str) -> list[tuple[str, dict]]:

@@ -5,10 +5,11 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from app.models import Area, DatePrecision, PlanningStatus, Stay, TravelUpdate, Trip, Visibility
+from app.audience import PublicAudience
+from app.models import Area, DatePrecision, PlanningStatus, PublicSurface, Stay, TravelUpdate, Trip, Visibility
 from app.projection import render_projection, summary_numbers
 from app.schemas import ShareScopeInput
-from app.sharing_presets import PresetAudience, plan_preset
+from app.sharing_presets import plan_preset
 
 ALL = ["days", "areas", "countries", "nights"]
 
@@ -117,9 +118,7 @@ def test_selection_validation_legacy_and_presets():
     with pytest.raises(ValueError):
         ShareScopeInput(numbers=["distance"])
     for preset in ["story_only", "story_and_route", "planned_trip"]:
-        audience = PresetAudience(
-            kind="public", id="public", label="public", scope=stored, live=False, can_exclude=False
-        )
+        audience = PublicAudience(PublicSurface(trip_id="trip", scope=stored))
         plan = plan_preset(trip, audience, preset)
         assert plan.scope_after["numbers"] == ALL
         assert render_projection(trip, plan.scope_after, "test")["numbers"]["nights"] == 0

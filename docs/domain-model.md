@@ -298,11 +298,14 @@ carries all three.
   link excludes it, see *Hidden links start from the public view*) or
   `custom` (only the audiences that list it). It is the source of truth for
   that record, and the same three choices apply to every shareable record.
+- **Audience**: whoever receives a trip through a scope. There are three
+  kinds, each with one name (see *Audiences* below): the **public view**, a
+  **hidden link** and a **collection member**.
 - **Public view**: the one page for everyone, once published.
 - **Hidden link**: a named, revocable, high-entropy link (`share_link`, the
   *unlisted* view).
 - **Collection link**: one owner-wide, named, revocable link (`collection`) that opens an index of several trips; each member trip has its own scope. It has its own token, never a trip link's. The owner's *Sharing overview* lists every public trip, hidden link and collection in one place.
-- **Scope**: what a public view or hidden link lists: the `custom` records it
+- **Scope**: what an audience lists: the `custom` records it
   includes, the `everyone` records a hidden link or collection member leaves
   out (`exclude`), plus the trip title, summary and date precision, and the
   audience's own date precision (see *Date precision* below). It never names
@@ -312,6 +315,28 @@ carries all three.
   booking, a photo original, a document original.
 - **Twin**: an application-generated, reviewed share-safe copy, used only where
   the shared thing is a different artifact from the original (see below).
+
+### Audiences
+
+An audience is stored in one of three tables (`public_surfaces`, `share_links`, `collection_members`) and reached
+by its own routes, but it is **one concept in the code** ([decision 360](decisions/360-audience-model.md)): every
+audience has a scope, a revision, the label of the preset last applied to it, a state that says whether it delivers,
+and a place its history is written. `backend/app/audience.py` is that interface and
+`backend/app/services/audiences.py` holds what is done with it: previews, the future-disclosure review, the
+revision claim and the scope edit. A new audience feature is written once there, never per kind. What each audience
+receives is still decided by `projection.delivered` alone.
+
+| Concept | Name used in documents, comments and new code | Stored or on the wire as |
+|---|---|---|
+| The page for everyone | public view | `public_surfaces`, `public-projection`, key `public` |
+| A named link for one trip | hidden link | `share_links`, `share-links`, key `link:<id>`, `/share/` |
+| One trip in a collection | collection member | `collection_members`, key `collection:<member id>` |
+
+The kinds differ only where a decision says so: the public view cannot exclude records (it is the baseline), a
+collection member shares its collection's capability and state, and live location names the public view or a hidden
+link, never a collection member ([decision 244](decisions/244-live-location-tracks.md)). A member has the same
+future-disclosure review as a link in the service layer; no route, tool or screen exposes it for a member yet
+([#426](https://github.com/tjorim/travel/issues/426)).
 
 ## What a record shows when it is shared
 
@@ -335,7 +360,7 @@ declaring it is refused, and the models are what the OpenAPI schema publishes
 | Document | never shared | the original and all metadata |
 
 The public index cards on `/` and `/trips` also show the nominated cover, only
-when the public projection receives it. They carry its scoped public file URL,
+when the public view receives it. They carry its scoped public file URL,
 approved alt text, dimensions and focal point; nomination never delivers a photo.
 
 A published public view's chat link preview (`/trips/{slug}`) is built from the
@@ -428,8 +453,8 @@ Removing one from an *active* hidden link or collection member shows its visitor
 records they do not receive, so the save is refused with
 `409 exclusion_widening_needs_acknowledgement` (listing the records) until it is
 repeated with `confirm_widening` (a field of the share-link update, a query
-parameter of the collection member update, and an MCP argument). A draft needs
-none. The change is audited like any scope change, with the ids added and removed
+parameter of the collection member update, and an MCP argument; both reach one
+check, `audiences.edit_scope`). A draft needs none. The change is audited like any scope change, with the ids added and removed
 and the counts newly shown, never a label or other owner text; sharing-scope
 revisions work as before ([decision 15](decisions/15-sharing-scope-revisions.md)).
 

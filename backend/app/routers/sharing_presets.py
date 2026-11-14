@@ -55,8 +55,7 @@ def review_collection_member_preset(
     session: SessionDep,
     subject: SubjectDep,
 ) -> SharingPresetReview:
-    member = service.owned_member_of_collection(session, subject, collection_id, member_id)
-    return service.review_sharing_preset(session, subject, member.trip_id, f"collection:{member.id}", payload)
+    return service.review_member_preset(session, subject, collection_id, member_id, payload)
 
 
 @router.post("/trips/{trip_id}/public-projection/preset", response_model=PublicPresetApplyResult)
@@ -97,10 +96,6 @@ def apply_collection_member_preset(
     subject: SubjectDep,
     if_match: Annotated[str | None, Header()] = None,
 ) -> MemberPresetApplyResult:
-    member = service.owned_member_of_collection(session, subject, collection_id, member_id)
-    result = service.apply_sharing_preset(
-        session, subject, member.trip_id, f"collection:{member.id}", payload, if_match
-    )
+    result = service.apply_member_preset(session, subject, collection_id, member_id, payload, if_match)
     session.commit()
-    assert isinstance(result, MemberPresetApplyResult)
     return result

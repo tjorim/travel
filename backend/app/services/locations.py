@@ -4,7 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..access import receivers, trip_audiences
-from ..audit import LiveAudience, live_audiences, record_audit_event
+from ..audience import Audience
+from ..audit import live_audiences, record_audit_event
 from ..errors import Conflict, RecordNotFound, Refusal
 from ..live_scopes import scope_picks
 from ..models import (
@@ -156,13 +157,13 @@ def _area_change(
     visits: list[Visit],
     routes: list[Route],
     stays: list[Stay],
-    live: list[LiveAudience],
+    live: list[Audience],
 ) -> FieldChange | None:
     """The visitor-facing effect of moving a location to another area: its visits, stays and route ends move with it.
 
     Visitors read a visit's or stay's place and a route's ends from their areas,
     so the audiences are those that receive any of the records carried along."""
-    reached: dict[str, LiveAudience] = {}
+    reached: dict[str, Audience] = {}
     for kind, records in (("visit", visits), ("stay", stays), ("route", routes)):
         for record in records:
             for audience in reached_by(kind, record, live):

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
+from ..audience import MemberAudience
 from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException
@@ -21,7 +22,7 @@ from ..http_delivery import (
     validate_public_path,
 )
 from ..models import CollectionAuditEvent, CollectionMember, Trip
-from ..projection import render_projection, scoped_navigation_url
+from ..projection import scoped_navigation_url
 from ..ratelimit import shared_delivery_limit
 from ..schemas import (
     AuditReasonInput,
@@ -40,6 +41,7 @@ from ..schemas import (
     ShareScopeInput,
 )
 from ..services import collections as service
+from ..services.audiences import render_document
 from ..services.delivery import UNLISTED_HEADERS
 from ..services.sharing import active_collection
 from ..services.trips import trip_query
@@ -294,7 +296,7 @@ def get_shared_collection_trip(
     trip, member = _member_of_active_collection(session, token, member_id, not_found)
     for header, value in UNLISTED_HEADERS.items():
         response.headers[header] = value
-    return render_projection(trip, member.scope, "travel/unlisted-trip@1")
+    return render_document(session, MemberAudience(member), trip, member.scope)
 
 
 @delivery_router.get(

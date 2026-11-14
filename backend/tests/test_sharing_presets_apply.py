@@ -345,8 +345,7 @@ def test_a_failure_after_the_writes_leaves_everything_unchanged(
     def boom(*_args, **_kwargs):
         raise RuntimeError("the audit trail is down")
 
-    monkeypatch.setattr(sharing_presets, "record_audit_event", boom)
-    monkeypatch.setattr(sharing_presets, "record_collection_event", boom)
+    monkeypatch.setattr(sharing_presets, "record_audience_event", boom)
     with pytest.raises(RuntimeError):
         apply(world, target, "planned_trip", fingerprint=fingerprint)
     # The promotions, the scope, the label, the revision: none of it was committed.
