@@ -196,8 +196,10 @@ explicitly described as a proposed reproduction. No new test is added in this PR
 5. **Binary transport and output differences (intentional, #84).** MCP retains
    encoded JSON and decodes base64 into a temporary file (`:77–104`), then calls
    the same bounded ingestion service. HTTP uses multipart. Over HTTP MCP every
-   request body is capped at 4 MiB by the transport (about 3 MiB of file), now
-   enforced and tested explicitly (`RequestBodyCap`, `tests/test_mcp_upload_memory.py`);
+   request body is capped at 48 MiB (about 36 MiB of file), raised from the SDK's 4 MiB default
+   by `TravelStreamableHTTPSessionManager` and enforced and tested explicitly (`RequestBodyCap`,
+   `tests/test_mcp_server.py`, `tests/test_mcp_upload_memory.py`; one request in flight costs
+   about 3.1 times its body, so 148 MiB at the cap);
    the stdio measurement is in `docs/object-storage.md`. The bounded upload
    handle the issue proposes stays open: it needs a decision on a one-time
    capability URL that accepts bytes outside the MCP token's audience, on a
