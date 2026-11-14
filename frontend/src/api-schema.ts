@@ -825,6 +825,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/collections/{collection_id}/members/{member_id}/future-disclosure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review Collection Member Future
+         * @description The same review as a hidden link's, for a collection member's candidate scope. Stores nothing.
+         */
+        post: operations["review_collection_member_future_api_collections__collection_id__members__member_id__future_disclosure_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/collections/{collection_id}/members/{member_id}/preview/files/{local_id}": {
         parameters: {
             query?: never;
@@ -9161,6 +9181,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectionDocument"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_collection_member_future_api_collections__collection_id__members__member_id__future_disclosure_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                collection_id: string;
+                member_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ShareScopeInput"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FutureDisclosure"];
                 };
             };
             /** @description Validation Error */

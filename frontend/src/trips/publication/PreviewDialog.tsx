@@ -8,7 +8,7 @@ import { RecordDialog } from "../../RecordDialog";
 import type { ShareLink, ShareScope } from "../../api-types";
 import { RenderedPreview } from "../RenderedPreview";
 import { kindCountsText, LINK_STATE_LABELS, projectionSummary } from "./catalog";
-import { futureDisclosureLines } from "./SharingReview";
+import { FutureDisclosureReview } from "./SharingReview";
 import { useExclusionReview } from "./use-exclusion-review";
 import { useFutureDisclosure } from "./use-future-disclosure";
 
@@ -49,12 +49,10 @@ export function PreviewDialog({
     preview.audience === "public" ? { kind: "public" } : { kind: "link", linkId: preview.linkId },
     preview.scope,
   );
-  const futureLines = futureDisclosureLines(
-    future.data ?? { transport: 0, day_dates: 0 },
+  const futureName =
     preview.audience === "public"
       ? m.publication_the_page_for_everyone()
-      : m.publication_link({ name: links.find((link) => link.id === preview.linkId)?.label ?? "" }),
-  );
+      : m.publication_link({ name: links.find((link) => link.id === preview.linkId)?.label ?? "" });
   return (
     <RecordDialog
       open
@@ -85,13 +83,7 @@ export function PreviewDialog({
               ` ${m.exclusions_preview_also({ counts: kindCountsText(review.data?.also_hidden) })}`}
           </p>
         )}
-        {futureLines.length > 0 && (
-          <ul className="m-0 grid list-disc gap-0.5 pl-5 text-travel-review-warning">
-            {futureLines.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        )}
+        <FutureDisclosureReview review={future} name={futureName} />
         <p className="help">{m.sharing_preview_unsaved_note()}</p>
         <RenderedPreview
           projection={preview.document}

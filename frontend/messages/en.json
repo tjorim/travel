@@ -1640,6 +1640,7 @@
   "publication_check_intro": "What each active or draft audience currently receives, and what you should review.",
   "publication_choose_in_sharing": "Choose in Sharing",
   "publication_choose_who_sees_each_item_new_items_are_private": "Choose who sees each item. New items are private.",
+  "publication_collection_member": "Collection “{name}”",
   "publication_copy_link_action": "Copy link",
   "publication_copying_failed": "Copying failed.",
   "publication_count_day_dated_records": [
@@ -1700,6 +1701,8 @@
   "publication_for_example_family": "For example: family",
   "publication_full_dates": "Full dates",
   "publication_future_day_dates": "{audience} shows dates by day for {count} before the trip starts. Until you leave, set “Dates shown to this audience” to month.",
+  "publication_future_disclosure_checking": "Checking what this audience shows of the trip before it starts…",
+  "publication_future_disclosure_error": "What this audience shows of the trip before it starts could not be checked. Do not assume it shows nothing.",
   "publication_future_transport_times": "{audience} can read when and how you travel before the trip starts: {count}. Until you leave, set those routes to private.",
   "publication_hidden_share_links": "Hidden share links",
   "publication_hide": "Hide",

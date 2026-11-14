@@ -16,6 +16,11 @@ import {
   exclusionWidening,
 } from "../trips/publication/ExclusionWideningDialog";
 import { ScopeEditor } from "../trips/publication/ScopeEditor";
+import { FutureDisclosureReview } from "../trips/publication/SharingReview";
+import {
+  useFutureDisclosure,
+  useRefreshFutureDisclosure,
+} from "../trips/publication/use-future-disclosure";
 import type { PresetAppliedAudience } from "../trips/publication/use-sharing-presets";
 import { usePublicationCatalog } from "../trips/publication/use-publication-catalog";
 import {
@@ -24,6 +29,32 @@ import {
   type Collection,
   type CollectionMember,
 } from "./collections";
+
+/** What the previewed scope would show of a trip that has not started yet, worded as the link preview words it. */
+function MemberFutureDisclosure({
+  collection,
+  member,
+  tripId,
+  scope,
+}: {
+  collection: Collection;
+  member: CollectionMember;
+  tripId: string;
+  scope: ShareScope;
+}) {
+  useLocale();
+  const future = useFutureDisclosure(
+    tripId,
+    { kind: "member", collectionId: collection.id, memberId: member.id },
+    scope,
+  );
+  return (
+    <FutureDisclosureReview
+      review={future}
+      name={m.publication_collection_member({ name: collection.label })}
+    />
+  );
+}
 
 /** Chooses what one member trip shows inside a collection, with a preview of the unsaved choice. */
 export function MemberScopeDialog({
@@ -41,6 +72,7 @@ export function MemberScopeDialog({
   const { session } = useAuth();
   const { catalog } = usePublicationCatalog(trip);
   const { setMemberScope, previewMember } = useCollectionMutations();
+  const refreshFutureDisclosure = useRefreshFutureDisclosure(trip.id);
   const [scope, setScope] = useState<ShareScope>(() => cloneScope(member.scope));
   // What the member holds on the server; the editor has unsaved edits when its scope differs.
   const dirty = JSON.stringify(scope) !== JSON.stringify(cloneScope(member.scope));
@@ -62,6 +94,8 @@ export function MemberScopeDialog({
         scope: candidate,
       });
       setPreview({ document: document as Projection, scope: candidate });
+      // The review counts the same server state as this preview, also when the scope did not change since the last one.
+      void refreshFutureDisclosure();
     } catch (error) {
       setNotice(errorNotice(error, m.sharing_the_link_preview_could_not_be_loaded));
     }
@@ -144,6 +178,12 @@ export function MemberScopeDialog({
         )}
         {preview && session && (
           <>
+            <MemberFutureDisclosure
+              collection={collection}
+              member={member}
+              tripId={trip.id}
+              scope={preview.scope}
+            />
             <p className="help">{m.sharing_preview_unsaved_note()}</p>
             <RenderedPreview
               projection={preview.document}

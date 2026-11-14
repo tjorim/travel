@@ -181,6 +181,35 @@ class SharingTools(McpTools):
             lambda x: _model(x, schemas.ProjectionDocument),
         )
 
+    def preview_public_projection_future_disclosure(
+        self, trip_id: schemas.Identifier, scope: schemas.ShareScopeInput | None = None
+    ) -> dict[str, Any]:
+        """Review what the public view would show of a trip that has not started yet: transport (routes with a future departure) and day dates (records that would read by day). scope is the candidate selection to review (omit it for the saved one); it is counted from the same document the public preview renders. Returns transport and day_dates counts only. Stores nothing."""
+        return self._call(
+            "public_projection.future_disclosure",
+            "public_surface",
+            trip_id,
+            trip_id,
+            lambda s, sub: publication_service.review_public_future(s, sub, trip_id, scope),
+            lambda x: _model(x, schemas.FutureDisclosure),
+        )
+
+    def preview_share_link_future_disclosure(
+        self,
+        trip_id: schemas.Identifier,
+        link_id: schemas.Identifier,
+        scope: schemas.ShareScopeInput | None = None,
+    ) -> dict[str, Any]:
+        """Review what a hidden link would show of a trip that has not started yet: transport (routes with a future departure) and day dates (records that would read by day). scope is the candidate selection to review (omit it for the saved one); it is counted from the same document the link's preview renders. Returns transport and day_dates counts only. Stores nothing."""
+        return self._call(
+            "share_link.future_disclosure",
+            "share_link",
+            link_id,
+            trip_id,
+            lambda s, sub: publication_service.review_link_future(s, sub, trip_id, link_id, scope),
+            lambda x: _model(x, schemas.FutureDisclosure),
+        )
+
     def preview_share_link_exclusions(
         self,
         trip_id: schemas.Identifier,

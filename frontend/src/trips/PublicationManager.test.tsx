@@ -820,6 +820,33 @@ it("previews the future transport and day dates of the unsaved public scope, in 
   expect(api.count("PUT /api/trips/trip/public-projection")).toBe(0);
 });
 
+it("says when the review of the public preview fails, never as an empty review, and retries it", async () => {
+  server.use(
+    http.post(
+      "/api/trips/trip/public-projection/future-disclosure",
+      () => HttpResponse.json({ detail: "Boom" }, { status: 500 }),
+      { once: true },
+    ),
+  );
+  api.on("POST", /^\/api\/trips\/trip\/public-projection\/future-disclosure$/, () => ({
+    transport: 1,
+    day_dates: 0,
+  }));
+  renderWithOwner(<PublicationManager trip={trip} />);
+  const editor = await screen.findByRole("group", { name: "Wat iedereen mag zien" });
+  fireEvent.click(within(editor).getByRole("checkbox", { name: "Samenvatting" }));
+  fireEvent.click(screen.getByRole("button", { name: "Bekijk als bezoeker" }));
+  const dialog = await screen.findByRole("dialog", { name: "Publieke preview" });
+  const failed = await within(dialog).findByRole("alert");
+  expect(failed.textContent).toMatch(/kon niet worden gecontroleerd/);
+  expect(within(dialog).queryByText(/kan vóór de reis lezen/)).toBeNull();
+  fireEvent.click(within(dialog).getByRole("button", { name: "Opnieuw proberen" }));
+  expect(
+    await within(dialog).findByText(/De pagina voor iedereen kan vóór de reis lezen/),
+  ).toBeTruthy();
+  expect(within(dialog).queryByRole("alert")).toBeNull();
+});
+
 it("retains a draft across a deferred scope conflict and retries with the chosen revision", async () => {
   let resolve!: () => void;
   const pending = new Promise<void>((done) => {

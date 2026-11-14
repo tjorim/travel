@@ -1459,6 +1459,9 @@ SEARCH_QUERIES = {
     "who can see this record": {"set_visibility"},
     "zichtbaarheid": {"set_visibility"},
     "preview what the share link shows": {"preview_share_link", "inspect_share_preview_file"},
+    "what would a collection member show of a trip that has not started yet": {
+        "preview_collection_member_future_disclosure"
+    },
     "publish the trip publicly": {"preview_public_projection", "publish_public_projection"},
     "import photos from google": {"start_media_import_session"},
     "reisupdate schrijven": {"create_travel_update"},
