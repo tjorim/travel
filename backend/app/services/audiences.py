@@ -185,7 +185,8 @@ def preview_scope(
     Nothing is stored and no audit event is recorded, so a preview never changes what a live audience receives."""
     trip = owned_trip(session, audience.trip_id, subject, load_relations=True)
     if candidate is None:
-        return trip, audience.stored_scope or {}
+        # A public view that was never saved previews as the default scope (dates by month) its first save holds.
+        return trip, audience.scope
     return trip, checked_scope(trip, audience, candidate)
 
 
@@ -301,6 +302,12 @@ def edit_scope(
     Without a candidate only the revision is claimed (a link's label edit). The widening is refused before the
     revision is claimed, so a refused edit changes nothing, not even the revision. A draft delivers nothing yet, so
     its activation records the scope instead; the public view is the baseline and has no exclusions to widen."""
+    if candidate is not None:
+        # Lock the row and read it again before the candidate is built from the stored scope: a concurrent edit that
+        # committed since this audience was loaded (an added exclusion) would otherwise be overwritten by a scope
+        # prepared from the older one, and the widening check below would never see it.
+        session.refresh(audience.holder, with_for_update=True)
+        require_editable(audience)
     scope = checked_scope(trip, audience, candidate) if candidate is not None else None
     if scope is not None and audience.can_exclude:
         refuse_unacknowledged_widening(trip, audience.scope, scope, live=audience.live, confirmed=confirm_widening)

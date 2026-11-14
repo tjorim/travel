@@ -201,6 +201,28 @@ def test_a_link_audience_is_named_and_only_audiences_that_gain_the_hotel_count()
     assert "Family" not in str(event["details"])
 
 
+def test_a_collection_member_audience_is_named_as_a_collection_not_a_link() -> None:
+    owner = client_for("owner-1")
+    trip = Trip(owner, hotel="custom")
+    share(owner, trip.trip["id"], "location", trip.inn["id"], "custom")
+    trip.stay(trip.inn)
+    collection = owner.post("/api/collections", json={"label": "Cousins"}).json()
+    added = owner.post(
+        f"/api/collections/{collection['id']}/members",
+        json={"trip_id": trip.trip["id"], "scope": scope({"kind": "location", "id": trip.hotel["id"]})},
+    )
+    assert added.status_code == 201, added.text
+    member = added.json()["members"][0]
+    assert owner.post(f"/api/collections/{collection['id']}/activate", json={"expires_in_days": 30}).status_code == 200
+    trip.publish()
+
+    preview = trip.merge(trip.hotel, [trip.inn]).json()
+    (duplicate,) = preview["duplicates"]
+    assert duplicate["widened"][0]["audience"] == f"collection:{member['id']}"
+    assert any("collection 'Cousins'" in warning for warning in preview["warnings"])
+    assert not any("link 'Cousins'" in warning for warning in preview["warnings"])
+
+
 def test_narrowing_needs_no_acknowledgement_and_is_not_reported_as_widening() -> None:
     owner = client_for("owner-1")
     trip = Trip(owner, inn="everyone", hotel="private")

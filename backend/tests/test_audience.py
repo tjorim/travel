@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 from test_future_warnings import _public_scope, _route, _trip  # noqa: F401
 from test_publication import (  # noqa: F401
     activate,
+    add_update,
     client_for,
+    create_trip,
     engine,
     item,
     setup_function,
@@ -21,9 +23,11 @@ from app.audience import (
     Reach,
     audiences_of_trip,
 )
-from app.models import AuditEventKind, AuditTargetType, CollectionAuditKind
+from app.models import AuditEventKind, AuditTargetType, CollectionAuditKind, PublicSurface
+from app.precision import audience_precision
 from app.schemas import ShareScopeInput
 from app.services import audiences
+from app.services.publication import public_preview
 
 
 def _audiences(owner: TestClient) -> dict:
@@ -113,3 +117,23 @@ def test_a_collection_member_has_the_same_future_disclosure_review_as_a_link() -
         member = next(a for a in audiences_of_trip(session, trip_id, Reach.STORED) if isinstance(a, MemberAudience))
         empty = audiences.review_future(session, "owner-1", member, ShareScopeInput(items=[], defaults=None))
         assert empty.model_dump() == {"transport": 0, "day_dates": 0}
+
+
+def test_a_public_view_that_was_never_saved_previews_with_the_month_cap_it_will_hold() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    add_update(owner, trip["id"], "Shared story", visibility="everyone")
+
+    # The preview route, and the service the preview file and navigation routes (GET, no candidate) use.
+    document = owner.post(f"/api/trips/{trip['id']}/public-projection/preview").json()
+    assert document["updates"][0]["date_precision"] == "month"
+    with Session(engine) as session:
+        _, scope = public_preview(session, "owner-1", trip["id"])
+        assert audience_precision(scope) == "month"
+        assert session.get(PublicSurface, trip["id"]) is None  # the preview created nothing
+
+    # The first saved view reads the same: the preview agrees with what saving then delivers.
+    saved = owner.get(f"/api/trips/{trip['id']}/public-projection").json()
+    assert saved["scope"]["defaults"] == {"date_precision": "month"}
+    again = owner.post(f"/api/trips/{trip['id']}/public-projection/preview").json()
+    assert again["updates"][0]["date_precision"] == "month"

@@ -36,6 +36,9 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 
 ### Fixed
 
+- The owner's preview of a public view that was never saved now reads dates by month, as the view will once it is saved, instead of by day.
+- Saving a scope for the public view, a hidden link or a collection member now locks the audience and reads its stored scope again before building the new one, so a concurrent edit that added an exclusion can no longer be overwritten unseen by a save that sent no exclusions (and the widening check sees it).
+- A merge warning for a widened collection member now names it as `collection '…'` instead of `link '…'`.
 - A travel update without an area, or whose area has no time zone, is no longer dated by the UTC day of its instant: it reads the zone of the trip's stay or visit nearest its day (one that covers it wins, then the closest; UTC only when the trip has no zoned stay or visit at all), so the visitor story, the `days` number, "N days later", the PDF, the export and the owner's lists show the same day. Editing the dates or area of a stay or visit can move such an update's day (#391).
 - Entering a travel update for an area in another time zone than the browser's no longer stores an instant that differs from the wall-clock time typed there, and opening it again shows the time typed (#391).
 - A travel update is now dated by the calendar day of its area's time zone instead of the UTC day of its instant, so an update written at 07:00 in Taipei is shown on that day to visitors (and in the days figure, "N days later", the PDF and the export's `local_date`) instead of the day before, and the owner's lists read the same day. An area without a time zone keeps the UTC day; changing an area's time zone moves the day of its updates (#357).

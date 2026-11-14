@@ -13,7 +13,7 @@ from datetime import date
 from typing import Any
 
 from .access import receivers
-from .audience import PUBLIC_KEY, Audience
+from .audience import Audience
 from .errors import Conflict
 from .models import Area, Location
 from .schemas import MergeAudience, MergeRecordRef, MergeWidenedRecord
@@ -132,7 +132,7 @@ class Widened:
     @property
     def name(self) -> str:
         """The audience as the merge warnings name it, like ``narrowed_audiences``."""
-        return "public page" if self.audience.id == PUBLIC_KEY else f"link {self.audience.label!r}"
+        return self.audience.display_name
 
     def as_detail(self) -> dict[str, Any]:
         return {"audience": self.audience.id, "label": self.audience.label, **self.counts}
