@@ -13,7 +13,7 @@ and build. Do not bulk-generate or blindly overwrite wrappers.
 
 ## Maintenance
 
-Dependabot updates the underlying packages (Base UI, Lucide and
+Renovate updates the underlying packages (Base UI, Lucide and
 react-day-picker) through `package.json` and the lockfile. It does not update
 the copied component source in `src/ui/`. Updating the pinned shadcn CLI also
 does not rewrite existing components.
