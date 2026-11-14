@@ -78,7 +78,7 @@ function AppShell() {
 
   const banner = expired && (
     <div role="alert" className="travel-card">
-      <p>{m.owner_session_expired_save()}</p>
+      <p>{m.feedback_session_expired_save()}</p>
       <Button
         onClick={() =>
           void renewSession(true)
@@ -89,7 +89,7 @@ function AppShell() {
             .catch(() => {})
         }
       >
-        {m.owner_sign_in_again()}
+        {m.session_sign_in_again()}
       </Button>
     </div>
   );

@@ -22,7 +22,7 @@ export function PackingTripOffline({ tripId, onRetry }: { tripId: string; onRetr
   return (
     <section className="grid gap-4" aria-labelledby="packing-title">
       <h2 id="packing-title" className="text-2xl font-semibold">
-        {m.owner_packing()}
+        {m.packing_packing()}
       </h2>
       <p role="status">{m.packing_trip_metadata_unavailable()}</p>
       {copies.length > 1 && (
@@ -45,11 +45,11 @@ export function PackingTripOffline({ tripId, onRetry }: { tripId: string; onRetr
         <div key={`${offline.subject}:${copy.id}`} className="grid gap-3">
           <h3 className="text-xl font-semibold">{copy.title}</h3>
           <p>
-            {m.common_last_checked_valid_until_line({
-              p0: m.packing_list(),
-              p1: bytesLabel(copy.byteSize),
-              p2: formatInstant(copy.lastValidatedAt),
-              p3: formatInstant(copy.leaseExpiresAt),
+            {m.offline_copy_details({
+              kind: m.packing_list(),
+              size: bytesLabel(copy.byteSize),
+              checked: formatInstant(copy.lastValidatedAt),
+              expires: formatInstant(copy.leaseExpiresAt),
             })}
           </p>
           {copy.newerVersionAvailable && <p role="status">{m.offline_newer_version_available()}</p>}

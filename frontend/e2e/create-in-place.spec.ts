@@ -87,7 +87,7 @@ for (const locale of locales) {
         // The date fields draw the day in the interface language ("12 Nov 2054", "12 nov 2054").
         const day12 = /^12\b/;
         const trigger = agenda.getByRole("button", {
-          name: new RegExp(`^${message(locale, "owner_agenda_add_to_day").split("{day}")[0]}`),
+          name: new RegExp(`^${message(locale, "agenda_add_to_day").split("{day}")[0]}`),
         });
         // The first listed day is the stay's check-in day, 12 November.
         const first = trigger.first();
@@ -99,13 +99,13 @@ for (const locale of locales) {
         // Escape closes the menu and the record dialog guards nothing yet: focus goes back to the day's Add control.
         await first.click();
         await page
-          .getByRole("menuitem", { name: message(locale, "owner_agenda_add_stay_from_day") })
+          .getByRole("menuitem", { name: message(locale, "agenda_add_stay_from_day") })
           .click();
-        const stayDialog = page.getByRole("dialog", { name: message(locale, "owner_add_stay") });
+        const stayDialog = page.getByRole("dialog", { name: message(locale, "stays_add_stay") });
         await expect(stayDialog).toBeVisible();
         await expect(stayDialog.getByRole("textbox").first()).toBeVisible();
         await expect(
-          stayDialog.getByRole("textbox", { name: message(locale, "owner_first_night_check_in") }),
+          stayDialog.getByRole("textbox", { name: message(locale, "stays_first_night_check_in") }),
         ).toHaveValue(day12);
         await page.keyboard.press("Escape");
         await expect(stayDialog).toHaveCount(0);
@@ -114,15 +114,15 @@ for (const locale of locales) {
         // A visit on that day opens with the day and the area where the stay is.
         await first.click();
         await page
-          .getByRole("menuitem", { name: message(locale, "owner_agenda_add_visit_on_day") })
+          .getByRole("menuitem", { name: message(locale, "agenda_add_visit_on_day") })
           .click();
-        const dialog = page.getByRole("dialog", { name: message(locale, "owner_add_visit") });
+        const dialog = page.getByRole("dialog", { name: message(locale, "visits_add_visit") });
         await expect(dialog).toBeVisible();
         await expect(
-          dialog.getByRole("textbox", { name: message(locale, "owner_first_day") }),
+          dialog.getByRole("textbox", { name: message(locale, "visits_first_day") }),
         ).toHaveValue(day12);
         await expect(
-          dialog.getByRole("combobox", { name: message(locale, "owner_where") }),
+          dialog.getByRole("combobox", { name: message(locale, "visits_where") }),
         ).toHaveValue(/Tainan/);
         expect(
           (await new AxeBuilder({ page }).include('[role="dialog"]').analyze()).violations,
@@ -130,17 +130,17 @@ for (const locale of locales) {
 
         // Editing guards dismissal like any other record dialog.
         await dialog
-          .getByRole("textbox", { name: message(locale, "owner_title"), exact: false })
+          .getByRole("textbox", { name: message(locale, "common_title"), exact: false })
           .first()
           .fill("Harbour walk");
         await page.keyboard.press("Escape");
         const guard = page.getByRole("alertdialog");
         await expect(guard).toBeVisible();
         await guard
-          .getByRole("button", { name: message(locale, "owner_continue_editing") })
+          .getByRole("button", { name: message(locale, "records_continue_editing") })
           .click();
         await dialog
-          .getByRole("button", { name: message(locale, "owner_add_visit"), exact: true })
+          .getByRole("button", { name: message(locale, "visits_add_visit"), exact: true })
           .click();
         await expect(dialog).toHaveCount(0);
         expect(created).toHaveLength(1);
@@ -164,22 +164,20 @@ for (const locale of locales) {
         expect(
           (await new AxeBuilder({ page }).include("[data-trip-map]").analyze()).violations,
         ).toEqual([]);
-        await page
-          .getByRole("button", { name: message(locale, "owner_map_add_visit_here") })
-          .click();
+        await page.getByRole("button", { name: message(locale, "map_add_visit_here") }).click();
 
         // The plan opens the existing visit dialog with the area filled in.
         await expect(page).toHaveURL(new RegExp(`/trips/${ownerTrip.id}/plan$`));
-        const dialog = page.getByRole("dialog", { name: message(locale, "owner_add_visit") });
+        const dialog = page.getByRole("dialog", { name: message(locale, "visits_add_visit") });
         await expect(dialog).toBeVisible();
         await expect(
-          dialog.getByRole("combobox", { name: message(locale, "owner_where") }),
+          dialog.getByRole("combobox", { name: message(locale, "visits_where") }),
         ).toHaveValue(/Tainan/);
         await page.keyboard.press("Escape");
         await expect(dialog).toHaveCount(0);
         // The map point is gone from the page: focus lands at the start of the plan, the agenda toggle.
         await expect(
-          page.getByRole("button", { name: new RegExp(`^${message(locale, "owner_agenda")}`) }),
+          page.getByRole("button", { name: new RegExp(`^${message(locale, "agenda_agenda")}`) }),
         ).toBeFocused();
         expect(created).toHaveLength(0);
       });

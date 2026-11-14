@@ -28,45 +28,45 @@ const SNIPPETS: Record<
     {
       snippet: "bold",
       get label() {
-        return m.owner_bold();
+        return m.markdown_bold();
       },
       text: "B",
     },
     {
       snippet: "italic",
       get label() {
-        return m.owner_italic();
+        return m.markdown_italic();
       },
       text: "I",
     },
     {
       snippet: "heading",
       get label() {
-        return m.owner_heading();
+        return m.markdown_heading();
       },
       text: "H",
     },
     {
       snippet: "list",
       get label() {
-        return m.owner_list();
+        return m.markdown_list();
       },
       text: "•",
     },
     {
       snippet: "tasks",
       get label() {
-        return m.owner_task_list();
+        return m.markdown_task_list();
       },
       text: "☐",
     },
     {
       snippet: "link",
       get label() {
-        return m.owner_link();
+        return m.markdown_link();
       },
       get text() {
-        return m.owner_link();
+        return m.markdown_link();
       },
     },
   ],
@@ -74,24 +74,24 @@ const SNIPPETS: Record<
     {
       snippet: "bold",
       get label() {
-        return m.owner_bold();
+        return m.markdown_bold();
       },
       text: "B",
     },
     {
       snippet: "italic",
       get label() {
-        return m.owner_italic();
+        return m.markdown_italic();
       },
       text: "I",
     },
     {
       snippet: "link",
       get label() {
-        return m.owner_link();
+        return m.markdown_link();
       },
       get text() {
-        return m.owner_link();
+        return m.markdown_link();
       },
     },
   ],
@@ -100,13 +100,13 @@ const SNIPPETS: Record<
 
 const HINTS: Record<MarkdownFormat, string> = {
   get markdown() {
-    return m.owner_markdown_bold_italic_headings_lists_task_lists_links_and_tables();
+    return m.markdown_formatting_hint();
   },
   get inline() {
-    return m.owner_only_bold_italic_and_links();
+    return m.markdown_only_bold_italic_and_links();
   },
   get contact() {
-    return m.owner_plain_text_phone_numbers_email_addresses_and_web_addresses_become_links();
+    return m.markdown_plain_text_hint();
   },
 };
 
@@ -127,7 +127,7 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
 
   useEffect(() => {
     if (!owner) {
-      setState({ kind: "error", message: textNotice(m.owner_sign_in_to_see_a_preview) });
+      setState({ kind: "error", message: textNotice(m.markdown_sign_in_to_see_a_preview) });
       return;
     }
     const controller = new AbortController();
@@ -135,7 +135,7 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
     ownerRequest<RenderResult>(
       owner.session,
       "/api/markdown/render",
-      m.owner_the_preview_could_not_be_loaded,
+      m.markdown_the_preview_could_not_be_loaded,
       {
         method: "POST",
         body: { source, format },
@@ -147,7 +147,7 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
         if (!controller.signal.aborted)
           setState({
             kind: "error",
-            message: errorNotice(error, m.owner_the_preview_could_not_be_loaded),
+            message: errorNotice(error, m.markdown_the_preview_could_not_be_loaded),
           });
       });
     return () => controller.abort();
@@ -157,7 +157,7 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
     return (
       <p className="help flex items-center gap-2" role="status">
         <Spinner />
-        {m.owner_loading_preview()}
+        {m.common_loading_preview()}
       </p>
     );
   if (state.kind === "error")
@@ -166,7 +166,7 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
         {noticeMessage(state.message)}
       </Alert>
     );
-  if (!state.result.html) return <p className="help">{m.owner_nothing_to_show_yet()}</p>;
+  if (!state.result.html) return <p className="help">{m.markdown_nothing_to_show_yet()}</p>;
   return <Markdown html={state.result.html} text={source} />;
 }
 
@@ -230,7 +230,7 @@ export function MarkdownField({
           <div
             className="flex flex-wrap gap-1"
             role="group"
-            aria-label={m.owner_view_for({ p0: label })}
+            aria-label={m.markdown_view_for({ label: label })}
           >
             <Button
               type="button"
@@ -238,7 +238,7 @@ export function MarkdownField({
               aria-pressed={!previewing}
               onClick={() => setPreviewing(false)}
             >
-              {m.owner_write()}
+              {m.markdown_write()}
             </Button>
             <Button
               type="button"
@@ -246,14 +246,14 @@ export function MarkdownField({
               aria-pressed={previewing}
               onClick={() => setPreviewing(true)}
             >
-              {m.owner_preview()}
+              {m.common_preview()}
             </Button>
           </div>
           {!previewing && SNIPPETS[format].length > 0 && (
             <div
               className="flex flex-wrap gap-1"
               role="toolbar"
-              aria-label={m.owner_formatting_for({ p0: label })}
+              aria-label={m.markdown_formatting_for({ label: label })}
             >
               {SNIPPETS[format].map(({ snippet, label: name, text }) => (
                 <Button

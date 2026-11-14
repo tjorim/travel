@@ -13,7 +13,7 @@ export function Callback() {
   useLocale();
   const { setSession } = useAuth();
   const navigate = useNavigate();
-  const [message, setMessage] = useFeedback<string>(textNotice(m.owner_completing_sign_in));
+  const [message, setMessage] = useFeedback<string>(textNotice(m.session_completing_sign_in));
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export function Callback() {
       })
       .catch((error: unknown) => {
         setFailed(true);
-        setMessage(errorNotice(error, m.owner_sign_in_failed));
+        setMessage(errorNotice(error, m.session_sign_in_failed));
       });
   }, [navigate, setSession]);
 
@@ -32,11 +32,11 @@ export function Callback() {
     <main className="travel-shell pt-6!">
       <VisitorTopBar />
       <section className="travel-card">
-        <h1>{m.owner_sign_in()}</h1>
+        <h1>{m.sign_in()}</h1>
         <p>{message}</p>
         {failed && (
           <Button type="button" onClick={() => void beginSignIn("/")}>
-            {m.owner_sign_in_again()}
+            {m.session_sign_in_again()}
           </Button>
         )}
       </section>

@@ -22,10 +22,10 @@ export function DocumentsBlock({
 }) {
   useLocale();
   return (
-    <Section id="documents" title={m.owner_private_documents()}>
+    <Section id="documents" title={m.common_private_documents()}>
       <DetailList
         empty={!documents.length && !libraryDocuments.length}
-        message={m.owner_no_private_documents_captured()}
+        message={m.documents_no_private_documents_captured()}
       >
         {documents.map((document) => (
           <article key={document.id}>
@@ -34,17 +34,17 @@ export function DocumentsBlock({
             </RecordHeading>
             <p>
               {DOCUMENT_KIND_LABELS[document.document_kind]} ·{" "}
-              {document.original_filename ?? m.owner_unnamed_file()} ·{" "}
+              {document.original_filename ?? m.common_unnamed_file()} ·{" "}
               {bytesLabel(document.byte_size)}
             </p>
             <Button
               className="secondary compact"
               type="button"
               onClick={() =>
-                openFile(document.file_url, m.owner_the_private_document_could_not_be_opened())
+                openFile(document.file_url, m.documents_the_private_document_could_not_be_opened())
               }
             >
-              {m.owner_open_document()}
+              {m.documents_open_document()}
             </Button>
           </article>
         ))}
@@ -53,21 +53,23 @@ export function DocumentsBlock({
             <div className="flex items-baseline justify-between gap-2.5 [&_h3]:m-0">
               <h3>{document.title}</h3>
               <Link className="action-link compact" to="/library">
-                {m.owner_go_to_library()}
+                {m.common_go_to_library()}
               </Link>
             </div>
             <p>
-              {m.owner_library()} {document.original_filename ?? m.owner_unnamed_file()} ·{" "}
-              {bytesLabel(document.byte_size)}
+              {m.documents_library_file_line({
+                name: document.original_filename ?? m.common_unnamed_file(),
+                size: bytesLabel(document.byte_size),
+              })}
             </p>
             <Button
               className="secondary compact"
               type="button"
               onClick={() =>
-                openFile(document.file_url, m.owner_the_library_document_could_not_be_opened())
+                openFile(document.file_url, m.documents_the_library_document_could_not_be_opened())
               }
             >
-              {m.owner_open_library_document()}
+              {m.documents_open_library_document()}
             </Button>
           </article>
         ))}

@@ -13,15 +13,15 @@ for (const width of [320, 360, 390, 430])
         await page.setViewportSize({ width, height: 844 });
         await page.goto("/admin/trips/trip-1/prepare");
         const sections = page.getByRole("button", {
-          name: message(locale, "owner_trip_sections"),
+          name: message(locale, "workspace_trip_sections"),
         });
         await expect(sections).toContainText("Exampleland 2054");
-        await expect(sections).toContainText(message(locale, "owner_prepare"));
+        await expect(sections).toContainText(message(locale, "workspace_prepare"));
         const box = (await sections.boundingBox())!;
         expect(box.height).toBeLessThanOrEqual(56);
         expect(box.y + box.height).toBeLessThanOrEqual(60);
         const capture = page.getByRole("button", {
-          name: message(locale, "owner_capture_in_trip"),
+          name: message(locale, "feedback_capture_in_trip"),
           exact: true,
         });
         const nav = await page
@@ -33,7 +33,7 @@ for (const width of [320, 360, 390, 430])
         const account = page.getByRole("button", { name: message(locale, "account"), exact: true });
         await account.click();
         const details = page.getByRole("button", {
-          name: message(locale, "owner_trip_details"),
+          name: message(locale, "trips_trip_details"),
           exact: true,
         });
         await expect(details).toBeVisible();
@@ -43,7 +43,7 @@ for (const width of [320, 360, 390, 430])
         await account.click();
         await details.click();
         const title = page.getByRole("textbox", {
-          name: message(locale, "owner_title"),
+          name: message(locale, "common_title"),
           exact: true,
         });
         await title.fill("Synthetic long railway journey through Exampleland 2054");

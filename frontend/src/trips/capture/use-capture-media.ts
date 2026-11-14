@@ -32,11 +32,11 @@ export function useCaptureMedia(
   const mediaState = !tripId
     ? ""
     : mediaQuery.error
-      ? errorMessage(mediaQuery.error, m.owner_your_media_could_not_be_loaded)
+      ? errorMessage(mediaQuery.error, m.media_your_media_could_not_be_loaded)
       : mediaQuery.isPending
-        ? m.owner_loading_media()
+        ? m.capture_loading_media()
         : mediaQuery.data?.length
-          ? m.owner_choose_private_photos_to_link_to_this_travel_update()
-          : m.owner_no_photos_in_this_trip_yet();
+          ? m.capture_choose_private_photos_to_link_to_this_travel_update()
+          : m.capture_no_photos_in_this_trip_yet();
   return { media, attachedMedia, mediaState };
 }

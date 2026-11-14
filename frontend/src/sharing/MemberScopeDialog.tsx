@@ -126,10 +126,10 @@ export function MemberScopeDialog({
             disabled={previewMember.isPending}
             onClick={() => void showPreview()}
           >
-            {m.sharing_preview()}
+            {m.common_preview()}
           </Button>
           <Button className="secondary" type="button" onClick={onClose}>
-            {m.owner_close_2()}
+            {m.common_close()}
           </Button>
         </div>
         {widening && (

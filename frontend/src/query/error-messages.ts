@@ -18,7 +18,7 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
     case "dates_out_of_order":
       return m.api_dates_out_of_order();
     case "say_where_this_stay_is_choose_a_saved_location_or_fill_in_an_address_a_city_or_an_area":
-      return m.api_say_where_this_stay_is_choose_a_saved_location_or_fill_in_an_address_a_city_or_an_area();
+      return m.api_stay_location_required();
     case "a_media_asset_can_only_be_attached_once":
       return m.api_a_media_asset_can_only_be_attached_once();
     case "a_last_day_needs_a_first_day":
@@ -32,9 +32,9 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
     case "unknown_time_zone":
       return m.api_unknown_time_zone();
     case "osm_element_type_and_osm_element_id_must_be_supplied_together":
-      return m.api_osm_element_type_and_osm_element_id_must_be_supplied_together();
+      return m.api_osm_element_incomplete();
     case "supply_an_existing_location_on_its_own_without_other_location_fields":
-      return m.api_supply_an_existing_location_on_its_own_without_other_location_fields();
+      return m.api_existing_location_standalone();
     case "choose_an_existing_area_or_a_new_area":
       return m.api_choose_an_existing_area_or_a_new_area();
     case "say_where_this_stay_is_an_area_or_a_location":
@@ -74,7 +74,7 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
     case "google_photos_connection_is_not_configured":
       return m.api_google_photos_connection_is_not_configured();
     case "google_did_not_grant_offline_access_reconnect_in_settings":
-      return m.api_google_did_not_grant_offline_access_reconnect_in_settings();
+      return m.api_google_offline_access_denied();
     case "authorization_expired_or_did_not_match_this_owner":
       return m.api_authorization_expired_or_did_not_match_this_owner();
     case "the_owner_has_not_connected_this_provider":
@@ -196,11 +196,11 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
     case "a_route_needs_both_its_areas":
       return m.api_a_route_needs_both_its_areas();
     case "route_ends_are_the_same_place":
-      return m.owner_choose_two_different_places_departure_and_arrival_are_the_same();
+      return m.routes_same_places_error();
     case "say_where_this_stay_is":
       return m.api_say_where_this_stay_is();
     case "a_stay_covers_at_least_one_night_check_out_after_the_check_in_date":
-      return m.api_a_stay_covers_at_least_one_night_check_out_after_the_check_in_date();
+      return m.api_stay_needs_one_night();
     case "a_stay_needs_an_area":
       return m.api_a_stay_needs_an_area();
     case "one_or_more_media_assets_are_unavailable_for_this_trip":
@@ -210,7 +210,7 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
     case "the_trip_cannot_end_before_it_starts":
       return m.api_the_trip_cannot_end_before_it_starts();
     case "an_update_with_a_location_gets_its_area_from_that_location":
-      return m.api_an_update_with_a_location_gets_its_area_from_that_location();
+      return m.api_update_area_from_location();
     case "write_the_text_for_visitors_before_sharing_this_update":
       return m.api_write_the_text_for_visitors_before_sharing_this_update();
     case "a_visit_needs_an_area":
@@ -230,13 +230,13 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
     case "the_four_viewport_edges_must_be_supplied_together":
       return m.api_the_four_viewport_edges_must_be_supplied_together();
     case "the_viewport_north_edge_must_not_be_south_of_the_south_edge":
-      return m.api_the_viewport_north_edge_must_not_be_south_of_the_south_edge();
+      return m.api_viewport_edges_reversed();
     case "make_this_location_private_before_changing_its_point_then_share_it_again":
-      return m.api_make_this_location_private_before_changing_its_point_then_share_it_again();
+      return m.api_location_point_change_needs_private();
     case "moving_the_point_needs_the_osm_element_viewport_and_navigation_provider_of_the_new_place":
-      return m.api_moving_the_point_needs_the_osm_element_viewport_and_navigation_provider_of_the_new_place();
+      return m.api_location_move_needs_new_place_details();
     case "a_navigation_provider_place_id_needs_a_navigation_provider":
-      return m.api_a_navigation_provider_place_id_needs_a_navigation_provider();
+      return m.api_navigation_place_id_needs_provider();
     case "give_this_location_a_public_name_before_sharing_it":
       return m.api_give_this_location_a_public_name_before_sharing_it();
     case "name_this_area_before_sharing_it":
@@ -252,11 +252,11 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
     case "wait_for_this_copy_to_finish_processing":
       return m.api_wait_for_this_copy_to_finish_processing();
     case "a_stay_idea_is_only_a_candidate_make_it_planned_before_sharing_it":
-      return m.api_a_stay_idea_is_only_a_candidate_make_it_planned_before_sharing_it();
+      return m.api_stay_idea_not_shareable();
     case "a_route_idea_is_only_a_candidate_make_it_planned_before_sharing_it":
-      return m.api_a_route_idea_is_only_a_candidate_make_it_planned_before_sharing_it();
+      return m.api_route_idea_not_shareable();
     case "a_cancelled_visit_is_no_longer_planned_it_cannot_be_shared":
-      return m.api_a_cancelled_visit_is_no_longer_planned_it_cannot_be_shared();
+      return m.api_cancelled_visit_not_shareable();
     case "approve_this_copy_before_sharing_it":
       return m.api_approve_this_copy_before_sharing_it();
     case "the_original_has_been_deleted":

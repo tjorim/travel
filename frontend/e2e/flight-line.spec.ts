@@ -43,18 +43,18 @@ for (const locale of locales)
       );
       await page.goto(`/admin/trips/${ownerTrip.id}/plan`);
       await page
-        .getByRole("button", { name: `${message(locale, "owner_routes")} 1`, exact: true })
+        .getByRole("button", { name: `${message(locale, "common_routes")} 1`, exact: true })
         .click();
       await page.locator("button.document-select").filter({ hasText: "Example flight" }).click();
-      await page.getByRole("button", { name: message(locale, "owner_edit"), exact: true }).click();
+      await page.getByRole("button", { name: message(locale, "common_edit"), exact: true }).click();
       const dialog = page.getByRole("dialog");
       const suggest = dialog.getByRole("button", {
-        name: message(locale, "owner_suggest_flight_line"),
+        name: message(locale, "routes_suggest_flight_line"),
       });
       await suggest.focus();
       await suggest.press("Enter");
       await expect(dialog.getByRole("status")).toContainText(
-        message(locale, "owner_flight_arc_review"),
+        message(locale, "routes_flight_arc_review"),
       );
       await expect(suggest).toBeFocused();
       await page.screenshot({ path: testInfo.outputPath("flight-line.png") });
@@ -62,17 +62,20 @@ for (const locale of locales)
         (await new AxeBuilder({ page }).include('[role="dialog"]').analyze()).violations,
       ).toEqual([]);
       await dialog
-        .getByText(message(locale, "owner_advanced_paste_coordinates_as_json"), { exact: true })
+        .getByText(message(locale, "routes_advanced_paste_coordinates_as_json"), { exact: true })
         .click();
       const input = dialog.getByRole("textbox", {
-        name: message(locale, "owner_line_coordinates_json"),
+        name: message(locale, "routes_line_coordinates_json"),
       });
       const points = JSON.parse(await input.inputValue());
       expect(points[0]).toEqual([-60, 40]);
       expect(points.at(-1)).toEqual([60, 40]);
       await page.keyboard.press("Escape");
       await page
-        .getByRole("button", { name: message(locale, "owner_discard_changes_2"), exact: true })
+        .getByRole("button", {
+          name: message(locale, "records_discard_changes_action"),
+          exact: true,
+        })
         .click();
       await expect(dialog).toHaveCount(0);
     });

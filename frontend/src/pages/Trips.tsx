@@ -28,7 +28,7 @@ export function Trips() {
   const [notice, setNotice] = useFeedback<string | null>(null);
   // A page we were sent here from (a deleted trip) can leave a message behind.
   const arrivalNotice =
-    location.state.notice === "trip_deleted" ? m.owner_trip_deleted() : undefined;
+    location.state.notice === "trip_deleted" ? m.trips_trip_deleted() : undefined;
   const message = notice ?? arrivalNotice ?? tripsStatusMessage(session, tripsQuery, trips);
 
   function newTrip() {
@@ -48,20 +48,20 @@ export function Trips() {
   // A lone trip gets a reading-width card rather than one cell of a wide grid that would leave most of the page empty.
   const lone = trips.length === 1;
   const groups: { state: TripState[]; title: string }[] = [
-    { state: ["active", "upcoming"], title: m.owner_now_and_soon() },
-    { state: ["planned"], title: m.owner_still_to_plan() },
-    { state: ["past"], title: m.owner_past_trips() },
+    { state: ["active", "upcoming"], title: m.common_now_and_soon() },
+    { state: ["planned"], title: m.trips_still_to_plan() },
+    { state: ["past"], title: m.trips_past_trips() },
   ];
 
   return (
     <section className="grid grid-cols-1 gap-4.5" aria-labelledby="trips-title">
       <div className="capture-heading">
         <div>
-          <p className="travel-eyebrow">{m.owner_private_trip_management()}</p>
+          <p className="travel-eyebrow">{m.trips_private_trip_management()}</p>
           <h2 id="trips-title">{m.trips()}</h2>
         </div>
         <Button className="secondary compact" type="button" onClick={newTrip}>
-          {m.owner_new_trip()}
+          {m.trips_new_trip()}
         </Button>
       </div>
       <p className="help max-w-travel-reading" role="status">
@@ -89,7 +89,7 @@ export function Trips() {
         })}
         {tripsQuery.isSuccess && !trips.length && (
           <p className="m-0 max-w-travel-reading leading-normal text-travel-muted">
-            {m.owner_your_first_trip_stays_private_until_you_share_something()}
+            {m.trips_first_trip_private_notice()}
           </p>
         )}
       </section>

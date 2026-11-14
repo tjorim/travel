@@ -95,7 +95,7 @@ function OwnerCaptureDialog({
   const trips = useMemo(() => tripsQuery.data ?? [], [tripsQuery.data]);
   const [connection, setConnection] = useState(navigator.onLine);
   const [draftState, setDraftState] = useFeedback<string>(
-    textNotice(() => m.owner_loading_draft()),
+    textNotice(() => m.capture_loading_draft()),
   );
   const [saveState, setSaveState] = useFeedback<string>("");
   const initialized = useRef(false);
@@ -112,17 +112,14 @@ function OwnerCaptureDialog({
     fallback: SAVE_FALLBACK,
     submit: async (values) => {
       if (!session || !values.tripId || !draftIsCurrent(values))
-        throw new FeedbackError(() => m.owner_choose_a_trip_and_sign_in_first_to_save());
-      if (!connection)
-        throw new FeedbackError(() =>
-          m.owner_you_are_offline_this_draft_stays_on_this_device_and_is_not_sent_automati(),
-        );
+        throw new FeedbackError(() => m.capture_choose_a_trip_and_sign_in_first_to_save());
+      if (!connection) throw new FeedbackError(() => m.capture_offline_draft_notice());
       if (uploadState.current.failed) throw new FeedbackError(() => m.capture_photo_blocks_save());
       submittedDraft.current = {
         ...values,
         [DRAFT_FENCE]: values[DRAFT_FENCE] ? { ...values[DRAFT_FENCE] } : undefined,
       };
-      setSaveState(textNotice(() => m.owner_saving()));
+      setSaveState(textNotice(() => m.common_saving()));
       // A place that already exists on the server is left as it is: sending it again would make a new one and lose its public name.
       const keepsLocation = Boolean((values.location as { id?: string } | null)?.id);
       return saveUpdate.mutateAsync({
@@ -141,18 +138,18 @@ function OwnerCaptureDialog({
       const result = await clearDraft(submittedDraft.current ?? values);
       if (!draftIsCurrent(values)) return;
       if (result !== "saved") {
-        setSaveState(textNotice(() => m.owner_trip_saved_draft_kept()));
+        setSaveState(textNotice(() => m.capture_trip_saved_draft_kept()));
         setDraftState(
           textNotice(() =>
             result === "conflict"
-              ? m.owner_draft_changed_in_another_tab()
-              : m.owner_draft_not_saved_locally(),
+              ? m.capture_draft_changed_in_another_tab()
+              : m.capture_draft_not_saved_locally(),
           ),
         );
         return;
       }
-      setDraftState(textNotice(() => m.owner_saved_to_your_private_trip()));
-      setSaveState(textNotice(() => m.owner_travel_update_saved()));
+      setDraftState(textNotice(() => m.capture_saved_to_your_private_trip()));
+      setSaveState(textNotice(() => m.updates_travel_update_saved()));
       record.load(emptyDraft(values.tripId));
       places.reset();
       uploads.reset();
@@ -180,7 +177,7 @@ function OwnerCaptureDialog({
     );
     setSaveState(
       textNotice(() =>
-        m.capture_photo_added({ name: asset.original_filename ?? m.owner_unnamed_photo() }),
+        m.capture_photo_added({ name: asset.original_filename ?? m.capture_unnamed_photo() }),
       ),
     );
   });
@@ -226,18 +223,14 @@ function OwnerCaptureDialog({
         mediaAssetIds: candidate.mediaAssetIds,
       });
       places.setCandidateGps(candidate.gps ?? null);
-      setDraftState(
-        textNotice(() =>
-          m.owner_candidate_copied_into_a_local_draft_choose_a_location_yourself_and_save(),
-        ),
-      );
+      setDraftState(textNotice(() => m.capture_candidate_copied_notice()));
       onCandidateConsumed?.();
       return;
     }
     const stored = readDraft(tripId);
     record.load(stored ?? emptyDraft(tripId));
     setDraftState(
-      textNotice(() => (stored ? m.owner_local_draft_restored() : m.owner_new_draft())),
+      textNotice(() => (stored ? m.capture_local_draft_restored() : m.capture_new_draft())),
     );
     // `record.load` is a stable identity from `useRecordForm`; only the inputs that decide *which* draft to load matter here.
   }, [lockedTripId, candidate, trips, onCandidateConsumed]);
@@ -256,10 +249,10 @@ function OwnerCaptureDialog({
       setDraftState(
         textNotice(() =>
           result === "saved"
-            ? m.owner_draft_saved_locally_not_sent_to_your_trip_yet()
+            ? m.capture_draft_saved_locally_not_sent_to_your_trip_yet()
             : result === "conflict"
-              ? m.owner_draft_changed_in_another_tab()
-              : m.owner_draft_not_saved_locally(),
+              ? m.capture_draft_changed_in_another_tab()
+              : m.capture_draft_not_saved_locally(),
         ),
       );
     });
@@ -308,7 +301,7 @@ function OwnerCaptureDialog({
     const stored = readDraft(tripId);
     record.load(stored ?? emptyDraft(tripId));
     setDraftState(
-      textNotice(() => (stored ? m.owner_local_draft_restored() : m.owner_new_draft())),
+      textNotice(() => (stored ? m.capture_local_draft_restored() : m.capture_new_draft())),
     );
     places.reset();
     setSaveState("");
@@ -334,7 +327,7 @@ function OwnerCaptureDialog({
     places.reset();
     // A saved update's note and place live under "More"; editing it should show them.
     setMoreOpen(true);
-    setSaveState(textNotice(() => m.owner_you_are_editing_a_saved_travel_update()));
+    setSaveState(textNotice(() => m.capture_you_are_editing_a_saved_travel_update()));
   }
 
   function toggleMedia(assetId: string) {
@@ -351,9 +344,7 @@ function OwnerCaptureDialog({
       occurredAt: captureInputValue(asset.captured_at!, asset.captured_local),
       occurredInstant: asset.captured_local ? undefined : asset.captured_at!,
     });
-    setSaveState(
-      textNotice(() => m.owner_capture_date_used_as_a_suggestion_feel_free_to_change_it()),
-    );
+    setSaveState(textNotice(() => m.capture_date_suggestion_hint()));
   }
 
   function selectPlace(result: LocationInput) {
@@ -365,7 +356,7 @@ function OwnerCaptureDialog({
     const { updateId } = draft;
     if (!selectedTrip || !updateId) return;
     confirmation.ask({
-      title: () => m.owner_delete_travel_update({ p0: draft.title }),
+      title: () => m.updates_delete_travel_update({ title: draft.title }),
       onConfirm: () => performRemoveUpdate(selectedTrip.id, updateId),
     });
   }
@@ -375,7 +366,7 @@ function OwnerCaptureDialog({
       ...draft,
       [DRAFT_FENCE]: draft[DRAFT_FENCE] ? { ...draft[DRAFT_FENCE] } : undefined,
     };
-    setSaveState(textNotice(() => m.owner_deleting_travel_update()));
+    setSaveState(textNotice(() => m.capture_deleting_travel_update()));
     deleteUpdate.mutateAsync({ tripId, updateId }).then(
       async () => {
         const result = await clearDraft(deletingDraft);
@@ -385,26 +376,26 @@ function OwnerCaptureDialog({
           setDraftState(
             textNotice(() =>
               result === "conflict"
-                ? m.owner_draft_changed_in_another_tab()
-                : m.owner_draft_not_saved_locally(),
+                ? m.capture_draft_changed_in_another_tab()
+                : m.capture_draft_not_saved_locally(),
             ),
           );
           return;
         }
         startNew();
-        setDraftState(textNotice(() => m.owner_travel_update_deleted()));
+        setDraftState(textNotice(() => m.updates_travel_update_deleted()));
       },
       (error: unknown) =>
-        setSaveState(errorNotice(error, m.owner_the_travel_update_could_not_be_deleted)),
+        setSaveState(errorNotice(error, m.updates_the_travel_update_could_not_be_deleted)),
     );
   }
 
   const clearSaveState = { onChange: () => setSaveState("") };
   const dialogTitle = lockedTrip
-    ? m.owner_capture_a_moment_2({ p0: lockedTrip.title })
+    ? m.capture_title_in_trip({ trip: lockedTrip.title })
     : draft.updateId
-      ? m.owner_edit_travel_update()
-      : m.owner_new_travel_update();
+      ? m.updates_edit_travel_update()
+      : m.capture_new_travel_update();
   const status = record.serverError ?? (saveState || draftState);
 
   function submitForm() {
@@ -427,21 +418,13 @@ function OwnerCaptureDialog({
       dirty={initialized.current && (record.dirty || uploads.items.length > 0)}
       onDismiss={onDismiss}
     >
-      {!session && (
-        <p>{m.owner_sign_in_to_save_a_draft_locally_or_add_a_travel_update_to_a_private_trip()}</p>
-      )}
+      {!session && <p>{m.capture_sign_in_hint()}</p>}
       {session && tripsQuery.isPending && (
-        <p>
-          {connection
-            ? m.owner_loading_your_trips()
-            : m.owner_you_are_offline_your_trips_will_load_once_you_reconnect()}
-        </p>
+        <p>{connection ? m.trips_loading() : m.capture_offline_trips_notice()}</p>
       )}
-      {session && tripsQuery.isError && (
-        <p>{errorMessage(tripsQuery.error, m.owner_your_trips_could_not_be_loaded)}</p>
-      )}
+      {session && tripsQuery.isError && <p>{errorMessage(tripsQuery.error, m.trips_load_error)}</p>}
       {session && !tripsQuery.isPending && !tripsQuery.isError && trips.length === 0 && (
-        <p>{m.owner_create_a_private_trip_first_then_you_can_add_a_travel_update_here()}</p>
+        <p>{m.capture_no_trip_hint()}</p>
       )}
       {session && trips.length > 0 && (
         <>
@@ -456,13 +439,13 @@ function OwnerCaptureDialog({
           >
             {draft.updateId && (
               <div className="capture-heading">
-                <p className="travel-eyebrow m-0">{m.owner_mobile_capture()}</p>
+                <p className="travel-eyebrow m-0">{m.capture_mobile_capture()}</p>
                 <div className="button-row">
                   <Button className="secondary compact" type="button" onClick={startNew}>
-                    {m.owner_new_travel_update()}
+                    {m.capture_new_travel_update()}
                   </Button>
                   <Button className="danger compact" type="button" onClick={removeUpdate}>
-                    {m.owner_delete()}
+                    {m.common_delete()}
                   </Button>
                 </div>
               </div>
@@ -490,18 +473,18 @@ function OwnerCaptureDialog({
               name="title"
               listeners={clearSaveState}
               validators={{
-                onChange: requiredText(m.owner_give_the_travel_update_a_title),
-                onSubmit: requiredText(m.owner_give_the_travel_update_a_title),
+                onChange: requiredText(m.updates_give_the_travel_update_a_title),
+                onSubmit: requiredText(m.updates_give_the_travel_update_a_title),
               }}
             >
               {(field) => (
                 <TextField
                   field={field}
-                  label={m.owner_title()}
+                  label={m.common_title()}
                   required
                   maxLength={160}
                   enterKeyHint="done"
-                  placeholder={m.owner_for_example_first_evening()}
+                  placeholder={m.capture_for_example_first_evening()}
                 />
               )}
             </form.Field>
@@ -522,39 +505,45 @@ function OwnerCaptureDialog({
                 <LocaleControl />
                 {connection && <ConnectionStatus connection={connection} />}
                 {selectedTrip && (
-                  <aside className="publication" aria-label={m.owner_sharing_this_travel_update()}>
-                    <strong>{m.owner_before_saving()}</strong>
-                    <span>
-                      {m.owner_a_new_travel_update_is_private_your_notes_location_and_photos_are_never()}
-                    </span>
+                  <aside
+                    className="publication"
+                    aria-label={m.capture_sharing_this_travel_update()}
+                  >
+                    <strong>{m.capture_before_saving()}</strong>
+                    <span>{m.capture_privacy_hint()}</span>
                   </aside>
                 )}
                 <form.Field
                   name="occurredAt"
                   listeners={clearSaveState}
                   validators={{
-                    onChange: requiredText(m.owner_enter_the_date_and_time),
-                    onSubmit: requiredText(m.owner_enter_the_date_and_time),
+                    onChange: requiredText(m.updates_enter_the_date_and_time),
+                    onSubmit: requiredText(m.updates_enter_the_date_and_time),
                   }}
                 >
                   {(field) => (
-                    <DateTimeField field={field} label={m.owner_date_and_time()} required stacked />
+                    <DateTimeField
+                      field={field}
+                      label={m.updates_date_and_time()}
+                      required
+                      stacked
+                    />
                   )}
                 </form.Field>
                 <p className="help">
                   {editedZone
-                    ? m.owner_update_time_local_in_zone({ zone: zoneName(editedZone) })
-                    : m.owner_update_time_local()}
+                    ? m.updates_update_time_local_in_zone({ zone: zoneName(editedZone) })
+                    : m.updates_update_time_local()}
                 </p>
                 <form.Field name="notes" listeners={clearSaveState}>
                   {(field) => (
                     <MarkdownField
                       field={field}
-                      label={m.owner_private_note()}
+                      label={m.updates_private_note()}
                       optional
                       maxLength={10000}
                       rows={6}
-                      placeholder={m.owner_what_do_you_want_to_remember_you_never_share_this()}
+                      placeholder={m.capture_what_do_you_want_to_remember_you_never_share_this()}
                     />
                   )}
                 </form.Field>
@@ -597,7 +586,7 @@ function OwnerCaptureDialog({
                   type="submit"
                   disabled={record.pending || uploads.busy}
                 >
-                  {draft.updateId ? m.owner_save_changes() : m.owner_save_travel_update()}
+                  {draft.updateId ? m.capture_save_changes() : m.updates_save_travel_update()}
                 </Button>
                 <span className="min-w-0 empty:hidden" aria-live="polite">
                   {uploads.busy ? m.capture_photos_uploading() : status}
@@ -619,9 +608,7 @@ function ConnectionStatus({ connection }: { connection: boolean }) {
   useLocale();
   return (
     <p className={`connection ${connection ? "online" : "offline"}`} role="status">
-      {connection
-        ? m.owner_connected_you_choose_when_to_save()
-        : m.owner_offline_drafts_stay_local_there_is_no_automatic_synchronisation()}
+      {connection ? m.capture_connected_you_choose_when_to_save() : m.capture_offline_banner()}
     </p>
   );
 }

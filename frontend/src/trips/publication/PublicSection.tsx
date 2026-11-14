@@ -84,7 +84,7 @@ export function PublicSection({
             )}
             {slug && (
               <Button className="secondary" type="button" onClick={onCopyLink}>
-                {m.publication_copy_link_2()}
+                {m.publication_copy_link_action()}
               </Button>
             )}
             <Button className="secondary" type="button" disabled={previewing} onClick={onPreview}>

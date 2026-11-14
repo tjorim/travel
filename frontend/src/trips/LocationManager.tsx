@@ -71,7 +71,7 @@ export function LocationManager({
   const acknowledged = useRef(false);
   const record = useRecordForm<Values, Location>({
     defaultValues: blank(),
-    fallback: m.owner_the_location_could_not_be_saved,
+    fallback: m.locations_the_location_could_not_be_saved,
     serverFields,
     intercept: (error) => {
       const found = visitorReview(error);
@@ -128,7 +128,7 @@ export function LocationManager({
     onSuccess: (place) => {
       setSuggestion(null);
       dialog.inspect(place.id);
-      setNotice(textNotice(() => m.owner_location_saved()));
+      setNotice(textNotice(() => m.locations_location_saved()));
       onSaved?.();
     },
   });
@@ -152,13 +152,13 @@ export function LocationManager({
     remove.mutateAsync(place).then(
       () => {
         close();
-        setNotice(textNotice(() => m.owner_location_deleted()));
+        setNotice(textNotice(() => m.locations_location_deleted()));
         onSaved?.();
       },
       (error: unknown) => {
         dialog.setConfirmDelete(false);
         setInUse(isResourceInUse(error));
-        dialog.setError(errorNotice(error, m.owner_the_location_could_not_be_deleted));
+        dialog.setError(errorNotice(error, m.locations_the_location_could_not_be_deleted));
       },
     );
   }
@@ -225,7 +225,7 @@ export function LocationManager({
             dialog.create();
           }}
         >
-          {m.owner_resume_location_draft()}
+          {m.locations_resume_location_draft()}
         </Button>
       )}
       <RecordDialog
@@ -233,9 +233,9 @@ export function LocationManager({
         title={
           editing
             ? editingId
-              ? m.owner_edit_location()
-              : m.owner_add_location()
-            : m.owner_location()
+              ? m.locations_edit_location()
+              : m.areas_add_location()
+            : m.locations_location()
         }
         dirty={editing && record.dirty}
         error={dialog.error}

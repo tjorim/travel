@@ -109,7 +109,7 @@ for (const locale of ["nl", "en"] as const) {
         await page.goto(`${base.replace("/api", "/admin")}/story`);
 
         const strip = page.getByRole("list", {
-          name: message(locale, "owner_photos_of_update").replace("{p0}", "Six photos"),
+          name: message(locale, "updates_photos_of_update").replace("{title}", "Six photos"),
         });
         await expect(strip.getByRole("img")).toHaveCount(4);
         await expect(strip.getByText("+2")).toBeVisible();
@@ -125,9 +125,11 @@ for (const locale of ["nl", "en"] as const) {
         ).toEqual([]);
 
         const label = (title: string) =>
-          message(locale, "owner_preview_as_visitor_for").replace("{p0}", title);
+          message(locale, "updates_preview_as_visitor_for").replace("{title}", title);
         await expect(page.getByRole("button", { name: label("Only mine") })).toBeDisabled();
-        await expect(page.getByText(message(locale, "owner_preview_private_update"))).toBeVisible();
+        await expect(
+          page.getByText(message(locale, "updates_preview_private_update")),
+        ).toBeVisible();
 
         const open = page.getByRole("button", { name: label("Six photos") });
         await open.click();
@@ -137,8 +139,8 @@ for (const locale of ["nl", "en"] as const) {
         await expect(dialog.getByText("Text of Six photos").first()).toBeVisible();
         await dialog
           .getByRole("button", {
-            name: message(locale, "owner_close").replace(
-              "{p0}",
+            name: message(locale, "records_close_named").replace(
+              "{title}",
               message(locale, "publication_public_preview"),
             ),
           })

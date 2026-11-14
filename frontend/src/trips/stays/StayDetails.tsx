@@ -42,16 +42,16 @@ export function StayDetails({
             </p>
           )
         ) : (
-          <p>{m.owner_stay_accommodation_not_chosen_yet_in({ p0: areaName(selected.area) })}</p>
+          <p>{m.stays_stay_accommodation_not_chosen_yet_in({ area: areaName(selected.area) })}</p>
         )}
         <p>
           {selected.booking_reference
-            ? m.owner_booking_reference_2({ p0: selected.booking_reference })
-            : m.owner_no_booking_reference()}
+            ? m.common_booking_reference_detail({ reference: selected.booking_reference })
+            : m.common_no_booking_reference()}
         </p>
         {selected.contact_details && (
           <>
-            <p className="markdown-label">{m.owner_contact()}</p>
+            <p className="markdown-label">{m.stays_contact()}</p>
             <Markdown html={selected.contact_details_html} text={selected.contact_details} />
           </>
         )}
@@ -72,7 +72,7 @@ export function StayDetails({
       {alternatives.length > 0 && (
         <div>
           <p className="help">
-            {m.owner_stay_ideas_overlap_these_nights({ count: alternatives.length })}
+            {m.stays_stay_ideas_overlap_these_nights({ count: alternatives.length })}
           </p>
           <Button
             className="secondary compact"
@@ -80,7 +80,7 @@ export function StayDetails({
             disabled={saving}
             onClick={() => onCancelAlternatives(alternatives)}
           >
-            {m.owner_cancel_stay_alternatives({ count: alternatives.length })}
+            {m.alternatives_cancel_count({ count: alternatives.length })}
           </Button>
         </div>
       )}

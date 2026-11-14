@@ -192,8 +192,7 @@ export function SharingOverview() {
   function revokeLink(trip: TripSummary, link: ShareLink) {
     confirmation.ask({
       title: () => m.sharing_revoke_named_link({ name: link.label }),
-      description: () =>
-        m.sharing_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h(),
+      description: () => m.sharing_rotate_warning(),
       confirmLabel: () => m.sharing_revoke_link(),
       onConfirm: () =>
         linkAction.mutateAsync({ tripId: trip.id, link, action: "revoke" }).then(
@@ -222,8 +221,7 @@ export function SharingOverview() {
   function revokeCollection(collection: Collection) {
     confirmation.ask({
       title: () => m.sharing_revoke_named_link({ name: collection.label }),
-      description: () =>
-        m.sharing_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h(),
+      description: () => m.sharing_rotate_warning(),
       confirmLabel: () => m.sharing_revoke_link(),
       onConfirm: () =>
         collectionMutations.revoke.mutateAsync({ collection, reason: null }).then(
@@ -259,7 +257,7 @@ export function SharingOverview() {
   return (
     <section className="grid gap-5" aria-labelledby="sharing-overview-title">
       <div>
-        <p className="travel-eyebrow">{m.owner_sharing()}</p>
+        <p className="travel-eyebrow">{m.common_sharing()}</p>
         <h2 id="sharing-overview-title">{m.sharing_overview()}</h2>
         <p>{m.sharing_overview_intro()}</p>
       </div>
@@ -316,7 +314,7 @@ export function SharingOverview() {
                         aria-label={m.sharing_copy_link_named({ name: trip.title })}
                         onClick={() => void copy(publicUrl(slug))}
                       >
-                        {m.sharing_copy_link()}
+                        {m.common_copy_link()}
                       </Button>
                     </div>
                   </Row>
@@ -357,7 +355,7 @@ export function SharingOverview() {
                           aria-label={m.sharing_copy_link_named({ name: link.label })}
                           onClick={() => void copy(shareUrl(link.token!))}
                         >
-                          {m.sharing_copy_link()}
+                          {m.common_copy_link()}
                         </Button>
                       )}
                       {link.state === "active" && (
@@ -456,7 +454,7 @@ export function SharingOverview() {
                           aria-label={m.sharing_copy_link_named({ name: collection.label })}
                           onClick={() => void copy(collectionUrl(collection.token!))}
                         >
-                          {m.sharing_copy_link()}
+                          {m.common_copy_link()}
                         </Button>
                       )}
                       {collection.state === "active" && (

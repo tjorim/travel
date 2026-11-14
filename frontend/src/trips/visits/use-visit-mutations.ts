@@ -12,8 +12,8 @@ export function useVisitMutations(tripId: string) {
     ownerKeys.tripResource(subject, tripId, "areas"),
   ];
   const { save, remove } = useTripRecordMutations<Visit>(tripId, "visits", {
-    saveFailed: m.owner_the_visit_could_not_be_saved,
-    deleteFailed: m.owner_the_visit_could_not_be_deleted,
+    saveFailed: m.visits_the_visit_could_not_be_saved,
+    deleteFailed: m.visits_the_visit_could_not_be_deleted,
     invalidate,
   });
   return { save, remove };

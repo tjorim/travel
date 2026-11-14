@@ -91,14 +91,15 @@ for (const locale of ["nl", "en"] as const) {
         await page.goto(`/admin/trips/${ownerTrip.id}/plan#stays`);
 
         await expect(page.locator("[id^=alternative-group-]")).toBeVisible({ timeout: 20_000 });
-        await expect(
-          page.getByText(message(locale, "owner_alternatives_reason_nights")),
-        ).toBeVisible();
+        await expect(page.getByText(message(locale, "alternatives_reason_nights"))).toBeVisible();
         expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
         // Compare: exact details side by side, only for the owner.
         await page
-          .getByRole("button", { name: message(locale, "owner_alternatives_compare"), exact: true })
+          .getByRole("button", {
+            name: message(locale, "alternatives_compare"),
+            exact: true,
+          })
           .click();
         const compare = page.getByRole("dialog");
         await expect(compare.getByRole("table")).toBeVisible();
@@ -110,20 +111,20 @@ for (const locale of ["nl", "en"] as const) {
         // Choose: one confirmation, then a notice with Undo, and focus lands on the group.
         await page
           .getByRole("button", {
-            name: message(locale, "owner_alternatives_choose_label").replace(
-              "{name}",
-              "Hotel Borealis",
-            ),
+            name: message(locale, "alternatives_choose_label").replace("{name}", "Hotel Borealis"),
           })
           .click();
         const confirm = page.getByRole("alertdialog");
         await expect(confirm).toBeVisible();
         expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
         await confirm
-          .getByRole("button", { name: message(locale, "owner_alternatives_choose"), exact: true })
+          .getByRole("button", {
+            name: message(locale, "alternatives_choose"),
+            exact: true,
+          })
           .click();
         await expect(
-          page.getByRole("button", { name: message(locale, "owner_alternatives_undo") }),
+          page.getByRole("button", { name: message(locale, "alternatives_undo") }),
         ).toBeVisible();
         await expect(page.locator("[id^=alternative-group-]")).toBeFocused();
         expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);

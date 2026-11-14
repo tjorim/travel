@@ -16,9 +16,9 @@ export function RecipientsText({
 }) {
   useLocale();
   return state === "loading"
-    ? m.owner_loading_recipients()
+    ? m.locations_loading_recipients()
     : state === "failed"
-      ? m.owner_recipients_could_not_be_checked()
+      ? m.locations_recipients_could_not_be_checked()
       : recipients.length
         ? reaches(recipients.join(", "))
         : reachesNobody();

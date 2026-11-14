@@ -49,7 +49,7 @@ export function AssetView({
             className="mb-1 block max-h-65 max-w-65 rounded-travel-media bg-travel-media-bg object-contain"
           />
         ) : null}
-        <h3>{asset.original_filename ?? m.owner_unnamed_media_item()}</h3>
+        <h3>{asset.original_filename ?? m.media_unnamed_item_title()}</h3>
         <p>
           {asset.media_kind === "photo" ? m.media_photo() : m.media_video()} ·{" "}
           {bytesLabel(asset.byte_size)}
@@ -61,16 +61,16 @@ export function AssetView({
           {m.library_view_original()}
         </Button>
         <Button className="secondary compact" type="button" onClick={onToggleOffline}>
-          {pinned ? m.owner_remove_offline_copy() : m.owner_save_offline()}
+          {pinned ? m.common_remove_offline_copy() : m.common_save_offline()}
         </Button>
         <Button className="danger compact" type="button" onClick={onAskDelete}>
-          {m.owner_delete()}
+          {m.common_delete()}
         </Button>
       </div>
       {confirmingDelete && (
         <DeleteConfirmation
           title={m.media_delete_from_this_trip({
-            p0: asset.original_filename ?? m.media_this_media_item_2(),
+            name: asset.original_filename ?? m.media_this_item_inline(),
           })}
           description={m.media_links_to_travel_updates_will_also_be_removed()}
           onCancel={onCancelDelete}
@@ -100,7 +100,7 @@ export function AssetView({
                     className="document-select flex items-center gap-3"
                     type="button"
                     onClick={() => onViewCopy(item.id)}
-                    aria-label={m.media_view_copy({ p0: purposeLabel[item.purpose] })}
+                    aria-label={m.media_view_copy({ purpose: purposeLabel[item.purpose] })}
                   >
                     {canPreview && previewUrl && owner ? (
                       <OwnerImage

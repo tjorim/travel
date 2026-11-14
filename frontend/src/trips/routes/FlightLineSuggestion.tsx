@@ -25,17 +25,17 @@ export function FlightLineSuggestion({
     const to = resolvedAreaPoint(values.arrival, areas, locations)[0]?.coordinates;
     const points = from && to ? flightArc(from, to) : null;
     if (!points) {
-      setNotice(textNotice(m.owner_flight_arc_unavailable));
+      setNotice(textNotice(m.routes_flight_arc_unavailable));
       return;
     }
     onChange(points);
-    setNotice(textNotice(m.owner_flight_arc_review));
+    setNotice(textNotice(m.routes_flight_arc_review));
   }
   return (
     <div className="grid gap-2.5">
-      <p className="help">{m.owner_flight_arc_local()}</p>
+      <p className="help">{m.routes_flight_arc_local()}</p>
       <Button type="button" className="secondary compact" onClick={suggest}>
-        {m.owner_suggest_flight_line()}
+        {m.routes_suggest_flight_line()}
       </Button>
       <p className="help" role="status">
         {notice}

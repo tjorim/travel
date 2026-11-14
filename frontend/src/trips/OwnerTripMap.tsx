@@ -37,7 +37,7 @@ export function OwnerTripMap({
   const [snapshot, setSnapshot] = useState<OfflineSnapshot | null>(null);
   const [notice, setNotice] = useFeedback<string>("");
   const savePoint = useOwnerMutation<{ id: string; latitude: number; longitude: number }, Area>({
-    fallback: m.owner_the_area_point_could_not_be_saved,
+    fallback: m.map_the_area_point_could_not_be_saved,
     request: ({ id, latitude, longitude }) => ({
       path: `${tripPath(trip.id, "areas")}/${id}`,
       method: "PATCH",
@@ -72,7 +72,7 @@ export function OwnerTripMap({
       .then(async (blob) => {
         const data = JSON.parse(await blob.text()) as Partial<OfflineSnapshot>;
         if (!Array.isArray(data.points) || !Array.isArray(data.lines))
-          throw new FeedbackError(() => m.owner_invalid_offline_map_copy());
+          throw new FeedbackError(() => m.map_invalid_offline_map_copy());
         if (!cancelled) setSnapshot({ points: data.points, lines: data.lines });
       })
       .catch(() => {
@@ -119,7 +119,7 @@ export function OwnerTripMap({
                     locations.length,
                 ],
                 kind: "derived",
-                detail: m.owner_derived_from_private_locations(),
+                detail: m.common_derived_from_private_locations(),
               },
             ],
           ];
@@ -180,20 +180,20 @@ export function OwnerTripMap({
             : { areaId: point.id };
         const links = [
           ...(point.kind === "area" || point.kind === "derived"
-            ? [{ label: m.owner_open_area(), onOpen: () => openRecord?.("area", point.id) }]
+            ? [{ label: m.map_open_area(), onOpen: () => openRecord?.("area", point.id) }]
             : []),
           ...(point.kind === "location"
-            ? [{ label: m.owner_open_location(), onOpen: () => openRecord?.("location", point.id) }]
+            ? [{ label: m.map_open_location(), onOpen: () => openRecord?.("location", point.id) }]
             : []),
           ...visits.map((visit) => ({
-            label: m.owner_visit_2({ p0: visit.title ?? areaName(visit.area) }),
+            label: m.map_visit_label({ title: visit.title ?? areaName(visit.area) }),
             onOpen: () => openRecord?.("visit", visit.id),
           })),
           ...updates.map((update) => ({
-            label: m.owner_update({
-              p0: update.title,
-              p1: update.media_asset_ids.length
-                ? m.owner_photos_media({ count: update.media_asset_ids.length })
+            label: m.map_update({
+              title: update.title,
+              photos: update.media_asset_ids.length
+                ? m.map_photos_media({ count: update.media_asset_ids.length })
                 : "",
             }),
             onOpen: () => openRecord?.("update", update.id),
@@ -201,15 +201,15 @@ export function OwnerTripMap({
           ...(canCreate
             ? [
                 {
-                  label: m.owner_map_add_visit_here(),
+                  label: m.map_add_visit_here(),
                   onOpen: () => onCreateRecord?.("visit", here),
                 },
                 {
-                  label: m.owner_map_add_stay_here(),
+                  label: m.map_add_stay_here(),
                   onOpen: () => onCreateRecord?.("stay", here),
                 },
                 {
-                  label: m.owner_map_add_route_from_here(),
+                  label: m.map_add_route_from_here(),
                   onOpen: () => onCreateRecord?.("route", here),
                 },
               ]
@@ -218,7 +218,7 @@ export function OwnerTripMap({
         return {
           ...point,
           detail:
-            point.kind === "derived" ? m.owner_derived_from_private_locations() : point.detail,
+            point.kind === "derived" ? m.common_derived_from_private_locations() : point.detail,
           links,
         };
       }),
@@ -243,7 +243,7 @@ export function OwnerTripMap({
           to: route ? areaName(route.arrival_area) : line.to,
           dates: route?.departs_on ?? line.dates,
           links: route
-            ? [{ label: m.owner_open_route(), onOpen: () => openRecord?.("route", route.id) }]
+            ? [{ label: m.map_open_route(), onOpen: () => openRecord?.("route", route.id) }]
             : [],
           transport: route?.mode ?? line.transport,
         };
@@ -254,7 +254,7 @@ export function OwnerTripMap({
   async function toggleOffline() {
     if (offline.isPinned("route_data", trip.id)) {
       await offline.removeByResource("route_data", trip.id);
-      setNotice(textNotice(() => m.owner_map_and_route_data_are_no_longer_available_offline()));
+      setNotice(textNotice(() => m.map_and_route_data_are_no_longer_available_offline()));
       return;
     }
     await offline.pin({
@@ -267,7 +267,7 @@ export function OwnerTripMap({
       },
       resourceId: trip.id,
       metadataUrl: `/api/trips/${trip.id}/offline-map`,
-      title: m.owner_map_and_route({ p0: trip.title }),
+      title: m.map_and_route({ trip: trip.title }),
       contentType: "application/json",
       bytes: new TextEncoder().encode(
         JSON.stringify({
@@ -281,20 +281,16 @@ export function OwnerTripMap({
         }),
       ).buffer as ArrayBuffer,
     });
-    setNotice(
-      textNotice(() =>
-        m.owner_map_and_route_data_are_saved_offline_on_this_device_map_tiles_are_not_co(),
-      ),
-    );
+    setNotice(textNotice(() => m.map_offline_saved_notice()));
   }
 
   const readError = queries.find((query) => query.isError)?.error;
   const status =
     notice ||
     (snapshot
-      ? m.owner_you_are_using_the_deliberately_saved_offline_map_and_route_data_map_tile()
+      ? m.map_offline_in_use_notice()
       : unavailable
-        ? errorMessage(readError, m.owner_map_data_could_not_be_loaded)
+        ? errorMessage(readError, m.map_data_could_not_be_loaded)
         : "");
 
   return (
@@ -313,9 +309,9 @@ export function OwnerTripMap({
               longitude: point.coordinates[0],
             })
             .then(
-              () => setNotice(textNotice(() => m.owner_area_point_saved())),
+              () => setNotice(textNotice(() => m.map_area_point_saved())),
               (error: unknown) =>
-                setNotice(errorNotice(error, m.owner_the_area_point_could_not_be_saved)),
+                setNotice(errorNotice(error, m.map_the_area_point_could_not_be_saved)),
             )
         }
       />
@@ -326,18 +322,16 @@ export function OwnerTripMap({
           disabled={displayedPoints.length === 0 && lines.length === 0}
           onClick={() =>
             void toggleOffline().catch((error: unknown) =>
-              setNotice(errorNotice(error, m.owner_the_map_data_could_not_be_saved_offline)),
+              setNotice(errorNotice(error, m.map_the_map_data_could_not_be_saved_offline)),
             )
           }
         >
           {offline.isPinned("route_data", trip.id)
-            ? m.owner_remove_offline_copy()
-            : m.owner_save_map_offline()}
+            ? m.common_remove_offline_copy()
+            : m.map_save_map_offline()}
         </Button>
       </div>
-      <p className="help">
-        {m.owner_only_the_private_geojson_map_data_are_deliberately_saved_map_tiles_are_n()}
-      </p>
+      <p className="help">{m.map_offline_geojson_notice()}</p>
       {status && (
         <p className="help" role="status">
           {status}

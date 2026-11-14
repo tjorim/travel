@@ -140,33 +140,33 @@ export function utcOffsetMinutes(instant: string, timeZone: string | null): numb
 
 /** "7 u later dan hier", "1 u 30 min eerder dan hier" or "zelfde tijd als hier". */
 export function offsetLabel(minutes: number, compact = false): string {
-  if (minutes === 0) return m.owner_same_time_as_here();
+  if (minutes === 0) return m.dates_same_time_as_here();
   const hours = Math.floor(Math.abs(minutes) / 60),
     rest = Math.abs(minutes) % 60;
   if (compact) {
     if (minutes > 0)
       return hours && rest
-        ? m.owner_offset_short_ahead({ hours, minutes: rest })
+        ? m.dates_offset_short_ahead({ hours, minutes: rest })
         : hours
-          ? m.owner_offset_hours_short_ahead({ hours })
-          : m.owner_offset_minutes_short_ahead({ minutes: rest });
+          ? m.dates_offset_hours_short_ahead({ hours })
+          : m.dates_offset_minutes_short_ahead({ minutes: rest });
     return hours && rest
-      ? m.owner_offset_short_behind({ hours, minutes: rest })
+      ? m.dates_offset_short_behind({ hours, minutes: rest })
       : hours
-        ? m.owner_offset_hours_short_behind({ hours })
-        : m.owner_offset_minutes_short_behind({ minutes: rest });
+        ? m.dates_offset_hours_short_behind({ hours })
+        : m.dates_offset_minutes_short_behind({ minutes: rest });
   }
   if (minutes > 0)
     return hours && rest
-      ? m.owner_offset_ahead({ hours, minutes: rest })
+      ? m.dates_offset_ahead({ hours, minutes: rest })
       : hours
-        ? m.owner_offset_hours_ahead({ hours })
-        : m.owner_offset_minutes_ahead({ minutes: rest });
+        ? m.dates_offset_hours_ahead({ hours })
+        : m.dates_offset_minutes_ahead({ minutes: rest });
   return hours && rest
-    ? m.owner_offset_behind({ hours, minutes: rest })
+    ? m.dates_offset_behind({ hours, minutes: rest })
     : hours
-      ? m.owner_offset_hours_behind({ hours })
-      : m.owner_offset_minutes_behind({ minutes: rest });
+      ? m.dates_offset_hours_behind({ hours })
+      : m.dates_offset_minutes_behind({ minutes: rest });
 }
 
 export function localDateTime(value = new Date()): string {

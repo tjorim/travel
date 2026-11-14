@@ -50,7 +50,7 @@ for (const locale of ["nl", "en"] as const) {
         name: message(locale, "sharing_what_everyone_can_see"),
       });
       await scope.getByRole("checkbox", { name: message(locale, "numbers_days") }).check();
-      const summary = scope.getByRole("checkbox", { name: message(locale, "owner_summary") });
+      const summary = scope.getByRole("checkbox", { name: message(locale, "common_summary") });
       await expect(summary).toHaveAttribute("aria-checked", "true");
       await summary.click();
       await expect(summary).toHaveAttribute("aria-checked", "false");
@@ -74,8 +74,8 @@ for (const locale of ["nl", "en"] as const) {
       await dialog.screenshot({ path: testInfo.outputPath("numbers-preview.png") });
       await dialog
         .getByRole("button", {
-          name: message(locale, "owner_close").replace(
-            "{p0}",
+          name: message(locale, "records_close_named").replace(
+            "{title}",
             message(locale, "publication_public_preview"),
           ),
         })
@@ -86,7 +86,9 @@ for (const locale of ["nl", "en"] as const) {
       await page.getByRole("link", { name: message(locale, "trips"), exact: true }).click();
       const prompt = page.getByRole("alertdialog");
       await expect(prompt).toBeVisible();
-      await prompt.getByRole("button", { name: message(locale, "owner_continue_editing") }).click();
+      await prompt
+        .getByRole("button", { name: message(locale, "records_continue_editing") })
+        .click();
       await expect(summary).toHaveAttribute("aria-checked", "false");
       await expect(page).toHaveURL(/\/sharing$/);
     });

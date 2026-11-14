@@ -266,7 +266,7 @@ it("renders plural counts and retained local offline errors in either language",
       expect(m.media_imported_count({ count })).toContain(
         `${count} ${count === 1 ? "item" : "items"}`,
       );
-      expect(m.publication_count_visits({ count })).toBe(
+      expect(m.visits_count({ count })).toBe(
         `${count} ${locale === "en" ? (count === 1 ? "visit" : "visits") : count === 1 ? "bezoek" : "bezoeken"}`,
       );
     }

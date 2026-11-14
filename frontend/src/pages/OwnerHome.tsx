@@ -41,7 +41,7 @@ type TripSnapshot = {
 };
 
 function nextAction(trip: TripSummary, snapshot: TripSnapshot): string {
-  if (!trip.starts_on) return m.owner_choose_travel_dates_and_a_destination_to_start_planning();
+  if (!trip.starts_on) return m.home_first_trip_hint();
   const openTasks = snapshot.tasks
     .filter((task) => !task.completed_at)
     .sort((left, right) =>
@@ -49,8 +49,8 @@ function nextAction(trip: TripSummary, snapshot: TripSnapshot): string {
     );
   if (openTasks[0])
     return openTasks[0].due_date
-      ? m.owner_task_due({ p0: openTasks[0].title, p1: formatDay(openTasks[0].due_date) })
-      : m.owner_task({ p0: openTasks[0].title });
+      ? m.home_task_due({ title: openTasks[0].title, due: formatDay(openTasks[0].due_date) })
+      : m.home_task_named({ title: openTasks[0].title });
 
   if (trip.starts_on && trip.ends_on && trip.ends_on > trip.starts_on) {
     const nights = Array.from({ length: daysBetween(trip.starts_on, trip.ends_on) }, (_, index) =>
@@ -59,15 +59,15 @@ function nextAction(trip: TripSummary, snapshot: TripSnapshot): string {
     const missing = nights.filter(
       (night) => !snapshot.stays.some((stay) => stayCoversNight(stay, night)),
     ).length;
-    if (missing) return m.owner_missing_nights({ count: missing });
+    if (missing) return m.home_missing_nights({ count: missing });
   }
 
   const unbookedRoute = snapshot.routes.find(
     (route) => routeInPlan(route) && route.status !== "confirmed",
   );
-  if (unbookedRoute) return m.owner_transport_still_needs_to_be_booked_or_confirmed();
-  if (!trip.travel_update_count) return m.owner_capture_your_first_travel_update();
-  return m.owner_open_your_trip_overview();
+  if (unbookedRoute) return m.home_transport_still_needs_to_be_booked_or_confirmed();
+  if (!trip.travel_update_count) return m.home_capture_your_first_travel_update();
+  return m.home_open_your_trip_overview();
 }
 
 export function OwnerHome() {
@@ -131,15 +131,15 @@ export function OwnerHome() {
     notice ??
     (state === "error"
       ? !online
-        ? m.owner_offline()
-        : errorMessage(tripsQuery.error, m.owner_load_error)
+        ? m.home_offline()
+        : errorMessage(tripsQuery.error, m.home_load_error)
       : state === "loading"
         ? m.workspace_loading()
         : partial
           ? m.workspace_partial()
           : trips.length
             ? ""
-            : m.owner_no_trips());
+            : m.home_no_trips());
 
   const day = today();
   const visibleTrips = useMemo(
@@ -183,11 +183,11 @@ export function OwnerHome() {
     return (
       <Alert className="travel-card" variant="error" role="alert">
         <h1 className="max-w-none text-2xl tracking-normal min-[680px]:max-w-none">
-          {m.owner_your_travel_workspace_is_unavailable()}
+          {m.home_your_travel_workspace_is_unavailable()}
         </h1>
         <p>{message}</p>
         <Button type="button" onClick={() => window.location.reload()}>
-          {m.owner_try_again()}
+          {m.retry()}
         </Button>
       </Alert>
     );
@@ -203,26 +203,26 @@ export function OwnerHome() {
     <main className="grid grid-cols-1 gap-travel-section" aria-labelledby="owner-home-title">
       <header className="capture-heading max-[620px]:flex-col max-[620px]:items-start">
         <div>
-          <p className="travel-eyebrow">{m.owner_private_travel_workspace()}</p>
+          <p className="travel-eyebrow">{m.home_private_travel_workspace()}</p>
           <h1
             className="text-travel-title-long leading-travel-title-long tracking-travel-title-long min-[680px]:max-w-travel-reading"
             id="owner-home-title"
           >
-            {m.owner_where_would_you_like_to_continue()}
+            {m.home_where_would_you_like_to_continue()}
           </h1>
           <p className="max-w-travel-reading leading-relaxed text-travel-muted">
-            {m.owner_your_trips_things_to_arrange_and_memories_in_one_quiet_place()}
+            {m.home_tagline()}
           </p>
         </div>
         <div className="button-row">
           <a className="secondary action-link" href="/">
-            {m.owner_view_public_trips()}
+            {m.home_view_public_trips()}
           </a>
         </div>
       </header>
       {!online && (
         <p className="connection offline" role="status">
-          {m.owner_you_are_offline_the_displayed_information_may_be_outdated()}
+          {m.home_offline_stale_notice()}
         </p>
       )}
       <div className="travel-main-split">
@@ -232,10 +232,10 @@ export function OwnerHome() {
         >
           <div className="flex items-baseline justify-between gap-4">
             <h2 className="m-0" id="trip-list-title">
-              {m.owner_now_and_soon()}
+              {m.common_now_and_soon()}
             </h2>
             <Link className="font-bold text-travel-forest" to="/trips">
-              {m.owner_manage_all_trips()}
+              {m.home_manage_all_trips()}
             </Link>
           </div>
           {featured ? (
@@ -263,14 +263,14 @@ export function OwnerHome() {
             <section className="travel-card grid gap-3">
               <h3 className="m-0">
                 {trips.length
-                  ? m.owner_no_active_or_upcoming_trips()
-                  : m.owner_start_your_first_trip()}
+                  ? m.home_no_active_or_upcoming_trips()
+                  : m.home_start_your_first_trip()}
               </h3>
               <p className="m-0">
-                {trips.length ? m.owner_past_trips_remain_available_under_manage() : message}
+                {trips.length ? m.home_past_trips_remain_available_under_manage() : message}
               </p>
               <Link className="action-link w-fit" to="/trips" search={{ new: "1" }}>
-                {m.owner_new_trip()}
+                {m.trips_new_trip()}
               </Link>
             </section>
           )}
@@ -281,16 +281,16 @@ export function OwnerHome() {
             aria-labelledby="inbox-title"
           >
             <h2 className="m-0" id="inbox-title">
-              {m.owner_inbox()}
+              {m.home_inbox()}
             </h2>
-            <p>{m.owner_reminder_count({ count: unreadAlerts.length })}</p>
+            <p>{m.home_reminder_count({ count: unreadAlerts.length })}</p>
             <div className="saved-records">
               {unreadAlerts.map((alert) => (
                 <article className="excerpt-row" key={alert.id}>
                   <div className="grid gap-0.5">
                     <strong>{alert.title}</strong>
                     <span>
-                      {m.owner_reminder_scheduled({
+                      {m.home_reminder_scheduled({
                         trip: alert.trip.title,
                         time: formatInstant(alert.scheduled_for),
                       })}
@@ -304,12 +304,12 @@ export function OwnerHome() {
                         .mutateAsync({ tripId: alert.trip.id, alertId: alert.id })
                         .catch((error: unknown) =>
                           setNotice(
-                            errorNotice(error, m.owner_the_notification_could_not_be_updated),
+                            errorNotice(error, m.common_the_notification_could_not_be_updated),
                           ),
                         )
                     }
                   >
-                    {m.owner_read()}
+                    {m.common_read()}
                   </Button>
                 </article>
               ))}
@@ -322,7 +322,7 @@ export function OwnerHome() {
             aria-labelledby="activity-title"
           >
             <h2 className="m-0" id="activity-title">
-              {m.owner_recently_captured()}
+              {m.home_recently_captured()}
             </h2>
             <div className="saved-records">
               {recentUpdates.map((update) => (

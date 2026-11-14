@@ -21,7 +21,7 @@ export function CopyCreateFields({
       <record.form.Field name="purpose">
         {(field) => (
           <SelectField field={field} label={m.media_purpose()}>
-            <option value="share">{m.owner_sharing()}</option>
+            <option value="share">{m.common_sharing()}</option>
             <option value="owner_preview">{m.media_private_preview()}</option>
           </SelectField>
         )}

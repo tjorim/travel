@@ -169,9 +169,9 @@ export function RecordDialog({
                 <Dialog.Close
                   className={cn(compactButton, secondaryButton, "shrink-0 whitespace-nowrap")}
                   disabled={pending}
-                  aria-label={m.owner_close({ p0: title })}
+                  aria-label={m.records_close_named({ title: title })}
                 >
-                  {m.owner_close_2()}
+                  {m.common_close()}
                 </Dialog.Close>
               </div>
               {localeControl && (
@@ -199,10 +199,10 @@ export function RecordDialog({
                       initialFocus={continueEditing}
                     >
                       <AlertDialog.Title className="m-0">
-                        {m.owner_discard_changes()}
+                        {m.records_discard_changes_title()}
                       </AlertDialog.Title>
                       <AlertDialog.Description className="m-0">
-                        {m.owner_your_unsaved_changes_will_be_lost()}
+                        {m.records_your_unsaved_changes_will_be_lost()}
                       </AlertDialog.Description>
                       <div className={buttonRow}>
                         <Button
@@ -213,13 +213,13 @@ export function RecordDialog({
                             onDismiss();
                           }}
                         >
-                          {m.owner_discard_changes_2()}
+                          {m.records_discard_changes_action()}
                         </Button>
                         <AlertDialog.Close
                           className={cn(compactButton, secondaryButton)}
                           ref={continueEditing}
                         >
-                          {m.owner_continue_editing()}
+                          {m.records_continue_editing()}
                         </AlertDialog.Close>
                       </div>
                     </AlertDialog.Popup>
@@ -254,8 +254,8 @@ type DeleteConfirmationProps = {
 
 export function DeleteConfirmation({
   title,
-  description = m.owner_this_action_cannot_be_undone(),
-  confirmLabel = m.owner_delete(),
+  description = m.records_this_action_cannot_be_undone(),
+  confirmLabel = m.common_delete(),
   onCancel,
   onConfirm,
   cancelLabel = m.cancel(),

@@ -63,7 +63,7 @@ it("keeps source setup disabled and precision opt-in, with guarded edits and del
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   fireEvent.click(screen.getByRole("button", { name: m.live_delete_tracks() }));
   expect(screen.getByRole("alertdialog")).toHaveTextContent(m.live_delete_warning());
-  fireEvent.click(screen.getByRole("button", { name: m.owner_delete() }));
+  fireEvent.click(screen.getByRole("button", { name: m.common_delete() }));
   await waitFor(() => expect(writes).toContain("delete"));
 });
 
@@ -134,7 +134,7 @@ it("shows deletion failure inside the confirmation dialog", async () => {
   ]);
   fireEvent.click(await screen.findByRole("button", { name: m.live_title() }));
   fireEvent.click(await screen.findByRole("button", { name: m.live_delete_tracks() }));
-  fireEvent.click(screen.getByRole("button", { name: m.owner_delete() }));
+  fireEvent.click(screen.getByRole("button", { name: m.common_delete() }));
   await waitFor(() => expect(screen.getByRole("alertdialog")).toHaveTextContent(m.live_failed()));
 });
 

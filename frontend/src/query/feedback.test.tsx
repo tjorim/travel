@@ -122,11 +122,11 @@ it("uses a typed operation fallback for an unknown response, reevaluated in the 
 
 it("uses a current-locale fallback for unexpected diagnostics and preserves explicit local feedback", () => {
   const remote = new Error("Remote diagnostic: Authored confidential input");
-  const local = new FeedbackError(() => m.owner_also_enter_a_start_time());
+  const local = new FeedbackError(() => m.visits_also_enter_a_start_time());
   for (const locale of ["nl", "en"] as const) {
     act(() => changeLocale(locale));
     expect(errorMessage(remote, m.api_operation_failed)).toBe(m.api_operation_failed());
-    expect(errorMessage(local, m.api_operation_failed)).toBe(m.owner_also_enter_a_start_time());
+    expect(errorMessage(local, m.api_operation_failed)).toBe(m.visits_also_enter_a_start_time());
     expect(
       errorMessage(
         new ApiError(m.retry_description, 409, [descriptor("future_code")]),

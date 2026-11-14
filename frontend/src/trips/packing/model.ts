@@ -37,7 +37,11 @@ export const grams = (value: number) =>
     : `${formatNumber(value)} g`;
 export const count = (rows: Item[]) => {
   const packed = rows.filter((item) => item.packed).length;
-  return m.packing_of_packed_to_go({ p0: packed, p1: rows.length, p2: rows.length - packed });
+  return m.packing_of_packed_to_go({
+    packed: packed,
+    total: rows.length,
+    remaining: rows.length - packed,
+  });
 };
 export const bagTypes = () =>
   [

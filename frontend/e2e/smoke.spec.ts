@@ -65,7 +65,7 @@ const screens = (locale: Locale) => [
     path: `/admin/trips/${ownerTrip.id}/plan`,
     owner: true,
     ready: (page: Page) =>
-      page.getByRole("button", { name: new RegExp(`^${message(locale, "owner_agenda")}`) }),
+      page.getByRole("button", { name: new RegExp(`^${message(locale, "agenda_agenda")}`) }),
   },
   {
     name: "owner trip workspace",
@@ -132,12 +132,12 @@ test.describe("owner navigation", () => {
     // The trip header says where you are.
     const here = page.getByRole("navigation", { name: message("en", "breadcrumb") });
     await expect(here.getByRole("link", { name: "Trips" })).toBeVisible();
-    await expect(here.getByText(message("en", "owner_overview"))).toHaveAttribute(
+    await expect(here.getByText(message("en", "workspace_overview"))).toHaveAttribute(
       "aria-current",
       "page",
     );
 
-    await page.getByRole("button", { name: message("en", "owner_capture_in_trip") }).click();
+    await page.getByRole("button", { name: message("en", "feedback_capture_in_trip") }).click();
     await expect(
       page.getByRole("heading", { name: `Capture a moment — ${ownerTrip.title}` }),
     ).toBeVisible();
@@ -145,17 +145,16 @@ test.describe("owner navigation", () => {
 
   test("walks the trip workspace tabs", async ({ page }) => {
     await open(page, `/admin/trips/${ownerTrip.id}`, "en", "light", true);
-    const tabs = page.getByRole("navigation", { name: message("en", "owner_trip_sections") });
-    await expect(tabs.getByRole("link", { name: message("en", "owner_overview") })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    const tabs = page.getByRole("navigation", { name: message("en", "workspace_trip_sections") });
+    await expect(
+      tabs.getByRole("link", { name: message("en", "workspace_overview") }),
+    ).toHaveAttribute("aria-current", "page");
     for (const [key, section] of [
-      ["owner_plan", "plan"],
-      ["owner_prepare", "prepare"],
-      ["owner_packing", "packing"],
-      ["owner_story", "story"],
-      ["owner_sharing", "sharing"],
+      ["workspace_plan", "plan"],
+      ["workspace_prepare", "prepare"],
+      ["packing_packing", "packing"],
+      ["workspace_story", "story"],
+      ["common_sharing", "sharing"],
     ] as const) {
       await tabs.getByRole("link", { name: message("en", key) }).click();
       await expect(page).toHaveURL(new RegExp(`/admin/trips/${ownerTrip.id}/${section}$`));
@@ -180,14 +179,14 @@ test.describe("deferred owner views", () => {
     );
     await nav.getByRole("link", { name: message("en", "library"), exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/library$/);
-    await expect(page.getByRole("alert")).toContainText(message("en", "owner_view_unavailable"));
+    await expect(page.getByRole("alert")).toContainText(message("en", "feedback_view_unavailable"));
     await expect(
       nav.getByRole("link", { name: message("en", "settings"), exact: true }),
     ).toBeVisible();
 
     // A browser remembers a failed import for the life of the page, so recovery is a reload of the same URL.
     blocked = false;
-    await page.getByRole("button", { name: message("en", "owner_view_reload") }).click();
+    await page.getByRole("button", { name: message("en", "feedback_view_reload") }).click();
     await expect(
       page.getByRole("heading", { name: message("en", "library"), level: 2 }),
     ).toBeVisible();
@@ -218,7 +217,7 @@ test.describe("deferred owner views", () => {
 
   test("the jump search opens a block of a tab and scrolls to it", async ({ page }) => {
     await open(page, `/admin/trips/${ownerTrip.id}`, "en", "light", true);
-    const search = page.getByRole("combobox", { name: message("en", "owner_jump_to") });
+    const search = page.getByRole("combobox", { name: message("en", "workspace_jump_to") });
     await search.fill("routes");
     await page.getByRole("option", { name: /Plan › Routes/ }).click();
     await expect(page).toHaveURL(new RegExp(`/admin/trips/${ownerTrip.id}/plan#routes$`));

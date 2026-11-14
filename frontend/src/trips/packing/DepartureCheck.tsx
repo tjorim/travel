@@ -49,14 +49,14 @@ export function DepartureCheck({ bags, items }: { bags: Bag[]; items: Item[] }) 
               );
               return (
                 <li key={bag.id}>
-                  {m.packing_known_line({
-                    p0: bag.name,
-                    p1: count(rows),
-                    p2: grams(known),
-                    p3: bag.weight_limit_g
-                      ? m.packing_limit({ p0: grams(bag.weight_limit_g) })
+                  {m.packing_departure_bag_line({
+                    bag: bag.name,
+                    count: count(rows),
+                    weight: grams(known),
+                    limit: bag.weight_limit_g
+                      ? m.packing_limit({ limit: grams(bag.weight_limit_g) })
                       : "",
-                    p4: rows.some((item) => item.weight_g === null)
+                    note: rows.some((item) => item.weight_g === null)
                       ? m.packing_weight_incomplete()
                       : "",
                   })}
@@ -72,42 +72,40 @@ export function DepartureCheck({ bags, items }: { bags: Bag[]; items: Item[] }) 
             !overweight.length && <p className="font-semibold">{m.packing_ready_to_leave()}</p>}
           {!!unpackedEssentials.length && (
             <p>
-              {m.packing_essential_still_to_pack_line({
-                p0: unpackedEssentials.map((item) => item.label).join(", "),
+              {m.packing_departure_essentials({
+                items: unpackedEssentials.map((item) => item.label).join(", "),
               })}
             </p>
           )}
           {!!unpackedLastMinute.length && (
             <p>
-              {m.packing_on_departure_day_line({
-                p0: unpackedLastMinute.map((item) => item.label).join(", "),
+              {m.packing_departure_last_minute({
+                items: unpackedLastMinute.map((item) => item.label).join(", "),
               })}
             </p>
           )}
           {!!unassigned.length && (
             <p>
-              {m.packing_still_without_a_bag_line({
-                p0: unassigned.map((item) => item.label).join(", "),
+              {m.packing_departure_unassigned({
+                items: unassigned.map((item) => item.label).join(", "),
               })}
             </p>
           )}
           {!!overweight.length && (
             <p>
-              {m.packing_known_weight_above_the_set_limit_unknown_weights_are_not_included_line({
-                p0: overweight.map((bag) => bag.name).join(", "),
+              {m.packing_weight_over_limit_hint({
+                bags: overweight.map((bag) => bag.name).join(", "),
               })}
             </p>
           )}
           {!!conflicts.length && (
             <p>
-              {m.packing_check_your_own_baggage_choice_line({
-                p0: conflicts.map((item) => item.label).join(", "),
+              {m.packing_departure_conflicts({
+                items: conflicts.map((item) => item.label).join(", "),
               })}
             </p>
           )}
-          <p className="text-sm">
-            {m.packing_baggage_flags_are_your_own_notes_not_official_travel_rules()}
-          </p>
+          <p className="text-sm">{m.packing_baggage_flags_hint()}</p>
         </section>
       )}
     </>

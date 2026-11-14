@@ -54,7 +54,7 @@ function stayItems(stay: Stay): AgendaItem[] {
   const base = {
     recordKind: "stay" as const,
     recordId: stay.id,
-    kind: m.owner_stay(),
+    kind: m.common_stay(),
     last: null,
     where: areaName(stay.area),
   };
@@ -118,9 +118,9 @@ export function buildAgendaItems(stays: Stay[], routes: Route[], visits: Visit[]
               id: `route-${route.id}`,
               recordKind: "route",
               recordId: route.id,
-              kind: m.owner_route(),
+              kind: m.common_route(),
               title: routeTitle(route),
-              text: `${m.owner_route()}: ${routeTitle(route)}`,
+              text: `${m.common_route()}: ${routeTitle(route)}`,
               first: route.departs_on,
               last: route.arrives_at ? localDate(route.arrives_at, route.arrival_timezone) : null,
               through: route.arrives_at
@@ -141,9 +141,9 @@ export function buildAgendaItems(stays: Stay[], routes: Route[], visits: Visit[]
               id: `visit-${visit.id}`,
               recordKind: "visit",
               recordId: visit.id,
-              kind: m.owner_visit(),
+              kind: m.common_visit(),
               title: visitTitle(visit),
-              text: `${m.owner_visit()}: ${visitTitle(visit)}`,
+              text: `${m.common_visit()}: ${visitTitle(visit)}`,
               first: visit.starts_on,
               last: visit.ends_on,
               through: visit.ends_on,
@@ -183,20 +183,20 @@ function DayAddMenu({
       <DropdownMenuTrigger
         ref={trigger}
         className="secondary compact inline-flex min-h-11 cursor-pointer items-center gap-1 rounded-lg px-2.75 py-2 text-sm font-bold"
-        aria-label={m.owner_agenda_add_to_day({ day: formatDayRange(day, null) })}
+        aria-label={m.agenda_add_to_day({ day: formatDayRange(day, null) })}
       >
         <PlusIcon className="size-4" aria-hidden="true" />
-        {m.owner_agenda_add()}
+        {m.common_add()}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => start("visit")}>
-          {m.owner_agenda_add_visit_on_day()}
+          {m.agenda_add_visit_on_day()}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => start("stay")}>
-          {m.owner_agenda_add_stay_from_day()}
+          {m.agenda_add_stay_from_day()}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => start("route")}>
-          {m.owner_agenda_add_route_on_day()}
+          {m.agenda_add_route_on_day()}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -244,9 +244,9 @@ export function AgendaView({
         id: `visit-${visit.id}`,
         recordKind: "visit",
         recordId: visit.id,
-        kind: m.owner_visit(),
+        kind: m.common_visit(),
         title: visitTitle(visit),
-        text: `${m.owner_visit()}: ${visitTitle(visit)}`,
+        text: `${m.common_visit()}: ${visitTitle(visit)}`,
         first: "",
         last: null,
         through: null,
@@ -259,9 +259,9 @@ export function AgendaView({
         id: `route-${route.id}`,
         recordKind: "route",
         recordId: route.id,
-        kind: m.owner_route(),
+        kind: m.common_route(),
         title: routeTitle(route),
-        text: `${m.owner_route()}: ${routeTitle(route)}`,
+        text: `${m.common_route()}: ${routeTitle(route)}`,
         first: "",
         last: null,
         through: null,
@@ -296,14 +296,12 @@ export function AgendaView({
     <section className="travel-card manager" aria-labelledby="agenda-title">
       <div className="capture-heading">
         <div>
-          <h3 id="agenda-title">{m.owner_agenda()}</h3>
-          <p>
-            {m.owner_everything_by_day_in_order_anything_without_a_day_is_listed_at_the_botto()}
-          </p>
+          <h3 id="agenda-title">{m.agenda_agenda()}</h3>
+          <p>{m.agenda_intro()}</p>
         </div>
       </div>
       {items.length === 0 && undated.length === 0 ? (
-        <p>{m.owner_nothing_in_the_agenda_yet_add_a_stay_route_or_visit_to_see_it_here()}</p>
+        <p>{m.agenda_empty()}</p>
       ) : (
         <div className="saved-records mt-0.5">
           {[...days].map(([day, entries]) => (
@@ -323,7 +321,7 @@ export function AgendaView({
           ))}
           {undated.length > 0 && (
             <article className="excerpt-row" data-stacked="">
-              <strong>{m.owner_no_day_yet()}</strong>
+              <strong>{m.common_no_day_yet()}</strong>
               <ul className="m-0 grid gap-1.5 pl-5">{undated.map(row)}</ul>
             </article>
           )}

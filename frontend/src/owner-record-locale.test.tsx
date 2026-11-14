@@ -88,7 +88,7 @@ it("keeps a pending save and submitted authored values across switches", async (
 
 it("renders retained success notices, enums and plural messages in the current locale", () => {
   function Notice() {
-    const [notice] = useFeedback<string>(textNotice(m.owner_trip_saved));
+    const [notice] = useFeedback<string>(textNotice(m.trips_trip_saved));
     return <p>{notice}</p>;
   }
   renderWithOwner(<Notice />);
@@ -103,11 +103,11 @@ it("renders retained success notices, enums and plural messages in the current l
       locale === "en" ? "Zoom in" : "Inzoomen",
     );
     for (const count of [0, 1, 3]) {
-      expect(m.owner_night_count({ count })).toBe(
+      expect(m.common_night_count({ count })).toBe(
         `${count} ${locale === "en" ? (count === 1 ? "night" : "nights") : count === 1 ? "nacht" : "nachten"}`,
       );
-      expect(m.owner_reminder_count({ count })).toContain(String(count));
-      expect(m.owner_missing_nights({ count })).toContain(String(count));
+      expect(m.home_reminder_count({ count })).toContain(String(count));
+      expect(m.home_missing_nights({ count })).toContain(String(count));
     }
   }
 });

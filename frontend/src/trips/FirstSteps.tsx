@@ -23,18 +23,18 @@ export function FirstSteps({ trip, areas }: { trip: Trip; areas: Area[] }) {
   return (
     <section className="travel-card grid gap-3" aria-labelledby="first-steps-title">
       <h2 id="first-steps-title" className="m-0 text-travel-card-title leading-tight">
-        {m.owner_first_steps_title()}
+        {m.trips_first_steps_title()}
       </h2>
-      <p>{m.owner_first_steps_text()}</p>
+      <p>{m.trips_first_steps_text()}</p>
       <div className="button-row">
         <Link className="action-link" to={to} hash="areas">
-          {m.owner_first_steps_places()}
+          {m.trips_first_steps_places()}
         </Link>
         <Link className="secondary action-link" to={to} hash="stays">
-          {m.owner_first_steps_stay()}
+          {m.trips_first_steps_stay()}
         </Link>
         <Link className="secondary action-link" to={to} hash="routes">
-          {m.owner_first_steps_route()}
+          {m.trips_first_steps_route()}
         </Link>
       </div>
     </section>

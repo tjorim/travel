@@ -50,11 +50,7 @@ export function RouteManager({
   const documents = documentsQuery.data ?? [];
   const dialog = useRecordDialog(routes);
   useDialogFocus(focusId, dialog.inspect);
-  const [message, setMessage] = useFeedback<string>(
-    textNotice(() =>
-      m.owner_a_route_connects_two_areas_a_day_stations_times_bookings_and_a_drawn_lin(),
-    ),
-  );
+  const [message, setMessage] = useFeedback<string>(textNotice(() => m.routes_intro()));
   const [deleteTarget, setDeleteTarget] = useState<Route | null>(null);
   // An end's location is only rewritten when one of its fields differs from what the editor opened with.
   const baseline = useRef<Values>(blank());
@@ -68,22 +64,22 @@ export function RouteManager({
       for (const alternative of alternatives)
         await save.mutateAsync({ id: alternative.id, payload: { status: "cancelled" } });
       dialog.close();
-      setMessage(textNotice(() => m.owner_route_alternatives_cancelled()));
+      setMessage(textNotice(() => m.alternatives_cancelled_notice()));
     } catch (error) {
-      dialog.setError(errorNotice(error, m.owner_the_route_could_not_be_saved));
+      dialog.setError(errorNotice(error, m.routes_the_route_could_not_be_saved));
     }
   }
 
   const record = useRecordForm<Values>({
     defaultValues: blank(),
-    fallback: m.owner_the_route_could_not_be_saved,
+    fallback: m.routes_the_route_could_not_be_saved,
     serverFields,
     submit: async (values) => {
       const id = dialog.editingId ?? null;
       if (Boolean(values.departsAt) !== Boolean(values.arrivesAt))
-        throw new FeedbackError(() => m.owner_enter_both_departure_and_arrival_times_or_neither());
+        throw new FeedbackError(() => m.routes_enter_both_departure_and_arrival_times_or_neither());
       if (values.departsAt && (!values.departureTimezone || !values.arrivalTimezone))
-        throw new FeedbackError(() => m.owner_enter_both_the_departure_and_arrival_time_zones());
+        throw new FeedbackError(() => m.routes_enter_both_the_departure_and_arrival_time_zones());
       // A departure time fixes the day: its local date there.
       if (
         values.departsAt &&
@@ -91,8 +87,8 @@ export function RouteManager({
         values.departsAt.slice(0, 10) !== values.departsOn
       )
         throw new FeedbackError(() =>
-          m.owner_the_departure_time_falls_on_not_on_the_selected_day_change_the_day_or_ti({
-            p0: formatDay(values.departsAt.slice(0, 10)),
+          m.routes_departure_day_mismatch({
+            day: formatDay(values.departsAt.slice(0, 10)),
           }),
         );
       const line = values.coordinates.trim() ? parseCoordinates(values.coordinates) : null;
@@ -129,7 +125,7 @@ export function RouteManager({
     },
     onSuccess: () => {
       close();
-      setMessage(textNotice(() => m.owner_route_saved()));
+      setMessage(textNotice(() => m.routes_route_saved()));
     },
   });
 
@@ -157,11 +153,11 @@ export function RouteManager({
       () => {
         close();
         setDeleteTarget(null);
-        setMessage(textNotice(() => m.owner_route_deleted()));
+        setMessage(textNotice(() => m.routes_route_deleted()));
       },
       (error: unknown) => {
         setDeleteTarget(null);
-        dialog.setError(errorNotice(error, m.owner_the_route_could_not_be_deleted));
+        dialog.setError(errorNotice(error, m.routes_the_route_could_not_be_deleted));
       },
     );
   }
@@ -179,26 +175,26 @@ export function RouteManager({
     <section className="travel-card manager" aria-labelledby="routes-title">
       <div className="capture-heading">
         <div>
-          <h3 id="routes-title">{m.owner_routes()}</h3>
-          <p>
-            {m.owner_how_you_travel_from_one_area_to_another_flight_train_bus_bike_stations_t()}
-          </p>
+          <h3 id="routes-title">{m.common_routes()}</h3>
+          <p>{m.routes_definition_hint()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
-          {m.owner_new_route()}
+          {m.routes_new_route()}
         </Button>
       </div>
       <p className="help" role="status">
         {readError
-          ? errorMessage(readError, m.owner_your_routes_could_not_be_loaded)
+          ? errorMessage(readError, m.routes_your_routes_could_not_be_loaded)
           : routesQuery.isPending
-            ? m.owner_loading_your_routes()
+            ? m.routes_loading_your_routes()
             : message}
       </p>
       <AlternativesPanel tripId={trip.id} kind="route" records={routes} onOpen={dialog.inspect} />
       <RecordDialog
         open={editing || selected !== null}
-        title={editing ? (editingId ? m.owner_edit_route() : m.owner_add_route()) : m.owner_route()}
+        title={
+          editing ? (editingId ? m.routes_edit_route() : m.routes_add_route()) : m.common_route()
+        }
         dirty={editing && record.dirty}
         error={dialog.error}
         onDismiss={close}
@@ -231,7 +227,7 @@ export function RouteManager({
       {routes.length > 0 && <RouteList routes={routes} onInspect={dialog.inspect} />}
       {deleteTarget && (
         <DeleteConfirmation
-          title={m.owner_delete_route({ p0: routeTitle(deleteTarget) })}
+          title={m.routes_delete_route({ title: routeTitle(deleteTarget) })}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={() => confirmDelete(deleteTarget)}
         />

@@ -128,16 +128,16 @@ export async function completeSignIn(
   const stored = sessionStorage.getItem(transactionKey);
   sessionStorage.removeItem(transactionKey);
   if (!state || !stored)
-    throw new FeedbackError(() => m.owner_the_sign_in_session_is_missing_or_has_expired());
+    throw new FeedbackError(() => m.session_the_sign_in_session_is_missing_or_has_expired());
 
   let transaction: PkceTransaction;
   try {
     transaction = JSON.parse(stored) as PkceTransaction;
   } catch {
-    throw new FeedbackError(() => m.owner_the_sign_in_session_is_invalid());
+    throw new FeedbackError(() => m.session_the_sign_in_session_is_invalid());
   }
   if (transaction.state !== state || !transaction.codeVerifier)
-    throw new FeedbackError(() => m.owner_the_sign_in_session_does_not_match());
+    throw new FeedbackError(() => m.session_the_sign_in_session_does_not_match());
   if (error) {
     sessionStorage.removeItem(silentRestoreKey);
     if (transaction.silent) {
@@ -151,13 +151,11 @@ export async function completeSignIn(
       // There is no longer a Keycloak SSO session to recover. Do not retry on
       // every rendered route; the owner can choose the normal sign-in action.
       sessionStorage.setItem(silentRestoreKey, "1");
-      throw new FeedbackError(() =>
-        m.owner_your_sign_in_session_has_expired_sign_in_again_to_continue(),
-      );
+      throw new FeedbackError(() => m.session_expired_notice());
     }
-    throw new FeedbackError(() => m.owner_sign_in_was_cancelled_or_denied());
+    throw new FeedbackError(() => m.session_sign_in_was_cancelled_or_denied());
   }
-  if (!code) throw new FeedbackError(() => m.owner_the_sign_in_code_is_missing_or_has_expired());
+  if (!code) throw new FeedbackError(() => m.session_the_sign_in_code_is_missing_or_has_expired());
 
   const generation = sessionGeneration;
   const expectedSubject = renewalSubject;
@@ -173,7 +171,7 @@ export async function completeSignIn(
     }),
   });
   if (!response.ok)
-    throw new FeedbackError(() => m.owner_the_sign_in_code_could_not_be_exchanged());
+    throw new FeedbackError(() => m.session_the_sign_in_code_could_not_be_exchanged());
 
   const token = (await response.json()) as {
     access_token?: unknown;
@@ -181,9 +179,7 @@ export async function completeSignIn(
     id_token?: unknown;
   };
   if (typeof token.access_token !== "string" || typeof token.expires_in !== "number") {
-    throw new FeedbackError(() =>
-      m.owner_the_identity_server_did_not_return_a_valid_access_token(),
-    );
+    throw new FeedbackError(() => m.session_invalid_token_error());
   }
   const session: OwnerSession = {
     accessToken: token.access_token,
@@ -287,7 +283,7 @@ export function renewSession(interactive = false): Promise<OwnerSession> {
     if (frame) {
       frame.hidden = true;
       frame.name = "travel-session-renewal";
-      frame.title = m.owner_sign_in();
+      frame.title = m.sign_in();
       document.body.append(frame);
     }
     const child = popup ?? frame?.contentWindow;

@@ -78,11 +78,7 @@ export function PackingOfflineView({
     const timer = window.setTimeout(
       () => {
         setSnapshot(null);
-        setError(
-          textNotice(
-            m.offline_the_offline_validity_period_of_this_copy_has_expired_reconnect_to_the_in,
-          ),
-        );
+        setError(textNotice(m.offline_copy_expired_notice));
       },
       Math.max(0, copy.leaseExpiresAt - Date.now()),
     );
@@ -114,18 +110,16 @@ export function PackingOfflineView({
   return (
     <section
       className="space-y-4"
-      aria-label={m.offline_packing_list_2({ p0: snapshot.list.name })}
+      aria-label={m.offline_packing_list_named({ name: snapshot.list.name })}
     >
       <div>
         <h3 className="text-xl font-semibold">{snapshot.list.name}</h3>
         <p role="status" className="text-sm">
-          {m.offline_copy_saved_on_line({
-            p0: formatInstant(new Date(snapshot.savedAt).toISOString()),
+          {m.offline_copy_saved_on({
+            date: formatInstant(new Date(snapshot.savedAt).toISOString()),
           })}
         </p>
-        <p className="text-sm">
-          {m.packing_view_only_checking_off_moving_and_editing_require_a_connection()}
-        </p>
+        <p className="text-sm">{m.packing_view_only_notice()}</p>
       </div>
       <div className="flex flex-wrap items-end gap-3">
         <ChoiceGroup
@@ -150,7 +144,7 @@ export function PackingOfflineView({
         />
         <Field className="contents">
           <FieldLabel>
-            {m.owner_search()}{" "}
+            {m.packing_search()}{" "}
             <Input
               type="search"
               value={search}
@@ -181,7 +175,7 @@ export function PackingOfflineView({
                         checked={item.packed}
                         disabled
                         readOnly
-                        aria-label={m.packing_packed_3({ p0: item.label })}
+                        aria-label={m.packing_packed_count({ name: item.label })}
                       />
                       <span>
                         <strong className={item.packed ? "line-through opacity-60" : ""}>

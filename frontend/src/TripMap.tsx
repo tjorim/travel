@@ -359,22 +359,16 @@ export function TripMap({
     }
     try {
       if (!window.WebGLRenderingContext) {
-        setError(
-          textNotice(() => m.owner_this_browser_does_not_support_webgl_use_the_route_in_words()),
-        );
+        setError(textNotice(() => m.map_webgl_unsupported()));
         return;
       }
       const probe = document.createElement("canvas");
       if (!probe.getContext("webgl2") && !probe.getContext("webgl")) {
-        setError(
-          textNotice(() => m.owner_this_browser_does_not_support_webgl_use_the_route_in_words()),
-        );
+        setError(textNotice(() => m.map_webgl_unsupported()));
         return;
       }
     } catch {
-      setError(
-        textNotice(() => m.owner_the_interactive_map_is_unavailable_use_the_route_in_words()),
-      );
+      setError(textNotice(() => m.map_unavailable()));
       return;
     }
     void Promise.all([import("maplibre-gl"), loadMapStyle(styleUrl, controller.signal, theme)])
@@ -584,11 +578,7 @@ export function TripMap({
               setTerrain(false);
               setSatellite(false);
               setGlobe(false);
-              setError(
-                textNotice(() =>
-                  m.owner_the_interactive_map_is_unavailable_use_the_route_in_words(),
-                ),
-              );
+              setError(textNotice(() => m.map_unavailable()));
             }
           } else fitToData(instance, maplibregl.LngLatBounds, points, lines);
           loaded = true;
@@ -654,16 +644,8 @@ export function TripMap({
         });
         // Only a failure that leaves the owner without a map gets a notice; see mapErrorReporter.
         const reporter = mapErrorReporter({
-          style: () =>
-            setError(
-              textNotice(() => m.owner_the_map_style_could_not_be_loaded_use_the_route_in_words()),
-            ),
-          tiles: () =>
-            setError(
-              textNotice(() =>
-                m.owner_map_tiles_could_not_be_fully_loaded_the_route_in_words_remains_available(),
-              ),
-            ),
+          style: () => setError(textNotice(() => m.map_style_load_error())),
+          tiles: () => setError(textNotice(() => m.map_tiles_incomplete())),
           clear: () => setError(""),
         });
         created.on("sourcedata", (event) => {
@@ -674,10 +656,7 @@ export function TripMap({
         });
       })
       .catch(() => {
-        if (!disposed)
-          setError(
-            textNotice(() => m.owner_the_interactive_map_is_unavailable_use_the_route_in_words()),
-          );
+        if (!disposed) setError(textNotice(() => m.map_unavailable()));
       });
     return () => {
       disposed = true;
@@ -794,10 +773,12 @@ export function TripMap({
       setTerrain(!terrain);
       setError("");
     } catch {
-      setError(
-        textNotice(() => m.owner_3d_terrain_could_not_be_loaded_the_route_map_remains_available()),
-      );
+      setError(textNotice(() => m.map_terrain_load_error()));
     }
+  }
+
+  function viewLabel(view: string, on: boolean) {
+    return on ? m.map_view_on({ view }) : view;
   }
 
   function toggleGlobe() {
@@ -808,11 +789,7 @@ export function TripMap({
       setGlobe(!globe);
       setError("");
     } catch {
-      setError(
-        textNotice(() =>
-          m.owner_the_globe_view_could_not_be_shown_the_route_map_remains_available(),
-        ),
-      );
+      setError(textNotice(() => m.map_globe_load_error()));
     }
   }
 
@@ -824,11 +801,7 @@ export function TripMap({
       setSatellite(!satellite);
       setError("");
     } catch {
-      setError(
-        textNotice(() =>
-          m.owner_satellite_imagery_could_not_be_loaded_the_route_map_remains_available(),
-        ),
-      );
+      setError(textNotice(() => m.map_satellite_load_error()));
     }
   }
 
@@ -900,18 +873,18 @@ export function TripMap({
     return (
       <section className="travel-card grid min-w-0 gap-3.5">
         <Heading level={headingLevel} className="m-0">
-          {m.owner_map()}
+          {m.map_title()}
         </Heading>
-        <p>{m.owner_no_map_coordinates_are_available_for_this_trip_yet()}</p>
+        <p>{m.map_no_map_coordinates_are_available_for_this_trip_yet()}</p>
       </section>
     );
   return (
     <section
       className={cn("grid min-w-0 gap-3.5", bare ? "min-[1100px]:travel-card" : "travel-card")}
-      aria-label={m.owner_trip_map()}
+      aria-label={m.map_trip_map()}
     >
       <Heading level={headingLevel} className={cn("m-0", bare && "max-[1099px]:sr-only")}>
-        {m.owner_map()}
+        {m.map_title()}
       </Heading>
       <div
         className={cn(
@@ -926,7 +899,7 @@ export function TripMap({
           className="size-full"
           // A group, not an image: the map library puts a focusable canvas and marker controls inside it.
           role="group"
-          aria-label={m.owner_map_with_points_and_routes()}
+          aria-label={m.map_with_points_and_routes()}
         />
         {hovered && (
           <span
@@ -938,7 +911,7 @@ export function TripMap({
         )}
         {error && !ready && (
           <p className="absolute inset-0 m-0 grid place-content-center bg-travel-map-bg p-6 text-center text-travel-muted">
-            {m.owner_interactive_map_unavailable_use_the_route_in_words_and_the_point_buttons()}
+            {m.map_unavailable_point_buttons()}
           </p>
         )}
         <div className="absolute right-0 bottom-0 z-2 max-w-full bg-travel-surface/90 px-1.5 py-0.75 text-xs text-travel-ink [&_a]:text-inherit">
@@ -981,37 +954,28 @@ export function TripMap({
       )}
       <div className="button-row">
         <Button className="secondary compact" type="button" onClick={resetFocus}>
-          {m.owner_show_whole_trip()}
+          {m.map_show_whole_trip()}
         </Button>
         <ToggleGroup
           multiple
-          aria-label={m.owner_map_view()}
+          aria-label={m.map_view()}
           value={[terrain && "terrain", satellite && "satellite", globe && "globe"].filter(
             (name) => typeof name === "string",
           )}
         >
           <ToggleGroupItem value="terrain" disabled={!ready} onClick={toggleTerrain}>
-            {perspective?.label ?? m.owner_3d_terrain()}
-            {terrain && m.owner_on()}
+            {viewLabel(perspective?.label ?? m.map_3d_terrain(), terrain)}
           </ToggleGroupItem>
           <ToggleGroupItem value="satellite" disabled={!ready} onClick={toggleSatellite}>
-            {m.owner_satellite()}
-            {satellite && m.owner_on()}
+            {viewLabel(m.map_satellite(), satellite)}
           </ToggleGroupItem>
           <ToggleGroupItem value="globe" disabled={!ready} onClick={toggleGlobe}>
-            {m.owner_globe()}
-            {globe && m.owner_on()}
+            {viewLabel(m.map_globe(), globe)}
           </ToggleGroupItem>
         </ToggleGroup>
       </div>
-      {satellite && (
-        <p className="help">
-          {m.owner_zoom_in_on_a_city_to_see_the_3d_buildings_above_the_satellite_imagery()}
-        </p>
-      )}
-      <p className="m-0 text-sm">
-        {m.owner_map_tiles_show_the_viewed_region_to_openfreemap_when_enabled_3d_terrain()}
-      </p>
+      {satellite && <p className="help">{m.map_buildings_zoom_hint()}</p>}
+      <p className="m-0 text-sm">{m.map_provider_privacy_notice()}</p>
       {(selectedPoint || selectedLine) && (
         <div
           className="rounded-travel-media border border-travel-border bg-travel-map-detail px-4 py-3.5 [&_a]:font-bold [&_a]:text-travel-forest [&_p]:mt-1.25 [&_p]:mb-0 [&_ul]:mt-2.5 [&_ul]:mb-0 [&_ul]:flex [&_ul]:list-none [&_ul]:flex-wrap [&_ul]:gap-x-4 [&_ul]:gap-y-2 [&_ul]:p-0"
@@ -1020,8 +984,8 @@ export function TripMap({
           <strong>{selectedPoint?.label ?? selectedLine?.label}</strong>
           {(selectedLine?.from || selectedLine?.to) && (
             <p>
-              {selectedLine.from ?? m.owner_unknown_departure()} →{" "}
-              {selectedLine.to ?? m.owner_unknown_arrival()}
+              {selectedLine.from ?? m.map_unknown_departure()} →{" "}
+              {selectedLine.to ?? m.map_unknown_arrival()}
             </p>
           )}
           {selectedLine?.transport && <p>{ROUTE_MODE_LABELS[selectedLine.transport]}</p>}
@@ -1053,7 +1017,7 @@ export function TripMap({
               type="button"
               onClick={() => onUseDerived(selectedPoint)}
             >
-              {m.owner_use_as_point()}
+              {m.map_use_as_point()}
             </Button>
           )}
         </div>

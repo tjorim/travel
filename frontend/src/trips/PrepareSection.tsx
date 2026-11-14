@@ -41,7 +41,7 @@ export default function PrepareSection({ trip, recordFocus }: SectionProps) {
       >
         <DocumentManager trip={trip} focusId={focusFor(recordFocus, "document")} />
         <LinkedLibraryDocuments tripId={trip.id} />
-        {!linkedDocuments?.length && <HomeLink to="/library">{m.owner_go_to_library()}</HomeLink>}
+        {!linkedDocuments?.length && <HomeLink to="/library">{m.common_go_to_library()}</HomeLink>}
       </SectionAccordion>
     </>
   );

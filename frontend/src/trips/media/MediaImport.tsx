@@ -31,7 +31,7 @@ export function MediaImport({
                 {m.media_provider_settings()} <Link to="/settings">{m.settings()}</Link>
               </>
             ) : (
-              m.media_provider_import_is_not_available_on_this_server_yet_you_can_upload_media()
+              m.media_provider_unavailable_hint()
             )}
           </p>
         </div>
@@ -47,15 +47,17 @@ export function MediaImport({
               title={item.connected ? undefined : m.media_connect_in_settings_first()}
               onClick={() => onStart(item.provider)}
             >
-              {m.media_choose_in_line({ p0: providerLabel[item.provider] })}
+              {m.media_provider_choose({ provider: providerLabel[item.provider] })}
             </Button>
           ))}
         </div>
       )}
       {importSession && (
         <aside className="grid gap-2.25 rounded-travel-media border border-travel-warning-border bg-travel-warning-surface p-3.5 text-sm leading-normal text-travel-warning-ink [&_.action-link]:w-fit [&_button]:w-fit">
-          <strong>{m.media_selection_line({ p0: providerLabel[importSession.provider] })}</strong>
-          <span>{m.media_first_choose_only_the_media_you_want_to_copy_to_this_private_trip()}</span>
+          <strong>
+            {m.media_provider_selection({ provider: providerLabel[importSession.provider] })}
+          </strong>
+          <span>{m.media_copy_choose_hint()}</span>
           {importSession.picker_uri && (
             <a
               className="action-link"

@@ -55,13 +55,13 @@ export function RouteForm({
   return (
     <RecordForm
       record={record}
-      submitLabel={editingId ? m.owner_save_route() : m.owner_add_route()}
-      pendingLabel={m.owner_saving()}
+      submitLabel={editingId ? m.routes_save_route() : m.routes_add_route()}
+      pendingLabel={m.common_saving()}
     >
       <div className="field-row">
         <record.form.Field name="mode">
           {(input) => (
-            <SelectField field={input} label={m.owner_transport()}>
+            <SelectField field={input} label={m.common_transport()}>
               {Object.entries(ROUTE_MODE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -72,7 +72,7 @@ export function RouteForm({
         </record.form.Field>
         <record.form.Field name="status">
           {(input) => (
-            <SelectField field={input} label={m.owner_status()}>
+            <SelectField field={input} label={m.common_status()}>
               {Object.entries(PLANNING_STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -89,10 +89,10 @@ export function RouteForm({
         {(input) => (
           <TextField
             field={input}
-            label={m.owner_name()}
+            label={m.common_name()}
             optional
             maxLength={160}
-            placeholder={m.owner_without_a_name_the_route_is_called_departure_arrival()}
+            placeholder={m.routes_without_a_name_the_route_is_called_departure_arrival()}
           />
         )}
       </record.form.Field>
@@ -100,7 +100,7 @@ export function RouteForm({
         {(input) => (
           <PlacePicker
             tripId={tripId}
-            label={m.owner_departure()}
+            label={m.routes_departure()}
             value={input.state.value}
             onChange={(value) => input.handleChange(value)}
             error={input.state.meta.errors
@@ -113,7 +113,7 @@ export function RouteForm({
         {(input) => (
           <PlacePicker
             tripId={tripId}
-            label={m.owner_arrival()}
+            label={m.routes_arrival()}
             value={input.state.value}
             onChange={(value) => input.handleChange(value)}
             error={input.state.meta.errors
@@ -123,26 +123,26 @@ export function RouteForm({
         )}
       </record.form.Field>
       <record.form.Field name="departsOn">
-        {(input) => <DateField field={input} label={m.owner_departure_day()} optional />}
+        {(input) => <DateField field={input} label={m.routes_departure_day()} optional />}
       </record.form.Field>
       <FieldSet className="grid gap-3">
         <FieldLegend>
-          {m.owner_times()}{" "}
+          {m.routes_times()}{" "}
           <span className="font-medium text-travel-optional">
-            {m.owner_optional_once_you_choose_a_connection()}
+            {m.routes_optional_once_you_choose_a_connection()}
           </span>
         </FieldLegend>
         <div className="field-row">
           <record.form.Field name="departsAt">
             {(input) => (
-              <DateTimeField field={input} label={m.owner_departure_time_local()} optional />
+              <DateTimeField field={input} label={m.routes_departure_time_local()} optional />
             )}
           </record.form.Field>
           <record.form.Field name="departureTimezone">
             {(input) => (
               <TimeZoneField
                 field={input}
-                label={m.owner_departure_time_zone()}
+                label={m.routes_departure_time_zone()}
                 optional
                 maxLength={64}
                 placeholder="Europe/Amsterdam"
@@ -153,14 +153,14 @@ export function RouteForm({
         <div className="field-row">
           <record.form.Field name="arrivesAt">
             {(input) => (
-              <DateTimeField field={input} label={m.owner_arrival_time_local()} optional />
+              <DateTimeField field={input} label={m.routes_arrival_time_local()} optional />
             )}
           </record.form.Field>
           <record.form.Field name="arrivalTimezone">
             {(input) => (
               <TimeZoneField
                 field={input}
-                label={m.owner_arrival_time_zone()}
+                label={m.routes_arrival_time_zone()}
                 optional
                 maxLength={64}
                 placeholder="Asia/Taipei"
@@ -171,7 +171,7 @@ export function RouteForm({
       </FieldSet>
       <Collapsible.Root open={bookingOpen} onOpenChange={onBookingOpenChange}>
         <Collapsible.Trigger className="disclosure-trigger">
-          {m.owner_booking_details_optional_private()}
+          {m.routes_booking_details_optional_private()}
         </Collapsible.Trigger>
         <Collapsible.Panel keepMounted className="mt-2.5 grid gap-3">
           <div className="field-row">
@@ -179,10 +179,10 @@ export function RouteForm({
               {(input) => (
                 <TextField
                   field={input}
-                  label={m.owner_carrier()}
+                  label={m.common_carrier()}
                   optional
                   maxLength={160}
-                  placeholder={m.owner_for_example_eva_air()}
+                  placeholder={m.routes_for_example_eva_air()}
                 />
               )}
             </record.form.Field>
@@ -190,7 +190,7 @@ export function RouteForm({
               {(input) => (
                 <TextField
                   field={input}
-                  label={m.owner_flight_service_number()}
+                  label={m.routes_flight_service_number()}
                   optional
                   maxLength={40}
                   placeholder="BR-087"
@@ -202,10 +202,10 @@ export function RouteForm({
             {(input) => (
               <TextField
                 field={input}
-                label={m.owner_travel_class()}
+                label={m.routes_travel_class()}
                 optional
                 maxLength={80}
-                placeholder={m.owner_for_example_premium_economy()}
+                placeholder={m.routes_for_example_premium_economy()}
               />
             )}
           </record.form.Field>
@@ -213,7 +213,7 @@ export function RouteForm({
             {(input) => (
               <TextField
                 field={input}
-                label={m.owner_booking_reference_3()}
+                label={m.common_booking_reference_label()}
                 optional
                 maxLength={255}
               />
@@ -223,7 +223,7 @@ export function RouteForm({
             {(input) => (
               <MarkdownField
                 field={input}
-                label={m.owner_notes()}
+                label={m.common_notes()}
                 optional
                 maxLength={4000}
                 rows={3}
@@ -248,8 +248,8 @@ export function RouteForm({
         {(input) => (
           <FieldSet>
             <FieldLegend>
-              {m.owner_line_on_the_map()}{" "}
-              <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+              {m.routes_line_on_the_map()}{" "}
+              <span className="font-medium text-travel-optional">{m.common_optional()}</span>
             </FieldLegend>
             <record.form.Subscribe selector={(state) => state.values}>
               {(values) =>
@@ -279,12 +279,12 @@ export function RouteForm({
             />
             <Collapsible.Root className="border-t border-travel-divider pt-2.5">
               <Collapsible.Trigger className="disclosure-trigger">
-                {m.owner_advanced_paste_coordinates_as_json()}
+                {m.routes_advanced_paste_coordinates_as_json()}
               </Collapsible.Trigger>
               <Collapsible.Panel keepMounted className="mt-2.5">
                 <TextAreaField
                   field={input}
-                  label={m.owner_line_coordinates_json()}
+                  label={m.routes_line_coordinates_json()}
                   optional
                   placeholder="[[121.5,25.0],[121.6,25.1]]"
                 />

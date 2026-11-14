@@ -75,11 +75,11 @@ export const addressProjection = (value: Values | Location) => {
   return Object.fromEntries(Object.entries(fields).filter(([, field]) => field?.trim()));
 };
 const PROJECTION_LABELS: Record<string, () => string> = {
-  line1: m.owner_address_line_1,
-  line2: m.owner_address_line_2,
-  postal_code: m.owner_postal_code,
-  locality: m.owner_city,
-  admin_area: m.owner_region,
+  line1: m.locations_address_first_line,
+  line2: m.locations_address_second_line,
+  postal_code: m.locations_postal_code,
+  locality: m.locations_city,
+  admin_area: m.locations_region,
 };
 /** The address field visitors would receive, as words rather than the API's JSON. */
 export const projectionText = (projection: Record<string, string | null | undefined>) =>
@@ -98,7 +98,7 @@ export function recipients(
   const now = Date.now();
   return [
     ...(status?.surface_state === "published" && included(status.scope)
-      ? [m.owner_public_page()]
+      ? [m.common_public_page()]
       : []),
     ...(links ?? [])
       .filter(
@@ -107,7 +107,7 @@ export function recipients(
           (!link.expires_at || Date.parse(link.expires_at) > now) &&
           included(link.scope),
       )
-      .map((link) => m.owner_share_link({ p0: link.label })),
+      .map((link) => m.common_share_link({ name: link.label })),
   ];
 }
 /** The name two locations are compared by; an unnamed location has none, so it never matches by name. */
@@ -194,14 +194,14 @@ export function visitorReview(error: unknown): VisitorChange[] | null {
 }
 
 const FIELD_LABELS: Record<VisitorField, () => string> = {
-  label: m.owner_public_name_2,
-  locality: m.owner_city,
-  country_code: m.owner_country_code,
-  address_line1: m.owner_address_line_1,
-  address_line2: m.owner_address_line_2,
-  postal_code: m.owner_postal_code,
-  admin_area: m.owner_region,
-  area_id: m.owner_area,
+  label: m.locations_public_name_label,
+  locality: m.locations_city,
+  country_code: m.locations_country_code,
+  address_line1: m.locations_address_first_line,
+  address_line2: m.locations_address_second_line,
+  postal_code: m.locations_postal_code,
+  admin_area: m.locations_region,
+  area_id: m.common_area,
 };
 export const isVisitorField = (field: string): field is VisitorField =>
   VISITOR_FIELDS.includes(field as VisitorField);
@@ -209,8 +209,8 @@ export const visitorFieldLabel = (field: VisitorField) => FIELD_LABELS[field]();
 /** An audience by the owner's words: the public page, or the share link's own label. */
 export const audienceName = (audience: Audience) =>
   audience.id === "public"
-    ? m.owner_public_page()
-    : m.owner_share_link({ p0: audience.label ?? "" });
+    ? m.common_public_page()
+    : m.common_share_link({ name: audience.label ?? "" });
 
 const ADDRESS_VALUES: [VisitorField, keyof Values][] = [
   ["address_line1", "addressLine1"],

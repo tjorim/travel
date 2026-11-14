@@ -35,12 +35,14 @@ export function NavigationGuard({ children }: { children: ReactNode }) {
       {children}
       {blocker.status === "blocked" && (
         <DeleteConfirmation
-          title={state.pending ? m.owner_save_in_progress() : m.owner_discard_changes()}
+          title={state.pending ? m.records_save_in_progress() : m.records_discard_changes_title()}
           description={
-            state.pending ? m.owner_wait_for_save() : m.owner_your_unsaved_changes_will_be_lost()
+            state.pending
+              ? m.records_wait_for_save()
+              : m.records_your_unsaved_changes_will_be_lost()
           }
-          confirmLabel={m.owner_discard_changes_2()}
-          cancelLabel={m.owner_continue_editing()}
+          confirmLabel={m.records_discard_changes_action()}
+          cancelLabel={m.records_continue_editing()}
           confirmDisabled={state.pending}
           onCancel={blocker.reset}
           onConfirm={() => {

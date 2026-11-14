@@ -46,7 +46,7 @@ export type Values = {
   coordinates: string;
 };
 
-const NOT_ENOUGH_POINTS = m.owner_a_line_needs_at_least_two_points;
+const NOT_ENOUGH_POINTS = m.routes_a_line_needs_at_least_two_points;
 
 /** The line's points, or the message explaining why the text is not a usable line. */
 export function parseCoordinates(text: string): [number, number][] | string {
@@ -54,7 +54,7 @@ export function parseCoordinates(text: string): [number, number][] | string {
   try {
     coordinates = JSON.parse(text);
   } catch {
-    return m.owner_use_valid_json_with_at_least_two_longitude_latitude_pairs();
+    return m.routes_geometry_json_hint();
   }
   if (
     !Array.isArray(coordinates) ||
@@ -147,13 +147,13 @@ export const serverFields = {
 };
 
 export const departureChosen = ({ value }: { value: PlaceValue }) =>
-  hasPlace(value) ? undefined : m.owner_choose_where_the_route_starts_an_area_or_location;
+  hasPlace(value) ? undefined : m.routes_choose_where_the_route_starts_an_area_or_location;
 export const arrivalChosen = ({ value, fieldApi }: { value: PlaceValue } & FormContext) => {
-  if (!hasPlace(value)) return m.owner_choose_where_the_route_ends_an_area_or_location;
+  if (!hasPlace(value)) return m.routes_choose_where_the_route_ends_an_area_or_location;
   const departure = fieldApi.form.getFieldValue("departure" as never) as PlaceValue | undefined;
   // A route between the very same area or location goes nowhere; "new" places are compared by the fields behind them.
   return departure && value.choice !== "new" && departure.choice === value.choice
-    ? m.owner_choose_two_different_places_departure_and_arrival_are_the_same
+    ? m.routes_same_places_error
     : undefined;
 };
 
@@ -168,7 +168,7 @@ export const routeShift = (route: Route) => {
   if (!route.departs_at || !route.arrives_at) return "";
   const days = dayShift(route as TimedRoute);
   return days !== 0
-    ? m.owner_day_shift({ count: Math.abs(days), shift: `${days > 0 ? "+" : ""}${days}` })
+    ? m.routes_day_shift({ count: Math.abs(days), shift: `${days > 0 ? "+" : ""}${days}` })
     : "";
 };
 

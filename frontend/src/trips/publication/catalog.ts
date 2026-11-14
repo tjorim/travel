@@ -35,22 +35,22 @@ export const LINK_STATE_LABELS: Record<ShareLink["state"], string> = {
 
 export const GROUP_TITLES: Record<ShareScopeKind, string> = {
   get travel_update() {
-    return m.owner_travel_updates();
+    return m.common_travel_updates();
   },
   get visit() {
-    return m.owner_visits();
+    return m.common_visits();
   },
   get area() {
-    return m.owner_areas();
+    return m.common_areas();
   },
   get location() {
-    return m.owner_locations();
+    return m.common_locations();
   },
   get route() {
-    return m.owner_routes();
+    return m.common_routes();
   },
   get stay() {
-    return m.owner_stays();
+    return m.common_stays();
   },
   get media_derivative() {
     return m.publication_photos_and_videos();
@@ -59,13 +59,13 @@ export const GROUP_TITLES: Record<ShareScopeKind, string> = {
 
 export const DATE_PRECISIONS = {
   get day() {
-    return m.owner_full_dates();
+    return m.publication_full_dates();
   },
   get month() {
-    return m.owner_months_only();
+    return m.publication_months_only();
   },
   get year() {
-    return m.owner_year_only();
+    return m.publication_year_only();
   },
 } as const;
 
@@ -169,10 +169,10 @@ export function kindCountsText(counts: KindCounts | undefined): string {
   if (!counts) return "";
   const places = (counts.area ?? 0) + (counts.location ?? 0);
   return [
-    counts.visit ? m.publication_count_visits({ count: counts.visit }) : "",
-    counts.stay ? m.publication_count_stays({ count: counts.stay }) : "",
-    counts.route ? m.publication_count_routes({ count: counts.route }) : "",
-    counts.travel_update ? m.publication_count_updates({ count: counts.travel_update }) : "",
+    counts.visit ? m.visits_count({ count: counts.visit }) : "",
+    counts.stay ? m.stays_count({ count: counts.stay }) : "",
+    counts.route ? m.routes_count({ count: counts.route }) : "",
+    counts.travel_update ? m.updates_count({ count: counts.travel_update }) : "",
     places ? m.publication_count_places({ count: places }) : "",
     counts.media_derivative ? m.publication_count_media({ count: counts.media_derivative }) : "",
   ]

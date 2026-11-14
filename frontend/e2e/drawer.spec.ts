@@ -17,13 +17,15 @@ for (const locale of ["en", "nl"] as const)
       await page.goto("/admin/trips/trip-1/prepare");
       await expect(page.locator("#tasks")).toBeVisible();
       const trigger = page.getByRole("button", {
-        name: message(locale, "owner_trip_sections"),
+        name: message(locale, "workspace_trip_sections"),
       });
-      const dialog = page.getByRole("dialog", { name: message(locale, "owner_trip_sections") });
-      const nav = page.getByRole("navigation", { name: message(locale, "owner_trip_sections") });
+      const dialog = page.getByRole("dialog", { name: message(locale, "workspace_trip_sections") });
+      const nav = page.getByRole("navigation", {
+        name: message(locale, "workspace_trip_sections"),
+      });
       await expect(nav).toHaveCount(0);
       const capture = await page
-        .getByRole("button", { name: message(locale, "owner_capture_in_trip"), exact: true })
+        .getByRole("button", { name: message(locale, "feedback_capture_in_trip"), exact: true })
         .boundingBox();
       const bar = await page
         .getByRole("navigation", { name: message(locale, "navigation") })
@@ -37,7 +39,7 @@ for (const locale of ["en", "nl"] as const)
         await expect(nav).toHaveCount(1);
         await expect(nav.getByRole("link")).toHaveCount(6);
         await expect(
-          nav.getByRole("link", { name: message(locale, "owner_prepare"), exact: true }),
+          nav.getByRole("link", { name: message(locale, "workspace_prepare"), exact: true }),
         ).toHaveAttribute("aria-current", "page");
         for (const link of await nav.getByRole("link").all())
           expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
@@ -58,14 +60,17 @@ for (const locale of ["en", "nl"] as const)
         if (dismiss === "Escape") await page.keyboard.press("Escape");
         else if (dismiss === "Close")
           await dialog
-            .getByRole("button", { name: message(locale, "owner_close_2"), exact: true })
+            .getByRole("button", { name: message(locale, "common_close"), exact: true })
             .click();
         else await page.mouse.click(385, 20);
         await expect(dialog).toHaveCount(0);
         await expect(trigger).toBeFocused();
       }
       await trigger.click();
-      const story = nav.getByRole("link", { name: message(locale, "owner_story"), exact: true });
+      const story = nav.getByRole("link", {
+        name: message(locale, "workspace_story"),
+        exact: true,
+      });
       // Ordinary href remains usable in a separate tab and as a deep link.
       const href = await story.getAttribute("href");
       const other = await context.newPage();
@@ -75,7 +80,7 @@ for (const locale of ["en", "nl"] as const)
       await expect(other).toHaveURL(/\/story$/);
       await expect(other.getByRole("heading", { level: 1 })).toBeVisible();
       await expect(other.locator("#workspace-section-heading")).toHaveText(
-        message(locale, "owner_story"),
+        message(locale, "workspace_story"),
       );
       await other.close();
       await story.click();
@@ -91,16 +96,16 @@ for (const locale of ["en", "nl"] as const)
       await expect(dialog).toHaveCount(0);
       await expect(nav).toHaveCount(1);
       await expect(
-        nav.getByRole("link", { name: message(locale, "owner_story"), exact: true }),
+        nav.getByRole("link", { name: message(locale, "workspace_story"), exact: true }),
       ).toBeFocused();
       await page.setViewportSize({ width: 390, height: 844 });
       await expect(nav).toHaveCount(0);
       await page.getByRole("button", { name: message(locale, "account"), exact: true }).click();
       await page
-        .getByRole("button", { name: message(locale, "owner_trip_details"), exact: true })
+        .getByRole("button", { name: message(locale, "trips_trip_details"), exact: true })
         .click();
       const input = page.getByRole("textbox", {
-        name: message(locale, "owner_title"),
+        name: message(locale, "common_title"),
         exact: true,
       });
       await input.fill("Synthetic protected draft");
@@ -117,14 +122,14 @@ for (const locale of ["en", "nl"] as const)
         .getByRole("radio", { name: locale === "en" ? "Nederlands" : "English", exact: true })
         .click();
       const translatedInput = page.getByRole("textbox", {
-        name: message(locale === "en" ? "nl" : "en", "owner_title"),
+        name: message(locale === "en" ? "nl" : "en", "common_title"),
         exact: true,
       });
       await expect(translatedInput).toHaveValue("Synthetic protected draft");
       await expect(translatedInput).toHaveAttribute("data-lifetime", "draft");
       await page
         .getByRole("button", {
-          name: message(locale === "en" ? "nl" : "en", "owner_trip_sections"),
+          name: message(locale === "en" ? "nl" : "en", "workspace_trip_sections"),
           includeHidden: true,
         })
         .click({ force: true });

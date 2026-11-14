@@ -55,7 +55,7 @@ export function TripEditor({
   const [deleteError, setDeleteError] = useFeedback<string | null>(null);
   const refresh = useRefreshTrip();
   const save = useOwnerMutation<Values, Trip>({
-    fallback: m.owner_the_trip_could_not_be_saved,
+    fallback: m.trips_the_trip_could_not_be_saved,
     request: (values) => {
       const details = {
         title: values.title.trim(),
@@ -70,7 +70,7 @@ export function TripEditor({
     invalidate: (subject) => [ownerKeys.trips(subject)],
   });
   const remove = useOwnerMutation<Trip>({
-    fallback: m.owner_the_trip_could_not_be_deleted,
+    fallback: m.trips_the_trip_could_not_be_deleted,
     request: (target) => ({
       path: `/api/trips/${encodeURIComponent(target.id)}`,
       method: "DELETE",
@@ -80,13 +80,13 @@ export function TripEditor({
 
   const record = useRecordForm<Values, Trip>({
     defaultValues: trip ? fromTrip(trip) : blank(),
-    fallback: m.owner_the_trip_could_not_be_saved,
+    fallback: m.trips_the_trip_could_not_be_saved,
     serverFields,
     submit: (values) => save.mutateAsync(values),
     onSuccess: (saved) => {
       close();
       onSaved(saved, !trip);
-      onNotice(textNotice(() => (trip ? m.owner_trip_saved() : m.owner_private_trip_created())));
+      onNotice(textNotice(() => (trip ? m.trips_trip_saved() : m.trips_private_trip_created())));
     },
   });
   const { form } = record;
@@ -103,11 +103,11 @@ export function TripEditor({
         refresh.forget(target.id);
         close();
         onDeleted();
-        onNotice(textNotice(() => m.owner_trip_deleted()));
+        onNotice(textNotice(() => m.trips_trip_deleted()));
       },
       (error: unknown) => {
         setConfirmDelete(false);
-        setDeleteError(errorNotice(error, m.owner_the_trip_could_not_be_deleted));
+        setDeleteError(errorNotice(error, m.trips_the_trip_could_not_be_deleted));
       },
     );
   }
@@ -115,7 +115,7 @@ export function TripEditor({
   return (
     <RecordDialog
       open={open}
-      title={trip ? m.owner_trip_details() : m.owner_new_trip()}
+      title={trip ? m.trips_trip_details() : m.trips_new_trip()}
       dirty={open && record.dirty}
       error={deleteError}
       onDismiss={close}
@@ -123,8 +123,8 @@ export function TripEditor({
       {open && (
         <RecordForm
           record={record}
-          submitLabel={trip ? m.owner_save_trip() : m.owner_create_trip()}
-          pendingLabel={trip ? m.owner_saving_trip() : m.owner_creating_trip()}
+          submitLabel={trip ? m.trips_save_trip() : m.trips_create_trip()}
+          pendingLabel={trip ? m.trips_saving_trip() : m.trips_creating_trip()}
           actions={
             trip && (
               <Button
@@ -132,7 +132,7 @@ export function TripEditor({
                 type="button"
                 onClick={() => setConfirmDelete(true)}
               >
-                {m.owner_delete_trip()}
+                {m.trips_delete_trip()}
               </Button>
             )
           }
@@ -140,19 +140,19 @@ export function TripEditor({
           <form.Field
             name="title"
             validators={{
-              onChange: requiredText(m.owner_give_the_trip_a_title),
-              onSubmit: requiredText(m.owner_give_the_trip_a_title),
+              onChange: requiredText(m.trips_give_the_trip_a_title),
+              onSubmit: requiredText(m.trips_give_the_trip_a_title),
             }}
           >
             {(field) => (
-              <TextField field={field} label={m.owner_title()} required maxLength={160} />
+              <TextField field={field} label={m.common_title()} required maxLength={160} />
             )}
           </form.Field>
           <form.Field name="summary">
             {(field) => (
               <MarkdownField
                 field={field}
-                label={m.owner_summary()}
+                label={m.common_summary()}
                 optional
                 maxLength={4000}
                 rows={4}
@@ -161,7 +161,7 @@ export function TripEditor({
           </form.Field>
           <div className="field-row">
             <form.Field name="startsOn">
-              {(field) => <DateField field={field} label={m.owner_first_travel_day()} optional />}
+              {(field) => <DateField field={field} label={m.trips_first_travel_day()} optional />}
             </form.Field>
             <form.Field
               name="endsOn"
@@ -169,15 +169,15 @@ export function TripEditor({
                 onChangeListenTo: ["startsOn"],
                 onChange: ({ value, fieldApi }) =>
                   value && value < fieldApi.form.getFieldValue("startsOn")
-                    ? m.owner_the_last_travel_day_is_before_the_first()
+                    ? m.trips_the_last_travel_day_is_before_the_first()
                     : undefined,
                 onSubmit: ({ value, fieldApi }) =>
                   value && value < fieldApi.form.getFieldValue("startsOn")
-                    ? m.owner_the_last_travel_day_is_before_the_first()
+                    ? m.trips_the_last_travel_day_is_before_the_first()
                     : undefined,
               }}
             >
-              {(field) => <DateField field={field} label={m.owner_last_travel_day()} optional />}
+              {(field) => <DateField field={field} label={m.trips_last_travel_day()} optional />}
             </form.Field>
           </div>
         </RecordForm>
@@ -185,8 +185,8 @@ export function TripEditor({
       {open && trip && <TripExport tripId={trip.id} onNotice={onNotice} />}
       {open && confirmDelete && trip && (
         <DeleteConfirmation
-          title={m.owner_delete_2({ p0: trip.title })}
-          description={m.owner_all_private_content_of_this_trip_will_be_deleted_this_action_cannot_be_u()}
+          title={m.common_delete_confirm_title({ name: trip.title })}
+          description={m.trips_delete_description()}
           onCancel={() => setConfirmDelete(false)}
           onConfirm={() => deleteTrip(trip)}
         />

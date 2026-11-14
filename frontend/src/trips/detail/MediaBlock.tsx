@@ -22,32 +22,36 @@ export function MediaBlock({
 }) {
   useLocale();
   return (
-    <Section id="media" title={m.owner_private_media()}>
-      <DetailList empty={media.length === 0} message={m.owner_no_private_media_captured()}>
+    <Section id="media" title={m.common_private_media()}>
+      <DetailList empty={media.length === 0} message={m.media_no_private_media_captured()}>
         {media.map((asset) => (
           <article key={asset.id}>
             <RecordHeading tripId={trip.id} kind="media" id={asset.id}>
-              {asset.original_filename ?? m.owner_unnamed_media_item()}
+              {asset.original_filename ?? m.media_unnamed_item_title()}
             </RecordHeading>
             {session && <MediaPreview asset={asset} session={session} />}
             <p>
-              {MEDIA_KIND_LABELS[asset.media_kind]} · {bytesLabel(asset.byte_size)}{" "}
-              {m.owner_captured()}{" "}
-              {asset.captured_at ? formatCapture(asset.captured_at, asset.captured_local) : "—"}
+              {m.media_captured_line({
+                kind: MEDIA_KIND_LABELS[asset.media_kind],
+                size: bytesLabel(asset.byte_size),
+                time: asset.captured_at
+                  ? formatCapture(asset.captured_at, asset.captured_local)
+                  : "—",
+              })}
             </p>
             {asset.gps && (
               <p>
-                {m.owner_gps()} {asset.gps.latitude}, {asset.gps.longitude}
+                {m.media_gps()} {asset.gps.latitude}, {asset.gps.longitude}
               </p>
             )}
             <Button
               className="secondary compact"
               type="button"
               onClick={() =>
-                openFile(asset.file_url, m.owner_the_private_media_could_not_be_opened())
+                openFile(asset.file_url, m.media_the_private_media_could_not_be_opened())
               }
             >
-              {m.owner_open_media()}
+              {m.media_open_media()}
             </Button>
           </article>
         ))}

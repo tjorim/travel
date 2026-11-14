@@ -23,9 +23,9 @@ import {
 } from "./catalog";
 
 const MAP_KINDS = {
-  visits: m.publication_count_visits,
-  stays: m.publication_count_stays,
-  updates: m.publication_count_updates,
+  visits: m.visits_count,
+  stays: m.stays_count,
+  updates: m.updates_count,
 };
 
 const PRECISION_NAMES: Record<DatePrecision, () => string> = {
@@ -47,9 +47,9 @@ export function precisionLines(audience: OverviewAudience): string[] {
       : m.precision_check_audience_unset(),
   ];
   const kinds = [
-    ["visits", m.owner_visits] as const,
-    ["stays", m.owner_stays] as const,
-    ["routes", m.owner_routes] as const,
+    ["visits", m.common_visits] as const,
+    ["stays", m.common_stays] as const,
+    ["routes", m.common_routes] as const,
   ];
   for (const [kind, label] of kinds) {
     const summary: OverviewRecordPrecision | undefined = audience.record_precision?.[kind];
@@ -103,12 +103,12 @@ export function futureWarningText(
 ): string {
   return code === "future_transport_times"
     ? m.publication_future_transport_times({
-        p0: name,
-        p1: m.publication_count_transport_legs({ count }),
+        audience: name,
+        count: m.publication_count_transport_legs({ count }),
       })
     : m.publication_future_day_dates({
-        p0: name,
-        p1: m.publication_count_day_dated_records({ count }),
+        audience: name,
+        count: m.publication_count_day_dated_records({ count }),
       });
 }
 
@@ -129,49 +129,43 @@ function reviewText(warning: OverviewWarning, audiences: OverviewAudience[]): st
   const name =
     warning.audience_id === null
       ? m.publication_the_page_for_everyone()
-      : m.publication_link({ p0: warning.audience ?? "" });
+      : m.publication_link({ name: warning.audience ?? "" });
   switch (warning.code) {
     case "location_repeats_area":
-      return m.owner_location_repeats_area({ name: warning.text ?? "" });
+      return m.publication_location_repeats_area({ name: warning.text ?? "" });
     case "visit_restates_route":
-      return m.owner_visit_restates_route({ name: warning.text ?? "" });
+      return m.publication_visit_restates_route({ name: warning.text ?? "" });
     case "live_audience_receives_nothing":
-      return m.publication_is_active_but_receives_no_items_set_items_to_everyone_or_select_them_for(
-        {
-          p0: name,
-        },
-      );
+      return m.publication_audience_empty_warning({
+        audience: name,
+      });
     case "trip_dates_shared":
       return m.publication_shows_the_travel_dates({
-        p0: name,
-        p1:
+        audience: name,
+        precision:
           DATE_PRECISIONS[warning.text as keyof typeof DATE_PRECISIONS]?.toLowerCase() ??
           warning.text ??
           "",
       });
     case "planning_marker_visible":
-      return m.publication_shows_with_a_planning_word_in_its_name_rename_it_the_status_belongs_to_t(
-        {
-          p0: name,
-          p1: warning.text ?? "",
-        },
-      );
+      return m.publication_planning_word_warning({
+        audience: name,
+        text: warning.text ?? "",
+      });
     case "map_point_withheld": {
       const audience = audiences.find((item) => item.id === warning.audience_id);
       if (!audience) return m.publication_unknown_warning();
       const counts = (Object.keys(MAP_KINDS) as (keyof typeof MAP_KINDS)[])
         .filter((kind) => audience.without_map_point[kind] > 0)
         .map((kind) => MAP_KINDS[kind]({ count: audience.without_map_point[kind] }));
-      return m.publication_receives_without_a_map_point_because_their_area_is_not_shared_or_has_no_(
-        {
-          p0: name,
-          p1: counts.join(", "),
-        },
-      );
+      return m.publication_missing_map_point_warning({
+        audience: name,
+        items: counts.join(", "),
+      });
     }
     case "cover_not_received":
-      return m.publication_receives_no_cover_because_the_chosen_photo_is_not_among_its_photos({
-        p0: name,
+      return m.publication_missing_cover_warning({
+        audience: name,
       });
     case "future_transport_times":
     case "future_day_dates":
@@ -182,15 +176,13 @@ function reviewText(warning: OverviewWarning, audiences: OverviewAudience[]): st
           ? m.publication_route_dates_follow_year
           : m.publication_route_dates_follow_month
       )({
-        p0: name,
-        p1: m.publication_count_routes({ count: warning.count ?? 0 }),
+        audience: name,
+        count: m.routes_count({ count: warning.count ?? 0 }),
       });
     case "undated_visit_duplicates_dated":
-      return m.publication_visit_has_no_date_but_its_area_already_has_a_dated_visit_give_it_a_date_(
-        {
-          p0: warning.text ?? "",
-        },
-      );
+      return m.publication_undated_visit_warning({
+        title: warning.text ?? "",
+      });
     default:
       return m.publication_unknown_warning();
   }
@@ -223,9 +215,7 @@ function SharingReviewContent({ overview }: { overview: TripOverview | undefined
       <div className="capture-heading">
         <div>
           <h3>{m.sharing_check()}</h3>
-          <p>
-            {m.publication_what_each_active_or_draft_audience_currently_receives_and_what_you_shoul()}
-          </p>
+          <p>{m.publication_check_intro()}</p>
         </div>
       </div>
       <ul
@@ -247,10 +237,10 @@ function SharingReviewContent({ overview }: { overview: TripOverview | undefined
                     ? m.publication_not_shared()
                     : m.publication_draft(),
                 counts: [
-                  m.publication_count_visits({ count: delivered.visits }),
-                  m.publication_count_stays({ count: delivered.stays }),
-                  m.publication_count_routes({ count: delivered.routes }),
-                  m.publication_count_updates({ count: delivered.updates }),
+                  m.visits_count({ count: delivered.visits }),
+                  m.stays_count({ count: delivered.stays }),
+                  m.routes_count({ count: delivered.routes }),
+                  m.updates_count({ count: delivered.updates }),
                   m.publication_count_places({ count: delivered.places }),
                   m.publication_count_media({ count: delivered.media }),
                 ].join(", "),
@@ -291,12 +281,7 @@ export function VisibilityOverview({
 }) {
   useLocale();
   const groups = groupBy(catalog);
-  if (!groups.size)
-    return (
-      <p className="help">
-        {m.publication_there_are_no_items_to_share_yet_create_a_travel_update_area_or_visit_for()}
-      </p>
-    );
+  if (!groups.size) return <p className="help">{m.publication_check_empty()}</p>;
   return (
     <div className="grid gap-2">
       {[...groups].map(([kind, items]) => (
@@ -304,10 +289,10 @@ export function VisibilityOverview({
           <Collapsible.Trigger className="max-sm:flex-wrap max-sm:justify-start max-sm:[&>strong]:basis-3/4 max-sm:[&>span]:basis-full max-sm:[&>span]:pl-6">
             <strong>{GROUP_TITLES[kind]}</strong>
             <span>
-              {m.publication_of_is_set_to_everyone_or_choose_in_sharing_line({
-                p0: items.filter((item) => item.visibility !== "private" || item.followsUpdate)
+              {m.publication_shared_count({
+                shared: items.filter((item) => item.visibility !== "private" || item.followsUpdate)
                   .length,
-                p1: items.length,
+                total: items.length,
               })}
             </span>
           </Collapsible.Trigger>

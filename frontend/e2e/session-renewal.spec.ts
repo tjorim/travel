@@ -52,36 +52,36 @@ for (const locale of locales) {
     await page.goto(`/admin/trips/${ownerTrip.id}`);
     await page.getByRole("button", { name: message(locale, "account"), exact: true }).click();
     await page
-      .getByRole("button", { name: message(locale, "owner_trip_details"), exact: true })
+      .getByRole("button", { name: message(locale, "trips_trip_details"), exact: true })
       .click();
     const dialog = page.getByRole("dialog");
     const title = dialog.getByRole("textbox", {
-      name: message(locale, "owner_title"),
+      name: message(locale, "common_title"),
       exact: true,
     });
     await title.fill("Unsaved synthetic draft");
     await dialog
-      .getByRole("button", { name: message(locale, "owner_save_trip"), exact: true })
+      .getByRole("button", { name: message(locale, "trips_save_trip"), exact: true })
       .click();
     await expect(
-      page.getByText(message(locale, "owner_session_expired_save"), { exact: true }),
+      page.getByText(message(locale, "feedback_session_expired_save"), { exact: true }),
     ).toBeVisible();
     await expect(dialog).toBeVisible();
     await expect(title).toHaveValue("Unsaved synthetic draft");
     expect(renewals).toBe(1);
     const popupOpened = page.waitForEvent("popup");
     await dialog
-      .getByRole("button", { name: message(locale, "owner_sign_in_again"), exact: true })
+      .getByRole("button", { name: message(locale, "session_sign_in_again"), exact: true })
       .click();
     const popup = await popupOpened;
     await expect.poll(() => popup.isClosed()).toBe(true);
     await expect(title).toHaveValue("Unsaved synthetic draft");
     await expect(
-      page.getByText(message(locale, "owner_session_expired_save"), { exact: true }),
+      page.getByText(message(locale, "feedback_session_expired_save"), { exact: true }),
     ).toHaveCount(0);
     await expect(page).toHaveURL(new RegExp(`/admin/trips/${ownerTrip.id}$`));
     await dialog
-      .getByRole("button", { name: message(locale, "owner_save_trip"), exact: true })
+      .getByRole("button", { name: message(locale, "trips_save_trip"), exact: true })
       .click();
     await expect(dialog).toHaveCount(0);
 

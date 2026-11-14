@@ -118,7 +118,7 @@ export const serverFields = {
 export const lastDay = ({ value, fieldApi }: { value: string } & FormContext) => {
   if (!value) return undefined;
   const first = String(fieldApi.form.getFieldValue("startsOn" as never) ?? "");
-  return !first || value < first ? m.owner_the_last_day_must_follow_the_first_day : undefined;
+  return !first || value < first ? m.visits_the_last_day_must_follow_the_first_day : undefined;
 };
 
 /** "Gepland" is the default, so any other status is called out. */

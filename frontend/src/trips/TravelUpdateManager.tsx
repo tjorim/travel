@@ -93,7 +93,7 @@ const bodyToShare = ({
   fieldApi: { form: { getFieldValue: (name: never) => unknown } };
 }) =>
   fieldApi.form.getFieldValue("visibility" as never) !== "private" && !value.trim()
-    ? m.owner_write_the_text_for_visitors_first_or_choose_private()
+    ? m.updates_write_the_text_for_visitors_first_or_choose_private()
     : undefined;
 
 /** Travel updates are embedded in the trip, so every write refreshes the trip list. */
@@ -109,13 +109,11 @@ export function TravelUpdateManager({
   useLocale();
   const dialog = useRecordDialog(trip.travel_updates);
   useDialogFocus(focusId, dialog.inspect);
-  const [message, setMessage] = useFeedback<string>(
-    textNotice(() => m.owner_a_travel_update_stays_private_until_you_choose_who_may_see_it()),
-  );
+  const [message, setMessage] = useFeedback<string>(textNotice(() => m.updates_private_hint()));
   const owner = useOwner();
   const photos = useUpdatePhotos(trip);
   const preview = useUpdatePreview(trip, (error) =>
-    setMessage(errorNotice(error, m.publication_the_preview_could_not_be_loaded_2)),
+    setMessage(errorNotice(error, m.publication_preview_load_error_short)),
   );
   const path = tripPath(trip.id, "travel-updates");
   // An update may add a reusable location and its derived area as well as changing the trip's embedded update list.
@@ -129,7 +127,7 @@ export function TravelUpdateManager({
     { id: string | null; payload: Record<string, unknown> },
     TravelUpdate
   >({
-    fallback: m.owner_the_travel_update_could_not_be_saved,
+    fallback: m.updates_the_travel_update_could_not_be_saved,
     request: ({ id, payload }) => ({
       path: id ? `${path}/${id}` : path,
       method: id ? "PATCH" : "POST",
@@ -138,14 +136,14 @@ export function TravelUpdateManager({
     invalidate,
   });
   const remove = useOwnerMutation<TravelUpdate>({
-    fallback: m.owner_the_travel_update_could_not_be_deleted,
+    fallback: m.updates_the_travel_update_could_not_be_deleted,
     request: (item) => ({ path: `${path}/${item.id}`, method: "DELETE" }),
     invalidate,
   });
 
   const record = useRecordForm<Values>({
     defaultValues: blank(),
-    fallback: m.owner_the_travel_update_could_not_be_saved,
+    fallback: m.updates_the_travel_update_could_not_be_saved,
     serverFields,
     submit: async (values) => {
       await save.mutateAsync({
@@ -165,7 +163,7 @@ export function TravelUpdateManager({
     },
     onSuccess: () => {
       close();
-      setMessage(textNotice(() => m.owner_travel_update_saved()));
+      setMessage(textNotice(() => m.updates_travel_update_saved()));
     },
   });
 
@@ -189,11 +187,11 @@ export function TravelUpdateManager({
     remove.mutateAsync(item).then(
       () => {
         close();
-        setMessage(textNotice(() => m.owner_travel_update_deleted()));
+        setMessage(textNotice(() => m.updates_travel_update_deleted()));
       },
       (error: unknown) => {
         dialog.setConfirmDelete(false);
-        dialog.setError(errorNotice(error, m.owner_the_travel_update_could_not_be_deleted));
+        dialog.setError(errorNotice(error, m.updates_the_travel_update_could_not_be_deleted));
       },
     );
   }
@@ -203,13 +201,11 @@ export function TravelUpdateManager({
     <section className="travel-card manager" aria-labelledby="updates-title">
       <div className="capture-heading">
         <div>
-          <h3 id="updates-title">{m.owner_travel_updates()}</h3>
-          <p>
-            {m.owner_what_happened_with_a_private_and_a_shared_part_your_notes_location_and_p()}
-          </p>
+          <h3 id="updates-title">{m.common_travel_updates()}</h3>
+          <p>{m.updates_definition_hint()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
-          {m.owner_new_update()}
+          {m.updates_new_update()}
         </Button>
       </div>
       <p className="help" role="status">
@@ -236,9 +232,9 @@ export function TravelUpdateManager({
         title={
           editing
             ? editingId
-              ? m.owner_edit_travel_update()
-              : m.owner_create_travel_update()
-            : m.owner_travel_update()
+              ? m.updates_edit_travel_update()
+              : m.updates_create_travel_update()
+            : m.common_travel_update()
         }
         dirty={editing && record.dirty}
         error={dialog.error}
@@ -251,27 +247,27 @@ export function TravelUpdateManager({
               {selected.body ? (
                 <Markdown html={selected.body_html} text={selected.body} />
               ) : (
-                <p className="help">{m.owner_no_text_for_visitors_yet()}</p>
+                <p className="help">{m.updates_no_text_for_visitors_yet()}</p>
               )}
             </div>
             <div>
-              <h4>{m.owner_only_for_you()}</h4>
+              <h4>{m.common_only_for_you()}</h4>
               {selected.private_notes ? (
                 <Markdown html={selected.private_notes_html} text={selected.private_notes} />
               ) : (
-                <p className="help">{m.owner_no_private_note()}</p>
+                <p className="help">{m.common_no_private_note()}</p>
               )}
               <p className="help">
                 {[
                   selected.location
-                    ? m.owner_location_2({
-                        p0:
+                    ? m.updates_location_detail({
+                        place:
                           selected.location.display_name ??
                           selected.location.locality ??
-                          m.owner_unnamed_location(),
+                          m.common_unnamed_location(),
                       })
                     : null,
-                  m.owner_linked_media_count({ count: selected.media_asset_ids.length }),
+                  m.updates_linked_media_count({ count: selected.media_asset_ids.length }),
                 ]
                   .filter(Boolean)
                   .join(" · ")}
@@ -286,19 +282,19 @@ export function TravelUpdateManager({
             />
             <div className="button-row">
               <Button type="button" onClick={() => edit(selected)}>
-                {m.owner_edit()}
+                {m.common_edit()}
               </Button>
               <Button
                 className="danger"
                 type="button"
                 onClick={() => dialog.setConfirmDelete(true)}
               >
-                {m.owner_delete()}
+                {m.common_delete()}
               </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation
-                title={m.owner_delete_travel_update({ p0: selected.title })}
+                title={m.updates_delete_travel_update({ title: selected.title })}
                 onCancel={() => dialog.setConfirmDelete(false)}
                 onConfirm={() => erase(selected)}
               />
@@ -308,18 +304,20 @@ export function TravelUpdateManager({
         {editing && (
           <RecordForm
             record={record}
-            submitLabel={editingId ? m.owner_save_travel_update() : m.owner_create_travel_update()}
-            pendingLabel={m.owner_saving()}
+            submitLabel={
+              editingId ? m.updates_save_travel_update() : m.updates_create_travel_update()
+            }
+            pendingLabel={m.common_saving()}
           >
             <record.form.Field
               name="title"
               validators={{
-                onChange: requiredText(m.owner_give_the_travel_update_a_title),
-                onSubmit: requiredText(m.owner_give_the_travel_update_a_title),
+                onChange: requiredText(m.updates_give_the_travel_update_a_title),
+                onSubmit: requiredText(m.updates_give_the_travel_update_a_title),
               }}
             >
               {(field) => (
-                <TextField field={field} label={m.owner_title()} required maxLength={160} />
+                <TextField field={field} label={m.common_title()} required maxLength={160} />
               )}
             </record.form.Field>
             <record.form.Field
@@ -333,8 +331,8 @@ export function TravelUpdateManager({
               {(field) => (
                 <MarkdownField
                   field={field}
-                  label={m.owner_text_for_visitors()}
-                  optional={m.owner_empty_until_shared()}
+                  label={m.common_text_for_visitors()}
+                  optional={m.updates_empty_until_shared()}
                   maxLength={10000}
                   rows={5}
                 />
@@ -344,20 +342,20 @@ export function TravelUpdateManager({
               <record.form.Field
                 name="occurredAt"
                 validators={{
-                  onChange: requiredText(m.owner_enter_the_date_and_time),
-                  onSubmit: requiredText(m.owner_enter_the_date_and_time),
+                  onChange: requiredText(m.updates_enter_the_date_and_time),
+                  onSubmit: requiredText(m.updates_enter_the_date_and_time),
                 }}
               >
                 {(field) => (
-                  <DateTimeField field={field} label={m.owner_date_and_time()} required />
+                  <DateTimeField field={field} label={m.updates_date_and_time()} required />
                 )}
               </record.form.Field>
               <record.form.Field name="datePrecision">
                 {(field) => (
-                  <SelectField field={field} label={m.owner_date_for_visitors()}>
-                    <option value="day">{m.owner_full_date()}</option>
-                    <option value="month">{m.owner_month_only()}</option>
-                    <option value="year">{m.owner_year_only()}</option>
+                  <SelectField field={field} label={m.updates_date_for_visitors()}>
+                    <option value="day">{m.updates_full_date()}</option>
+                    <option value="month">{m.updates_month_only()}</option>
+                    <option value="year">{m.publication_year_only()}</option>
                   </SelectField>
                 )}
               </record.form.Field>
@@ -374,8 +372,8 @@ export function TravelUpdateManager({
                 return (
                   <p className="help">
                     {zone
-                      ? m.owner_update_time_local_in_zone({ zone: zoneName(zone) })
-                      : m.owner_update_time_local()}
+                      ? m.updates_update_time_local_in_zone({ zone: zoneName(zone) })
+                      : m.updates_update_time_local()}
                   </p>
                 );
               }}
@@ -385,22 +383,22 @@ export function TravelUpdateManager({
                 <>
                   <PlaceSearchField
                     tripId={trip.id}
-                    legend={m.owner_location_private()}
-                    inputLabel={m.owner_search_for_this_update_s_location()}
-                    placeholder={m.owner_for_example_beitou_hot_spring()}
-                    help={m.owner_the_location_automatically_determines_the_area_it_stays_private_unless_y()}
+                    legend={m.updates_location_private()}
+                    inputLabel={m.updates_search_for_this_update_s_location()}
+                    placeholder={m.updates_for_example_beitou_hot_spring()}
+                    help={m.updates_location_area_hint()}
                     onSelect={usePlaceResult}
                     allowExisting
                   />
                   {place && (
                     <p className="help">
-                      {m.owner_selected_location()} {locationName(place)}{" "}
+                      {m.updates_selected_location()} {locationName(place)}{" "}
                       <Button
                         className="compact secondary"
                         type="button"
                         onClick={() => record.form.setFieldValue("location", null)}
                       >
-                        {m.owner_clear_location()}
+                        {m.updates_clear_location()}
                       </Button>
                     </p>
                   )}
@@ -412,11 +410,11 @@ export function TravelUpdateManager({
                 {(field) => (
                   <SelectField
                     field={field}
-                    label={m.owner_area_without_a_specific_location()}
+                    label={m.updates_area_without_a_specific_location()}
                     optional
                     disabled={Boolean(record.form.getFieldValue("location"))}
                   >
-                    <option value="">{m.owner_no_area()}</option>
+                    <option value="">{m.updates_no_area()}</option>
                     {areas.map((place) => (
                       <option key={place.id} value={place.id}>
                         {place.label}
@@ -427,7 +425,7 @@ export function TravelUpdateManager({
               </record.form.Field>
               <record.form.Field name="visibility">
                 {(field) => (
-                  <SelectField field={field} label={m.owner_visibility()}>
+                  <SelectField field={field} label={m.common_visibility()}>
                     {Object.entries(VISIBILITY_LABELS).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
@@ -441,8 +439,8 @@ export function TravelUpdateManager({
               {(field) => (
                 <MarkdownField
                   field={field}
-                  label={m.owner_private_note()}
-                  optional={m.owner_never_shared()}
+                  label={m.updates_private_note()}
+                  optional={m.updates_never_shared()}
                   maxLength={10000}
                   rows={4}
                 />

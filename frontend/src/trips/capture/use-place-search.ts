@@ -21,7 +21,7 @@ export function usePlaceSearch(tripId: string | null, signedIn: boolean) {
   const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
   const [candidateGps, setCandidateGps] = useState<Gps | null>(null);
   const searchPlaces = useOwnerMutation<{ tripId: string; query: string }, PlaceSearchResponse>({
-    fallback: m.owner_location_search_is_currently_unavailable,
+    fallback: m.locations_location_search_is_currently_unavailable,
     request: ({ tripId, query }) => ({
       path: tripPath(tripId, "places/search"),
       method: "POST",
@@ -34,7 +34,7 @@ export function usePlaceSearch(tripId: string | null, signedIn: boolean) {
     { tripId: string; latitude: number; longitude: number },
     PlaceSearchResponse
   >({
-    fallback: m.owner_this_photo_s_location_could_not_be_looked_up,
+    fallback: m.capture_this_photo_s_location_could_not_be_looked_up,
     request: ({ tripId, latitude, longitude }) => ({
       path: tripPath(tripId, "places/reverse"),
       method: "POST",
@@ -54,51 +54,47 @@ export function usePlaceSearch(tripId: string | null, signedIn: boolean) {
 
   /** Called once a result has been chosen: the results are closed and the status says nothing is saved yet. */
   function chosen() {
-    setState(
-      textNotice(() =>
-        m.owner_location_selected_it_will_only_be_created_when_you_save_the_travel_updat(),
-      ),
-    );
+    setState(textNotice(() => m.capture_location_selected_notice()));
     setResults(null);
   }
 
   function search() {
     if (!signedIn || !tripId || query.trim().length < 2) {
-      setState(textNotice(() => m.owner_enter_at_least_two_characters_to_search_for_a_location()));
+      setState(textNotice(() => m.locations_search_min_length_hint()));
       return;
     }
-    setState(textNotice(() => m.owner_searching_locations()));
+    setState(textNotice(() => m.locations_searching_locations()));
     searchPlaces.mutateAsync({ tripId, query: query.trim() }).then(
       (result) => {
         setResults(result);
         setState(
           textNotice(() =>
             result.results.length
-              ? m.owner_choose_a_result_nothing_is_saved_yet()
-              : m.owner_no_locations_found(),
+              ? m.capture_choose_a_result_nothing_is_saved_yet()
+              : m.locations_no_locations_found(),
           ),
         );
       },
-      (error: unknown) => setState(errorNotice(error, m.owner_location_search_failed)),
+      (error: unknown) => setState(errorNotice(error, m.locations_location_search_failed)),
     );
   }
 
   function reverseGeocode(gps: Gps) {
     if (!signedIn || !tripId) return;
-    setState(textNotice(() => m.owner_looking_up_the_photo_location_only_for_you()));
+    setState(textNotice(() => m.capture_looking_up_the_photo_location_only_for_you()));
     reversePlaces.mutateAsync({ tripId, ...gps }).then(
       (result) => {
         setResults(result);
         setState(
           textNotice(() =>
             result.results.length
-              ? m.owner_choose_the_suggested_location_nothing_is_saved_yet()
-              : m.owner_no_place_found_for_this_photo_location(),
+              ? m.capture_choose_the_suggested_location_nothing_is_saved_yet()
+              : m.capture_no_place_found_for_this_photo_location(),
           ),
         );
       },
       (error: unknown) =>
-        setState(errorNotice(error, m.owner_this_photo_s_location_could_not_be_looked_up)),
+        setState(errorNotice(error, m.capture_this_photo_s_location_could_not_be_looked_up)),
     );
   }
 

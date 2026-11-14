@@ -30,7 +30,7 @@ describe("lazyView", () => {
     const pending = deferred<{ default: typeof Loaded }>();
     const View = lazyView(() => pending.promise);
     render(<View name="Exampleland" />);
-    expect(screen.getByRole("status")).toHaveTextContent(m.owner_view_loading());
+    expect(screen.getByRole("status")).toHaveTextContent(m.common_loading());
     await act(async () => pending.resolve({ default: Loaded }));
     expect(await screen.findByText("geladen Exampleland")).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
@@ -49,8 +49,8 @@ describe("lazyView", () => {
     );
     render(<View name="Exampleland" />);
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(m.owner_view_unavailable());
-    expect(alert).toHaveTextContent(m.owner_view_unavailable_description());
+    expect(alert).toHaveTextContent(m.feedback_view_unavailable());
+    expect(alert).toHaveTextContent(m.feedback_view_unavailable_description());
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
@@ -61,7 +61,7 @@ describe("lazyView", () => {
     const View = lazyView<object>(() => Promise.reject(new TypeError("offline")));
     render(<View />);
     await screen.findByRole("alert");
-    fireEvent.click(screen.getByRole("button", { name: m.owner_view_reload() }));
+    fireEvent.click(screen.getByRole("button", { name: m.feedback_view_reload() }));
     expect(reload).toHaveBeenCalledTimes(1);
     vi.unstubAllGlobals();
   });
@@ -71,7 +71,9 @@ describe("lazyView", () => {
     act(() => changeLocale("en"));
     const View = lazyView<{ name: string }>(() => Promise.reject(new TypeError("offline")));
     render(<View name="Exampleland" />);
-    expect(await screen.findByRole("heading", { name: m.owner_view_unavailable() })).toBeVisible();
+    expect(
+      await screen.findByRole("heading", { name: m.feedback_view_unavailable() }),
+    ).toBeVisible();
     expect(screen.getByRole("button", { name: "Reload page" })).toBeVisible();
   });
 

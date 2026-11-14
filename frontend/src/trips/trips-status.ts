@@ -11,9 +11,9 @@ export function tripsStatusMessage(
   trips: TripSummary[],
 ): string {
   if (!session) return m.sign_in_trips();
-  if (tripsQuery.isError) return errorMessage(tripsQuery.error, m.owner_trips_error);
-  if (tripsQuery.isPending) return m.owner_trips_loading();
+  if (tripsQuery.isError) return errorMessage(tripsQuery.error, m.trips_load_error);
+  if (tripsQuery.isPending) return m.trips_loading();
   return trips.length
-    ? m.owner_choose_a_trip_to_manage_its_private_details()
-    : m.owner_no_trips_yet_create_your_first_private_trip();
+    ? m.trips_choose_a_trip_to_manage_its_private_details()
+    : m.trips_no_trips_yet_create_your_first_private_trip();
 }

@@ -39,28 +39,26 @@ export function LocationSearch({
   useLocale();
   return (
     <FieldSet className="location">
-      <FieldLegend>{m.owner_location_entirely_optional()}</FieldLegend>
-      <p>{m.owner_search_for_and_choose_a_location_it_is_only_created_as_a_private_locatio()}</p>
+      <FieldLegend>{m.capture_location_entirely_optional()}</FieldLegend>
+      <p>{m.capture_location_search_hint()}</p>
       {candidateGps && (
         <SuggestionAside>
-          <strong>{m.owner_selected_location_from_candidate()}</strong>
-          <span>
-            {m.owner_this_exif_coordinate_stays_private_and_has_not_been_looked_up_or_saved_y()}
-          </span>
+          <strong>{m.capture_selected_location_from_candidate()}</strong>
+          <span>{m.capture_exif_coordinate_hint()}</span>
           <div className="button-row">
             <Button
               className="secondary compact"
               type="button"
               onClick={() => onFindPlace(candidateGps)}
             >
-              {m.owner_search_this_candidate_place()}
+              {m.capture_search_this_candidate_place()}
             </Button>
             <Button
               className="secondary compact"
               type="button"
               onClick={() => onDismissCandidate()}
             >
-              {m.owner_dismiss_location()}
+              {m.media_dismiss_location()}
             </Button>
           </div>
         </SuggestionAside>
@@ -68,26 +66,26 @@ export function LocationSearch({
       <div className="field-row">
         <Field className="contents">
           <FieldLabel>
-            {m.owner_search_for_a_location()}
+            {m.capture_search_for_a_location()}
             <Input
               value={query}
               onChange={(event) => onQueryChange(event.target.value)}
-              placeholder={m.owner_for_example_taipei_main_station()}
+              placeholder={m.locations_for_example_taipei_main_station()}
             />
           </FieldLabel>
         </Field>
         <div className="flex items-end">
           <Button className="secondary" type="button" onClick={onSearch}>
-            {m.owner_search()}
+            {m.packing_search()}
           </Button>
         </div>
       </div>
       {location && (
         <p className="flex flex-wrap items-center gap-2">
-          <strong>{m.owner_selected_location()}</strong>{" "}
-          {location.display_name ?? location.locality ?? m.owner_unnamed_location()}{" "}
+          <strong>{m.updates_selected_location()}</strong>{" "}
+          {location.display_name ?? location.locality ?? m.common_unnamed_location()}{" "}
           <Button className="secondary compact" type="button" onClick={() => onClear()}>
-            {m.owner_delete()}
+            {m.common_delete()}
           </Button>
         </p>
       )}
@@ -109,7 +107,7 @@ export function LocationSearch({
             </Button>
           ))}
           <p className="help">
-            {m.owner_search_results()}{" "}
+            {m.locations_search_results()}{" "}
             <a href={results.attribution_url} target="_blank" rel="noreferrer">
               {results.attribution}
             </a>

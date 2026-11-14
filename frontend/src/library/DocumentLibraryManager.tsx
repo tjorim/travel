@@ -118,7 +118,9 @@ export function DocumentLibraryManager() {
     if (!owner) return;
     if (offline.isPinned("library_document", document.id)) {
       await offline.removeByResource("library_document", document.id);
-      setNotice(textNotice(() => m.owner_is_no_longer_available_offline({ p0: document.title })));
+      setNotice(
+        textNotice(() => m.common_is_no_longer_available_offline({ title: document.title })),
+      );
       return;
     }
     const blob = await ownerFile(
@@ -135,7 +137,9 @@ export function DocumentLibraryManager() {
       contentType: blob.type || document.content_type,
       bytes: await blob.arrayBuffer(),
     });
-    setNotice(textNotice(() => m.owner_is_saved_offline_on_this_device({ p0: document.title })));
+    setNotice(
+      textNotice(() => m.common_is_saved_offline_on_this_device({ title: document.title })),
+    );
   }
 
   const readError = documentsQuery.error ?? tripsQuery.error;
@@ -145,10 +149,10 @@ export function DocumentLibraryManager() {
       ? errorMessage(readError, m.library_your_library_could_not_be_loaded)
       : documentsQuery.isPending
         ? m.library_loading_your_library()
-        : m.library_travel_essentials_stay_in_your_private_library_separate_from_any_specifi());
+        : m.library_privacy_hint());
 
   const summary = (document: OwnerDocument) =>
-    `${document.original_filename ?? m.owner_unnamed_file()} · ${bytesLabel(document.byte_size)}${document.linked_trip_id ? ` · ${tripTitle(document.linked_trip_id)}` : ""}`;
+    `${document.original_filename ?? m.common_unnamed_file()} · ${bytesLabel(document.byte_size)}${document.linked_trip_id ? ` · ${tripTitle(document.linked_trip_id)}` : ""}`;
 
   const loading = notice == null && documentsQuery.isPending && !readError;
 
@@ -157,9 +161,7 @@ export function DocumentLibraryManager() {
       <div className="capture-heading">
         <div>
           <h3 id="library-documents-title">{m.library_documents()}</h3>
-          <p>
-            {m.library_reusable_essentials_such_as_an_insurance_policy_or_identity_copy_separat()}
-          </p>
+          <p>{m.library_documents_intro()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
           {m.library_new_document()}
@@ -177,7 +179,7 @@ export function DocumentLibraryManager() {
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(document.id)}
-                aria-label={m.library_view_document({ p0: document.title })}
+                aria-label={m.library_view_document({ title: document.title })}
               >
                 <strong>{document.title}</strong>
                 <span>{summary(document)}</span>
@@ -205,17 +207,15 @@ export function DocumentLibraryManager() {
                   }
                 >
                   {offline.isPinned("library_document", document.id)
-                    ? m.owner_remove_offline_copy()
-                    : m.owner_save_offline()}
+                    ? m.common_remove_offline_copy()
+                    : m.common_save_offline()}
                 </Button>
               </div>
             </article>
           ))}
         </div>
       )}
-      {!documents.length && !documentsQuery.isPending && (
-        <p>{m.library_no_documents_yet_upload_a_private_file_when_you_want_to_keep_it()}</p>
-      )}
+      {!documents.length && !documentsQuery.isPending && <p>{m.library_documents_empty()}</p>}
       <RecordDialog
         open={editing || selected !== null}
         title={editing ? m.library_upload_document() : m.library_document()}
@@ -235,12 +235,12 @@ export function DocumentLibraryManager() {
                 type="button"
                 onClick={() => dialog.setConfirmDelete(true)}
               >
-                {m.owner_delete()}
+                {m.common_delete()}
               </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation
-                title={m.library_delete_document({ p0: selected.title })}
+                title={m.library_delete_document({ title: selected.title })}
                 onCancel={() => dialog.setConfirmDelete(false)}
                 onConfirm={() => erase(selected)}
               />
@@ -262,7 +262,7 @@ export function DocumentLibraryManager() {
                 }}
               >
                 {(field) => (
-                  <TextField field={field} label={m.owner_title()} required maxLength={160} />
+                  <TextField field={field} label={m.common_title()} required maxLength={160} />
                 )}
               </record.form.Field>
               <record.form.Field name="kind">
@@ -271,7 +271,7 @@ export function DocumentLibraryManager() {
                     <option value="booking">{m.library_booking()}</option>
                     <option value="itinerary">{m.library_itinerary()}</option>
                     <option value="receipt">{m.library_receipt()}</option>
-                    <option value="other">{m.owner_other()}</option>
+                    <option value="other">{m.common_other()}</option>
                   </SelectField>
                 )}
               </record.form.Field>
@@ -281,7 +281,7 @@ export function DocumentLibraryManager() {
                 <Field>
                   <FieldLabel>
                     {m.library_linked_trip()}{" "}
-                    <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+                    <span className="font-medium text-travel-optional">{m.common_optional()}</span>
                   </FieldLabel>
                   <AsyncSearchSelect
                     ariaLabel={m.library_linked_trip_optional()}

@@ -70,7 +70,7 @@ const linkNameError = (
   index: number,
 ) =>
   !value.trim() && String(fieldApi.form.getFieldValue(`links[${index}].url` as never) ?? "").trim()
-    ? m.owner_give_the_link_a_name
+    ? m.common_give_the_link_a_name
     : undefined;
 const linkUrlError = (
   {
@@ -81,8 +81,8 @@ const linkUrlError = (
 ) => {
   const named =
     String(fieldApi.form.getFieldValue(`links[${index}].label` as never) ?? "").trim() !== "";
-  if (!value.trim()) return named ? m.owner_enter_an_https_address : undefined;
-  return isHttps(value) ? undefined : m.owner_use_an_https_address;
+  if (!value.trim()) return named ? m.tasks_enter_an_https_address : undefined;
+  return isHttps(value) ? undefined : m.common_use_an_https_address;
 };
 
 export function TripTaskManager({
@@ -119,7 +119,7 @@ export function TripTaskManager({
     { id: string | null; payload: Record<string, unknown> },
     TripTask
   >({
-    fallback: m.owner_the_task_could_not_be_saved,
+    fallback: m.tasks_the_task_could_not_be_saved,
     request: ({ id, payload }) => ({
       path: id ? `${tripPath(trip.id, "trip-tasks")}/${id}` : tripPath(trip.id, "trip-tasks"),
       method: id ? "PATCH" : "POST",
@@ -128,7 +128,7 @@ export function TripTaskManager({
     invalidate: taskKeys,
   });
   const toggleTask = useOwnerMutation<TripTask, TripTask>({
-    fallback: m.owner_the_task_could_not_be_updated,
+    fallback: m.tasks_the_task_could_not_be_updated,
     request: (task) => ({
       path: `${tripPath(trip.id, "trip-tasks")}/${task.id}`,
       method: "PATCH",
@@ -146,7 +146,7 @@ export function TripTaskManager({
     },
   });
   const deleteTask = useOwnerMutation<TripTask>({
-    fallback: m.owner_the_task_could_not_be_deleted,
+    fallback: m.tasks_the_task_could_not_be_deleted,
     request: (task) => ({
       path: `${tripPath(trip.id, "trip-tasks")}/${task.id}`,
       method: "DELETE",
@@ -161,7 +161,7 @@ export function TripTaskManager({
 
   const record = useRecordForm<Values>({
     defaultValues: blank(),
-    fallback: m.owner_the_task_could_not_be_saved,
+    fallback: m.tasks_the_task_could_not_be_saved,
     serverFields,
     submit: async (values) => {
       const links = values.links
@@ -180,7 +180,7 @@ export function TripTaskManager({
     },
     onSuccess: () => {
       close();
-      setNotice(textNotice(() => m.owner_task_saved()));
+      setNotice(textNotice(() => m.tasks_task_saved()));
     },
   });
 
@@ -210,12 +210,12 @@ export function TripTaskManager({
   const message =
     notice ??
     (tasksQuery.error
-      ? errorMessage(tasksQuery.error, m.owner_your_tasks_could_not_be_loaded)
+      ? errorMessage(tasksQuery.error, m.tasks_your_tasks_could_not_be_loaded)
       : alertsQuery.error
-        ? errorMessage(alertsQuery.error, m.owner_your_notifications_could_not_be_loaded)
+        ? errorMessage(alertsQuery.error, m.tasks_your_notifications_could_not_be_loaded)
         : tasksQuery.isPending
-          ? m.owner_loading_your_private_task_list()
-          : m.owner_outstanding_bookings_and_preparations_stay_on_a_private_list());
+          ? m.tasks_loading_your_private_task_list()
+          : m.tasks_intro());
   const fail = (fallback: import("../query/api").ErrorFallback) => (error: unknown) =>
     setNotice(errorNotice(error, fallback));
   const readinessStays = useTripResource(trip.id, "stays").data ?? [];
@@ -230,22 +230,31 @@ export function TripTaskManager({
     toggleTask.mutateAsync(task).then(() => {
       setNotice(
         textNotice(() =>
-          task.completed_at ? m.owner_task_reopened() : m.owner_task_checked_off(),
+          task.completed_at ? m.tasks_task_reopened() : m.tasks_task_checked_off(),
         ),
       );
-    }, fail(m.owner_the_task_could_not_be_updated));
+    }, fail(m.tasks_the_task_could_not_be_updated));
   }
   function remove(task: TripTask) {
     deleteTask.mutateAsync(task).then(
       () => {
         close();
-        setNotice(textNotice(() => m.owner_task_deleted()));
+        setNotice(textNotice(() => m.tasks_task_deleted()));
       },
       (error: unknown) => {
         setConfirmDelete(false);
-        setDeleteError(errorNotice(error, m.owner_the_task_could_not_be_deleted));
+        setDeleteError(errorNotice(error, m.tasks_the_task_could_not_be_deleted));
       },
     );
+  }
+
+  function taskSummary(task: TripTask) {
+    const due = task.due_date ? formatDay(task.due_date) : null;
+    if (task.completed_at)
+      return due ? m.tasks_checked_off_was_due({ due }) : m.tasks_checked_off();
+    const reminder = task.remind_at ? formatInstant(task.remind_at) : null;
+    if (due) return reminder ? m.tasks_due_with_reminder({ due, reminder }) : m.tasks_due({ due });
+    return reminder ? m.tasks_no_deadline_with_reminder({ reminder }) : m.tasks_no_deadline();
   }
 
   const row = (task: TripTask) => (
@@ -265,13 +274,7 @@ export function TripTaskManager({
             {m.task_overdue_label()}
           </strong>
         )}
-        <span>
-          {task.completed_at
-            ? m.owner_checked_off({
-                p0: task.due_date ? m.owner_was_due({ p0: formatDay(task.due_date) }) : "",
-              })
-            : `${task.due_date ? m.owner_due({ p0: formatDay(task.due_date) }) : m.owner_no_deadline()}${task.remind_at ? m.owner_reminder_2({ p0: formatInstant(task.remind_at) }) : ""}`}
-        </span>
+        <span>{taskSummary(task)}</span>
       </Button>
       <div className="button-row">
         <Button
@@ -280,11 +283,11 @@ export function TripTaskManager({
           onClick={() => toggle(task)}
           aria-label={
             task.completed_at
-              ? m.owner_reopen_task({ p0: task.title })
-              : m.owner_check_off_task({ p0: task.title })
+              ? m.tasks_reopen_task({ title: task.title })
+              : m.tasks_check_off_task({ title: task.title })
           }
         >
-          {task.completed_at ? m.owner_reopen() : m.owner_check_off()}
+          {task.completed_at ? m.tasks_reopen() : m.tasks_check_off()}
         </Button>
       </div>
     </article>
@@ -299,13 +302,11 @@ export function TripTaskManager({
     >
       <div className="capture-heading">
         <div>
-          <h3 id="tasks-title">{m.owner_things_to_arrange()}</h3>
-          <p>
-            {m.owner_a_deadline_sorts_tasks_choose_a_reminder_separately_notifications_appear()}
-          </p>
+          <h3 id="tasks-title">{m.tasks_things_to_arrange()}</h3>
+          <p>{m.tasks_deadline_hint()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
-          {m.owner_new_task()}
+          {m.tasks_new_task()}
         </Button>
       </div>
       <p className="help" role="status">
@@ -313,20 +314,23 @@ export function TripTaskManager({
       </p>
       {alerts.length > 0 && (
         <div className="manager-subsection">
-          <h4>{m.owner_notifications()}</h4>
+          <h4>{m.tasks_notifications()}</h4>
           <div className="saved-records mt-0.5">
             {alerts.map((alert) => (
               <article className="excerpt-row" key={alert.id}>
                 <div>
                   <strong>{alert.title}</strong>
                   <span>
-                    {m.owner_scheduled_reminder()}
-                    {alert.read_at ? m.owner_read_2() : m.owner_new()}
-                    {alert.email_sent_at
-                      ? m.owner_email_sent()
-                      : alert.email_attempts >= 5
-                        ? m.owner_email_delivery_failed()
-                        : m.owner_email_not_sent_yet()}
+                    {m.tasks_notification_status({
+                      state: alert.read_at
+                        ? m.tasks_notification_state_read()
+                        : m.tasks_notification_state_new(),
+                      delivery: alert.email_sent_at
+                        ? m.tasks_email_sent()
+                        : alert.email_attempts >= 5
+                          ? m.tasks_email_delivery_failed()
+                          : m.tasks_email_not_sent_yet(),
+                    })}
                   </span>
                 </div>
                 {!alert.read_at && (
@@ -336,10 +340,10 @@ export function TripTaskManager({
                     onClick={() =>
                       markRead
                         .mutateAsync({ tripId: trip.id, alertId: alert.id })
-                        .catch(fail(m.owner_the_notification_could_not_be_updated))
+                        .catch(fail(m.common_the_notification_could_not_be_updated))
                     }
                   >
-                    {m.owner_read()}
+                    {m.common_read()}
                   </Button>
                 )}
               </article>
@@ -353,12 +357,10 @@ export function TripTaskManager({
           {completedTasks.map(row)}
         </div>
       )}
-      {!tasksQuery.isPending && !tasks.length && (
-        <p>{m.owner_no_tasks_yet_add_one_when_something_needs_to_be_booked_or_arranged()}</p>
-      )}
+      {!tasksQuery.isPending && !tasks.length && <p>{m.tasks_empty()}</p>}
       <RecordDialog
         open={editing || selected !== null}
-        title={editing ? (editingId ? m.owner_edit_task() : m.owner_add_task()) : m.owner_task_2()}
+        title={editing ? (editingId ? m.tasks_edit_task() : m.tasks_add_task()) : m.common_task()}
         dirty={editing && record.dirty}
         error={deleteError}
         onDismiss={close}
@@ -372,15 +374,15 @@ export function TripTaskManager({
             </div>
             <div className="button-row">
               <Button type="button" onClick={() => edit(selected)}>
-                {m.owner_edit()}
+                {m.common_edit()}
               </Button>
               <Button className="danger" type="button" onClick={() => setConfirmDelete(true)}>
-                {m.owner_delete()}
+                {m.common_delete()}
               </Button>
             </div>
             {confirmDelete && (
               <DeleteConfirmation
-                title={m.owner_delete_task({ p0: selected.title })}
+                title={m.tasks_delete_task({ title: selected.title })}
                 onCancel={() => setConfirmDelete(false)}
                 onConfirm={() => remove(selected)}
               />
@@ -390,33 +392,33 @@ export function TripTaskManager({
         {editing && (
           <RecordForm
             record={record}
-            submitLabel={editingId ? m.owner_save_task() : m.owner_add_task()}
-            pendingLabel={m.owner_saving()}
+            submitLabel={editingId ? m.tasks_save_task() : m.tasks_add_task()}
+            pendingLabel={m.common_saving()}
           >
             <div className="field-row">
               <record.form.Field
                 name="title"
                 validators={{
-                  onChange: requiredText(m.owner_give_the_task_a_title),
-                  onSubmit: requiredText(m.owner_give_the_task_a_title),
+                  onChange: requiredText(m.tasks_give_the_task_a_title),
+                  onSubmit: requiredText(m.tasks_give_the_task_a_title),
                 }}
               >
                 {(field) => (
-                  <TextField field={field} label={m.owner_title()} required maxLength={160} />
+                  <TextField field={field} label={m.common_title()} required maxLength={160} />
                 )}
               </record.form.Field>
               <record.form.Field name="dueDate">
-                {(field) => <DateField field={field} label={m.owner_deadline()} optional />}
+                {(field) => <DateField field={field} label={m.tasks_deadline()} optional />}
               </record.form.Field>
             </div>
             <record.form.Field name="remindAt">
-              {(field) => <DateTimeField field={field} label={m.owner_reminder_3()} optional />}
+              {(field) => <DateTimeField field={field} label={m.tasks_reminder_label()} optional />}
             </record.form.Field>
             <record.form.Field name="notes">
               {(field) => (
                 <MarkdownField
                   field={field}
-                  label={m.owner_notes()}
+                  label={m.common_notes()}
                   optional
                   maxLength={4000}
                   rows={3}
@@ -427,9 +429,9 @@ export function TripTaskManager({
               {(links) => (
                 <FieldSet>
                   <FieldLegend>
-                    {m.owner_links()}{" "}
+                    {m.tasks_links()}{" "}
                     <span className="font-medium text-travel-optional">
-                      {m.owner_optional_https()}
+                      {m.common_optional_https()}
                     </span>
                   </FieldLegend>
                   {links.state.value.map((_, index) => (
@@ -442,7 +444,7 @@ export function TripTaskManager({
                         }}
                       >
                         {(field) => (
-                          <TextField field={field} label={m.owner_name()} maxLength={80} />
+                          <TextField field={field} label={m.common_name()} maxLength={80} />
                         )}
                       </record.form.Field>
                       <record.form.Field
@@ -455,7 +457,7 @@ export function TripTaskManager({
                         {(field) => (
                           <TextField
                             field={field}
-                            label={m.owner_address()}
+                            label={m.common_address()}
                             type="url"
                             maxLength={2048}
                           />
@@ -466,7 +468,7 @@ export function TripTaskManager({
                         type="button"
                         onClick={() => void links.removeValue(index)}
                       >
-                        {m.owner_remove_link()}
+                        {m.tasks_remove_link()}
                       </Button>
                     </div>
                   ))}
@@ -476,7 +478,7 @@ export function TripTaskManager({
                       type="button"
                       onClick={() => void links.pushValue({ label: "", url: "" })}
                     >
-                      {m.owner_add_link()}
+                      {m.tasks_add_link()}
                     </Button>
                   )}
                 </FieldSet>

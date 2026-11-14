@@ -61,7 +61,7 @@ function CaptureButton() {
         "max-[679px]:fixed max-[679px]:right-4 max-[679px]:bottom-20 max-[679px]:z-30 max-[679px]:rounded-full max-[679px]:shadow-travel-card inline-flex items-center gap-1.5",
       )}
       type="button"
-      aria-label={tripId ? m.owner_capture_in_trip() : undefined}
+      aria-label={tripId ? m.feedback_capture_in_trip() : undefined}
       onClick={() => openCapture({ tripId })}
     >
       <PlusIcon className="size-4" aria-hidden="true" />
@@ -76,7 +76,7 @@ export function Boundary({ children }: { children: ReactNode }) {
     ["/", m.overview(), HouseIcon],
     ["/trips", m.trips(), MapPinIcon],
     ["/library", m.library(), LibraryIcon],
-    ["/sharing", m.owner_sharing(), Share2Icon],
+    ["/sharing", m.common_sharing(), Share2Icon],
     ["/settings", m.settings(), SettingsIcon],
   ] as const;
 
@@ -168,7 +168,7 @@ export function Boundary({ children }: { children: ReactNode }) {
                           action();
                         }}
                       >
-                        {m.owner_trip_details()}
+                        {m.trips_trip_details()}
                       </Button>
                     )}
                   </div>

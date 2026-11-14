@@ -35,7 +35,7 @@ export function whereabouts(
     ...active.flatMap((route) => [Date.parse(route.departs_at), Date.parse(route.arrives_at)]),
     ...zoned.flatMap((stay) => [midday(stay.check_in_date), midday(stay.check_out_date)]),
   ];
-  const home: Whereabouts = { kind: "home", zone: homeZone, label: m.owner_home() };
+  const home: Whereabouts = { kind: "home", zone: homeZone, label: m.whereabouts_home() };
   if (!bounds.length || now < Math.min(...bounds) || now >= Math.max(...bounds)) return home;
   const route = active.find(
     (candidate) =>
@@ -45,7 +45,7 @@ export function whereabouts(
     return {
       kind: "travel",
       zone: route.arrival_timezone,
-      label: m.owner_on_the_way_to({ p0: areaName(route.arrival_area) }),
+      label: m.whereabouts_on_the_way_to({ area: areaName(route.arrival_area) }),
     };
   const current = zoned.find((stay) =>
     stayCoversNight(stay, effectiveNight(instant, stayZone(stay)!)),
@@ -69,6 +69,10 @@ export function whereabouts(
       })),
   ].sort((left, right) => right.at - left.at)[0];
   return last
-    ? { kind: "between", zone: last.zone, label: m.owner_between_stays_last_in({ p0: last.label }) }
+    ? {
+        kind: "between",
+        zone: last.zone,
+        label: m.whereabouts_between_stays_last_in({ place: last.label }),
+      }
     : home;
 }

@@ -37,26 +37,26 @@ export const serverFields = {
 
 export const bothCoordinates = ({ value, fieldApi }: { value: string } & FormContext) =>
   (value === "") !== (String(fieldApi.form.getFieldValue("longitude" as never) ?? "") === "")
-    ? m.owner_enter_both_map_coordinates_or_leave_both_empty
+    ? m.areas_enter_both_map_coordinates_or_leave_both_empty
     : undefined;
 const withinRange =
   (min: number, max: number, name: () => string) =>
   ({ value }: { value: string }) =>
     value !== "" && !(Number(value) >= min && Number(value) <= max)
-      ? () => m.owner_must_be_between_and_degrees({ p0: name(), p1: min, p2: max })
+      ? () => m.areas_must_be_between_and_degrees({ field: name(), min: min, max: max })
       : undefined;
-export const latitudeRange = withinRange(-90, 90, m.owner_latitude);
-export const longitudeRange = withinRange(-180, 180, m.owner_longitude);
+export const latitudeRange = withinRange(-90, 90, m.areas_latitude);
+export const longitudeRange = withinRange(-180, 180, m.areas_longitude);
 export const knownTimeZone = ({ value }: { value: string }) => {
   if (!value.trim()) return undefined;
   try {
     new Intl.DateTimeFormat("en", { timeZone: value.trim() });
     return undefined;
   } catch {
-    return m.owner_unknown_time_zone_choose_one_from_the_suggestions;
+    return m.areas_unknown_time_zone_choose_one_from_the_suggestions;
   }
 };
 export const areaCoordinate = (value: number) => (Math.round(value * 100) / 100).toString();
 export const areaSummary = (area: Area) =>
   [area.region, area.country_code, area.timezone].filter(Boolean).join(" · ") ||
-  m.owner_only_for_this_trip();
+  m.areas_only_for_this_trip();

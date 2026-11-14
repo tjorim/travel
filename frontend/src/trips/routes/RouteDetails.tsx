@@ -47,8 +47,8 @@ export function RouteDetails({
         </p>
         <p>
           {selected.booking_reference
-            ? m.owner_booking_reference_2({ p0: selected.booking_reference })
-            : m.owner_no_booking_reference()}
+            ? m.common_booking_reference_detail({ reference: selected.booking_reference })
+            : m.common_no_booking_reference()}
         </p>
         <Markdown html={selected.notes_html} text={selected.notes} />
       </div>
@@ -71,15 +71,13 @@ export function RouteDetails({
             value={selected.visibility}
             name={routeTitle(selected)}
           />
-          <p className="help">
-            {m.owner_visitors_see_the_areas_travel_mode_and_line_never_your_booking_code_clas()}
-          </p>
+          <p className="help">{m.routes_visitor_fields_hint()}</p>
         </>
       )}
       {alternatives.length > 0 && (
         <div>
           <p className="help">
-            {m.owner_route_ideas_for_this_journey({ count: alternatives.length })}
+            {m.routes_route_ideas_for_this_journey({ count: alternatives.length })}
           </p>
           <Button
             className="secondary compact"
@@ -87,7 +85,7 @@ export function RouteDetails({
             disabled={saving}
             onClick={() => onCancelAlternatives(alternatives)}
           >
-            {m.owner_cancel_route_alternatives({ count: alternatives.length })}
+            {m.alternatives_cancel_count({ count: alternatives.length })}
           </Button>
         </div>
       )}

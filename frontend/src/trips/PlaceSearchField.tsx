@@ -49,7 +49,7 @@ export function PlaceSearchField({
   const searchExisting = useLocationSearch(tripId);
   // A lookup phrase can be sensitive, so it is not retained in the mutation cache.
   const search = useOwnerMutation<{ query: string }, PlaceSearchResponse>({
-    fallback: m.owner_location_search_is_currently_unavailable,
+    fallback: m.locations_location_search_is_currently_unavailable,
     request: ({ query: phrase }) => ({
       path: tripPath(tripId, "places/search"),
       method: "POST",
@@ -61,50 +61,50 @@ export function PlaceSearchField({
   function find(phrase = query) {
     if (search.isPending) return;
     if (phrase.trim().length < 2) {
-      setState(textNotice(() => m.owner_enter_at_least_two_characters_to_search_for_a_location()));
+      setState(textNotice(() => m.locations_search_min_length_hint()));
       return;
     }
     setFailed(false);
     setResults(null);
-    setState(textNotice(() => m.owner_searching_locations()));
+    setState(textNotice(() => m.locations_searching_locations()));
     search.mutateAsync({ query: phrase.trim() }).then(
       (response) => {
         setResults(response);
         setState(
           textNotice(() =>
             response.results.length
-              ? m.owner_choose_a_result_as_a_starting_point_nothing_is_saved_yet()
-              : m.owner_no_locations_found(),
+              ? m.locations_search_start_hint()
+              : m.locations_no_locations_found(),
           ),
         );
       },
       (error: unknown) => {
         setFailed(true);
-        setState(errorNotice(error, m.owner_location_search_failed));
+        setState(errorNotice(error, m.locations_location_search_failed));
       },
     );
   }
   function choose(result: LocationInput) {
     onSelect(result);
     setResults(null);
-    setState(textNotice(() => m.owner_location_suggested_all_fields_remain_editable()));
+    setState(textNotice(() => m.locations_location_suggested_all_fields_remain_editable()));
   }
   function chooseExisting(place: Location) {
     onSelect({ existing_location_id: place.id }, place);
     setResults(null);
-    setState(textNotice(() => m.owner_existing_location_selected_no_copy_is_created()));
+    setState(textNotice(() => m.locations_existing_location_selected_no_copy_is_created()));
   }
   return (
     <FieldSet className="m-0 grid gap-2.5 rounded-travel-media border border-travel-divider p-3 [&>p]:m-0 [&>p]:text-sm [&>p]:leading-normal [&>p]:text-travel-muted">
       <FieldLegend>
-        {legend} <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+        {legend} <span className="font-medium text-travel-optional">{m.common_optional()}</span>
       </FieldLegend>
       <p>{help}</p>
       {allowExisting && (
         <Field>
-          <FieldLabel>{m.owner_use_an_existing_location()}</FieldLabel>
+          <FieldLabel>{m.locations_use_an_existing_location()}</FieldLabel>
           <AsyncSearchSelect
-            ariaLabel={m.owner_use_an_existing_location()}
+            ariaLabel={m.locations_use_an_existing_location()}
             value={existingChoice}
             onChange={(value) => {
               const place = existingResults.current.get(value);
@@ -120,7 +120,7 @@ export function PlaceSearchField({
               }));
             }}
           />
-          <small className="help">{m.owner_type_a_name_to_search_saved_locations()}</small>
+          <small className="help">{m.locations_type_a_name_to_search_saved_locations()}</small>
         </Field>
       )}
       <div className="flex flex-col gap-3 min-[560px]:flex-row min-[560px]:items-end">
@@ -148,7 +148,7 @@ export function PlaceSearchField({
             disabled={search.isPending}
             onClick={() => find()}
           >
-            {m.owner_search()}
+            {m.packing_search()}
           </Button>
         </div>
       </div>
@@ -163,7 +163,7 @@ export function PlaceSearchField({
               find(suggestedQuery);
             }}
           >
-            {m.owner_search_for_the_name({ p0: suggestedQuery.trim() })}
+            {m.locations_search_for_the_name({ query: suggestedQuery.trim() })}
           </Button>
         </div>
       )}
@@ -181,7 +181,7 @@ export function PlaceSearchField({
           }}
           disabled={search.isPending}
         >
-          {m.owner_search_retry()}
+          {m.common_search_retry()}
         </Button>
       )}
       {results && (
@@ -197,7 +197,7 @@ export function PlaceSearchField({
             </Button>
           ))}
           <p className="help">
-            {m.owner_search_results()}{" "}
+            {m.locations_search_results()}{" "}
             <a href={results.attribution_url} target="_blank" rel="noreferrer">
               {results.attribution}
             </a>

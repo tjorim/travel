@@ -25,14 +25,14 @@ export function VisitForm({
   return (
     <RecordForm
       record={record}
-      submitLabel={editingId ? m.owner_save_visit() : m.owner_add_visit()}
-      pendingLabel={m.owner_saving()}
+      submitLabel={editingId ? m.visits_save_visit() : m.visits_add_visit()}
+      pendingLabel={m.common_saving()}
     >
       <record.form.Field name="place">
         {(field) => (
           <PlacePicker
             tripId={tripId}
-            label={m.owner_where()}
+            label={m.visits_where()}
             value={field.state.value}
             onChange={(value) => field.handleChange(value)}
           />
@@ -42,16 +42,16 @@ export function VisitForm({
         {(field) => (
           <TextField
             field={field}
-            label={m.owner_title()}
+            label={m.common_title()}
             optional
             maxLength={160}
-            placeholder={m.owner_without_a_title_the_visit_uses_the_place_name()}
+            placeholder={m.visits_without_a_title_the_visit_uses_the_place_name()}
           />
         )}
       </record.form.Field>
       <div className="field-row">
         <record.form.Field name="startsOn">
-          {(field) => <DateField field={field} label={m.owner_first_day()} optional />}
+          {(field) => <DateField field={field} label={m.visits_first_day()} optional />}
         </record.form.Field>
         <record.form.Subscribe selector={(state) => state.values.startsOn}>
           {(startsOn) => (
@@ -66,7 +66,7 @@ export function VisitForm({
               {(field) => (
                 <DateField
                   field={field}
-                  label={m.owner_last_day()}
+                  label={m.visits_last_day()}
                   optional
                   min={startsOn || undefined}
                   disabled={!startsOn}
@@ -83,7 +83,7 @@ export function VisitForm({
               {(field) => (
                 <TimeField
                   field={field}
-                  label={m.owner_start_time()}
+                  label={m.visits_start_time()}
                   optional
                   disabled={!startsOn}
                 />
@@ -91,19 +91,22 @@ export function VisitForm({
             </record.form.Field>
             <record.form.Field name="endTime">
               {(field) => (
-                <TimeField field={field} label={m.owner_end_time()} optional disabled={!startsOn} />
+                <TimeField
+                  field={field}
+                  label={m.visits_end_time()}
+                  optional
+                  disabled={!startsOn}
+                />
               )}
             </record.form.Field>
           </div>
         )}
       </record.form.Subscribe>
-      <p className="help">
-        {m.owner_times_are_local_to_the_visit_in_the_area_s_time_zone_visitors_at_home_al()}
-      </p>
+      <p className="help">{m.visits_time_zone_hint()}</p>
       <div className="field-row">
         <record.form.Field name="status">
           {(field) => (
-            <SelectField field={field} label={m.owner_status()}>
+            <SelectField field={field} label={m.common_status()}>
               {Object.entries(PLANNING_STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -114,8 +117,8 @@ export function VisitForm({
         </record.form.Field>
         <record.form.Field name="kind">
           {(field) => (
-            <SelectField field={field} label={m.owner_day_type()} optional>
-              <option value="">{m.owner_no_type()}</option>
+            <SelectField field={field} label={m.visits_day_type()} optional>
+              <option value="">{m.visits_no_type()}</option>
               {Object.entries(VISIT_KIND_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -125,15 +128,13 @@ export function VisitForm({
           )}
         </record.form.Field>
       </div>
-      <p className="help">
-        {m.owner_the_status_is_only_for_you_and_is_never_shared_put_idea_or_draft_here_ra()}
-      </p>
+      <p className="help">{m.visits_status_private_hint()}</p>
       <record.form.Field name="notes">
         {(field) => (
           <MarkdownField
             field={field}
-            label={m.owner_notes()}
-            optional={m.owner_optional_always_private()}
+            label={m.common_notes()}
+            optional={m.visits_optional_always_private()}
             maxLength={4000}
             rows={3}
           />
@@ -143,11 +144,11 @@ export function VisitForm({
         {(field) => (
           <MarkdownField
             field={field}
-            label={m.owner_text_for_visitors()}
+            label={m.common_text_for_visitors()}
             optional
             maxLength={2000}
             rows={3}
-            placeholder={m.owner_what_may_visitors_read_about_this_visit()}
+            placeholder={m.visits_what_may_visitors_read_about_this_visit()}
           />
         )}
       </record.form.Field>
@@ -170,7 +171,7 @@ export function VisitForm({
             <div className="field-row">
               <record.form.Field name="shareDatePrecision">
                 {(field) => (
-                  <SelectField field={field} label={m.owner_dates_for_visitors()}>
+                  <SelectField field={field} label={m.common_dates_for_visitors()}>
                     {recordPrecisionOptions()}
                   </SelectField>
                 )}
@@ -181,8 +182,8 @@ export function VisitForm({
                     field={field}
                     label={
                       <>
-                        {m.owner_show_the_time_to_visitors()}{" "}
-                        <small>{m.owner_only_with_full_dates()}</small>
+                        {m.visits_show_the_time_to_visitors()}{" "}
+                        <small>{m.visits_only_with_full_dates()}</small>
                       </>
                     }
                   />

@@ -417,9 +417,7 @@ export async function openOfflineCopy(subject: string, id: string): Promise<Blob
   }
   if (record.leaseExpiresAt <= Date.now()) {
     await deleteCopy(db, id);
-    throw new FeedbackError(() =>
-      m.offline_the_offline_validity_period_of_this_copy_has_expired_reconnect_to_the_in(),
-    );
+    throw new FeedbackError(() => m.offline_copy_expired_notice());
   }
   const { key } = await getOrCreateDeviceKey(subject);
   const plaintext = await crypto.subtle

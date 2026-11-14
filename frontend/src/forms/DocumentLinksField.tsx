@@ -24,8 +24,8 @@ export function DocumentLinksField({
   return (
     <FieldSet className="grid gap-2">
       <FieldLegend>
-        {m.owner_linked_documents()}{" "}
-        <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+        {m.documents_linked_documents()}{" "}
+        <span className="font-medium text-travel-optional">{m.common_optional()}</span>
       </FieldLegend>
       {documents.map((document) => (
         <Field className="contents" key={document.id}>

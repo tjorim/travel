@@ -16,7 +16,7 @@ export function SavedUpdates({
   useLocale();
   return (
     <section className="saved-records">
-      <h3>{m.owner_saved_travel_updates()}</h3>
+      <h3>{m.capture_saved_travel_updates()}</h3>
       {updates
         .slice()
         .sort((left, right) => right.occurred_at.localeCompare(left.occurred_at))
@@ -30,7 +30,9 @@ export function SavedUpdates({
             <strong>{update.title}</strong>
             <span>
               {formatUpdateInstant(update)}
-              {update.location ? ` · ${update.location.display_name}` : m.owner_without_location()}
+              {update.location
+                ? ` · ${update.location.display_name}`
+                : m.capture_without_location()}
             </span>
           </Button>
         ))}

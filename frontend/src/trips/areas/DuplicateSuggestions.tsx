@@ -22,7 +22,7 @@ export function DuplicateSuggestions({
   return (
     <section className="grid gap-2 rounded-xl border border-travel-divider bg-travel-surface p-4">
       <h4 className="m-0">{title}</h4>
-      <p className="help">{m.owner_possible_duplicates_help()}</p>
+      <p className="help">{m.merge_possible_duplicates_help()}</p>
       <ul className="m-0 grid list-none gap-2 p-0">
         {groups.map((group) => {
           const names = group.ids.map(nameOf).join(" · ");
@@ -37,10 +37,10 @@ export function DuplicateSuggestions({
               <Button
                 className="secondary compact"
                 type="button"
-                aria-label={m.owner_review_merge_of({ p0: names })}
+                aria-label={m.merge_review_merge_of({ names: names })}
                 onClick={() => onReview(group)}
               >
-                {m.owner_review_merge()}
+                {m.merge_review_merge()}
               </Button>
             </li>
           );

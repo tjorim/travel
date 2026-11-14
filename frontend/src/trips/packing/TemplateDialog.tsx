@@ -58,7 +58,7 @@ export function TemplateDialog({
           </FieldLabel>
         </Field>
         <Button type="submit" disabled={busy || !name?.trim()}>
-          {m.packing_save_2()}
+          {m.packing_template_save_action()}
         </Button>
       </form>
     </RecordDialog>

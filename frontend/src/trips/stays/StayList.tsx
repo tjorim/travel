@@ -35,10 +35,10 @@ export function StayList({
                   stay.area?.label,
                   // A stay still being considered without a linked location: text, not colour, and owner-only.
                   !stay.location && (stay.status === "idea" || stay.status === "planned")
-                    ? m.owner_no_exact_location_yet()
+                    ? m.common_no_exact_location_yet()
                     : null,
                   `${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)}`,
-                  m.owner_night_count({ count: nights }),
+                  m.common_night_count({ count: nights }),
                   PLANNING_STATUS_LABELS[stay.status],
                   visibilityLabel(stay.visibility),
                 ]
@@ -53,25 +53,25 @@ export function StayList({
                 <div
                   className="button-row items-center"
                   role="group"
-                  aria-label={m.owner_stay_nights_group({ name: stayLabel(stay) })}
+                  aria-label={m.stays_stay_nights_group({ name: stayLabel(stay) })}
                 >
                   <Button
                     className="secondary compact min-h-11 min-w-11"
                     type="button"
                     disabled={saving || nights <= 1}
-                    aria-label={m.owner_stay_one_night_less({ name: stayLabel(stay) })}
+                    aria-label={m.stays_stay_one_night_less({ name: stayLabel(stay) })}
                     onClick={() => onAdjustNights(stay, -1)}
                   >
                     −
                   </Button>
                   <span aria-hidden="true" className="min-w-16 text-center text-sm font-bold">
-                    {m.owner_night_count({ count: nights })}
+                    {m.common_night_count({ count: nights })}
                   </span>
                   <Button
                     className="secondary compact min-h-11 min-w-11"
                     type="button"
                     disabled={saving}
-                    aria-label={m.owner_stay_one_night_more({ name: stayLabel(stay) })}
+                    aria-label={m.stays_stay_one_night_more({ name: stayLabel(stay) })}
                     onClick={() => onAdjustNights(stay, 1)}
                   >
                     +

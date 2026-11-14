@@ -24,7 +24,7 @@ function Dates({ trip }: { trip: TripSummary }) {
   const range = tripDateRange(trip, "D MMMM YYYY");
   return (
     <p className="m-0 leading-normal font-medium text-travel-muted">
-      {range ?? m.owner_choose_travel_dates_when_you_are_ready_to_plan()}
+      {range ?? m.trips_choose_travel_dates_when_you_are_ready_to_plan()}
     </p>
   );
 }
@@ -59,11 +59,11 @@ export function HomeTripCard({
       </h3>
       <Dates trip={trip} />
       <p className="m-0 grid gap-0.75 rounded-travel-media bg-travel-tint px-3 py-2.75 text-sm leading-normal text-travel-positive">
-        <strong className="text-travel-ink">{m.owner_next_step()}</strong>
+        <strong className="text-travel-ink">{m.trips_next_step()}</strong>
         {nextStep}
       </p>
       <Link className="action-link mt-auto w-fit" to={`/trips/${encodeURIComponent(trip.id)}`}>
-        {m.owner_open_trip()}
+        {m.trips_open_trip()}
       </Link>
     </div>
   );
@@ -113,7 +113,7 @@ export function ListTripCard({
         <TripStatePill state={state} />
         <h4 className="m-0 line-clamp-3 text-xl leading-tight tracking-tight">{trip.title}</h4>
         <p className="m-0 mt-auto text-sm leading-normal text-travel-muted">
-          {[tripDateRange(trip), m.owner_travel_update_count({ count: trip.travel_update_count })]
+          {[tripDateRange(trip), m.updates_count({ count: trip.travel_update_count })]
             .filter(Boolean)
             .join(" · ")}
         </p>

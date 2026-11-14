@@ -34,7 +34,7 @@ for (const locale of ["en", "nl"] as const)
       const side = page.locator("[data-trip-sidebar]");
       const nav = page.getByRole("navigation", {
         includeHidden: true,
-        name: message(locale, "owner_trip_sections"),
+        name: message(locale, "workspace_trip_sections"),
       });
       await expect(nav).toHaveCount(1);
       const links = nav.getByRole("link");
@@ -53,12 +53,12 @@ for (const locale of ["en", "nl"] as const)
       await page.evaluate(() => scrollTo(0, 500));
       expect(Math.round((await side.boundingBox())!.y)).toBe(16);
       const details = page.getByRole("button", {
-        name: message(locale, "owner_trip_details"),
+        name: message(locale, "trips_trip_details"),
         exact: true,
       });
       await details.click();
       const title = page.getByRole("textbox", {
-        name: message(locale, "owner_title"),
+        name: message(locale, "common_title"),
         exact: true,
       });
       await title.fill("Synthetic resize draft");
@@ -75,14 +75,17 @@ for (const locale of ["en", "nl"] as const)
       await title.press("Escape");
       await page
         .getByRole("alertdialog")
-        .getByRole("button", { name: message(locale, "owner_discard_changes_2"), exact: true })
+        .getByRole("button", {
+          name: message(locale, "records_discard_changes_action"),
+          exact: true,
+        })
         .click();
       await expect(details).toBeFocused();
       await page.setViewportSize({ width: 1099, height: 800 });
       await expect(side).toHaveCSS("position", "static");
       await expect(nav).toHaveCount(0);
       await expect(
-        page.getByRole("button", { name: message(locale, "owner_trip_sections") }),
+        page.getByRole("button", { name: message(locale, "workspace_trip_sections") }),
       ).toBeVisible();
       await page.setViewportSize({ width: 1100, height: 800 });
       await expect(nav).toHaveCSS("flex-direction", "column");
@@ -117,9 +120,9 @@ for (const locale of ["en", "nl"] as const)
       await page
         .getByRole("navigation", {
           includeHidden: true,
-          name: message(locale, "owner_trip_sections"),
+          name: message(locale, "workspace_trip_sections"),
         })
-        .getByRole("link", { name: message(locale, "owner_prepare"), exact: true })
+        .getByRole("link", { name: message(locale, "workspace_prepare"), exact: true })
         .click();
       await expect(page).toHaveURL(/\/prepare$/);
       await page
@@ -130,7 +133,7 @@ for (const locale of ["en", "nl"] as const)
         .click();
       const input = page
         .getByRole("dialog")
-        .getByRole("textbox", { name: message(locale, "owner_title"), exact: true });
+        .getByRole("textbox", { name: message(locale, "common_title"), exact: true });
       await input.fill("Synthetic document draft");
       await input.evaluate((e) => {
         e.dataset.lifetime = "document";
@@ -141,9 +144,12 @@ for (const locale of ["en", "nl"] as const)
       await input.press("Escape");
       await page
         .getByRole("alertdialog")
-        .getByRole("button", { name: message(locale, "owner_discard_changes_2"), exact: true })
+        .getByRole("button", {
+          name: message(locale, "records_discard_changes_action"),
+          exact: true,
+        })
         .click();
-      const search = page.getByRole("combobox", { name: message(locale, "owner_jump_to") });
+      const search = page.getByRole("combobox", { name: message(locale, "workspace_jump_to") });
       await search.fill("Synthetic preparation 24");
       await search.evaluate((e) => {
         e.dataset.lifetime = "search";

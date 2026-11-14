@@ -16,23 +16,18 @@ for (const locale of locales) {
       await choosePreferences(page, locale, theme);
       await page.goto(`/admin/trips/${ownerTrip.id}/plan`);
       const opener = page.getByRole("button", {
-        name: message(locale, "owner_new_route"),
+        name: message(locale, "routes_new_route"),
         exact: true,
       });
       await page
-        .getByRole("button", { name: `${message(locale, "owner_routes")} 0`, exact: true })
+        .getByRole("button", { name: `${message(locale, "common_routes")} 0`, exact: true })
         .click();
       await opener.click();
       const dialog = page.getByRole("dialog");
       const map = dialog.getByRole("region", {
-        name: message(locale, "owner_map_editor_for_route"),
+        name: message(locale, "routes_map_editor_for_route"),
       });
-      await expect(map).toContainText(
-        message(
-          locale,
-          "owner_the_map_editor_could_not_be_loaded_you_can_still_paste_coordinates_as_js",
-        ),
-      );
+      await expect(map).toContainText(message(locale, "routes_editor_load_error_hint"));
       await expect(map).not.toHaveAttribute("tabindex");
       expect(
         (await new AxeBuilder({ page }).include('[role="dialog"]').analyze()).violations,

@@ -51,7 +51,7 @@ function candidates(records: SearchableRecords): Candidate[] {
     ...list(
       "media",
       records.media,
-      (asset) => asset.original_filename ?? m.owner_unnamed_media_item(),
+      (asset) => asset.original_filename ?? m.media_unnamed_item_title(),
     ),
   ];
 }
@@ -95,9 +95,9 @@ export function searchRecords(records: SearchableRecords, query: string): Record
       result.push({
         type: "more",
         kind,
-        label: m.owner_jump_more_matches({
-          p0: ofKind.length - RECORDS_PER_KIND,
-          p1: prefix,
+        label: m.workspace_jump_more_matches({
+          count: ofKind.length - RECORDS_PER_KIND,
+          kind: prefix,
         }),
       });
   }

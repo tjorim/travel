@@ -57,9 +57,9 @@ export function WorkspaceNavigation({
         ref={trigger}
         className="secondary min-h-11 trip-sidebar:hidden max-[679px]:h-14 max-[679px]:w-full max-[679px]:pr-14 max-[679px]:min-w-0 max-[679px]:border-0 max-[679px]:bg-transparent max-[679px]:p-0 max-[679px]:text-left"
       >
-        <span className="max-[679px]:hidden">{m.owner_trip_sections()}</span>
+        <span className="max-[679px]:hidden">{m.workspace_trip_sections()}</span>
         <span className="hidden min-w-0 max-[679px]:grid">
-          <span className="sr-only">{m.owner_trip_sections()}: </span>
+          <span className="sr-only">{m.workspace_trip_sections()}: </span>
           <span className="truncate text-sm font-bold">{title}</span>
           <span className="text-xs text-travel-muted">
             {sectionById(current).label()} <span aria-hidden="true">▾</span>
@@ -82,9 +82,11 @@ export function WorkspaceNavigation({
           }}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Dialog.Title className="m-0 text-lg font-bold">{m.owner_trip_sections()}</Dialog.Title>
+            <Dialog.Title className="m-0 text-lg font-bold">
+              {m.workspace_trip_sections()}
+            </Dialog.Title>
             <Dialog.Close className="secondary min-h-11 shrink-0 whitespace-nowrap">
-              {m.owner_close_2()}
+              {m.common_close()}
             </Dialog.Close>
           </div>
           {!wide && (

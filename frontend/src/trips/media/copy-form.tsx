@@ -52,7 +52,7 @@ export const fromDerivative = (derivative: MediaDerivative): PresentationValues 
 const percentage = ({ value }: { value: string }) =>
   value === "" || (Number(value) >= 0 && Number(value) <= 100)
     ? undefined
-    : m.media_choose_a_value_between_0_and_100;
+    : m.media_value_range_error;
 
 /** The copy's presentation fields, with a live focal-point preview when the copy can be shown inline. */
 export function PresentationFields({

@@ -12,25 +12,25 @@ import { Field, FieldError, FieldLabel } from "@/ui/field";
 /** Who receives a record. The same three choices apply to everything that can be shared. */
 export const VISIBILITY_LABELS: Record<Visibility, string> = {
   get private() {
-    return m.owner_private_only_me();
+    return m.publication_private_only_me();
   },
   get everyone() {
-    return m.owner_everyone_all_visitors();
+    return m.publication_everyone_all_visitors();
   },
   get custom() {
-    return m.owner_choose_in_sharing();
+    return m.publication_choose_in_sharing();
   },
 };
 
 const SHORT_LABELS: Record<Visibility, string> = {
   get private() {
-    return m.owner_private();
+    return m.publication_private();
   },
   get everyone() {
-    return m.owner_everyone();
+    return m.publication_everyone();
   },
   get custom() {
-    return m.owner_custom();
+    return m.publication_custom();
   },
 };
 
@@ -43,7 +43,7 @@ export function useSetVisibility(tripId: string) {
     { kind: ShareScopeKind; id: string; visibility: Visibility },
     { visibility: Visibility }
   >({
-    fallback: m.owner_visibility_save_failed,
+    fallback: m.publication_visibility_save_failed,
     request: ({ kind, id, visibility }) => ({
       path: tripPath(tripId, `visibility/${kind}/${encodeURIComponent(id)}`),
       method: "PUT",
@@ -78,20 +78,22 @@ export function VisibilityControl({
   const save = useSetVisibility(tripId);
   const [error, setError] = useFeedback<string | null>(null);
   if (followsUpdate)
-    return <p className="help">{m.owner_shared_with_update({ title: followsUpdate })}</p>;
+    return <p className="help">{m.publication_shared_with_update({ title: followsUpdate })}</p>;
   const shown = save.isPending && save.variables ? save.variables.visibility : value;
   function choose(visibility: Visibility) {
     setError(null);
     save
       .mutateAsync({ kind, id, visibility })
-      .catch((failure: unknown) => setError(errorNotice(failure, m.owner_visibility_save_failed)));
+      .catch((failure: unknown) =>
+        setError(errorNotice(failure, m.publication_visibility_save_failed)),
+      );
   }
   return (
     <Field>
       <FieldLabel>
-        {m.owner_visibility()}
+        {m.common_visibility()}
         <SearchSelect
-          ariaLabel={m.owner_visibility_for({ name })}
+          ariaLabel={m.publication_visibility_for({ name })}
           value={shown}
           isDisabled={save.isPending}
           onChange={(value) => choose(value as Visibility)}

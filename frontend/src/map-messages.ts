@@ -5,11 +5,11 @@ import { m } from "./paraglide/messages.js";
 /** MapLibre reads this table when creating controls; provider labels remain untouched. */
 export function mapMessages(): Record<string, string> {
   return {
-    "Map.Title": m.owner_map_title(),
-    "NavigationControl.ZoomIn": m.owner_map_zoom_in(),
-    "NavigationControl.ZoomOut": m.owner_map_zoom_out(),
-    "NavigationControl.ResetBearing": m.owner_map_reset_bearing(),
-    "AttributionControl.ToggleAttribution": m.owner_map_attribution(),
+    "Map.Title": m.map_title(),
+    "NavigationControl.ZoomIn": m.map_zoom_in(),
+    "NavigationControl.ZoomOut": m.map_zoom_out(),
+    "NavigationControl.ResetBearing": m.map_reset_bearing(),
+    "AttributionControl.ToggleAttribution": m.map_attribution(),
   };
 }
 

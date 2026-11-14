@@ -45,7 +45,7 @@ for (const locale of locales)
         .click();
       await page.keyboard.press("Escape");
       await expect(page.getByRole("alertdialog")).toBeVisible();
-      await page.getByRole("button", { name: message(locale, "owner_continue_editing") }).click();
+      await page.getByRole("button", { name: message(locale, "records_continue_editing") }).click();
       await expect(
         page
           .getByRole("radio", {

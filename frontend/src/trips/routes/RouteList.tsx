@@ -25,7 +25,7 @@ export function RouteList({
             className="document-select"
             type="button"
             onClick={() => onInspect(route.id)}
-            aria-label={m.owner_view_route({ p0: routeTitle(route) })}
+            aria-label={m.routes_view_route({ title: routeTitle(route) })}
           >
             <strong>{routeTitle(route)}</strong>
             <span>
@@ -34,7 +34,7 @@ export function RouteList({
                 [routeTimes(route), routeShift(route)].filter(Boolean).join(""),
                 PLANNING_STATUS_LABELS[route.status],
                 route.carrier,
-                route.geometry ? m.owner_with_line() : null,
+                route.geometry ? m.routes_with_line() : null,
                 visibilityLabel(route.visibility),
               ]
                 .filter(Boolean)

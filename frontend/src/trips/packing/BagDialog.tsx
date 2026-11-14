@@ -65,7 +65,7 @@ export function BagDialog({
       >
         <Field className="contents">
           <FieldLabel className="block">
-            {m.owner_name()}
+            {m.common_name()}
             <Input
               autoFocus
               required
@@ -116,7 +116,7 @@ export function BagDialog({
               className="danger compact"
               onClick={() => onConfirmDelete({ kind: "bag", id: dialog! })}
             >
-              {m.owner_delete()}
+              {m.common_delete()}
             </Button>
           )}
         </div>

@@ -25,7 +25,7 @@ export function useAlternativeMutations(tripId: string, kind: AlternativeKind) {
   ];
   const create = useOwnerMutation<{ memberIds: string[]; label?: string | null }, AlternativeGroup>(
     {
-      fallback: m.owner_the_alternatives_could_not_be_saved,
+      fallback: m.alternatives_the_alternatives_could_not_be_saved,
       request: ({ memberIds, label }) => ({
         path,
         method: "POST",
@@ -38,7 +38,7 @@ export function useAlternativeMutations(tripId: string, kind: AlternativeKind) {
     { id: string; add: string[]; remove: string[] },
     AlternativeGroup
   >({
-    fallback: m.owner_the_alternatives_could_not_be_saved,
+    fallback: m.alternatives_the_alternatives_could_not_be_saved,
     request: ({ id, add, remove }) => ({
       path: `${path}/${id}`,
       method: "PATCH",
@@ -47,7 +47,7 @@ export function useAlternativeMutations(tripId: string, kind: AlternativeKind) {
     invalidate,
   });
   const dissolve = useOwnerMutation<AlternativeGroup>({
-    fallback: m.owner_the_group_could_not_be_dissolved,
+    fallback: m.alternatives_the_group_could_not_be_dissolved,
     request: (group) => ({ path: `${path}/${group.id}`, method: "DELETE" }),
     invalidate,
   });
@@ -55,7 +55,7 @@ export function useAlternativeMutations(tripId: string, kind: AlternativeKind) {
     { id: string; memberId: string; others: "cancel" | "remove" },
     AlternativeChoice
   >({
-    fallback: m.owner_the_choice_could_not_be_made,
+    fallback: m.alternatives_the_choice_could_not_be_made,
     request: ({ id, memberId, others }) => ({
       path: `${path}/${id}/choose`,
       method: "POST",
@@ -64,7 +64,7 @@ export function useAlternativeMutations(tripId: string, kind: AlternativeKind) {
     invalidate,
   });
   const undo = useOwnerMutation<{ id: string; eventId: string }, AlternativeGroup>({
-    fallback: m.owner_the_choice_could_not_be_undone,
+    fallback: m.alternatives_the_choice_could_not_be_undone,
     request: ({ id, eventId }) => ({
       path: `${path}/${id}/undo-choice`,
       method: "POST",
