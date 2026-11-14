@@ -1,19 +1,20 @@
 // The frontend's API types come from the backend's OpenAPI document.
 //
-//   node scripts/api-types.mjs generate   rewrite openapi.json from the backend (needs uv) and src/api-schema.ts
-//   node scripts/api-types.mjs check      fail when src/api-schema.ts is not what openapi.json generates
+//   node scripts/api-types.mjs generate   rewrite openapi.json from the backend (needs uv) and src/api-schema/
+//   node scripts/api-types.mjs check      fail when src/api-schema/ is not what openapi.json generates
 //
+// `generate` runs the backend with `uv run --frozen`, so it never rewrites backend/uv.lock.
 // `check` needs no Python, so `pnpm typecheck` can run it anywhere. The backend tests fail when openapi.json
 // no longer matches the application, so the two checks together catch a stale type in either place.
+// Orval (see `orval.config.mjs`) writes one file per schema plus an `index.ts`, so the `./api-schema` import resolves.
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const snapshot = join(root, "openapi.json");
-const generated = join(root, "src", "api-schema.ts");
+const generated = join(root, "src", "api-schema");
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, { stdio: "inherit", cwd: root, ...options });
@@ -23,31 +24,41 @@ function run(command, args, options = {}) {
   }
 }
 
-// `--root-types` exports every schema by its own name next to `components`, so `StayResponse` is a type.
-// A field with a default stays optional in a request body (a response model lists it as required itself).
-const generate = (output) =>
-  run("pnpm", [
-    "exec",
-    "openapi-typescript",
-    snapshot,
-    "--root-types",
-    "--root-types-no-schema-prefix",
-    "--default-non-nullable=false",
-    "-o",
-    output,
-  ]);
+// Orval keeps stale files in its output directory, so empty it first: a schema dropped from the API must
+// not leave its file behind.
+function generate(output) {
+  rmSync(output, { recursive: true, force: true });
+  run("pnpm", ["exec", "orval", "--config", "orval.config.mjs"], {
+    env: { ...process.env, API_SCHEMA_DIR: output },
+  });
+}
+
+// File name -> contents, so two directories compare without caring how they were written.
+function read(directory) {
+  const files = new Map();
+  if (existsSync(directory)) {
+    for (const name of readdirSync(directory).sort()) {
+      files.set(name, readFileSync(join(directory, name), "utf8"));
+    }
+  }
+  return files;
+}
+
+function same(a, b) {
+  return a.size === b.size && [...a].every(([name, text]) => b.get(name) === text);
+}
 
 const mode = process.argv[2];
 if (mode === "generate") {
-  run("uv", ["run", "--project", "../backend", "python", "-m", "app.openapi_export"]);
+  run("uv", ["run", "--frozen", "--project", "../backend", "python", "-m", "app.openapi_export"]);
   generate(generated);
 } else if (mode === "check") {
   const scratch = mkdtempSync(join(tmpdir(), "travel-api-types-"));
   try {
-    const fresh = join(scratch, "api-schema.ts");
+    const fresh = join(scratch, "api-schema");
     generate(fresh);
-    if (readFileSync(fresh, "utf8") !== readFileSync(generated, "utf8")) {
-      console.error("src/api-schema.ts is stale: run `pnpm api:generate` and commit the result.");
+    if (!same(read(fresh), read(generated))) {
+      console.error("src/api-schema/ is stale: run `pnpm api:generate` and commit the result.");
       process.exit(1);
     }
   } finally {
