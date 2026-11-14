@@ -2,11 +2,11 @@ import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import { daysBetween, formatDay } from "../../dates";
+import { daysBetween } from "../../dates";
 import { stayLabel } from "../../records";
 import { type Stay } from "../../api-types";
-import { PLANNING_STATUS_LABELS } from "../labels";
 import { visibilityLabel } from "../visibility";
+import { stayLine } from "./model";
 
 /** The saved stays. Alternatives the owner confirmed are compared in the alternatives panel above. */
 export function StayList({
@@ -31,17 +31,7 @@ export function StayList({
             <Button className="document-select" type="button" onClick={() => onInspect(stay.id)}>
               <strong>{stayLabel(stay)}</strong>
               <span>
-                {[
-                  stay.area?.label,
-                  // A stay still being considered without a linked location: text, not colour, and owner-only.
-                  !stay.location && (stay.status === "idea" || stay.status === "planned")
-                    ? m.common_no_exact_location_yet()
-                    : null,
-                  `${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)}`,
-                  m.common_night_count({ count: nights }),
-                  PLANNING_STATUS_LABELS[stay.status],
-                  visibilityLabel(stay.visibility),
-                ]
+                {[stayLine(stay, { withStatus: true }), visibilityLabel(stay.visibility)]
                   .filter(Boolean)
                   .join(" · ")}
               </span>

@@ -121,13 +121,20 @@ export const lastDay = ({ value, fieldApi }: { value: string } & FormContext) =>
   return !first || value < first ? m.visits_the_last_day_must_follow_the_first_day : undefined;
 };
 
-/** "Gepland" is the default, so any other status is called out. */
-export const dayLine = (visit: Visit) => {
+/** "Gepland" is the default, so any other status is called out (unless the caller shows the status itself). */
+export const dayLine = (visit: Visit, { withStatus = true }: { withStatus?: boolean } = {}) => {
   const tags = [
-    visit.status !== "planned" ? PLANNING_STATUS_LABELS[visit.status] : "",
+    withStatus && visit.status !== "planned" ? PLANNING_STATUS_LABELS[visit.status] : "",
     visit.kind ? VISIT_KIND_LABELS[visit.kind] : "",
   ]
     .filter(Boolean)
     .join(" · ");
   return `${visitWhen(visit)}${tags ? ` · ${tags}` : ""}`;
 };
+
+/**
+ * What a visit's row says besides its title: when and where. The visits list shows the status here
+ * (when it is not "planned"); the agenda carries the status as its own field and leaves it out.
+ */
+export const visitLine = (visit: Visit, { withStatus = false }: { withStatus?: boolean } = {}) =>
+  [dayLine(visit, { withStatus }), visitPlace(visit)].join(" · ");

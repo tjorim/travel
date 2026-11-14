@@ -1,28 +1,23 @@
 import { Button } from "@/ui/button";
-import { useRef } from "react";
 
-import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
-import { useRecordForm } from "../forms/useRecordForm";
+import { type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useLocale } from "../locale";
 import { useOfflineCopies } from "../offline/useOfflineCopies";
 import { m } from "../paraglide/messages.js";
-import { errorMessage } from "../query/api";
-import { errorNotice, FeedbackError, textNotice, useFeedback } from "../query/feedback";
+import { errorMessage, type ErrorFallback } from "../query/api";
+import { errorNotice, textNotice, useFeedback } from "../query/feedback";
 import { useTripResource } from "../query/owner-queries";
-import { RecordDialog } from "../RecordDialog";
 import { visitTitle } from "../records";
 import { type Trip, type Visit } from "../api-types";
 import { AlternativesPanel } from "./alternatives/AlternativesPanel";
-import { hasPlace, placeFields, samePlace } from "./PlacePicker";
-import { useInPlaceCreate, type CreateRequestProps } from "./create-request";
-import { blank, fromVisit, serverFields, visitFromPrefill, type Values } from "./visits/model";
-import { useVisitMutations } from "./visits/use-visit-mutations";
-import { VisitDetails } from "./visits/VisitDetails";
-import { VisitForm } from "./visits/VisitForm";
+import { useCreateRequest, type CreateRequestProps } from "./create-request";
+import { useFocusRequest } from "./record-focus";
+import { VisitEditor } from "./visits/VisitEditor";
 import { VisitList } from "./visits/VisitList";
 
 const EMPTY: Visit[] = [];
 
+/** The visits block: its list and alternatives, with the editor that opens a record or starts a new one. */
 export function VisitManager({
   trip,
   onShowOnMap,
@@ -41,95 +36,16 @@ export function VisitManager({
   // The server orders visits (by day, then time, then creation; undated last): every view keeps that order.
   const visits = visitsQuery.data ?? EMPTY;
   const stays = staysQuery.data ?? [];
-  const dialog = useRecordDialog(visits);
-  useDialogFocus(focusId, dialog.inspect);
-  const { selected, editing, editingId } = dialog;
   const [message, setMessage] = useFeedback<string>(textNotice(() => m.visits_intro()));
-  // A place is only rewritten when the editor changed it.
-  const baseline = useRef<Values>(blank());
-  const { save, remove } = useVisitMutations(trip.id);
-  const inPlace = useInPlaceCreate("visit", createRequest, onCreateHandled, (prefill) => {
-    load(visitFromPrefill(prefill));
-    dialog.create();
-  });
+  const focus = useFocusRequest(focusId);
+  const create = useCreateRequest("visit", createRequest, onCreateHandled);
 
-  const record = useRecordForm<Values>({
-    defaultValues: blank(),
-    fallback: m.visits_the_visit_could_not_be_saved,
-    serverFields,
-    submit: async (values) => {
-      const id = dialog.editingId ?? null;
-      if (!hasPlace(values.place))
-        throw new FeedbackError(() => m.visits_choose_where_the_visit_is_an_area_or_location());
-      if (values.startTime && !values.startsOn)
-        throw new FeedbackError(() =>
-          m.visits_a_time_belongs_to_a_day_choose_the_first_day_first(),
-        );
-      if (values.endTime && !values.startTime)
-        throw new FeedbackError(() => m.visits_also_enter_a_start_time());
-      const saved = await save.mutateAsync({
-        id,
-        payload: {
-          title: values.title.trim() || null,
-          kind: values.kind || null,
-          status: values.status,
-          starts_on: values.startsOn || null,
-          ends_on: values.endsOn && values.endsOn !== values.startsOn ? values.endsOn : null,
-          start_time: values.startTime || null,
-          end_time: values.endTime || null,
-          notes: values.notes.trim() || null,
-          summary: values.summary.trim() || null,
-          share_time: values.shareTime,
-          share_date_precision: values.shareDatePrecision || null,
-          ...(!id || !samePlace(values.place, baseline.current.place)
-            ? placeFields(values.place)
-            : {}),
-        },
-      });
-      // A pinned copy holds the previous version of the visit.
-      if (id) await offline.removeByResource("visit", id);
-      else inPlace.saved(saved.id);
-    },
-    onSuccess: () => {
-      close();
-      setMessage(textNotice(() => m.visits_visit_saved()));
-    },
-  });
-
-  function load(values: Values) {
-    baseline.current = values;
-    record.load(values);
-  }
-  function close() {
-    dialog.close();
-    load(blank());
-  }
-  function create() {
-    load(blank());
-    dialog.create();
-  }
-  function edit(visit: Visit) {
-    load(fromVisit(visit));
-    dialog.edit(visit.id);
-  }
-  const fail = (fallback: import("../query/api").ErrorFallback) => (error: unknown) =>
+  const fail = (fallback: ErrorFallback) => (error: unknown) =>
     setMessage(errorNotice(error, fallback));
-  const failInDialog = (fallback: import("../query/api").ErrorFallback) => (error: unknown) => {
-    dialog.setConfirmDelete(false);
-    dialog.setError(errorNotice(error, fallback));
-  };
 
   /** The map point for a visit: its location when that has a point, else its area. */
   const mapPointFor = (visit: Visit): string =>
     visit.location?.latitude != null ? visit.location.id : visit.area.id;
-
-  function erase(visit: Visit) {
-    remove.mutateAsync(visit).then(async () => {
-      await offline.removeByResource("visit", visit.id);
-      close();
-      setMessage(textNotice(() => m.visits_visit_deleted()));
-    }, failInDialog(m.visits_the_visit_could_not_be_deleted));
-  }
 
   async function toggleOffline(visit: Visit) {
     if (offline.isPinned("visit", visit.id)) {
@@ -162,7 +78,11 @@ export function VisitManager({
           <h3 id="visits-title">{m.common_visits()}</h3>
           <p>{m.visits_sharing_intro()}</p>
         </div>
-        <Button className="secondary compact" type="button" onClick={create}>
+        <Button
+          className="secondary compact"
+          type="button"
+          onClick={(event) => create.start(event.currentTarget)}
+        >
           {m.visits_new_visit()}
         </Button>
       </div>
@@ -173,14 +93,14 @@ export function VisitManager({
             ? m.visits_loading_your_visits()
             : message}
       </p>
-      <AlternativesPanel tripId={trip.id} kind="visit" records={visits} onOpen={dialog.inspect} />
+      <AlternativesPanel tripId={trip.id} kind="visit" records={visits} onOpen={focus.open} />
       {visits.length > 0 && (
         <VisitList
           visits={visits}
           stays={stays}
           trip={trip}
           pinned={(visit) => offline.isPinned("visit", visit.id)}
-          onInspect={dialog.inspect}
+          onInspect={focus.open}
           onShowOnMap={onShowOnMap && ((visit) => onShowOnMap(mapPointFor(visit)))}
           onToggleOffline={(visit) =>
             void toggleOffline(visit).catch(fail(m.visits_the_visit_could_not_be_saved_offline))
@@ -190,29 +110,13 @@ export function VisitManager({
       {!visitsQuery.isPending && !visitsQuery.error && visits.length === 0 && (
         <p>{m.visits_no_visits_yet_add_one_to_organise_your_trip()}</p>
       )}
-      <RecordDialog
-        open={editing || selected !== null}
-        title={
-          editing ? (editingId ? m.visits_edit_visit() : m.visits_add_visit()) : m.common_visit()
-        }
-        dirty={editing && record.dirty}
-        error={dialog.error}
-        onDismiss={close}
-        returnFocus={inPlace.returnFocus}
-      >
-        {!editing && selected && (
-          <VisitDetails
-            trip={trip}
-            selected={selected}
-            stays={stays}
-            confirmDelete={dialog.confirmDelete}
-            onConfirmDelete={dialog.setConfirmDelete}
-            onEdit={edit}
-            onErase={erase}
-          />
-        )}
-        {editing && <VisitForm tripId={trip.id} record={record} editingId={editingId} />}
-      </RecordDialog>
+      <VisitEditor
+        trip={trip}
+        focusId={focus.focusId}
+        createRequest={create.createRequest}
+        onCreateHandled={create.onCreateHandled}
+        onNotice={setMessage}
+      />
     </section>
   );
 }
