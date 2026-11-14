@@ -1,5 +1,5 @@
 import { m } from "../../paraglide/messages.js";
-import { addDays, formatDay } from "../../dates";
+import { addDays, daysBetween, formatDay } from "../../dates";
 import { locationName, stayLabel } from "../../records";
 import {
   type DatePrecision,
@@ -9,6 +9,7 @@ import {
   type Trip,
 } from "../../api-types";
 import type { FormContext } from "../../forms/form-context";
+import { PLANNING_STATUS_LABELS } from "../labels";
 import type { CreatePrefill } from "../create-request";
 
 export type StayValues = {
@@ -185,3 +186,20 @@ export function stayPlaceFields(values: StayValues): Record<string, unknown> {
 /** The accommodation line of a stay: its location, or that none is chosen yet. */
 export const accommodationLine = (stay: Pick<Stay, "location">) =>
   stay.location ? locationLine(stay.location) : m.stays_accommodation_not_chosen_yet();
+
+/**
+ * What a stay's row says besides its name: the area, a missing location (owner-only: text, not colour), the dates
+ * and the nights. The stays list also shows the status here; the agenda carries it as its own field.
+ */
+export const stayLine = (stay: Stay, { withStatus = false }: { withStatus?: boolean } = {}) =>
+  [
+    stay.area?.label,
+    !stay.location && (stay.status === "idea" || stay.status === "planned")
+      ? m.common_no_exact_location_yet()
+      : null,
+    `${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)}`,
+    m.common_night_count({ count: daysBetween(stay.check_in_date, stay.check_out_date) }),
+    withStatus ? PLANNING_STATUS_LABELS[stay.status] : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");

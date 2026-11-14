@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { stayCoversNight, stayInPlan } from "../records";
 import { type Location, type Stay } from "../api-types";
@@ -26,6 +26,11 @@ export type CreateRequest = {
   token: number;
   /** The control that asked, when it stays on screen: focus returns to it if nothing was created. */
   returnTo?: HTMLElement | null;
+  /**
+   * The request came from a control that stays on screen (a block's own "New" button): focus goes back to it,
+   * even after saving, instead of to the new record's agenda row.
+   */
+  keepFocus?: boolean;
 };
 
 /** What the plan blocks receive: the pending request and the callback that reports it handled. */
@@ -82,7 +87,7 @@ export function useInPlaceCreate(
   onHandled: (() => void) | undefined,
   start: (prefill: CreatePrefill) => void,
 ) {
-  const started = useRef<{ returnTo: HTMLElement | null } | null>(null);
+  const started = useRef<{ returnTo: HTMLElement | null; keepFocus: boolean } | null>(null);
   const created = useRef<string | null>(null);
   const startRef = useRef(start);
   startRef.current = start;
@@ -91,7 +96,10 @@ export function useInPlaceCreate(
 
   useEffect(() => {
     if (request?.kind !== kind) return;
-    started.current = { returnTo: request.returnTo ?? null };
+    started.current = {
+      returnTo: request.returnTo ?? null,
+      keepFocus: request.keepFocus ?? false,
+    };
     created.current = null;
     startRef.current(request.prefill);
     handledRef.current?.();
@@ -101,7 +109,7 @@ export function useInPlaceCreate(
   return {
     /** Called when the dialog saved a new record. */
     saved(id: string | undefined) {
-      if (started.current && id) created.current = id;
+      if (started.current && !started.current.keepFocus && id) created.current = id;
     },
     /** For `RecordDialog`'s `returnFocus`: the element focus belongs on, or nothing for the dialog's own choice. */
     returnFocus(): HTMLElement | null {
@@ -125,5 +133,26 @@ export function useInPlaceCreate(
       if (id) focusRowWhenPresent(kind, id, fallback);
       return fallback;
     },
+  };
+}
+
+/**
+ * A block's own way to start a new record, next to the workspace's: the one `createRequest` an editor takes, and
+ * the callback that reports it handled (the block's own request is dropped, the workspace's is passed on).
+ */
+export function useCreateRequest(
+  kind: CreateKind,
+  external: CreateRequest | null | undefined,
+  onExternalHandled: (() => void) | undefined,
+) {
+  const [own, setOwn] = useState<CreateRequest | null>(null);
+  const count = useRef(0);
+  return {
+    createRequest: own ?? external,
+    onCreateHandled: () => (own ? setOwn(null) : onExternalHandled?.()),
+    /** Starts an empty record; `from` is the control that asked, where focus returns to. */
+    start: (from: HTMLElement | null) =>
+      // A negative token never collides with the workspace's, which counts up.
+      setOwn({ kind, prefill: {}, token: -(count.current += 1), returnTo: from, keepFocus: true }),
   };
 }

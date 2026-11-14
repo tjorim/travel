@@ -1,8 +1,9 @@
 import { dayjs } from "../../dayjs";
 import { m } from "../../paraglide/messages.js";
 import { browserTimeZone, daysBetween, formatDay, localDate, wallClock } from "../../dates";
-import { locationName, type TimedRoute, areaName } from "../../records";
+import { locationName, ROUTE_MODE_LABELS, type TimedRoute, areaName } from "../../records";
 import { type Area, type Location, type Route, type RouteMode } from "../../api-types";
+import { PLANNING_STATUS_LABELS } from "../labels";
 import type { CreatePrefill } from "../create-request";
 import { hasPlace, emptyPlace, placeOf, placeOfPrefill, type PlaceValue } from "../PlacePicker";
 import type { RouteCoordinate } from "../RouteGeometryEditor";
@@ -232,3 +233,18 @@ export const resolvedAreaPoint = (
     ? [{ label: areaName(area), coordinates: [area.longitude, area.latitude] }]
     : [];
 };
+
+/**
+ * What a route's row says besides its title: the mode, the times, the carrier and whether it has a line. The routes
+ * list also shows the status after the times; the agenda carries it as its own field.
+ */
+export const routeLine = (route: Route, { withStatus = false }: { withStatus?: boolean } = {}) =>
+  [
+    ROUTE_MODE_LABELS[route.mode],
+    [routeTimes(route), routeShift(route)].filter(Boolean).join(""),
+    withStatus ? PLANNING_STATUS_LABELS[route.status] : null,
+    route.carrier,
+    route.geometry ? m.routes_with_line() : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
