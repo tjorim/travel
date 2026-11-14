@@ -6,4 +6,7 @@
  * OpenAPI spec version: snapshot
  */
 
+/**
+ * The delay of each audience in `audiences`, in seconds.
+ */
 export type LiveSessionResponseDelays = {[key: string]: number};

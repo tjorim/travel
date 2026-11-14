@@ -756,7 +756,7 @@
   "live_public": "Openbare reis",
   "live_revoke": "Bron intrekken en verwijderen",
   "live_save": "Publiekskeuzes opslaan",
-  "live_source": "HA-entiteits-ID (person of device_tracker)",
+  "live_source": "Positiebron (bijvoorbeeld een Home Assistant-entiteits-ID)",
   "live_stale": "Verouderd",
   "live_start": "Verzamelen starten",
   "live_stop": "Verzamelen en delen stoppen",

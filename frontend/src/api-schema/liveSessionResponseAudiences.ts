@@ -6,4 +6,7 @@
  * OpenAPI spec version: snapshot
  */
 
+/**
+ * The precision each audience receives, keyed by `public` for the public view, or the id of one of the trip's share links. A link that is revoked, expired or rotated loses its setting.
+ */
 export type LiveSessionResponseAudiences = {[key: string]: 'exact' | '1km' | '10km'};

@@ -86,6 +86,7 @@ export * from './importSessionCompleteResponse';
 export * from './importSessionResponse';
 export * from './importSessionResponseProvider';
 export * from './importSessionState';
+export * from './ingestApiTripsTripIdLiveLocationSessionIdPositionsPostBody';
 export * from './linkPresetApplyResult';
 export * from './linkState';
 export * from './listAreasApiTripsTripIdAreasGetParams';

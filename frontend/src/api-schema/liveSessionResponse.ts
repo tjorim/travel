@@ -14,11 +14,15 @@ export type LiveSessionResponse = {
   id: string;
   source: string;
   enabled: boolean;
+  /** The precision each audience receives, keyed by `public` for the public view, or the id of one of the trip's share links. A link that is revoked, expired or rotated loses its setting. */
   audiences: LiveSessionResponseAudiences;
+  /** The delay of each audience in `audiences`, in seconds. */
   delays: LiveSessionResponseDelays;
   /** What each enabled audience receives right now, at its delivered precision and delay. */
   previews: LiveSessionResponsePreviews;
   current: LivePointResponse | null;
   /** The newest point is more than an hour old. */
   stale: boolean;
+  created_at: string;
+  updated_at: string;
 };

@@ -39,8 +39,11 @@ class Refusal(ServiceError):
         params: dict | None = None,
         field: str | None = None,
         detail: Any = None,
+        headers: dict | None = None,
     ):
         super().__init__(message, code=code, params=params, field=field)
+        # Response headers the refusal needs, such as ``Retry-After``; the MCP adapter ignores them.
+        self.headers = headers
         # A structured body (a review the owner must acknowledge) that replaces the message as the response's
         # ``detail``; HTTP sends it as JSON and the MCP adapter sends it as JSON text.
         self.detail = detail
@@ -50,6 +53,12 @@ class Conflict(Refusal):
     """A request that clashes with the current state, or needs the owner's acknowledgement first."""
 
     status_code = status.HTTP_409_CONFLICT
+
+
+class TooManyRequests(Refusal):
+    """A caller that asks again sooner than the operation allows (HTTP 429); pass ``Retry-After`` as a header."""
+
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
 
 
 class RecordNotFound(Refusal):
@@ -110,6 +119,7 @@ def service_exception(status_code: int, error: Exception) -> ApiException:
         structured if structured is not None else str(error) if isinstance(error, ServiceError) else "Invalid request",
         code=error.code if isinstance(error, ServiceError) else "invalid_input",
         params=error.params if isinstance(error, ServiceError) else {},
+        headers=error.headers if isinstance(error, Refusal) else None,
         field=error.field if isinstance(error, ServiceError) else None,
     )
 

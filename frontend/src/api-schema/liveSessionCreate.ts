@@ -7,6 +7,10 @@
  */
 
 export type LiveSessionCreate = {
-  /** @pattern ^(person|device_tracker)\.[a-z0-9_]{1,100}$ */
+  /**
+     * An opaque name the owner gives the position source, such as a Home Assistant entity id. Letters, digits, `.`, `_`, `:` and `-`, starting with a letter or digit; Travel never interprets it.
+     * @minLength 1
+     * @maxLength 128
+     */
   source: string;
 };

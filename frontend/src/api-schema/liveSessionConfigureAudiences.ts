@@ -6,4 +6,7 @@
  * OpenAPI spec version: snapshot
  */
 
+/**
+ * The audiences that receive the current position, with the precision each receives, keyed by `public` for the public view, or the id of one of the trip's share links. A link that is revoked, expired or rotated loses its setting. It replaces the saved audiences: one left out is removed together with its delay.
+ */
 export type LiveSessionConfigureAudiences = {[key: string]: 'exact' | '1km' | '10km'};

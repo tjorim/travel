@@ -6,4 +6,7 @@
  * OpenAPI spec version: snapshot
  */
 
+/**
+ * Seconds to hold the position back, per audience in `audiences`. Only the audiences named here change; one that has no saved delay starts at 0. Omit it to keep every saved delay.
+ */
 export type LiveSessionConfigureDelays = {[key: string]: 0 | 900 | 1800 | 3600 | 7200 | 86400} | null;

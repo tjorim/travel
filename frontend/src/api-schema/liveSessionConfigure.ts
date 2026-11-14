@@ -10,6 +10,8 @@ import type { LiveSessionConfigureDelays } from './liveSessionConfigureDelays';
 
 export type LiveSessionConfigure = {
   enabled: boolean;
+  /** The audiences that receive the current position, with the precision each receives, keyed by `public` for the public view, or the id of one of the trip's share links. A link that is revoked, expired or rotated loses its setting. It replaces the saved audiences: one left out is removed together with its delay. */
   audiences?: LiveSessionConfigureAudiences;
+  /** Seconds to hold the position back, per audience in `audiences`. Only the audiences named here change; one that has no saved delay starts at 0. Omit it to keep every saved delay. */
   delays?: LiveSessionConfigureDelays;
 };
