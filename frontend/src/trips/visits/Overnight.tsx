@@ -20,8 +20,8 @@ export function Overnight({
   return (
     <div className="grid gap-0.75">
       <span className="text-sm font-medium text-travel-muted">
-        {m.owner_overnight_stay()} {sleep.stays.map(stayLabel).join(", ") || "—"}
-        {sleep.uncovered > 0 ? m.owner_uncovered_nights({ count: sleep.uncovered }) : ""}
+        {m.visits_overnight_stay()} {sleep.stays.map(stayLabel).join(", ") || "—"}
+        {sleep.uncovered > 0 ? m.visits_uncovered_nights({ count: sleep.uncovered }) : ""}
       </span>
     </div>
   );

@@ -9,12 +9,12 @@ export const recordPrecisionOptions = () => [
     {m.precision_record_follow()}
   </option>,
   <option key="day" value="day">
-    {m.owner_full_dates()}
+    {m.publication_full_dates()}
   </option>,
   <option key="month" value="month">
-    {m.owner_months_only()}
+    {m.publication_months_only()}
   </option>,
   <option key="year" value="year">
-    {m.owner_year_only()}
+    {m.publication_year_only()}
   </option>,
 ];

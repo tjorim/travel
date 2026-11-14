@@ -9,8 +9,8 @@ import { DetailList } from "./DetailList";
 export function TasksBlock({ trip, tasks }: { trip: Trip; tasks: TripTask[] }) {
   useLocale();
   return (
-    <Section id="tasks" title={m.owner_tasks()}>
-      <DetailList empty={tasks.length === 0} message={m.owner_no_tasks_captured()}>
+    <Section id="tasks" title={m.common_tasks()}>
+      <DetailList empty={tasks.length === 0} message={m.tasks_no_tasks_captured()}>
         {tasks
           .slice()
           .sort(
@@ -25,14 +25,14 @@ export function TasksBlock({ trip, tasks }: { trip: Trip; tasks: TripTask[] }) {
               </RecordHeading>
               <p>
                 {task.completed_at
-                  ? m.owner_completed_on({ p0: timestamp(task.completed_at) })
+                  ? m.tasks_completed_on({ date: timestamp(task.completed_at) })
                   : task.due_date
-                    ? m.owner_due({ p0: formatDay(task.due_date) })
-                    : m.owner_no_deadline()}
+                    ? m.tasks_due({ due: formatDay(task.due_date) })
+                    : m.tasks_no_deadline()}
               </p>
               {task.remind_at && (
                 <p>
-                  {m.owner_reminder()} {timestamp(task.remind_at)}
+                  {m.tasks_reminder_detail()} {timestamp(task.remind_at)}
                 </p>
               )}
               <Markdown html={task.notes_html} text={task.notes} />

@@ -36,7 +36,7 @@ export function PackingOfflineFallback({
   return (
     <section className="space-y-4" aria-labelledby="packing-title">
       <h3 id="packing-title" className="text-2xl font-semibold">
-        {m.owner_packing()}
+        {m.packing_packing()}
       </h3>
       {savedCopies.length > 1 && (
         <Field>
@@ -61,9 +61,9 @@ export function PackingOfflineFallback({
           {offline.online && listsQuery.isError
             ? errorMessage(listsQuery.error, m.packing_loading_packing_lists_failed)
             : offline.online && (bagsQuery.isError || itemsQuery.isError)
-              ? m.packing_loading_packing_list_failed_2()
+              ? m.packing_list_load_error_inline()
               : offline.loaded
-                ? m.offline_no_offline_packing_list_saved_for_this_trip_reconnect_to_save_one()
+                ? m.offline_packing_missing_notice()
                 : m.offline_loading_offline_packing_lists()}
         </p>
       )}

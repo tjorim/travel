@@ -122,7 +122,7 @@ export const optionalNote = (optional: Common["optional"]) =>
     <>
       {" "}
       <span className="font-medium text-travel-optional">
-        {typeof optional === "string" ? optional : m.owner_optional()}
+        {typeof optional === "string" ? optional : m.common_optional()}
       </span>
     </>
   ) : null;

@@ -7,7 +7,7 @@ export const providerLabel = {
 
 export const purposeLabel = {
   get share() {
-    return m.owner_sharing();
+    return m.common_sharing();
   },
   get owner_preview() {
     return m.media_private_preview();

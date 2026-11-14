@@ -37,7 +37,7 @@ export function UpdateRow({
         <strong>{item.title}</strong>
         <span>
           {updateDateLabel(item)} · {visibilityLabel(item.visibility)} ·{" "}
-          {item.area?.label ?? m.owner_no_place()}
+          {item.area?.label ?? m.updates_no_place()}
         </span>
       </Button>
       <div className="grid justify-items-end gap-1 max-[620px]:justify-items-start">
@@ -46,10 +46,10 @@ export function UpdateRow({
           type="button"
           disabled={loading || blocker !== null}
           aria-describedby={blocker && !loading ? explanationId : undefined}
-          aria-label={m.owner_preview_as_visitor_for({ p0: item.title })}
+          aria-label={m.updates_preview_as_visitor_for({ title: item.title })}
           onClick={onPreview}
         >
-          {m.owner_preview_as_visitor()}
+          {m.updates_preview_as_visitor()}
         </Button>
         {blocker && !loading && (
           <span id={explanationId} className="max-w-52 text-xs! sm:text-right">

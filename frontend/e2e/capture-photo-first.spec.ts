@@ -25,13 +25,13 @@ async function openCapture(page: Page, locale: Locale, theme: "light" | "dark") 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await expect(
-    dialog.getByRole("textbox", { name: message(locale, "owner_title"), exact: true }),
+    dialog.getByRole("textbox", { name: message(locale, "common_title"), exact: true }),
   ).toBeVisible();
   return { record, dialog, opener };
 }
 
 const moreName = (locale: Locale) => new RegExp(`^${message(locale, "capture_more")}`);
-const saveName = (locale: Locale) => message(locale, "owner_save_travel_update");
+const saveName = (locale: Locale) => message(locale, "updates_save_travel_update");
 
 async function expectNoAxeViolations(page: Page) {
   const results = await new AxeBuilder({ page })
@@ -60,14 +60,17 @@ for (const locale of locales) {
       const order = {
         photos: await top(dialog.getByRole("group", { name: message(locale, "capture_photos") })),
         title: await top(
-          dialog.getByRole("textbox", { name: message(locale, "owner_title"), exact: true }),
+          dialog.getByRole("textbox", { name: message(locale, "common_title"), exact: true }),
         ),
         more: await top(dialog.getByRole("button", { name: moreName(locale) })),
       };
       expect(order.photos).toBeLessThan(order.title);
       expect(order.title).toBeLessThan(order.more);
       await expect(
-        dialog.getByRole("textbox", { name: message(locale, "owner_private_note"), exact: false }),
+        dialog.getByRole("textbox", {
+          name: message(locale, "updates_private_note"),
+          exact: false,
+        }),
       ).toBeHidden();
       await expect(
         dialog.getByRole("radiogroup", { name: message(locale, "language") }),
@@ -83,7 +86,7 @@ for (const locale of locales) {
       });
       await expect(remove).toBeVisible();
       await dialog
-        .getByRole("textbox", { name: message(locale, "owner_title"), exact: true })
+        .getByRole("textbox", { name: message(locale, "common_title"), exact: true })
         .fill("Synthetic moment");
       await expect(save).toBeInViewport();
       expect(await scrolled()).toBe(false);
@@ -91,7 +94,7 @@ for (const locale of locales) {
 
       await save.click();
       await expect(
-        dialog.getByText(message(locale, "owner_travel_update_saved"), { exact: true }),
+        dialog.getByText(message(locale, "updates_travel_update_saved"), { exact: true }),
       ).toBeVisible();
       expect(record.uploads).toHaveLength(1);
       expect(record.updates).toHaveLength(1);
@@ -113,7 +116,7 @@ for (const locale of locales) {
     const save = dialog.getByRole("button", { name: saveName(locale), exact: true });
     await dialog.locator("input[type=file][multiple]").setInputFiles(photo);
     const title = dialog.getByRole("textbox", {
-      name: message(locale, "owner_title"),
+      name: message(locale, "common_title"),
       exact: true,
     });
     await title.focus();
@@ -141,7 +144,7 @@ for (const locale of locales) {
     await page.setViewportSize({ width: 390, height: 844 });
     const { dialog } = await openCapture(page, locale, "light");
     const title = dialog.getByRole("textbox", {
-      name: message(locale, "owner_title"),
+      name: message(locale, "common_title"),
       exact: true,
     });
     const more = dialog.getByRole("button", { name: moreName(locale) });
@@ -160,16 +163,9 @@ for (const locale of locales) {
     await expect(
       dialog.getByRole("radiogroup", { name: message(locale, "language") }),
     ).toBeVisible();
+    await expect(dialog.getByText(message(locale, "capture_privacy_hint"))).toBeVisible();
     await expect(
-      dialog.getByText(
-        message(
-          locale,
-          "owner_a_new_travel_update_is_private_your_notes_location_and_photos_are_never",
-        ),
-      ),
-    ).toBeVisible();
-    await expect(
-      dialog.getByText(message(locale, "owner_connected_you_choose_when_to_save")),
+      dialog.getByText(message(locale, "capture_connected_you_choose_when_to_save")),
     ).toBeVisible();
     await page.keyboard.press("Tab");
     await expect(dialog.getByRole("radio", { checked: true })).toBeFocused();
@@ -197,7 +193,7 @@ for (const locale of locales) {
     await page.keyboard.press("Escape");
     const prompt = page.getByRole("alertdialog");
     await expect(prompt).toBeVisible();
-    await prompt.getByRole("button", { name: message(locale, "owner_continue_editing") }).click();
+    await prompt.getByRole("button", { name: message(locale, "records_continue_editing") }).click();
     await expect(dialog).toBeVisible();
 
     await dialog
@@ -207,9 +203,9 @@ for (const locale of locales) {
       .click();
     await dialog
       .getByRole("button", {
-        name: message(locale, "owner_close").replace(
-          "{p0}",
-          message(locale, "owner_new_travel_update"),
+        name: message(locale, "records_close_named").replace(
+          "{title}",
+          message(locale, "capture_new_travel_update"),
         ),
       })
       .click();

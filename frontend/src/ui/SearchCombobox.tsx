@@ -148,7 +148,7 @@ function SearchCombobox({
         />
         <Combobox.Trigger
           aria-labelledby=""
-          aria-label={m.owner_show_options_for({ p0: ariaLabel ?? m.owner_selection() })}
+          aria-label={m.common_show_options_for({ label: ariaLabel ?? m.common_selection() })}
           className="min-w-11 shrink-0 rounded-l-none! border! border-travel-muted! bg-travel-surface! px-3! text-travel-ink!"
         >
           <span aria-hidden="true">▾</span>
@@ -156,9 +156,9 @@ function SearchCombobox({
         {open && (
           <div className="absolute left-0 top-full z-50 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border bg-travel-surface p-1 text-travel-ink shadow-lg">
             <div role="status" className="px-2 text-sm">
-              {searchState === "loading" && m.owner_search_loading()}
-              {searchState === "error" && m.owner_search_failed()}
-              {searchState === "success" && choices.length > 0 && m.owner_search_complete()}
+              {searchState === "loading" && m.common_search_loading()}
+              {searchState === "error" && m.common_search_failed()}
+              {searchState === "success" && choices.length > 0 && m.common_search_complete()}
             </div>
             {searchState === "error" && (
               <Button
@@ -168,12 +168,12 @@ function SearchCombobox({
                   onRetry?.();
                 }}
               >
-                {m.owner_search_retry()}
+                {m.common_search_retry()}
               </Button>
             )}
             {(!searchState || searchState === "success") && (
               <Combobox.Empty role="status" className="p-2 text-sm">
-                {m.owner_no_results()}
+                {m.common_no_results()}
               </Combobox.Empty>
             )}
             <Combobox.List>

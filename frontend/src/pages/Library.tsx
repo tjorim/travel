@@ -17,11 +17,9 @@ export function Library() {
       <div>
         <p className="travel-eyebrow">{m.library_separate_from_your_trips()}</p>
         <h2 id="library-title">{m.library()}</h2>
+        <p>{m.library_intro()}</p>
         <p>
-          {m.library_travel_documents_and_emergency_information_that_belong_to_no_specific_tr()}
-        </p>
-        <p>
-          {m.owner_library_trip_documents_note()} <HomeLink to="/trips">{m.trips()}</HomeLink>
+          {m.library_trip_documents_note()} <HomeLink to="/trips">{m.trips()}</HomeLink>
         </p>
       </div>
       <DocumentLibraryManager />

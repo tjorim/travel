@@ -28,13 +28,13 @@ export function VisitorChangeDialog({
     // The server's area label is null for an unnamed area, which the owner reads in their own language.
     const area = change.field === "area_id" ? areas.find((candidate) => candidate.id === id) : null;
     const shown = area ? areaName(area) : change.field === "area_id" ? change[`${side}_label`] : id;
-    return shown || m.owner_visitor_change_empty();
+    return shown || m.locations_visitor_change_empty();
   };
   return (
     <DeleteConfirmation
-      title={m.owner_visitor_change_title()}
-      description={m.owner_visitor_change_description()}
-      confirmLabel={m.owner_visitor_change_confirm()}
+      title={m.locations_visitor_change_title()}
+      description={m.locations_visitor_change_description()}
+      confirmLabel={m.locations_visitor_change_confirm()}
       onCancel={onCancel}
       onConfirm={onConfirm}
     >
@@ -42,11 +42,11 @@ export function VisitorChangeDialog({
         {changes.map((change) => (
           <li key={change.field} className="grid gap-0.5 border-t border-travel-border pt-2">
             <strong>{visitorFieldLabel(change.field)}</strong>
-            <span>{m.owner_visitor_change_before({ p0: value(change, "before") })}</span>
-            <span>{m.owner_visitor_change_after({ p0: value(change, "after") })}</span>
+            <span>{m.locations_visitor_change_before({ value: value(change, "before") })}</span>
+            <span>{m.locations_visitor_change_after({ value: value(change, "after") })}</span>
             {change.field === "area_id" && (
               <span>
-                {m.owner_visitor_change_carried({
+                {m.locations_visitor_change_carried({
                   visits: change.visits ?? 0,
                   routes: change.routes ?? 0,
                   stays: change.stays ?? 0,
@@ -54,8 +54,8 @@ export function VisitorChangeDialog({
               </span>
             )}
             <span>
-              {m.owner_visitor_change_seen_by({
-                p0: change.audiences.map(audienceName).join(", "),
+              {m.locations_visitor_change_seen_by({
+                audiences: change.audiences.map(audienceName).join(", "),
               })}
             </span>
           </li>

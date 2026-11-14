@@ -13,13 +13,13 @@ export function MapTarget({
   if (latitude == null || longitude == null) return null;
   return (
     <p className="help">
-      {m.owner_saved_map_point_and_navigation_target()} {latitude}, {longitude} ·{" "}
+      {m.locations_saved_map_point_and_navigation_target()} {latitude}, {longitude} ·{" "}
       <a
         href={`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`}
         target="_blank"
         rel="noreferrer"
       >
-        {m.owner_view_on_map()}
+        {m.locations_view_on_map()}
       </a>
     </p>
   );

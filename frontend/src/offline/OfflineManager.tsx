@@ -23,16 +23,16 @@ const KIND_LABELS: Record<OfflineResourceKind, string> = {
     return m.offline_emergency_information();
   },
   get media_asset() {
-    return m.owner_private_media();
+    return m.common_private_media();
   },
   get media_derivative() {
-    return m.offline_media_copy_2();
+    return m.offline_media_copy_title();
   },
   get route_data() {
     return m.offline_map_and_route_data();
   },
   get visit() {
-    return m.owner_visit();
+    return m.common_visit();
   },
   get packing_list() {
     return m.packing_list();
@@ -99,12 +99,14 @@ export function OfflineManager() {
 
   function remove(copy: OfflineCopySummary) {
     confirmation.ask({
-      title: () => m.offline_stop_saving_offline({ p0: copy.title }),
-      description: () => m.offline_the_copy_will_be_removed_from_this_device_the_original_is_kept(),
+      title: () => m.offline_stop_saving_offline({ title: copy.title }),
+      description: () => m.offline_remove_description(),
       confirmLabel: () => m.offline_stop_saving(),
       onConfirm: async () => {
         await offline.remove(copy.id);
-        setMessage(textNotice(() => m.owner_is_no_longer_available_offline({ p0: copy.title })));
+        setMessage(
+          textNotice(() => m.common_is_no_longer_available_offline({ title: copy.title })),
+        );
       },
     });
   }
@@ -130,9 +132,7 @@ export function OfflineManager() {
       <div className="capture-heading">
         <div>
           <h3 id="offline-title">{m.offline_offline()}</h3>
-          <p>
-            {m.offline_deliberately_saved_copies_stay_on_this_device_only_and_disappear_when_yo()}
-          </p>
+          <p>{m.offline_copies_device_only_hint()}</p>
         </div>
         {offline.copies.length > 0 && (
           <Button className="danger compact" type="button" onClick={clearAll}>
@@ -143,8 +143,7 @@ export function OfflineManager() {
       <p className="help" role="status">
         {message ||
           (offline.unsupported && m.offline_storage_is_not_supported_in_this_browser()) ||
-          (!offline.online &&
-            m.offline_you_are_offline_copies_will_be_checked_again_when_you_reconnect()) ||
+          (!offline.online && m.offline_recheck_on_reconnect_notice()) ||
           (offline.copies.length > 0
             ? m.offline_copies_count({
                 count: offline.copies.length,
@@ -153,20 +152,12 @@ export function OfflineManager() {
             : m.offline_no_offline_copies_yet())}
       </p>
       {offline.disclosure?.exportable && (
-        <p className="help">
-          {m.offline_your_browser_cannot_store_the_offline_key_as_nonexportable_copies_use_be()}
-        </p>
+        <p className="help">{m.offline_key_not_exportable_warning()}</p>
       )}
       {offline.persisted === false && (
-        <p className="help">
-          {m.offline_your_browser_has_not_granted_persistent_storage_for_these_offline_copies()}
-        </p>
+        <p className="help">{m.offline_storage_not_persistent_warning()}</p>
       )}
-      {!offline.copies.length && offline.loaded && (
-        <p>
-          {m.offline_enable_save_offline_on_a_document_emergency_information_media_item_map_v()}
-        </p>
-      )}
+      {!offline.copies.length && offline.loaded && <p>{m.offline_empty_hint()}</p>}
       {offline.copies.length > 0 && (
         <div className="saved-records mt-0.5">
           {offline.copies.map((copy) => (
@@ -177,11 +168,11 @@ export function OfflineManager() {
                   {m.offline_saved_line({ date: formatMoment(copy.pinnedAt) })}
                 </span>
                 <span>
-                  {m.common_last_checked_valid_until_line({
-                    p0: KIND_LABELS[copy.resourceKind],
-                    p1: bytesLabel(copy.byteSize),
-                    p2: formatMoment(copy.lastValidatedAt),
-                    p3: formatMoment(copy.leaseExpiresAt),
+                  {m.offline_copy_details({
+                    kind: KIND_LABELS[copy.resourceKind],
+                    size: bytesLabel(copy.byteSize),
+                    checked: formatMoment(copy.lastValidatedAt),
+                    expires: formatMoment(copy.leaseExpiresAt),
                   })}
                 </span>
                 {copy.newerVersionAvailable && (
@@ -193,7 +184,7 @@ export function OfflineManager() {
                   {m.library_view()}
                 </Button>
                 <Button className="danger compact" type="button" onClick={() => remove(copy)}>
-                  {m.owner_delete()}
+                  {m.common_delete()}
                 </Button>
               </div>
             </article>
@@ -215,7 +206,7 @@ export function OfflineManager() {
               type="button"
               onClick={() => setViewingText(null)}
             >
-              {m.owner_close_2()}
+              {m.common_close()}
             </Button>
           </div>
         )}
@@ -227,7 +218,7 @@ export function OfflineManager() {
             type="button"
             onClick={() => setViewingPacking(null)}
           >
-            {m.owner_close_2()}
+            {m.common_close()}
           </Button>
         </div>
       )}

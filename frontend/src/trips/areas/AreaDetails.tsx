@@ -52,7 +52,7 @@ export function AreaDetails({
       type="button"
       onClick={() => onMerge(selected)}
     >
-      {m.owner_merge_with_other_areas()}
+      {m.areas_merge_with_other_areas()}
     </Button>
   );
   return (
@@ -62,7 +62,7 @@ export function AreaDetails({
         <p>{areaSummary(selected)}</p>
         {selected.latitude !== null && selected.longitude !== null && (
           <p>
-            {m.owner_map_point()} {selected.latitude}, {selected.longitude}
+            {m.areas_map_point()} {selected.latitude}, {selected.longitude}
           </p>
         )}
       </div>
@@ -85,7 +85,7 @@ export function AreaDetails({
       </RecordActions>
       {refused && areas.length > 1 && (
         <div className="grid gap-2">
-          <p>{m.owner_merge_instead_of_deleting_area()}</p>
+          <p>{m.areas_merge_instead_of_deleting_area()}</p>
           <div className="button-row">{mergeButton}</div>
         </div>
       )}
@@ -104,8 +104,8 @@ export function AreaDetails({
       />
       {confirmDelete && (
         <DeleteConfirmation
-          title={m.owner_delete_area({ p0: areaName(selected) })}
-          description={m.owner_this_is_only_possible_when_the_area_is_no_longer_used_by_a_visit_travel()}
+          title={m.areas_delete_area({ name: areaName(selected) })}
+          description={m.areas_delete_blocked_hint()}
           onCancel={() => onConfirmDelete(false)}
           onConfirm={() => onErase(selected)}
         />

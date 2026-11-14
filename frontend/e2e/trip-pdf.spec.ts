@@ -27,12 +27,12 @@ for (const locale of ["nl", "en"] as const) {
       await page.goto(`/admin/trips/${ownerTrip.id}/prepare`);
       await page.getByRole("button", { name: message(locale, "account"), exact: true }).click();
       const details = page.getByRole("button", {
-        name: message(locale, "owner_trip_details"),
+        name: message(locale, "trips_trip_details"),
         exact: true,
       });
       await details.click();
       const title = page.getByRole("textbox", {
-        name: message(locale, "owner_title"),
+        name: message(locale, "common_title"),
         exact: true,
       });
       await title.fill("Synthetic unsaved draft");
@@ -77,7 +77,7 @@ for (const locale of ["nl", "en"] as const) {
       await title.focus();
       await page.keyboard.press("Escape");
       await expect(page.getByRole("alertdialog")).toBeVisible();
-      await page.getByRole("button", { name: message(locale, "owner_continue_editing") }).click();
+      await page.getByRole("button", { name: message(locale, "records_continue_editing") }).click();
       await expect(title).toHaveValue("Synthetic unsaved draft");
       await expect(title).toBeFocused();
     });

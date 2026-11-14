@@ -20,12 +20,12 @@ const KINDS: Record<Choice, ("visit" | "stay")[]> = {
 const audienceName = (audience: FollowAudienceAudience) =>
   audience.audience === "public"
     ? m.publication_the_page_for_everyone()
-    : m.publication_link({ p0: audience.label ?? "" });
+    : m.publication_link({ name: audience.label ?? "" });
 
 const countsText = (counts: { visits: number; stays: number }) =>
   [
-    counts.visits ? m.publication_count_visits({ count: counts.visits }) : "",
-    counts.stays ? m.publication_count_stays({ count: counts.stays }) : "",
+    counts.visits ? m.visits_count({ count: counts.visits }) : "",
+    counts.stays ? m.stays_count({ count: counts.stays }) : "",
   ]
     .filter(Boolean)
     .join(", ");
@@ -106,8 +106,8 @@ export function FollowAudiencePrecision({
             onChange={(value) => setChoice(value as Choice)}
           >
             <option value="both">{m.precision_follow_both()}</option>
-            <option value="visit">{m.owner_visits()}</option>
-            <option value="stay">{m.owner_stays()}</option>
+            <option value="visit">{m.common_visits()}</option>
+            <option value="stay">{m.common_stays()}</option>
           </SearchSelect>
         </Field>
         <Button

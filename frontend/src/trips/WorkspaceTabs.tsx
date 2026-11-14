@@ -25,7 +25,7 @@ export function WorkspaceTabs({
         "flex gap-1 overflow-x-auto border-b border-travel-divider scrollbar-thin trip-sidebar:flex-col trip-sidebar:overflow-x-visible trip-sidebar:border-b-0 trip-sidebar:p-1",
         drawer && "flex-col border-b-0 p-1",
       )}
-      aria-label={m.owner_trip_sections()}
+      aria-label={m.workspace_trip_sections()}
     >
       {WORKSPACE_SECTIONS.map(({ id, label, icon: Icon }) => (
         <Link

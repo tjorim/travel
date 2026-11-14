@@ -108,9 +108,7 @@ export function MediaManager({
     },
     onSuccess: () => {
       setView({ kind: "asset" });
-      setNotice(
-        textNotice(() => m.media_copy_started_check_the_copy_and_then_explicitly_approve_it()),
-      );
+      setNotice(textNotice(() => m.media_copy_started_notice()));
     },
   });
   const presentationRecord = useRecordForm<PresentationValues>({
@@ -139,11 +137,7 @@ export function MediaManager({
     },
     onSuccess: () => {
       setView({ kind: "asset" });
-      setNotice(
-        textNotice(() =>
-          m.media_presentation_saved_only_fields_selected_in_a_sharing_scope_become_visibl(),
-        ),
-      );
+      setNotice(textNotice(() => m.media_presentation_saved_notice()));
     },
   });
 
@@ -190,11 +184,7 @@ export function MediaManager({
       (saved) => {
         closeUpload();
         inspectAsset(saved.id);
-        setNotice(
-          textNotice(() =>
-            m.media_private_media_uploaded_you_can_now_link_them_to_a_travel_update(),
-          ),
-        );
+        setNotice(textNotice(() => m.media_uploaded_notice()));
       },
       (error: unknown) => {
         setNotice("");
@@ -248,11 +238,7 @@ export function MediaManager({
         await offline.removeByResource("media_asset", asset.id);
         closeAsset();
         setDeletingId(null);
-        setNotice(
-          textNotice(() =>
-            m.media_private_media_deleted_links_to_travel_updates_have_also_been_removed(),
-          ),
-        );
+        setNotice(textNotice(() => m.media_deleted_notice()));
       },
       (error: unknown) => {
         setDeletingId(null);
@@ -267,8 +253,8 @@ export function MediaManager({
       await offline.removeByResource("media_asset", asset.id);
       setNotice(
         textNotice(() =>
-          m.owner_is_no_longer_available_offline({
-            p0: asset.original_filename ?? m.media_this_media_item(),
+          m.common_is_no_longer_available_offline({
+            title: asset.original_filename ?? m.media_this_item_title(),
           }),
         ),
       );
@@ -287,14 +273,14 @@ export function MediaManager({
       contentMetadata: asset,
       resourceId: asset.id,
       metadataUrl: `${mediaPath}/${asset.id}`,
-      title: asset.original_filename ?? m.owner_unnamed_media_item(),
+      title: asset.original_filename ?? m.media_unnamed_item_title(),
       contentType: asset.content_type,
       bytes: await blob.arrayBuffer(),
     });
     setNotice(
       textNotice(() =>
-        m.owner_is_saved_offline_on_this_device({
-          p0: asset.original_filename ?? m.media_this_media_item(),
+        m.common_is_saved_offline_on_this_device({
+          title: asset.original_filename ?? m.media_this_item_title(),
         }),
       ),
     );
@@ -340,13 +326,13 @@ export function MediaManager({
   }
 
   function startProvider(provider: ImportSession["provider"]) {
-    setNotice(textNotice(() => m.media_starting_selection({ p0: providerLabel[provider] })));
+    setNotice(textNotice(() => m.media_starting_selection({ provider: providerLabel[provider] })));
     startImport.mutateAsync(provider).then((created) => {
       setImportSession(created);
       setNotice(
         textNotice(() =>
-          m.media_choose_media_in_then_return_here_to_import_your_selection({
-            p0: providerLabel[provider],
+          m.media_provider_pick_hint({
+            provider: providerLabel[provider],
           }),
         ),
       );
@@ -358,11 +344,7 @@ export function MediaManager({
     setNotice(textNotice(() => m.media_safely_copying_selected_media_to_your_private_trip()));
     completeImport.mutateAsync(importSession).then((outcome) => {
       if (!outcome.ready) {
-        setNotice(
-          textNotice(() =>
-            m.media_your_selection_is_not_ready_at_the_provider_yet_try_again_when_you_are_d(),
-          ),
-        );
+        setNotice(textNotice(() => m.media_provider_selection_pending()));
         return;
       }
       if (outcome.imported[0]) inspectAsset(outcome.imported[0].id);
@@ -390,12 +372,12 @@ export function MediaManager({
   const message =
     notice ??
     (readError
-      ? errorMessage(readError, m.owner_your_media_could_not_be_loaded)
+      ? errorMessage(readError, m.media_your_media_could_not_be_loaded)
       : mediaQuery.isPending
         ? m.media_loading_your_private_media()
         : assets.length
-          ? m.media_originals_exif_and_links_stay_in_your_private_travel_app()
-          : m.media_upload_photos_or_videos_from_this_device_or_import_your_selected_media());
+          ? m.media_originals_private_hint()
+          : m.media_upload_intro());
 
   const dialogOpen = selected !== null;
   const dialogTitle =
@@ -405,7 +387,7 @@ export function MediaManager({
         ? view.edit
           ? m.media_edit_presentation()
           : m.media_copy_action()
-        : (selected?.original_filename ?? m.owner_unnamed_media_item());
+        : (selected?.original_filename ?? m.media_unnamed_item_title());
   const dialogDirty =
     view.kind === "create"
       ? derivativeRecord.dirty
@@ -423,9 +405,7 @@ export function MediaManager({
       <div className="capture-heading">
         <div>
           <h3 id="media-title">{m.media_library()}</h3>
-          <p>
-            {m.media_originals_and_metadata_stay_private_only_a_separate_metadatafree_and_app()}
-          </p>
+          <p>{m.media_copies_hint()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={openUpload}>
           {m.media_upload_media()}
@@ -578,7 +558,7 @@ export function MediaManager({
           <RecordForm
             record={presentationRecord}
             submitLabel={m.media_save_presentation()}
-            pendingLabel={m.owner_saving()}
+            pendingLabel={m.common_saving()}
             actions={cancelAction}
           >
             <PresentationFields

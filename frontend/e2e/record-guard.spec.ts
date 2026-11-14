@@ -9,30 +9,32 @@ for (const locale of ["nl", "en"] as const) {
     await choosePreferences(page, locale, "dark");
     await page.setViewportSize({ width: 360, height: 740 });
     await page.goto(`/admin/trips/${ownerTrip.id}/story`);
-    await page.getByRole("button", { name: message(locale, "owner_trip_sections") }).click();
-    await page.getByRole("link", { name: message(locale, "owner_prepare"), exact: true }).click();
+    await page.getByRole("button", { name: message(locale, "workspace_trip_sections") }).click();
+    await page
+      .getByRole("link", { name: message(locale, "workspace_prepare"), exact: true })
+      .click();
     await page.getByRole("button", { name: message(locale, "account"), exact: true }).click();
     await page
-      .getByRole("button", { name: message(locale, "owner_trip_details"), exact: true })
+      .getByRole("button", { name: message(locale, "trips_trip_details"), exact: true })
       .click();
-    const input = page.getByRole("textbox", { name: message(locale, "owner_title"), exact: true });
+    const input = page.getByRole("textbox", { name: message(locale, "common_title"), exact: true });
     await input.fill("Synthetic exact authored draft");
     await page.goBack();
     const prompt = page.getByRole("alertdialog");
     await expect(prompt).toBeVisible();
-    await prompt.getByRole("button", { name: message(locale, "owner_continue_editing") }).click();
+    await prompt.getByRole("button", { name: message(locale, "records_continue_editing") }).click();
     await expect(input).toHaveValue("Synthetic exact authored draft");
     await expect(input).toBeFocused();
     await page.goBack();
     await prompt
-      .getByRole("button", { name: message(locale, "owner_discard_changes_2"), exact: true })
+      .getByRole("button", { name: message(locale, "records_discard_changes_action"), exact: true })
       .click();
     await expect(page).toHaveURL(/\/story$/);
     await page.goForward();
     await expect(page).toHaveURL(/\/prepare$/);
     await page.getByRole("button", { name: message(locale, "account"), exact: true }).click();
     await page
-      .getByRole("button", { name: message(locale, "owner_trip_details"), exact: true })
+      .getByRole("button", { name: message(locale, "trips_trip_details"), exact: true })
       .click();
     await expect(input).toHaveValue(ownerTrip.title);
     await input.fill("Synthetic recovered after reload");
@@ -40,7 +42,7 @@ for (const locale of ["nl", "en"] as const) {
     await page.reload();
     await page.getByRole("button", { name: message(locale, "account"), exact: true }).click();
     await page
-      .getByRole("button", { name: message(locale, "owner_trip_details"), exact: true })
+      .getByRole("button", { name: message(locale, "trips_trip_details"), exact: true })
       .click();
     await expect(input).toHaveValue("Synthetic recovered after reload");
   });
@@ -84,7 +86,7 @@ for (const fail of [false, true]) {
     await expect.poll(() => submitted).toMatchObject({ title: "Synthetic submitted A" });
     await page.goBack();
     const prompt = page.getByRole("alertdialog");
-    await expect(prompt).toContainText(message("en", "owner_wait_for_save"));
+    await expect(prompt).toContainText(message("en", "records_wait_for_save"));
     await expect(
       prompt.getByRole("button", { name: "Discard changes", exact: true }),
     ).toBeDisabled();
@@ -105,7 +107,7 @@ for (const fail of [false, true]) {
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await expect(page).toHaveURL(/\/prepare$/);
       await expect(
-        page.getByRole("status").filter({ hasText: message("en", "owner_trip_saved") }),
+        page.getByRole("status").filter({ hasText: message("en", "trips_trip_saved") }),
       ).toBeVisible();
     }
   });

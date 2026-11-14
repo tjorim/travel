@@ -56,7 +56,7 @@ export function LinkLifecycle({
         <Field className="contents">
           <FieldLabel>
             {m.publication_reason()}{" "}
-            <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+            <span className="font-medium text-travel-optional">{m.common_optional()}</span>
             <Input
               maxLength={500}
               value={reason}
@@ -65,16 +65,8 @@ export function LinkLifecycle({
           </FieldLabel>
         </Field>
       </div>
-      {expiresInDays === null && (
-        <p className="help">
-          {m.publication_this_link_remains_valid_until_you_revoke_or_rotate_it()}
-        </p>
-      )}
-      {link?.state === "draft" && (
-        <p className="help">
-          {m.publication_this_draft_is_not_active_yet_view_the_preview_and_click_activate_when_yo()}
-        </p>
-      )}
+      {expiresInDays === null && <p className="help">{m.publication_link_valid_hint()}</p>}
+      {link?.state === "draft" && <p className="help">{m.publication_draft_inactive_hint()}</p>}
       <div className="button-row">
         {link?.state === "draft" && (
           <Button type="button" onClick={() => onActivate("activate")}>
@@ -96,9 +88,7 @@ export function LinkLifecycle({
         )}
       </div>
       {link?.state === "active" && !link.token && (
-        <p className="help">
-          {m.publication_this_older_link_is_still_active_but_its_url_was_not_saved_rotate_it_once()}
-        </p>
+        <p className="help">{m.publication_legacy_link_hint()}</p>
       )}
     </div>
   );

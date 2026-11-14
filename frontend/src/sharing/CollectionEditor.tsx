@@ -112,8 +112,7 @@ export function CollectionEditor({
     if (!collection) return;
     confirmation.ask({
       title: () => m.sharing_revoke_named_link({ name: collection.label }),
-      description: () =>
-        m.sharing_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h(),
+      description: () => m.sharing_rotate_warning(),
       confirmLabel: () => m.sharing_revoke_link(),
       onConfirm: () =>
         mutations.revoke.mutateAsync({ collection, reason: reason.trim() || null }).then(() => {
@@ -127,7 +126,7 @@ export function CollectionEditor({
     confirmation.ask({
       title: () => m.sharing_delete_collection_title({ name: collection.label }),
       description: () => m.sharing_delete_collection_description(),
-      confirmLabel: () => m.owner_delete(),
+      confirmLabel: () => m.common_delete(),
       onConfirm: () =>
         mutations.remove
           .mutateAsync({ id: collection.id })
@@ -278,7 +277,7 @@ export function CollectionEditor({
           </>
         )}
         <Button className="secondary justify-self-start" type="button" onClick={onClose}>
-          {m.owner_close_2()}
+          {m.common_close()}
         </Button>
       </div>
       {confirmation.dialog}

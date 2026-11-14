@@ -27,7 +27,7 @@ export function useCaptureMutations() {
     ],
   });
   const deleteUpdate = useOwnerMutation<{ tripId: string; updateId: string }>({
-    fallback: m.owner_the_travel_update_could_not_be_deleted,
+    fallback: m.updates_the_travel_update_could_not_be_deleted,
     request: ({ tripId, updateId }) => ({
       path: tripPath(tripId, `travel-updates/${updateId}`),
       method: "DELETE",

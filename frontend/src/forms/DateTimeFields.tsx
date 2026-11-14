@@ -161,7 +161,7 @@ function DateInput({
         entry={entry}
         unreadable={unreadable}
         inputRef={input}
-        placeholder={m.owner_date_placeholder()}
+        placeholder={m.dates_date_placeholder()}
         ariaLabel={ariaLabel}
         required={required}
         disabled={disabled}
@@ -172,7 +172,7 @@ function DateInput({
           type="button"
           className="secondary compact min-w-11 shrink-0 px-3"
           disabled={disabled}
-          aria-label={m.owner_choose_date_in_calendar({ label })}
+          aria-label={m.dates_choose_date_in_calendar({ label })}
         >
           <CalendarIcon className="size-4" aria-hidden="true" />
         </PopoverTrigger>
@@ -240,7 +240,7 @@ export function DateField({
       field={field}
       label={label}
       optional={optional}
-      unreadable={entry.showUnreadable ? m.owner_date_unreadable() : null}
+      unreadable={entry.showUnreadable ? m.dates_date_unreadable() : null}
     >
       <DateInput
         entry={entry}
@@ -268,12 +268,12 @@ export function TimeField({ field, label, optional, required, disabled }: Picker
       field={field}
       label={label}
       optional={optional}
-      unreadable={entry.showUnreadable ? m.owner_time_unreadable() : null}
+      unreadable={entry.showUnreadable ? m.dates_time_unreadable() : null}
     >
       <EntryInput
         entry={entry}
         numeric
-        placeholder={m.owner_time_placeholder()}
+        placeholder={m.dates_time_placeholder()}
         required={required}
         disabled={disabled}
         onFieldBlur={field.handleBlur}
@@ -328,11 +328,11 @@ export function DateTimeField({
   const missingDate = parts.date === "" && parts.time !== "";
   const missingTime = parts.time === "" && parts.date !== "";
   const error = dateEntry.showUnreadable
-    ? m.owner_date_unreadable()
+    ? m.dates_date_unreadable()
     : timeEntry.showUnreadable
-      ? m.owner_time_unreadable()
+      ? m.dates_time_unreadable()
       : left && (missingDate || missingTime)
-        ? m.owner_date_and_time_both()
+        ? m.dates_date_and_time_both()
         : message;
   return (
     <FieldSet
@@ -355,7 +355,7 @@ export function DateTimeField({
             unreadable={dateEntry.unreadable || missingDate}
             iso={parts.date}
             label={label}
-            ariaLabel={m.owner_label_date({ label })}
+            ariaLabel={m.dates_label_date({ label })}
             required={required}
             disabled={disabled}
             onFieldBlur={field.handleBlur}
@@ -370,8 +370,8 @@ export function DateTimeField({
             entry={timeEntry}
             unreadable={timeEntry.unreadable || missingTime}
             numeric
-            placeholder={m.owner_time_placeholder()}
-            ariaLabel={m.owner_label_time({ label })}
+            placeholder={m.dates_time_placeholder()}
+            ariaLabel={m.dates_label_time({ label })}
             required={required}
             disabled={disabled}
             onFieldBlur={field.handleBlur}

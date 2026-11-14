@@ -80,14 +80,9 @@ export const computedMessageKeys = {};
 export const retiredKeyPrefixes = {
   assets_:
     "catch-all prefix split into packing_, media_, publication_, sharing_, library_ and offline_",
+  owner_:
+    "catch-all prefix split by area: trips_, stays_, routes_, visits_, areas_, locations_, updates_, tasks_, capture_, map_, merge_, alternatives_, records_, common_ and the rest",
 };
 // One-word connectives and joined sentence fragments that still ship in an assembled sentence. Each entry
 // is debt: replace it with a whole message (issue 371) and delete the entry. Never add one for new copy.
-export const fragmentMessages = {
-  owner_library:
-    "label assembled before a filename in DocumentsBlock; replace with a whole message",
-  owner_captured: "label assembled in MediaBlock; replace with a whole message",
-  owner_read_2: "status suffix assembled in TripTaskManager; replace with a whole message",
-  owner_new: "status suffix assembled in TripTaskManager; replace with a whole message",
-  owner_on: "toggle suffix assembled in the TripMap view buttons; replace with a whole message",
-};
+export const fragmentMessages = {};

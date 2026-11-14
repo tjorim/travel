@@ -63,13 +63,13 @@ export function CandidateReview({
     invalidate: () => [],
   });
   const suggestArea = useOwnerMutation<{ latitude: number; longitude: number }, AreaSuggestion>({
-    fallback: m.owner_an_area_could_not_be_suggested,
+    fallback: m.common_an_area_could_not_be_suggested,
     request: (body) => ({ path: tripPath(tripId, "areas/suggest"), method: "POST", body }),
     invalidate: () => [],
     gcTime: 0,
   });
   const attach = useOwnerMutation<{ updateId: string; mediaAssetIds: string[] }>({
-    fallback: m.media_the_private_media_could_not_be_linked_to_the_travel_update,
+    fallback: m.media_link_to_update_error,
     request: ({ updateId, mediaAssetIds }) => ({
       path: tripPath(tripId, `travel-updates/${updateId}`),
       method: "PATCH",
@@ -86,9 +86,7 @@ export function CandidateReview({
 
   function review() {
     if (reviewSelection.length === 0) {
-      onNotice(
-        textNotice(() => m.media_choose_private_media_first_to_review_possible_travel_updates()),
-      );
+      onNotice(textNotice(() => m.media_review_choose_first_hint()));
       return;
     }
     reviewCandidates.mutateAsync(reviewSelection).then((result) => {
@@ -100,7 +98,7 @@ export function CandidateReview({
       onNotice(
         textNotice(() =>
           result.candidates.length
-            ? m.media_candidates_were_calculated_for_this_private_review_only_nothing_has_been()
+            ? m.media_review_candidates_notice()
             : m.media_this_selection_has_no_usable_capture_or_location_data(),
         ),
       );
@@ -131,7 +129,7 @@ export function CandidateReview({
       .then(
         (suggestion) =>
           setCandidateAreas((current) => ({ ...current, [candidate.id]: suggestion })),
-        fail(m.owner_an_area_could_not_be_suggested),
+        fail(m.common_an_area_could_not_be_suggested),
       );
   }
 
@@ -141,17 +139,11 @@ export function CandidateReview({
       (candidate.time_options.length === 1 ? candidate.time_options[0].captured_at : "");
     const locationIndex = candidateLocations[candidate.id];
     if (candidate.time_options.length > 1 && !time) {
-      onNotice(
-        textNotice(() => m.media_choose_which_capture_time_to_use_for_this_candidate_visit_first()),
-      );
+      onNotice(textNotice(() => m.media_candidate_time_required_hint()));
       return;
     }
     if (candidate.location_options.length > 1 && locationIndex === undefined) {
-      onNotice(
-        textNotice(() =>
-          m.media_the_gps_metadata_differs_choose_a_location_option_yourself_first_or_igno(),
-        ),
-      );
+      onNotice(textNotice(() => m.media_candidate_gps_differs_hint()));
       return;
     }
     const selectedLocation =
@@ -174,11 +166,7 @@ export function CandidateReview({
   function attachCandidate(candidate: TravelUpdateCandidate) {
     const update = foundUpdates[candidateAttachments[candidate.id]];
     if (!update) {
-      onNotice(
-        textNotice(() =>
-          m.media_choose_an_existing_travel_update_to_link_the_private_media_to_first(),
-        ),
-      );
+      onNotice(textNotice(() => m.media_candidate_update_required_hint()));
       return;
     }
     const mediaAssetIds = [...new Set([...update.media_asset_ids, ...candidate.media_asset_ids])];
@@ -189,12 +177,12 @@ export function CandidateReview({
       }));
       onNotice(
         textNotice(() =>
-          m.media_private_media_linked_to_no_location_or_shareable_content_was_created({
-            p0: update.title,
+          m.media_linked_to_update_notice({
+            title: update.title,
           }),
         ),
       );
-    }, fail(m.media_the_private_media_could_not_be_linked_to_the_travel_update));
+    }, fail(m.media_link_to_update_error));
   }
 
   if (assets.length === 0) return null;
@@ -204,8 +192,8 @@ export function CandidateReview({
         <div>
           <h3>{m.media_review_possible_travel_updates()}</h3>
           <p>
-            {m.media_choose_private_media_above_candidates_use_a_twohour_window_and_ke_line({
-              p0: candidateReview?.gps_agreement_metres ?? 500,
+            {m.media_review_intro({
+              metres: candidateReview?.gps_agreement_metres ?? 500,
             })}
           </p>
         </div>
@@ -257,11 +245,11 @@ export function CandidateReview({
                   setCandidateLocations((current) => ({ ...current, [candidate.id]: value }))
                 }
               >
-                <option value="">{m.owner_dismiss_location()}</option>
+                <option value="">{m.media_dismiss_location()}</option>
                 {candidate.location_options.map((option, index) => (
                   <option key={option.media_asset_ids.join("-")} value={index}>
-                    {m.media_location_from_media_items_line({
-                      p0: option.media_asset_ids.length,
+                    {m.media_candidate_location_source_count({
+                      count: option.media_asset_ids.length,
                     })}
                   </option>
                 ))}
@@ -272,9 +260,7 @@ export function CandidateReview({
             <p className="help">{m.media_no_gps_available_no_place_will_be_suggested()}</p>
           )}
           {candidate.location_options.length > 1 && (
-            <p className="help">
-              {m.media_the_gps_metadata_conflicts_choose_at_most_one_option_nothing_will_be_mer()}
-            </p>
+            <p className="help">{m.media_candidate_gps_conflict_hint()}</p>
           )}
           {candidate.location_options.length > 0 && (
             <Button
@@ -287,14 +273,15 @@ export function CandidateReview({
           )}
           {candidateAreas[candidate.id] && (
             <p className="help">
-              {m.media_this_suggestion_has_not_been_saved_line({
-                p0: candidateAreas[candidate.id].existing_area_id
-                  ? m.media_existing_area({ p0: areaName(candidateAreas[candidate.id].area) })
+              {m.media_candidate_unsaved_summary({
+                area: candidateAreas[candidate.id].existing_area_id
+                  ? m.media_existing_area({ area: areaName(candidateAreas[candidate.id].area) })
                   : m.media_new_area_possible({
-                      p0: areaName(candidateAreas[candidate.id].area),
-                      p1: candidateAreas[candidate.id].area.timezone ?? m.media_unknown_timezone(),
+                      area: areaName(candidateAreas[candidate.id].area),
+                      timezone:
+                        candidateAreas[candidate.id].area.timezone ?? m.media_unknown_timezone(),
                     }),
-                p1:
+                time:
                   visits
                     .filter(
                       (visit) =>

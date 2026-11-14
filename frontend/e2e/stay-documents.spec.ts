@@ -65,12 +65,12 @@ for (const locale of ["nl", "en"] as const) {
 
         await page.locator("button.document-select", { hasText: "Hotel Sample Riverside" }).click();
         const dialog = page.getByRole("dialog");
-        await expect(dialog.getByText(message(locale, "owner_linked_documents"))).toBeVisible();
+        await expect(dialog.getByText(message(locale, "documents_linked_documents"))).toBeVisible();
         await expect(dialog.getByText(confirmation.title)).toBeVisible();
         expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
         await dialog
-          .getByRole("button", { name: message(locale, "owner_edit"), exact: true })
+          .getByRole("button", { name: message(locale, "common_edit"), exact: true })
           .click();
         const link = dialog.getByRole("checkbox", { name: confirmation.title });
         await expect(link).toBeChecked();
@@ -80,7 +80,7 @@ for (const locale of ["nl", "en"] as const) {
         await expect(link).not.toBeChecked();
         expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
-        await dialog.getByRole("button", { name: message(locale, "owner_save_stay") }).click();
+        await dialog.getByRole("button", { name: message(locale, "stays_save_stay") }).click();
         await expect(dialog).toBeHidden();
         expect(patched).toMatchObject({ document_asset_ids: [] });
       });

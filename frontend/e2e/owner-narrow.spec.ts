@@ -46,11 +46,11 @@ for (const locale of ["nl", "en"] as const) {
         expect(target!.width).toBeGreaterThanOrEqual(44);
         expect(target!.height).toBeGreaterThanOrEqual(44);
         await page
-          .getByRole("button", { name: message(locale, "owner_capture_in_trip"), exact: true })
+          .getByRole("button", { name: message(locale, "feedback_capture_in_trip"), exact: true })
           .click();
         const dialog = page.getByRole("dialog");
         const save = dialog.getByRole("button", {
-          name: message(locale, "owner_save_travel_update"),
+          name: message(locale, "updates_save_travel_update"),
           exact: true,
         });
         await expect(save).toBeInViewport();
@@ -64,7 +64,7 @@ for (const locale of ["nl", "en"] as const) {
         );
         expect(smallActions).toEqual([]);
         const title = dialog.getByRole("textbox", {
-          name: message(locale, "owner_title"),
+          name: message(locale, "common_title"),
           exact: true,
         });
         await title.fill("Synthetic local draft");
@@ -73,14 +73,14 @@ for (const locale of ["nl", "en"] as const) {
           .getByRole("button", { name: new RegExp(`^${message(locale, "capture_more")}`) })
           .click();
         const notes = dialog.getByRole("textbox", {
-          name: message(locale, "owner_private_note"),
+          name: message(locale, "updates_private_note"),
           exact: false,
         });
         await notes.fill("Private synthetic memory");
         const date = dialog.getByRole("textbox", {
-          name: message(locale, "owner_label_date").replace(
+          name: message(locale, "dates_label_date").replace(
             "{label}",
-            message(locale, "owner_date_and_time"),
+            message(locale, "updates_date_and_time"),
           ),
           exact: true,
         });
@@ -94,7 +94,7 @@ for (const locale of ["nl", "en"] as const) {
         await page.keyboard.press("Escape");
         await page
           .getByRole("alertdialog")
-          .getByRole("button", { name: message(locale, "owner_continue_editing") })
+          .getByRole("button", { name: message(locale, "records_continue_editing") })
           .click();
         await expect(title).toHaveValue("Synthetic local draft");
         await expect(title).toBeFocused();

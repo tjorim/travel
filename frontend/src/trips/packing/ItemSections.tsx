@@ -107,7 +107,7 @@ export function ItemSections({
                         <Field className="contents">
                           <FieldLabel className="flex size-11 shrink-0 items-center justify-center">
                             <span className="sr-only">
-                              {m.packing_select_line({ p0: item.label })}
+                              {m.packing_select_item({ name: item.label })}
                             </span>
                             <TravelCheckbox
                               className="size-6"
@@ -126,9 +126,9 @@ export function ItemSections({
                         <Field className="contents">
                           <FieldLabel className="flex size-11 shrink-0 items-center justify-center">
                             <span className="sr-only">
-                              {m.packing_packed_line({
-                                p0: item.quantity > 1 ? `${item.quantity} × ` : "",
-                                p1: item.label,
+                              {m.packing_packed_item({
+                                quantity: item.quantity > 1 ? `${item.quantity} × ` : "",
+                                name: item.label,
                               })}
                             </span>
                             <TravelCheckbox
@@ -153,7 +153,7 @@ export function ItemSections({
                                 m.packing_unassigned())
                               : null,
                             item.weight_g !== null
-                              ? m.packing_per_item({ p0: grams(item.weight_g) })
+                              ? m.packing_per_item({ weight: grams(item.weight_g) })
                               : null,
                           ]
                             .filter(Boolean)
@@ -179,7 +179,7 @@ export function ItemSections({
                         {item.notes && <p className="mt-1 text-sm">{item.notes}</p>}
                         {item.id in unsaved && !savingIds.includes(item.id) && (
                           <Button type="button" onClick={() => onToggle(item, unsaved[item.id])}>
-                            {m.packing_try_again_line({ p0: item.label })}
+                            {m.packing_retry_item({ name: item.label })}
                           </Button>
                         )}
                       </div>
@@ -187,10 +187,10 @@ export function ItemSections({
                         <Button
                           type="button"
                           className="secondary compact shrink-0"
-                          aria-label={m.packing_edit({ p0: item.label })}
+                          aria-label={m.packing_edit({ name: item.label })}
                           onClick={() => onStartItem(item)}
                         >
-                          {m.owner_edit()}
+                          {m.common_edit()}
                         </Button>
                       )}
                     </div>

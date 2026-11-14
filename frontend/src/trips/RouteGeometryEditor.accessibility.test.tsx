@@ -20,12 +20,12 @@ for (const locale of ["nl", "en"] as const) {
         </LocaleBoundary>,
       );
       const region = screen.getByRole("region", {
-        name: mode === "edit" ? m.owner_map_editor_for_route() : m.owner_map_preview_of_route(),
+        name: mode === "edit" ? m.routes_map_editor_for_route() : m.routes_map_preview_of_route(),
       });
       await within(region).findByText(
         mode === "edit"
-          ? m.owner_the_map_editor_could_not_be_loaded_you_can_still_paste_coordinates_as_js()
-          : m.owner_the_route_preview_could_not_be_loaded(),
+          ? m.routes_editor_load_error_hint()
+          : m.routes_the_route_preview_could_not_be_loaded(),
       );
       expect(region).not.toHaveAttribute("tabindex");
       expect(region.querySelectorAll("[aria-label]")).toHaveLength(0);

@@ -37,7 +37,7 @@ export function VisitDetails({
         <p>{visitPlace(selected)}</p>
         {selected.summary && (
           <>
-            <p className="markdown-label">{m.owner_for_visitors()}</p>
+            <p className="markdown-label">{m.visits_for_visitors()}</p>
             <Markdown html={selected.summary_html} text={selected.summary} />
           </>
         )}
@@ -45,15 +45,15 @@ export function VisitDetails({
         <RestatedRoutesNote routes={selected.possible_route_duplicates ?? []} />
       </div>
       <div>
-        <h4>{m.owner_only_for_you()}</h4>
+        <h4>{m.common_only_for_you()}</h4>
         {selected.notes ? (
           <Markdown html={selected.notes_html} text={selected.notes} />
         ) : (
-          <p className="help">{m.owner_no_private_note()}</p>
+          <p className="help">{m.common_no_private_note()}</p>
         )}
       </div>
       {selected.status === "cancelled" ? (
-        <p className="help">{m.owner_a_cancelled_visit_is_never_shared()}</p>
+        <p className="help">{m.visits_a_cancelled_visit_is_never_shared()}</p>
       ) : (
         <VisibilityControl
           tripId={trip.id}
@@ -66,15 +66,15 @@ export function VisitDetails({
       <p className="help">
         {selected.start_time
           ? selected.share_time
-            ? m.owner_visitors_also_see_the_time_because_you_selected_it_and_share_the_full_da()
-            : m.owner_the_time_stays_private()
-          : m.owner_this_visit_has_no_time()}{" "}
-        {m.owner_notes_always_stay_private()}
+            ? m.visits_time_shared_hint()
+            : m.visits_the_time_stays_private()
+          : m.visits_this_visit_has_no_time()}{" "}
+        {m.visits_notes_always_stay_private()}
       </p>
       <RecordActions onEdit={() => onEdit(selected)} onDelete={() => onConfirmDelete(true)} />
       {confirmDelete && (
         <DeleteConfirmation
-          title={m.owner_delete_visit({ p0: visitTitle(selected) })}
+          title={m.visits_delete_visit({ title: visitTitle(selected) })}
           onCancel={() => onConfirmDelete(false)}
           onConfirm={() => onErase(selected)}
         />

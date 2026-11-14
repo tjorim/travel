@@ -39,8 +39,8 @@ export function MediaAssetList({
             className="document-select flex items-center gap-3"
             type="button"
             onClick={() => onInspect(asset.id)}
-            aria-label={m.media_view_2({
-              p0: asset.original_filename ?? m.owner_unnamed_media_item(),
+            aria-label={m.media_view_named({
+              name: asset.original_filename ?? m.media_unnamed_item_title(),
             })}
           >
             {asset.thumbnail_url && owner ? (
@@ -59,7 +59,7 @@ export function MediaAssetList({
               </span>
             )}
             <div className="min-w-0">
-              <strong>{asset.original_filename ?? m.owner_unnamed_media_item()}</strong>
+              <strong>{asset.original_filename ?? m.media_unnamed_item_title()}</strong>
               <span>
                 {asset.media_kind === "photo" ? m.media_photo() : m.media_video()} ·{" "}
                 {bytesLabel(asset.byte_size)}

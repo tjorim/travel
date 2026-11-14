@@ -100,5 +100,5 @@ test("Advanced starts open when the audience already shows trip dates", async ({
     editor.getByRole("combobox", {
       name: message("en", "sharing_how_precise_can_the_travel_dates_be"),
     }),
-  ).toHaveValue(message("en", "owner_year_only"));
+  ).toHaveValue(message("en", "publication_year_only"));
 });

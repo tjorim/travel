@@ -18,13 +18,13 @@ for (const reducedMotion of ["no-preference", "reduce"] as const)
             route.request().method() === "POST" ? new Promise(() => {}) : route.fallback(),
           );
           await page.goto("/admin/trips");
-          await page.getByRole("button", { name: message(locale, "owner_new_trip") }).click();
+          await page.getByRole("button", { name: message(locale, "trips_new_trip") }).click();
           const dialog = page.getByRole("dialog");
           await dialog.getByRole("textbox").first().fill("Exampleland 2054");
-          await dialog.getByRole("button", { name: message(locale, "owner_create_trip") }).click();
+          await dialog.getByRole("button", { name: message(locale, "trips_create_trip") }).click();
 
           const pending = dialog.getByRole("button", {
-            name: message(locale, "owner_creating_trip"),
+            name: message(locale, "trips_creating_trip"),
           });
           await expect(pending).toBeDisabled();
           const spinner = pending.locator('[data-slot="spinner"]');

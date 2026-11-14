@@ -9,39 +9,39 @@ export const locationName = (
   place.label ||
   place.display_name?.split(",")[0]?.trim() ||
   place.locality ||
-  m.owner_unnamed_location_2();
+  m.records_unnamed_location();
 /** What the owner sees a location called: the first part of its display name, else `locationName`. */
 export const ownerLocationName = (place: Location) =>
   place.display_name?.split(",")[0]?.trim() || locationName(place);
 
 /** An area's name, or the translated fallback when the owner left it unnamed. */
 export const areaName = (area: { label?: string | null }): string =>
-  area.label ?? m.owner_unnamed_area();
+  area.label ?? m.records_unnamed_area();
 
 export const ROUTE_MODE_LABELS: Record<RouteMode, string> = {
   get flight() {
-    return m.owner_flight();
+    return m.records_flight();
   },
   get train() {
-    return m.owner_train();
+    return m.records_train();
   },
   get bus() {
-    return m.owner_bus();
+    return m.records_bus();
   },
   get ferry() {
-    return m.owner_ferry();
+    return m.records_ferry();
   },
   get car() {
-    return m.owner_car();
+    return m.records_car();
   },
   get bike() {
-    return m.owner_bike();
+    return m.records_bike();
   },
   get walk() {
-    return m.owner_on_foot();
+    return m.records_on_foot();
   },
   get other() {
-    return m.owner_other();
+    return m.common_other();
   },
 };
 
@@ -87,5 +87,5 @@ export function stayCoversNight(stay: Stay, isoDate: string): boolean {
 }
 
 export function stayLabel(stay: Stay): string {
-  return stay.property_name ?? m.owner_still_to_choose_in({ p0: areaName(stay.area) });
+  return stay.property_name ?? m.records_still_to_choose_in({ area: areaName(stay.area) });
 }

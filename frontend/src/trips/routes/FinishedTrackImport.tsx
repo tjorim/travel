@@ -57,7 +57,7 @@ export function FinishedTrackImport({
       const result = await ownerRequest<GeoJsonLineString>(
         session,
         `/api/trips/${tripId}/route-line-import?start=${+start}&end=${+end}`,
-        m.owner_track_error,
+        m.routes_track_error,
         {
           method: "POST",
           body: file,
@@ -78,15 +78,15 @@ export function FinishedTrackImport({
   }
   return (
     <FieldSet className="grid gap-2.5">
-      <FieldLegend>{m.owner_track_title()}</FieldLegend>
-      <p className="help">{m.owner_track_privacy()}</p>
+      <FieldLegend>{m.routes_track_title()}</FieldLegend>
+      <p className="help">{m.routes_track_privacy()}</p>
       <Field>
-        <FieldLabel>{m.owner_track_file()}</FieldLabel>
+        <FieldLabel>{m.routes_track_file()}</FieldLabel>
         <Input ref={fileInput} type="file" accept=".gpx,.json,.geojson" onChange={reset} />
       </Field>
       <div className="field-row">
         <Field>
-          <FieldLabel>{m.owner_track_start()}</FieldLabel>
+          <FieldLabel>{m.routes_track_start()}</FieldLabel>
           <Input
             type="number"
             min={0}
@@ -100,7 +100,7 @@ export function FinishedTrackImport({
           />
         </Field>
         <Field>
-          <FieldLabel>{m.owner_track_end()}</FieldLabel>
+          <FieldLabel>{m.routes_track_end()}</FieldLabel>
           <Input
             type="number"
             min={1}
@@ -116,7 +116,7 @@ export function FinishedTrackImport({
       </div>
       <div className="button-row">
         <Button type="button" ref={previewButton} disabled={busy} onClick={() => void preview()}>
-          {m.owner_track_preview()}
+          {m.routes_track_preview()}
         </Button>
         <Button
           type="button"
@@ -126,19 +126,21 @@ export function FinishedTrackImport({
             if (fileInput.current) fileInput.current.value = "";
           }}
         >
-          {m.owner_track_cancel()}
+          {m.routes_track_cancel()}
         </Button>
       </div>
       {(busy || failed) && (
-        <p role="status">{busy ? m.owner_track_loading() : failed ? m.owner_track_error() : ""}</p>
+        <p role="status">
+          {busy ? m.routes_track_loading() : failed ? m.routes_track_error() : ""}
+        </p>
       )}
       {draft && (
         <>
           <RouteGeometryEditor
             coordinates={draft}
             onChange={setDraft}
-            heading={m.owner_track_draft_heading()}
-            mapLabel={m.owner_track_draft_map()}
+            heading={m.routes_track_draft_heading()}
+            mapLabel={m.routes_track_draft_map()}
           />
           <Button
             type="button"
@@ -149,7 +151,7 @@ export function FinishedTrackImport({
               previewButton.current?.focus();
             }}
           >
-            {m.owner_track_apply()}
+            {m.routes_track_apply()}
           </Button>
         </>
       )}

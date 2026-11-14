@@ -36,7 +36,7 @@ export function VisitList({
             className="document-select"
             type="button"
             onClick={() => onInspect(visit.id)}
-            aria-label={m.owner_view_visit({ p0: visitTitle(visit) })}
+            aria-label={m.visits_view_visit({ title: visitTitle(visit) })}
           >
             <strong>{visitTitle(visit)}</strong>
             <span>
@@ -51,9 +51,9 @@ export function VisitList({
                 className="secondary compact"
                 type="button"
                 onClick={() => onShowOnMap(visit)}
-                aria-label={m.owner_show_on_map({ p0: visitTitle(visit) })}
+                aria-label={m.visits_show_on_map_named({ title: visitTitle(visit) })}
               >
-                {m.owner_show_on_map_2()}
+                {m.visits_show_on_map_action()}
               </Button>
             )}
             <Button
@@ -62,11 +62,11 @@ export function VisitList({
               onClick={() => onToggleOffline(visit)}
               aria-label={
                 pinned(visit)
-                  ? m.owner_remove_visit_offline({ name: visitTitle(visit) })
-                  : m.owner_save_visit_offline({ name: visitTitle(visit) })
+                  ? m.visits_remove_visit_offline({ name: visitTitle(visit) })
+                  : m.visits_save_visit_offline({ name: visitTitle(visit) })
               }
             >
-              {pinned(visit) ? m.owner_remove_offline_copy() : m.owner_save_offline()}
+              {pinned(visit) ? m.common_remove_offline_copy() : m.common_save_offline()}
             </Button>
           </div>
         </article>

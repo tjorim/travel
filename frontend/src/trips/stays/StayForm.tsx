@@ -69,12 +69,12 @@ export function StayForm({
   return (
     <RecordForm
       record={record}
-      submitLabel={editingId ? m.owner_save_stay() : m.owner_add_stay()}
-      pendingLabel={m.owner_saving()}
+      submitLabel={editingId ? m.stays_save_stay() : m.stays_add_stay()}
+      pendingLabel={m.common_saving()}
     >
       <record.form.Field name="status">
         {(field) => (
-          <SelectField field={field} label={m.owner_status()}>
+          <SelectField field={field} label={m.common_status()}>
             {Object.entries(PLANNING_STATUS_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -88,10 +88,10 @@ export function StayForm({
       </record.form.Subscribe>
       <record.form.Subscribe selector={(state) => state.values.shareDatePrecision !== ""}>
         {(inUse) => (
-          <AdvancedSection summary={m.owner_dates_for_visitors()} inUse={inUse}>
+          <AdvancedSection summary={m.common_dates_for_visitors()} inUse={inUse}>
             <record.form.Field name="shareDatePrecision">
               {(field) => (
-                <SelectField field={field} label={m.owner_dates_for_visitors()}>
+                <SelectField field={field} label={m.common_dates_for_visitors()}>
                   {recordPrecisionOptions()}
                 </SelectField>
               )}
@@ -107,14 +107,14 @@ export function StayForm({
               <>
                 <SelectField
                   field={field}
-                  label={m.owner_area()}
+                  label={m.common_area()}
                   disabled={accommodation === "saved"}
-                  optional={accommodation === "new" ? m.owner_optional() : undefined}
+                  optional={accommodation === "new" ? m.common_optional() : undefined}
                 >
                   <option value="">
                     {accommodation === "new"
-                      ? m.owner_derive_the_area_from_the_city()
-                      : m.owner_choose_an_area_option()}
+                      ? m.stays_derive_the_area_from_the_city()
+                      : m.locations_choose_an_area_option()}
                   </option>
                   {areas.map((area) => (
                     <option key={area.id} value={area.id}>
@@ -124,8 +124,8 @@ export function StayForm({
                 </SelectField>
                 <p className="help">
                   {accommodation === "saved"
-                    ? m.owner_area_follows_the_accommodation()
-                    : m.owner_stay_area_help()}
+                    ? m.stays_area_follows_the_accommodation()
+                    : m.stays_stay_area_help()}
                 </p>
               </>
             )}
@@ -136,8 +136,8 @@ export function StayForm({
         {(field) => (
           <TextField
             field={field}
-            label={m.owner_accommodation()}
-            optional={m.owner_empty_until_chosen()}
+            label={m.stays_accommodation()}
+            optional={m.stays_empty_until_chosen()}
             maxLength={160}
           />
         )}
@@ -151,16 +151,16 @@ export function StayForm({
           <PlaceSearchField
             tripId={tripId}
             suggestedQuery={suggestedQuery}
-            legend={m.owner_search_stay()}
-            inputLabel={m.owner_search_for_accommodation_or_an_address()}
-            placeholder={m.owner_for_example_central_station_hotel()}
-            help={m.owner_stay_search_help()}
+            legend={m.stays_search_stay()}
+            inputLabel={m.stays_search_for_accommodation_or_an_address()}
+            placeholder={m.stays_for_example_central_station_hotel()}
+            help={m.stays_stay_search_help()}
             onSelect={choosePlace}
             allowExisting
             current={
               currentPlace
-                ? m.owner_linked_location_choose_or_search_for_another_below_to_replace_it({
-                    p0: currentPlace,
+                ? m.stays_linked_location_hint({
+                    place: currentPlace,
                   })
                 : undefined
             }
@@ -171,8 +171,8 @@ export function StayForm({
         <record.form.Field
           name="checkInDate"
           validators={{
-            onChange: requiredText(m.owner_choose_the_first_night),
-            onSubmit: requiredText(m.owner_choose_the_first_night),
+            onChange: requiredText(m.stays_choose_the_first_night),
+            onSubmit: requiredText(m.stays_choose_the_first_night),
           }}
           listeners={{
             onChange: ({ value }) => {
@@ -181,7 +181,7 @@ export function StayForm({
             },
           }}
         >
-          {(field) => <DateField field={field} label={m.owner_first_night_check_in()} required />}
+          {(field) => <DateField field={field} label={m.stays_first_night_check_in()} required />}
         </record.form.Field>
         <record.form.Field
           name="checkOutDate"
@@ -191,7 +191,7 @@ export function StayForm({
             onSubmit: checkOutAfterCheckIn,
           }}
         >
-          {(field) => <DateField field={field} label={m.owner_check_out_morning()} required />}
+          {(field) => <DateField field={field} label={m.stays_check_out_morning()} required />}
         </record.form.Field>
       </div>
       <record.form.Subscribe
@@ -215,14 +215,14 @@ export function StayForm({
             <>
               <p className="help">
                 {nights > 0
-                  ? m.owner_night_count({ count: nights })
-                  : m.owner_choose_a_check_out_date_after_the_first_night()}{" "}
-                {m.owner_local_dates_at_the_stay()}
+                  ? m.common_night_count({ count: nights })
+                  : m.stays_choose_a_check_out_date_after_the_first_night()}{" "}
+                {m.stays_local_dates_at_the_stay()}
               </p>
               {overlapping.length > 0 && (
                 <p className="help font-bold text-travel-warning-dark" role="status">
-                  {m.owner_these_nights_overlap_with()} {overlapping.map(overlapLabel).join(", ")}
-                  {m.owner_that_is_allowed_but_check_that_you_are_not_booking_twice()}
+                  {m.stays_these_nights_overlap_with()} {overlapping.map(overlapLabel).join(", ")}
+                  {m.stays_overlap_suffix()}
                 </p>
               )}
             </>
@@ -231,10 +231,10 @@ export function StayForm({
       </record.form.Subscribe>
       <div className="field-row">
         <record.form.Field name="checkInTime">
-          {(field) => <TimeField field={field} label={m.owner_check_in_time()} optional />}
+          {(field) => <TimeField field={field} label={m.stays_check_in_time()} optional />}
         </record.form.Field>
         <record.form.Field name="checkOutTime">
-          {(field) => <TimeField field={field} label={m.owner_check_out_time()} optional />}
+          {(field) => <TimeField field={field} label={m.stays_check_out_time()} optional />}
         </record.form.Field>
       </div>
       <record.form.Subscribe selector={(state) => accommodationOf(state.values)}>
@@ -242,9 +242,9 @@ export function StayForm({
           accommodation !== "none" && (
             <div>
               <Button className="secondary compact" type="button" onClick={removeAccommodation}>
-                {m.owner_remove_the_accommodation()}
+                {m.stays_remove_the_accommodation()}
               </Button>
-              <p className="help">{m.owner_remove_the_accommodation_help()}</p>
+              <p className="help">{m.stays_remove_the_accommodation_help()}</p>
             </div>
           )
         }
@@ -252,11 +252,13 @@ export function StayForm({
       <div className="field-row">
         <record.form.Field name="address">
           {(field) => (
-            <TextField field={field} label={m.owner_address()} optional maxLength={160} />
+            <TextField field={field} label={m.common_address()} optional maxLength={160} />
           )}
         </record.form.Field>
         <record.form.Field name="locality">
-          {(field) => <TextField field={field} label={m.owner_city()} optional maxLength={120} />}
+          {(field) => (
+            <TextField field={field} label={m.locations_city()} optional maxLength={120} />
+          )}
         </record.form.Field>
       </div>
       <div className="field-row">
@@ -264,7 +266,7 @@ export function StayForm({
           {(field) => (
             <TextField
               field={field}
-              label={m.owner_country_code()}
+              label={m.locations_country_code()}
               optional
               maxLength={2}
               placeholder="TW"
@@ -278,8 +280,8 @@ export function StayForm({
           {(field) => (
             <TextField
               field={field}
-              label={m.owner_website()}
-              optional={m.owner_optional_https()}
+              label={m.common_website()}
+              optional={m.common_optional_https()}
               type="url"
               maxLength={2048}
               placeholder="https://"
@@ -289,7 +291,12 @@ export function StayForm({
       </div>
       <record.form.Field name="bookingReference">
         {(field) => (
-          <TextField field={field} label={m.owner_booking_reference_3()} optional maxLength={255} />
+          <TextField
+            field={field}
+            label={m.common_booking_reference_label()}
+            optional
+            maxLength={255}
+          />
         )}
       </record.form.Field>
       <record.form.Field name="contactDetails">
@@ -297,7 +304,7 @@ export function StayForm({
           <MarkdownField
             field={field}
             format="contact"
-            label={m.owner_contact_details()}
+            label={m.stays_contact_details()}
             optional
             maxLength={2000}
             rows={3}
@@ -306,7 +313,13 @@ export function StayForm({
       </record.form.Field>
       <record.form.Field name="notes">
         {(field) => (
-          <MarkdownField field={field} label={m.owner_notes()} optional maxLength={4000} rows={3} />
+          <MarkdownField
+            field={field}
+            label={m.common_notes()}
+            optional
+            maxLength={4000}
+            rows={3}
+          />
         )}
       </record.form.Field>
       <record.form.Field name="documentAssetIds">

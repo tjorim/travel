@@ -53,11 +53,11 @@ export function tripBadges(
   if (activeRoutes.length) {
     const booked = activeRoutes.filter((route) => isConfirmed(route.status)).length;
     badges.push({
-      label: m.owner_transport(),
+      label: m.common_transport(),
       value:
         booked === activeRoutes.length
-          ? m.owner_all_confirmed()
-          : m.owner_confirmed_count({ p0: booked, p1: activeRoutes.length }),
+          ? m.trips_all_confirmed()
+          : m.trips_confirmed_count({ confirmed: booked, total: activeRoutes.length }),
       done: booked === activeRoutes.length,
       section: "plan",
       hash: "routes",
@@ -88,13 +88,13 @@ export function tripBadges(
     ).length;
     const missing = open.length - choosing;
     badges.push({
-      label: m.owner_nights(),
-      value: m.owner_confirmed_nights({
-        p0: booked,
-        p1: nights.length,
-        p2:
-          (missing ? m.owner_without_a_stay({ p0: missing }) : "") +
-          (choosing ? m.owner_nights_to_choose({ count: choosing }) : ""),
+      label: m.common_nights(),
+      value: m.trips_confirmed_nights({
+        confirmed: booked,
+        total: nights.length,
+        details:
+          (missing ? m.trips_without_a_stay({ count: missing }) : "") +
+          (choosing ? m.trips_nights_to_choose({ count: choosing }) : ""),
       }),
       done: booked === nights.length,
       section: "plan",
@@ -104,8 +104,8 @@ export function tripBadges(
     const active = stays.filter(stayInPlan);
     const booked = active.filter((stay) => isConfirmed(stay.status)).length;
     badges.push({
-      label: m.owner_stays(),
-      value: m.owner_confirmed_count({ p0: booked, p1: active.length }),
+      label: m.common_stays(),
+      value: m.trips_confirmed_count({ confirmed: booked, total: active.length }),
       done: booked === active.length,
       section: "plan",
       hash: "stays",
@@ -114,8 +114,8 @@ export function tripBadges(
   const open = tasks.filter((task) => !task.completed_at).length;
   if (tasks.length)
     badges.push({
-      label: m.owner_things_to_arrange(),
-      value: open ? m.owner_open_2({ p0: open }) : m.owner_all_done(),
+      label: m.tasks_things_to_arrange(),
+      value: open ? m.trips_open_count({ count: open }) : m.trips_all_done(),
       done: open === 0,
       section: "prepare",
       hash: "tasks",
@@ -166,10 +166,10 @@ export function LocalTimes({
   if (here.kind !== "home" && here.zone) {
     const time = dayjs(now).tz(here.zone).format("ddd HH:mm");
     lines.push(
-      m.owner_now({
-        p0: here.kind === "stay" ? m.owner_in({ p0: here.label }) : here.label,
-        p1: time,
-        p2: offsetLabel(nowOffset(here.zone)),
+      m.trips_now({
+        place: here.kind === "stay" ? m.trips_in({ place: here.label }) : here.label,
+        time: time,
+        offset: offsetLabel(nowOffset(here.zone)),
       }),
     );
   }
@@ -181,11 +181,11 @@ export function LocalTimes({
     if (here.kind === "home")
       lines.push(
         current !== during
-          ? m.owner_trip_offset_now({
+          ? m.trips_trip_offset_now({
               during: offsetLabel(during),
               current: offsetLabel(current, true),
             })
-          : m.owner_during_the_trip({ p0: offsetLabel(during), p1: "" }),
+          : m.trips_during_the_trip({ offset: offsetLabel(during), details: "" }),
       );
   }
   if (!lines.length) return null;
@@ -243,7 +243,7 @@ export function TripOverview({ trip, action }: { trip: Trip; action?: ReactNode 
   return (
     <section
       className="travel-card grid gap-2.5 [&_.travel-eyebrow]:m-0"
-      aria-label={m.owner_trip_overview()}
+      aria-label={m.trips_trip_overview()}
     >
       {(progress || action) && (
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
@@ -272,7 +272,7 @@ export function TripOverview({ trip, action }: { trip: Trip; action?: ReactNode 
         <p className="travel-eyebrow">
           {formatDay(trip.starts_on, "D MMMM")}
           {trip.ends_on ? ` — ${formatDay(trip.ends_on, "D MMMM YYYY")}` : ""}
-          {nights ? ` · ${m.owner_night_count({ count: nights })}` : ""}
+          {nights ? ` · ${m.common_night_count({ count: nights })}` : ""}
         </p>
       )}
       {localTimes}

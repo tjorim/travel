@@ -32,7 +32,7 @@ function ViewLoading() {
     <section className="travel-card grid min-h-48 content-start gap-3" role="status">
       <p className="m-0 flex items-center gap-2 text-sm font-bold text-travel-muted">
         <Spinner />
-        {m.owner_view_loading()}
+        {m.common_loading()}
       </p>
       <div className="grid gap-3 animate-travel-delayed-in motion-reduce:animate-none">
         <Skeleton className="h-5 w-2/5" />
@@ -48,9 +48,9 @@ function ViewFailed({ overlay }: { overlay: boolean }) {
   const card = (
     <section className="travel-card grid justify-items-start gap-3" role="alert">
       <CloudOffIcon className="size-7 text-travel-muted" aria-hidden="true" />
-      <h2 className="m-0 text-xl">{m.owner_view_unavailable()}</h2>
+      <h2 className="m-0 text-xl">{m.feedback_view_unavailable()}</h2>
       <p className="m-0 leading-normal text-travel-muted">
-        {m.owner_view_unavailable_description()}
+        {m.feedback_view_unavailable_description()}
       </p>
       <Button
         className="compact mt-1 inline-flex items-center gap-2"
@@ -58,7 +58,7 @@ function ViewFailed({ overlay }: { overlay: boolean }) {
         onClick={() => window.location.reload()}
       >
         <RefreshCwIcon className="size-4" aria-hidden="true" />
-        {m.owner_view_reload()}
+        {m.feedback_view_reload()}
       </Button>
     </section>
   );

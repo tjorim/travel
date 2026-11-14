@@ -61,8 +61,8 @@ export function LocationForm({
   return (
     <RecordForm
       record={record}
-      submitLabel={m.owner_save_location()}
-      pendingLabel={m.owner_saving()}
+      submitLabel={m.locations_save_location()}
+      pendingLabel={m.common_saving()}
       disabled={
         !record.values.areaId ||
         (record.values.shareAddress && !canShareAddress) ||
@@ -72,22 +72,22 @@ export function LocationForm({
           !record.values.locality.trim())
       }
     >
-      {!areas.length && <p>{m.owner_create_an_area_first_your_location_draft_is_kept()}</p>}
+      {!areas.length && <p>{m.locations_create_an_area_first_your_location_draft_is_kept()}</p>}
       {!areas.length && (
         <Button type="button" className="secondary" onClick={onAddArea}>
-          {m.owner_add_area()}
+          {m.common_add_area()}
         </Button>
       )}
       <record.form.Field
         name="areaId"
         validators={{
-          onChange: requiredText(m.owner_choose_an_area),
-          onSubmit: requiredText(m.owner_choose_an_area),
+          onChange: requiredText(m.locations_choose_an_area),
+          onSubmit: requiredText(m.locations_choose_an_area),
         }}
       >
         {(field) => (
-          <SelectField field={field} label={m.owner_area()}>
-            <option value="">{m.owner_choose_an_area_2()}</option>
+          <SelectField field={field} label={m.common_area()}>
+            <option value="">{m.locations_choose_an_area_option()}</option>
             {areas.map((area) => (
               <option key={area.id} value={area.id}>
                 {areaName(area)}
@@ -98,16 +98,16 @@ export function LocationForm({
       </record.form.Field>
       {areas.length > 0 && (
         <Button type="button" className="secondary compact" onClick={onAddArea}>
-          {m.owner_add_new_area()}
+          {m.locations_add_new_area()}
         </Button>
       )}
       {!editingId && (
         <PlaceSearchField
           tripId={tripId}
-          legend={m.owner_search_location()}
-          inputLabel={m.owner_search_via_openstreetmap()}
-          placeholder={m.owner_for_example_brussels_central_station()}
-          help={m.owner_a_result_only_fills_in_this_draft_save_creates_the_location()}
+          legend={m.locations_search_location()}
+          inputLabel={m.locations_search_via_openstreetmap()}
+          placeholder={m.locations_for_example_brussels_central_station()}
+          help={m.locations_search_result_hint()}
           onSelect={onChoose}
         />
       )}
@@ -117,50 +117,67 @@ export function LocationForm({
             latitude={editingId ? selected?.latitude : suggestion?.latitude}
             longitude={editingId ? selected?.longitude : suggestion?.longitude}
           />
-          <p className="help">
-            {m.owner_address_changes_do_not_move_the_saved_map_point_or_navigation_target_the()}
-          </p>
+          <p className="help">{m.locations_address_edit_hint()}</p>
         </>
       )}
       <record.form.Field name="displayName">
         {(field) => (
-          <TextField field={field} label={m.owner_your_name_2()} optional maxLength={500} />
+          <TextField field={field} label={m.locations_own_name_label()} optional maxLength={500} />
         )}
       </record.form.Field>
       <record.form.Field name="label">
         {(field) => (
-          <TextField field={field} label={m.owner_public_name_2()} optional maxLength={120} />
+          <TextField
+            field={field}
+            label={m.locations_public_name_label()}
+            optional
+            maxLength={120}
+          />
         )}
       </record.form.Field>
       <div className="field-row">
         <record.form.Field name="addressLine1">
           {(field) => (
-            <TextField field={field} label={m.owner_address_line_1()} optional maxLength={160} />
+            <TextField
+              field={field}
+              label={m.locations_address_first_line()}
+              optional
+              maxLength={160}
+            />
           )}
         </record.form.Field>
         <record.form.Field name="addressLine2">
           {(field) => (
-            <TextField field={field} label={m.owner_address_line_2()} optional maxLength={160} />
+            <TextField
+              field={field}
+              label={m.locations_address_second_line()}
+              optional
+              maxLength={160}
+            />
           )}
         </record.form.Field>
       </div>
       <div className="field-row">
         <record.form.Field name="postalCode">
           {(field) => (
-            <TextField field={field} label={m.owner_postal_code()} optional maxLength={20} />
+            <TextField field={field} label={m.locations_postal_code()} optional maxLength={20} />
           )}
         </record.form.Field>
         <record.form.Field name="locality">
-          {(field) => <TextField field={field} label={m.owner_city()} optional maxLength={120} />}
+          {(field) => (
+            <TextField field={field} label={m.locations_city()} optional maxLength={120} />
+          )}
         </record.form.Field>
       </div>
       <div className="field-row">
         <record.form.Field name="adminArea">
-          {(field) => <TextField field={field} label={m.owner_region()} optional maxLength={120} />}
+          {(field) => (
+            <TextField field={field} label={m.locations_region()} optional maxLength={120} />
+          )}
         </record.form.Field>
         <record.form.Field name="countryCode">
           {(field) => (
-            <TextField field={field} label={m.owner_country_code()} optional maxLength={2} />
+            <TextField field={field} label={m.locations_country_code()} optional maxLength={2} />
           )}
         </record.form.Field>
       </div>
@@ -168,7 +185,7 @@ export function LocationForm({
         {(field) => (
           <TextAreaField
             field={field}
-            label={m.owner_private_notes_2()}
+            label={m.locations_private_notes_label()}
             optional
             maxLength={2000}
           />
@@ -183,20 +200,20 @@ export function LocationForm({
                   {(field) => (
                     <CheckboxField
                       field={field}
-                      label={m.owner_also_share_the_address_with_this_location_s_recipients()}
+                      label={m.locations_address_sharing_option()}
                       disabled={!canShareAddress && !field.state.value}
                     />
                   )}
                 </record.form.Field>
                 <p className="help">
                   {canShareAddress
-                    ? m.owner_exact_address_shown_to_visitors_when_address_sharing_is_on({
-                        p0: projectionText(addressPreview),
+                    ? m.locations_exact_address_shown({
+                        address: projectionText(addressPreview),
                       })
-                    : m.owner_no_shareable_address_fill_in_an_address_field_first_to_enable_address_sh()}{" "}
-                  {m.owner_country_code_2()} {record.values.countryCode || "geen"}
-                  {m.owner_public_name_3()} {record.values.label || "geen"}
-                  {m.owner_these_are_separate_from_the_address_your_name_and_private_notes_stay_pri()}
+                    : m.locations_no_shareable_address_hint()}{" "}
+                  {m.locations_country_code_detail()} {record.values.countryCode || "geen"}
+                  {m.locations_public_name_inline()} {record.values.label || "geen"}
+                  {m.locations_names_separate_suffix()}
                 </p>
               </AdvancedSection>
             )}
@@ -206,34 +223,30 @@ export function LocationForm({
               state={recipientState}
               recipients={recipients}
               reaches={(names) =>
-                m.owner_current_recipients_a_saved_address_change_appears_immediately_for_them_w({
-                  p0: names,
+                m.locations_current_recipients_hint({
+                  audiences: names,
                 })
               }
-              reachesNobody={
-                m.owner_this_location_currently_reaches_no_visitors_address_sharing_alone_does_n
-              }
+              reachesNobody={m.locations_no_recipients_hint}
             />
           </p>
           {pending.length > 0 && (
             <div className="help">
-              <p className="m-0">{m.owner_visitor_change_preview()}</p>
+              <p className="m-0">{m.locations_visitor_change_preview()}</p>
               <ul className="m-0">
                 {pending.map((field) => (
                   <li key={field}>
-                    {m.owner_visitor_change_preview_item({
-                      p0: visitorFieldLabel(field),
-                      p1: recipients.join(", "),
+                    {m.locations_visitor_change_preview_item({
+                      field: visitorFieldLabel(field),
+                      audiences: recipients.join(", "),
                     })}
                   </li>
                 ))}
               </ul>
             </div>
           )}
-          {movesArea && <p className="help">{m.owner_visitor_change_area_preview()}</p>}
-          <p className="help">
-            {m.owner_changing_this_reusable_location_affects_all_linked_visits_stays_routes_a()}
-          </p>
+          {movesArea && <p className="help">{m.locations_visitor_change_area_preview()}</p>}
+          <p className="help">{m.locations_edit_shared_use_warning()}</p>
         </>
       )}
     </RecordForm>

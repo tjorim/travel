@@ -53,7 +53,7 @@ export function PreviewDialog({
     future.data ?? { transport: 0, day_dates: 0 },
     preview.audience === "public"
       ? m.publication_the_page_for_everyone()
-      : m.publication_link({ p0: links.find((link) => link.id === preview.linkId)?.label ?? "" }),
+      : m.publication_link({ name: links.find((link) => link.id === preview.linkId)?.label ?? "" }),
   );
   return (
     <RecordDialog

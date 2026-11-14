@@ -226,11 +226,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
         contentType: "application/json",
         bytes: new TextEncoder().encode(JSON.stringify(snapshot)).buffer as ArrayBuffer,
       });
-      setNotice(
-        textNotice(() =>
-          m.offline_packing_list_saved_offline_on_this_device_changes_require_a_connection(),
-        ),
-      );
+      setNotice(textNotice(() => m.offline_packing_saved_notice()));
     } catch (error) {
       setNotice(errorNotice(error, m.offline_the_packing_list_could_not_be_saved_offline));
     } finally {
@@ -268,9 +264,9 @@ export function PackingManager({ trip }: { trip: Trip }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 id="packing-title" className="text-2xl font-semibold">
-            {m.owner_packing()}
+            {m.packing_packing()}
           </h3>
-          <p className="text-sm">{m.packing_only_for_you_line({ p0: count(items) })}</p>
+          <p className="text-sm">{m.packing_private_count({ count: count(items) })}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {list && (
@@ -320,7 +316,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
             >
               {offline.isPinned("packing_list", list.id)
                 ? m.offline_refresh_offline_copy()
-                : m.owner_save_offline()}
+                : m.common_save_offline()}
             </Button>
           )}
           {list && offline.isPinned("packing_list", list.id) && (
@@ -329,15 +325,13 @@ export function PackingManager({ trip }: { trip: Trip }) {
               type="button"
               onClick={() => void removeOfflineCopy()}
             >
-              {m.owner_remove_offline_copy()}
+              {m.common_remove_offline_copy()}
             </Button>
           )}
         </div>
       </div>
       {list && offline.isPinned("packing_list", list.id) && (
-        <p className="text-sm">
-          {m.offline_an_offline_copy_has_been_saved_refresh_after_changes_to_take_the_latest_()}
-        </p>
+        <p className="text-sm">{m.offline_copy_saved_notice()}</p>
       )}
       {!list ? (
         <div className="rounded-xl border p-5">
@@ -382,7 +376,7 @@ export function PackingManager({ trip }: { trip: Trip }) {
             <p role="status">{m.packing_loading_packing_list()}</p>
           ) : bagsQuery.isError || itemsQuery.isError ? (
             <div role="alert">
-              {m.packing_loading_packing_list_failed_2()}{" "}
+              {m.packing_list_load_error_inline()}{" "}
               <Button type="button" onClick={() => void refresh()}>
                 {m.retry()}
               </Button>

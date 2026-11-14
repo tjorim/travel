@@ -25,10 +25,10 @@ export function UpdatesBlock({
 }) {
   useLocale();
   return (
-    <Section id="updates" title={m.owner_travel_updates()}>
+    <Section id="updates" title={m.common_travel_updates()}>
       <DetailList
         empty={trip.travel_updates.length === 0}
-        message={m.owner_no_travel_updates_captured()}
+        message={m.updates_no_travel_updates_captured()}
       >
         {trip.travel_updates
           .slice()
@@ -42,15 +42,15 @@ export function UpdatesBlock({
                 {formatUpdateInstant(update)} · {placeLabel(update.location)} ·{" "}
                 {visibilityLabel(update.visibility)}
               </p>
-              <p className="markdown-label">{m.owner_for_visitors()}</p>
+              <p className="markdown-label">{m.visits_for_visitors()}</p>
               {update.body ? (
                 <Markdown html={update.body_html} text={update.body} />
               ) : (
-                <p className="help">{m.owner_no_text_for_visitors_yet()}</p>
+                <p className="help">{m.updates_no_text_for_visitors_yet()}</p>
               )}
               {update.private_notes && (
                 <>
-                  <p className="markdown-label">{m.owner_private_note()}</p>
+                  <p className="markdown-label">{m.updates_private_note()}</p>
                   <Markdown html={update.private_notes_html} text={update.private_notes} />
                 </>
               )}
@@ -58,7 +58,7 @@ export function UpdatesBlock({
                 <div
                   className="flex flex-wrap gap-3"
                   role="group"
-                  aria-label={m.owner_media_for({ p0: update.title })}
+                  aria-label={m.updates_media_for({ title: update.title })}
                 >
                   {update.media_asset_ids.map((assetId) => {
                     const asset = mediaById.get(assetId);
@@ -66,7 +66,7 @@ export function UpdatesBlock({
                       <div key={assetId} className="grid max-w-37.5 gap-1.25">
                         <MediaPreview asset={asset} session={session} />
                         <RecordLink tripId={trip.id} kind="media" id={asset.id}>
-                          {asset.original_filename ?? m.owner_open_media_item()}
+                          {asset.original_filename ?? m.updates_open_media_item()}
                         </RecordLink>
                       </div>
                     ) : null;

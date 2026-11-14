@@ -35,8 +35,8 @@ export function PhotoLinks({
   useLocale();
   return (
     <FieldSet className="location">
-      <FieldLegend>{m.owner_link_private_photos()}</FieldLegend>
-      <p>{m.owner_a_link_is_private_exif_is_only_used_below_as_a_suggestion_no_date_or_pla()}</p>
+      <FieldLegend>{m.capture_link_private_photos()}</FieldLegend>
+      <p>{m.capture_photo_link_hint()}</p>
       <p className="help" role="status">
         {mediaState}
       </p>
@@ -47,7 +47,7 @@ export function PhotoLinks({
               checked={selectedIds.includes(asset.id)}
               onCheckedChange={() => onToggle(asset.id)}
             />
-            {asset.original_filename ?? m.owner_unnamed_photo()}
+            {asset.original_filename ?? m.capture_unnamed_photo()}
             {asset.captured_at
               ? ` · ${formatCapture(asset.captured_at, asset.captured_local)}`
               : ""}
@@ -60,11 +60,12 @@ export function PhotoLinks({
           (asset.captured_at || asset.gps) && (
             <SuggestionAside key={`suggestion-${asset.id}`}>
               <strong>
-                {m.owner_suggestion_from()} {asset.original_filename ?? m.owner_this_photo()}
+                {m.capture_suggestion_from()} {asset.original_filename ?? m.capture_this_photo()}
               </strong>
               {asset.captured_at && (
                 <span>
-                  {m.owner_captured_2()} {formatCapture(asset.captured_at, asset.captured_local)}.
+                  {m.capture_photo_captured_label()}{" "}
+                  {formatCapture(asset.captured_at, asset.captured_local)}.
                 </span>
               )}
               <div className="button-row">
@@ -74,7 +75,7 @@ export function PhotoLinks({
                     type="button"
                     onClick={() => onUseCaptureDate(asset)}
                   >
-                    {m.owner_use_capture_date()}
+                    {m.capture_use_capture_date()}
                   </Button>
                 )}
                 {asset.gps && (
@@ -83,7 +84,7 @@ export function PhotoLinks({
                     type="button"
                     onClick={() => onFindPlace(asset.gps!)}
                   >
-                    {m.owner_find_place_for_photo()}
+                    {m.capture_find_place_for_photo()}
                   </Button>
                 )}
                 <Button
@@ -91,16 +92,14 @@ export function PhotoLinks({
                   type="button"
                   onClick={() => onDismiss(asset.id)}
                 >
-                  {m.owner_dismiss_suggestion()}
+                  {m.capture_dismiss_suggestion()}
                 </Button>
               </div>
             </SuggestionAside>
           ),
       )}
       {attachedMedia.filter((asset) => asset.captured_at || asset.gps).length > 1 && (
-        <p className="help">
-          {m.owner_photos_can_differ_each_suggestion_remains_visible_separately_choose_at_m()}
-        </p>
+        <p className="help">{m.capture_photo_suggestions_hint()}</p>
       )}
     </FieldSet>
   );

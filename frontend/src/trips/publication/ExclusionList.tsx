@@ -130,7 +130,7 @@ function ExclusionGroup({
     <Collapsible.Root className="scope-group" data-disclosure="" open={open} onOpenChange={setOpen}>
       <Collapsible.Trigger className="max-sm:flex-wrap max-sm:justify-start max-sm:[&>strong]:basis-3/4 max-sm:[&>span]:basis-full max-sm:[&>span]:pl-6">
         <strong>{GROUP_TITLES[kind]}</strong>
-        <span>{m.exclusions_group_line({ p0: shown, p1: items.length })}</span>
+        <span>{m.exclusions_group_count({ shown: shown, total: items.length })}</span>
       </Collapsible.Trigger>
       <Collapsible.Panel keepMounted className="grid gap-2 px-3.25 pt-0 pb-3.25">
         {items.map((item) => {

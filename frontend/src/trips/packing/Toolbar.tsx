@@ -66,7 +66,7 @@ export function Toolbar({
         />
         <Field className="contents">
           <FieldLabel>
-            {m.owner_search()}{" "}
+            {m.packing_search()}{" "}
             <Input
               type="search"
               value={search}
@@ -77,9 +77,9 @@ export function Toolbar({
       </div>
       {selecting && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border p-3">
-          <span>{m.packing_selected_line({ p0: selected.length })}</span>
+          <span>{m.packing_selected_count({ count: selected.length })}</span>
           <Button type="button" disabled={busy || !selected.length} onClick={() => void bulk(true)}>
-            {m.owner_packing()}
+            {m.packing_packing()}
           </Button>
           <Button
             type="button"

@@ -12,14 +12,14 @@ for (const locale of locales) {
       await choosePreferences(page, locale, theme);
       await page.goto(`/admin/trips/${ownerTrip.id}/plan`);
       await page
-        .getByRole("button", { name: `${message(locale, "owner_routes")} 0`, exact: true })
+        .getByRole("button", { name: `${message(locale, "common_routes")} 0`, exact: true })
         .click();
       await page
-        .getByRole("button", { name: message(locale, "owner_new_route"), exact: true })
+        .getByRole("button", { name: message(locale, "routes_new_route"), exact: true })
         .click();
       const dialog = page.getByRole("dialog");
       const name = dialog.getByRole("textbox", {
-        name: message(locale, "owner_name"),
+        name: message(locale, "common_name"),
         exact: false,
       });
       await name.fill("Unsaved route");
@@ -28,16 +28,16 @@ for (const locale of locales) {
         route.fulfill({ status: failed ? 503 : 200, json: [] }),
       );
       const search = dialog.getByRole("combobox", {
-        name: message(locale, "owner_departure"),
+        name: message(locale, "routes_departure"),
         exact: true,
       });
       await search.fill("Example Bay");
       await expect(dialog.getByRole("status")).toContainText(
-        message(locale, "owner_search_failed"),
+        message(locale, "common_search_failed"),
         { timeout: 15000 },
       );
       await expect(
-        dialog.getByText(message(locale, "owner_no_results"), { exact: true }),
+        dialog.getByText(message(locale, "common_no_results"), { exact: true }),
       ).toHaveCount(0);
       await expect(search).toBeFocused();
       const violations = (
@@ -48,11 +48,11 @@ for (const locale of locales) {
       expect(violations).toEqual([]);
       failed = false;
       await search.press("Tab");
-      const retry = dialog.getByRole("button", { name: message(locale, "owner_search_retry") });
+      const retry = dialog.getByRole("button", { name: message(locale, "common_search_retry") });
       await expect(retry).toBeFocused();
       await retry.press("Enter");
       await expect(
-        dialog.getByRole("status").filter({ hasText: message(locale, "owner_search_complete") }),
+        dialog.getByRole("status").filter({ hasText: message(locale, "common_search_complete") }),
       ).toBeVisible();
       await expect(search).toHaveValue("Example Bay");
       await expect(search).toBeFocused();

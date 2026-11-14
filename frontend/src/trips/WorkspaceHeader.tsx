@@ -38,17 +38,14 @@ export function WorkspaceHeader({ trip, onEdit }: { trip: Trip; onEdit: () => vo
               {trip.title}
             </h1>
             <p className="m-0 leading-normal font-medium text-travel-muted">
-              {[
-                tripDateRange(trip),
-                m.owner_travel_update_count({ count: trip.travel_updates.length }),
-              ]
+              {[tripDateRange(trip), m.updates_count({ count: trip.travel_updates.length })]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
           </div>
           <div className="button-row">
             <Button className="secondary compact" type="button" onClick={onEdit}>
-              {m.owner_trip_details()}
+              {m.trips_trip_details()}
             </Button>
           </div>
         </div>

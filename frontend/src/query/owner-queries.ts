@@ -75,17 +75,17 @@ type TripResourceData = {
 };
 
 const resourceFailure: Record<TripResource, ErrorFallback> = {
-  stays: m.owner_your_stays_could_not_be_loaded,
-  "alternative-groups": m.owner_your_alternatives_could_not_be_loaded,
-  "alternative-groups/suggestions": m.owner_your_alternatives_could_not_be_loaded,
-  "trip-tasks": m.owner_your_tasks_could_not_be_loaded,
-  "task-alerts": m.owner_your_notifications_could_not_be_loaded,
-  areas: m.owner_your_areas_could_not_be_loaded,
-  locations: m.owner_your_locations_could_not_be_loaded,
-  routes: m.owner_your_routes_could_not_be_loaded,
-  visits: m.owner_your_visits_could_not_be_loaded,
+  stays: m.stays_your_stays_could_not_be_loaded,
+  "alternative-groups": m.alternatives_your_alternatives_could_not_be_loaded,
+  "alternative-groups/suggestions": m.alternatives_your_alternatives_could_not_be_loaded,
+  "trip-tasks": m.tasks_your_tasks_could_not_be_loaded,
+  "task-alerts": m.tasks_your_notifications_could_not_be_loaded,
+  areas: m.areas_your_areas_could_not_be_loaded,
+  locations: m.areas_your_locations_could_not_be_loaded,
+  routes: m.routes_your_routes_could_not_be_loaded,
+  visits: m.visits_your_visits_could_not_be_loaded,
   documents: m.library_your_documents_could_not_be_loaded,
-  media: m.owner_your_media_could_not_be_loaded,
+  media: m.media_your_media_could_not_be_loaded,
   "public-projection": m.publication_the_public_publication_could_not_be_loaded,
   "share-links": m.publication_the_share_links_could_not_be_loaded,
   overview: m.publication_the_sharing_check_could_not_be_loaded,
@@ -100,7 +100,7 @@ export function tripsQueryOptions(owner: Owner | null) {
     queryKey: ownerKeys.trips(owner?.subject ?? ""),
     enabled: owner !== null,
     queryFn: ({ signal }: { signal: AbortSignal }) =>
-      ownerRequest<TripSummary[]>(owner!.session, "/api/trips", m.owner_trips_error, { signal }),
+      ownerRequest<TripSummary[]>(owner!.session, "/api/trips", m.trips_load_error, { signal }),
   };
 }
 
@@ -113,7 +113,7 @@ export function tripUpdatesQueryOptions(owner: Owner | null, tripId: string | nu
       ownerRequest<TravelUpdate[]>(
         owner!.session,
         tripPath(tripId!, "travel-updates"),
-        m.owner_your_travel_updates_could_not_be_loaded,
+        m.feedback_your_travel_updates_could_not_be_loaded,
         { signal },
       ),
   };
@@ -128,7 +128,7 @@ export function recentUpdatesQueryOptions(owner: Owner | null, tripId: string, e
       ownerRequest<TravelUpdate[]>(
         owner!.session,
         tripPath(tripId, "travel-updates?latest=3"),
-        m.owner_your_travel_updates_could_not_be_loaded,
+        m.feedback_your_travel_updates_could_not_be_loaded,
         { signal },
       ),
   };

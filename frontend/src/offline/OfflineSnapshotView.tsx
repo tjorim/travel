@@ -55,7 +55,7 @@ export function OfflineSnapshotView({ kind, text }: { kind: OfflineResourceKind;
     // from canonical kinds; authored point/route labels stay unchanged and no edit actions reopen.
     const points = (data.points as MapPoint[]).map((point) => ({
       ...point,
-      detail: point.kind === "derived" ? m.owner_derived_from_private_locations() : point.detail,
+      detail: point.kind === "derived" ? m.common_derived_from_private_locations() : point.detail,
       links: [],
     }));
     const lines = (data.lines as MapLine[]).map((line) => ({ ...line, links: [] }));

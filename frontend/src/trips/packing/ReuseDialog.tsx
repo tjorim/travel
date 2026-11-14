@@ -146,10 +146,10 @@ export function ReuseDialog({
                 <Button
                   type="button"
                   className="secondary compact"
-                  aria-label={m.packing_delete({ p0: template.name })}
+                  aria-label={m.packing_delete({ name: template.name })}
                   onClick={() => setTemplateToDelete(template.id)}
                 >
-                  {m.owner_delete()}
+                  {m.common_delete()}
                 </Button>
               </div>
             ))}
@@ -169,9 +169,7 @@ export function ReuseDialog({
             />
           </FieldLabel>
         </Field>
-        <p className="text-sm">
-          {m.packing_bags_order_categories_quantities_notes_and_assignments_are_preserved_all()}
-        </p>
+        <p className="text-sm">{m.packing_reuse_hint()}</p>
         <Button
           type="submit"
           disabled={

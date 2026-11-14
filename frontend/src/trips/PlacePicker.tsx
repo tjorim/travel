@@ -136,7 +136,7 @@ export function PlacePicker({
     { latitude: number; longitude: number; city?: string },
     AreaSuggestion
   >({
-    fallback: m.owner_an_area_could_not_be_suggested,
+    fallback: m.common_an_area_could_not_be_suggested,
     request: (body) => ({ path: tripPath(tripId, "areas/suggest"), method: "POST", body }),
     invalidate: () => [],
     gcTime: 0,
@@ -158,7 +158,7 @@ export function PlacePicker({
         {
           value: "",
           get label() {
-            return m.owner_choose_an_area_or_location();
+            return m.locations_choose_an_area_or_location();
           },
         },
         ...[...grouped.values()].map(({ area, places }) => ({
@@ -167,7 +167,7 @@ export function PlacePicker({
             {
               value: `area:${area.id}`,
               get label() {
-                return m.owner_whole_area({ p0: areaName(area) });
+                return m.locations_whole_area({ area: areaName(area) });
               },
             },
             ...places.map((location) => ({
@@ -179,7 +179,7 @@ export function PlacePicker({
         {
           value: "new",
           get label() {
-            return m.owner_new_location();
+            return m.locations_new_location();
           },
         },
       ];
@@ -191,14 +191,14 @@ export function PlacePicker({
       ? {
           value: "new",
           get label() {
-            return m.owner_new_location();
+            return m.locations_new_location();
           },
         }
       : value.choice.startsWith("area:")
         ? {
             value: value.choice,
-            label: m.owner_whole_area({
-              p0: areas.find((area) => area.id === value.choice.slice(5))?.label ?? value.choice,
+            label: m.locations_whole_area({
+              area: areas.find((area) => area.id === value.choice.slice(5))?.label ?? value.choice,
             }),
           }
         : value.choice.startsWith("location:")
@@ -248,7 +248,7 @@ export function PlacePicker({
     <FieldSet>
       <FieldLegend>{label}</FieldLegend>
       <Field invalid={Boolean(error)}>
-        <FieldLabel>{m.owner_choose_field({ label })}</FieldLabel>
+        <FieldLabel>{m.locations_choose_field({ label })}</FieldLabel>
         <AsyncSearchSelect
           ariaLabel={label}
           value={value.choice}
@@ -257,7 +257,7 @@ export function PlacePicker({
             {
               value: "",
               get label() {
-                return m.owner_choose_an_area_or_location();
+                return m.locations_choose_an_area_or_location();
               },
             },
             ...areas.slice(0, 50).map((area) => ({
@@ -266,7 +266,7 @@ export function PlacePicker({
                 {
                   value: `area:${area.id}`,
                   get label() {
-                    return m.owner_whole_area({ p0: areaName(area) });
+                    return m.locations_whole_area({ area: areaName(area) });
                   },
                 },
                 ...locations
@@ -281,7 +281,7 @@ export function PlacePicker({
             {
               value: "new",
               get label() {
-                return m.owner_new_location();
+                return m.locations_new_location();
               },
             },
           ]}
@@ -301,19 +301,19 @@ export function PlacePicker({
         <div>
           <PlaceSearchField
             tripId={tripId}
-            legend={m.owner_search_location()}
-            inputLabel={m.owner_search_location_2({ p0: label })}
-            placeholder={m.owner_for_example_taipei_main_station()}
-            help={m.owner_a_selected_location_stays_private_check_the_suggested_area_before_saving()}
+            legend={m.locations_search_location()}
+            inputLabel={m.locations_search_with_context({ label: label })}
+            placeholder={m.locations_for_example_taipei_main_station()}
+            help={m.locations_selected_private_hint()}
             onSelect={(result) => void useResult(result)}
           />
           <div className="field-row">
             <Field>
               <FieldLabel>
-                {m.owner_name()}{" "}
-                <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+                {m.common_name()}{" "}
+                <span className="font-medium text-travel-optional">{m.common_optional()}</span>
                 <Input
-                  aria-label={m.owner_name_2({ p0: label })}
+                  aria-label={m.locations_name_with_context({ label: label })}
                   value={value.newName}
                   maxLength={500}
                   onChange={(event) => onChange({ ...value, newName: event.target.value })}
@@ -322,10 +322,10 @@ export function PlacePicker({
             </Field>
             <Field>
               <FieldLabel>
-                {m.owner_city()}{" "}
-                <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+                {m.locations_city()}{" "}
+                <span className="font-medium text-travel-optional">{m.common_optional()}</span>
                 <Input
-                  aria-label={m.owner_city_2({ p0: label })}
+                  aria-label={m.locations_city_with_context({ label: label })}
                   value={value.newLocality}
                   maxLength={120}
                   onChange={(event) => onChange({ ...value, newLocality: event.target.value })}
@@ -336,10 +336,10 @@ export function PlacePicker({
           <div className="field-row">
             <Field>
               <FieldLabel>
-                {m.owner_country_code()}{" "}
-                <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+                {m.locations_country_code()}{" "}
+                <span className="font-medium text-travel-optional">{m.common_optional()}</span>
                 <Input
-                  aria-label={m.owner_country_code_3({ p0: label })}
+                  aria-label={m.locations_country_code_with_context({ label: label })}
                   value={value.newCountryCode}
                   maxLength={2}
                   onChange={(event) => onChange({ ...value, newCountryCode: event.target.value })}
@@ -348,22 +348,22 @@ export function PlacePicker({
             </Field>
             <Field>
               <FieldLabel>
-                {m.owner_area()}{" "}
-                <span className="font-medium text-travel-optional">{m.owner_optional()}</span>
+                {m.common_area()}{" "}
+                <span className="font-medium text-travel-optional">{m.common_optional()}</span>
               </FieldLabel>
               <SearchSelect
-                ariaLabel={m.owner_new_location_s_area({ p0: label })}
+                ariaLabel={m.locations_new_location_s_area({ label: label })}
                 value={value.newAreaId}
                 onChange={(next) => onChange({ ...value, newAreaId: next })}
               >
                 <option value="">
                   {value.newResult?.latitude != null
-                    ? m.owner_do_not_use_a_suggestion_city_rule()
-                    : m.owner_derive_from_the_city()}
+                    ? m.locations_do_not_use_a_suggestion_city_rule()
+                    : m.locations_derive_from_the_city()}
                 </option>
                 {value.newAreaCandidate && (
                   <option value="__new__">
-                    {m.owner_new_area()} {areaName(value.newAreaCandidate)}
+                    {m.locations_new_area()} {areaName(value.newAreaCandidate)}
                     {value.newAreaCandidate.timezone ? ` · ${value.newAreaCandidate.timezone}` : ""}
                   </option>
                 )}
@@ -379,7 +379,7 @@ export function PlacePicker({
             <div className="field-row">
               <Field>
                 <FieldLabel>
-                  {m.owner_new_area_name()}
+                  {m.locations_new_area_name()}
                   <Input
                     value={areaName(value.newAreaCandidate)}
                     maxLength={120}
@@ -394,7 +394,7 @@ export function PlacePicker({
               </Field>
               <Field>
                 <FieldLabel>
-                  {m.owner_new_area_time_zone()}
+                  {m.locations_new_area_time_zone()}
                   <Input
                     value={value.newAreaCandidate.timezone ?? ""}
                     maxLength={64}

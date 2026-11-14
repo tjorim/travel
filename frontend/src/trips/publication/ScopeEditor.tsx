@@ -91,7 +91,7 @@ function ScopeGroup({
     <Collapsible.Root className="scope-group" data-disclosure="">
       <Collapsible.Trigger className="max-sm:flex-wrap max-sm:justify-start max-sm:[&>strong]:basis-3/4 max-sm:[&>span]:basis-full max-sm:[&>span]:pl-6">
         <strong>{GROUP_TITLES[kind]}</strong>
-        <span>{m.publication_of_selected_line({ p0: count, p1: items.length })}</span>
+        <span>{m.publication_selected_count({ selected: count, total: items.length })}</span>
       </Collapsible.Trigger>
       <Collapsible.Panel keepMounted className="grid gap-2.5 px-3.25 pt-0 pb-3.25">
         <div className="button-row">
@@ -134,7 +134,7 @@ function ScopeGroup({
                     {item.visibility === "private" && (
                       <em className="text-xs font-medium not-italic text-travel-muted">
                         {" "}
-                        {m.publication_currently_private_selecting_includes_this_for_this_audience()}
+                        {m.publication_item_private_suffix()}
                       </em>
                     )}
                   </span>
@@ -157,9 +157,9 @@ function VisibilityNote({ catalog }: { catalog: CatalogItem[] }) {
   const privateCount = own.filter((item) => item.visibility === "private").length;
   return (
     <p className="help">
-      {m.publication_for_everyone_always_appears_here_you_can_select_private_items_bel_line({
-        p0: everyone,
-        p1: privateCount,
+      {m.publication_everyone_items_hint({
+        everyone: everyone,
+        private: privateCount,
       })}
     </p>
   );
@@ -173,8 +173,8 @@ function AudienceVisibilityNote({ catalog }: { catalog: CatalogItem[] }) {
   return (
     <p className="help">
       {m.exclusions_visibility_note({
-        p0: own.filter((item) => item.visibility === "everyone").length,
-        p1: own.filter((item) => item.visibility === "private").length,
+        everyone: own.filter((item) => item.visibility === "everyone").length,
+        private: own.filter((item) => item.visibility === "private").length,
       })}
     </p>
   );
@@ -309,9 +309,7 @@ export function ScopeEditor({
       disabled={disabled}
     >
       <FieldLegend>{name}</FieldLegend>
-      <p>
-        {m.publication_choose_what_visitors_can_see_everything_you_do_not_select_stays_private()}
-      </p>
+      <p>{m.publication_scope_intro()}</p>
       {preset && (
         <PresetSection
           // Another audience starts with nothing chosen.
@@ -346,7 +344,7 @@ export function ScopeEditor({
                 setScope({ ...scope, trip: { ...scope.trip, summary: checked } })
               }
             />
-            {m.owner_summary()}
+            {m.common_summary()}
           </FieldLabel>
         </Field>
       </div>
@@ -408,9 +406,7 @@ export function ScopeEditor({
             />
           ))}
           {!groups.size && !allowExclusions && (
-            <p className="help">
-              {m.publication_there_is_nothing_to_select_yet_items_already_set_to_everyone_always_appe()}
-            </p>
+            <p className="help">{m.publication_scope_empty()}</p>
           )}
         </div>
       </AdvancedSection>

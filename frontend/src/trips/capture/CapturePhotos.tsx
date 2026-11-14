@@ -107,7 +107,7 @@ export function CapturePhotos({
         <ul className="m-0 grid list-none grid-cols-3 gap-2 p-0 min-[460px]:grid-cols-4 min-[621px]:grid-cols-6">
           {photoIds.map((id) => {
             const asset = assets.find((entry) => entry.id === id);
-            const name = asset?.original_filename ?? m.owner_unnamed_photo();
+            const name = asset?.original_filename ?? m.capture_unnamed_photo();
             const source = asset ? (asset.thumbnail_url ?? asset.file_url) : null;
             return (
               <li className={tile} key={id} data-photo={id}>
@@ -163,7 +163,7 @@ export function CapturePhotos({
                     aria-label={m.capture_retry_upload_named({ name: upload.name })}
                     onClick={() => onRetry(upload.key)}
                   >
-                    {m.capture_retry_upload()}
+                    {m.retry()}
                   </Button>
                   <Button
                     type="button"

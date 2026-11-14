@@ -8,13 +8,13 @@ const WRAP: Partial<Record<MarkdownSnippet, { marker: string; placeholder: strin
   bold: {
     marker: "**",
     get placeholder() {
-      return m.owner_snippet_bold();
+      return m.markdown_snippet_bold();
     },
   },
   italic: {
     marker: "*",
     get placeholder() {
-      return m.owner_snippet_italic();
+      return m.markdown_snippet_italic();
     },
   },
 };
@@ -23,19 +23,19 @@ const LINE_PREFIX: Partial<Record<MarkdownSnippet, { prefix: string; placeholder
   heading: {
     prefix: "## ",
     get placeholder() {
-      return m.owner_heading();
+      return m.markdown_heading();
     },
   },
   list: {
     prefix: "- ",
     get placeholder() {
-      return m.owner_item();
+      return m.markdown_item();
     },
   },
   tasks: {
     prefix: "- [ ] ",
     get placeholder() {
-      return m.owner_task_2();
+      return m.common_task();
     },
   },
 };
@@ -95,7 +95,7 @@ export function applyMarkdownSnippet(
 
   // A link: a selected address becomes the target, any other selection the link text.
   const address = /^(https?:\/\/|mailto:)\S+$/.test(selected.trim());
-  const text = address ? m.owner_snippet_link() : selected || m.owner_snippet_link();
+  const text = address ? m.markdown_snippet_link() : selected || m.markdown_snippet_link();
   const url = address ? selected.trim() : "https://";
   const inserted = `[${text}](${url})`;
   const selectText = address || !selected;

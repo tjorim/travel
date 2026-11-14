@@ -114,8 +114,8 @@ export function RouteGeometryEditor({
   useEffect(() => {
     markers.current.forEach((marker, index) => {
       marker.getElement().title = preview
-        ? m.owner_route_point({ p0: index + 1 })
-        : m.owner_drag_route_point({ p0: index + 1 });
+        ? m.routes_route_point({ number: index + 1 })
+        : m.routes_drag_route_point({ number: index + 1 });
       marker.getElement().setAttribute("aria-label", marker.getElement().title);
     });
   }, [locale, ready, preview]);
@@ -166,11 +166,7 @@ export function RouteGeometryEditor({
       const probe = document.createElement("canvas");
       if (!probe.getContext("webgl2") && !probe.getContext("webgl")) throw new Error();
     } catch {
-      setError(
-        textNotice(() =>
-          m.owner_the_map_editor_is_unavailable_you_can_still_paste_coordinates_as_json_be(),
-        ),
-      );
+      setError(textNotice(() => m.routes_editor_unavailable_hint()));
       return;
     }
     void Promise.all([
@@ -264,20 +260,11 @@ export function RouteGeometryEditor({
         });
         instance.on("error", () => {
           if (!disposed && instance && !instance.isStyleLoaded())
-            setError(
-              textNotice(() =>
-                m.owner_the_map_editor_could_not_be_loaded_you_can_still_paste_coordinates_as_js(),
-              ),
-            );
+            setError(textNotice(() => m.routes_editor_load_error_hint()));
         });
       })
       .catch(() => {
-        if (!disposed)
-          setError(
-            textNotice(() =>
-              m.owner_the_map_editor_is_unavailable_you_can_still_paste_coordinates_as_json_be(),
-            ),
-          );
+        if (!disposed) setError(textNotice(() => m.routes_editor_unavailable_hint()));
       });
     return () => {
       disposed = true;
@@ -324,8 +311,8 @@ export function RouteGeometryEditor({
       element.textContent = String(index + 1);
       const editable = modeRef.current === "edit";
       element.title = editable
-        ? m.owner_drag_route_point({ p0: index + 1 })
-        : m.owner_route_point({ p0: index + 1 });
+        ? m.routes_drag_route_point({ number: index + 1 })
+        : m.routes_route_point({ number: index + 1 });
       element.setAttribute("aria-label", element.title);
       const marker = new library.Marker({ element, draggable: editable })
         .setLngLat(coordinate)
@@ -398,18 +385,18 @@ export function RouteGeometryEditor({
     <section className="grid gap-2.5" aria-labelledby={titleId}>
       <div>
         <h3 className="m-0 text-base" id={titleId}>
-          {heading ?? (preview ? m.owner_route_preview() : m.owner_draw_route_on_map())}
+          {heading ?? (preview ? m.routes_route_preview() : m.routes_draw_route_on_map())}
         </h3>
         <p className="mt-1 mb-0 text-sm leading-normal text-travel-muted">
           {preview
-            ? m.owner_this_is_the_saved_route_on_the_map_the_map_is_for_checking_only_use_the()
-            : `${m.owner_click_the_general_places_on_your_route_in_order_drag_a_numbered_point_to()} ${m.owner_right_click_or_long_press_a_numbered_point_to_remove_it_or_the_line_to_add_a_point_between()}`}
+            ? m.routes_saved_line_hint()
+            : `${m.routes_draw_hint()} ${m.routes_edit_points_hint()}`}
         </p>
       </div>
       <div
         role="region"
         aria-label={
-          mapLabel ?? (preview ? m.owner_map_preview_of_route() : m.owner_map_editor_for_route())
+          mapLabel ?? (preview ? m.routes_map_preview_of_route() : m.routes_map_editor_for_route())
         }
         className={cn(
           "relative h-route-canvas overflow-hidden rounded-xl border border-travel-border bg-travel-map-bg",
@@ -420,8 +407,8 @@ export function RouteGeometryEditor({
         {error && (
           <p className="absolute inset-0 m-0 grid place-content-center bg-travel-map-bg p-6 text-center">
             {preview
-              ? m.owner_the_route_preview_could_not_be_loaded()
-              : m.owner_the_map_editor_could_not_be_loaded_you_can_still_paste_coordinates_as_js()}
+              ? m.routes_the_route_preview_could_not_be_loaded()
+              : m.routes_editor_load_error_hint()}
           </p>
         )}
       </div>
@@ -434,7 +421,7 @@ export function RouteGeometryEditor({
               disabled={!ready || !editorCoordinates.length}
               onClick={() => showWholeRoute()}
             >
-              {m.owner_show_route()}
+              {m.routes_show_route()}
             </Button>
             <Button
               className="secondary compact"
@@ -442,7 +429,7 @@ export function RouteGeometryEditor({
               disabled={!editorCoordinates.length}
               onClick={() => commit(editorCoordinates.slice(0, -1))}
             >
-              {m.owner_remove_last_point()}
+              {m.routes_remove_last_point()}
             </Button>
             <Button
               className="secondary compact"
@@ -450,12 +437,12 @@ export function RouteGeometryEditor({
               disabled={!editorCoordinates.length}
               onClick={() => commit([])}
             >
-              {m.owner_clear_points()}
+              {m.routes_clear_points()}
             </Button>
           </div>
           {suggestions.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.75 text-sm text-travel-muted">
-              <span>{m.owner_use_an_area()}</span>
+              <span>{m.routes_use_an_area()}</span>
               {suggestions.map((suggestion) => (
                 <Button
                   className="secondary compact"
@@ -463,7 +450,7 @@ export function RouteGeometryEditor({
                   key={suggestion.label}
                   onClick={() => addSuggestion(suggestion)}
                 >
-                  {m.owner_add_area_point({ name: suggestion.label })}
+                  {m.routes_add_area_point({ name: suggestion.label })}
                 </Button>
               ))}
             </div>
@@ -472,19 +459,19 @@ export function RouteGeometryEditor({
       )}
       <p className="help" aria-live="polite">
         {editorCoordinates.length === 0
-          ? m.owner_no_points_yet_zoom_to_the_region_and_click_the_first_general_point()
+          ? m.routes_no_points_hint()
           : preview || editorCoordinates.length >= 2
-            ? m.owner_route_point_count({ count: editorCoordinates.length })
-            : m.owner_point_at_least_two_points_are_needed({ p0: editorCoordinates.length })}
+            ? m.routes_route_point_count({ count: editorCoordinates.length })
+            : m.routes_point_at_least_two_points_are_needed({ count: editorCoordinates.length })}
       </p>
       {!preview && editorCoordinates.length > 0 && (
         <ol
           className="m-0 flex list-none flex-wrap gap-x-3.5 gap-y-1.25 p-0 text-xs text-travel-muted"
-          aria-label={m.owner_route_points()}
+          aria-label={m.routes_route_points()}
         >
           {editorCoordinates.map(([longitude, latitude], index) => (
             <li key={`${longitude}-${latitude}-${index}`}>
-              {m.owner_point()} {index + 1}: {latitude.toFixed(3)}, {longitude.toFixed(3)}
+              {m.routes_point()} {index + 1}: {latitude.toFixed(3)}, {longitude.toFixed(3)}
             </li>
           ))}
         </ol>

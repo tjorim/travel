@@ -10,7 +10,7 @@ export function LinkedDocuments({ tripId, ids }: { tripId: string; ids: readonly
   if (linked.length === 0) return null;
   return (
     <div>
-      <strong>{m.owner_linked_documents()}</strong>
+      <strong>{m.documents_linked_documents()}</strong>
       <ul>
         {linked.map((document) => (
           <li key={document.id}>{document.title}</li>

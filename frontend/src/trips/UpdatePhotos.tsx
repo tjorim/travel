@@ -92,10 +92,10 @@ export function UpdatePhotoStrip({
   return (
     <ul
       className="col-span-full m-0 flex list-none flex-wrap gap-1.5 p-0"
-      aria-label={m.owner_photos_of_update({ p0: update.title })}
+      aria-label={m.updates_photos_of_update({ title: update.title })}
     >
       {shown.map((photo) => {
-        const alt = photo.alt ?? m.owner_update_photo_alt({ p0: update.title });
+        const alt = photo.alt ?? m.updates_update_photo_alt({ title: update.title });
         return (
           <li key={photo.assetId} className="flex">
             {photo.url ? (
@@ -114,7 +114,7 @@ export function UpdatePhotoStrip({
       })}
       {more > 0 && (
         <li className="grid size-12 place-items-center sm:size-14 rounded-lg border border-travel-card-border text-sm font-bold text-travel-muted">
-          <span className="sr-only">{m.owner_more_photos_of_update({ count: more })}</span>
+          <span className="sr-only">{m.updates_more_photos_of_update({ count: more })}</span>
           <span aria-hidden="true">+{more}</span>
         </li>
       )}

@@ -58,8 +58,8 @@ for (const locale of ["nl", "en"] as const) {
         await page.goto(`/admin/trips/${ownerTrip.id}/plan#stays`);
 
         // The row names the area; no placeholder location appears anywhere.
-        const stillToChoose = message(locale, "owner_still_to_choose_in").replace(
-          "{p0}",
+        const stillToChoose = message(locale, "records_still_to_choose_in").replace(
+          "{area}",
           "Alishan",
         );
         const row = page.locator("button.document-select", { hasText: stillToChoose });
@@ -67,8 +67,8 @@ for (const locale of ["nl", "en"] as const) {
         await row.click();
         await expect(
           page.getByText(
-            message(locale, "owner_stay_accommodation_not_chosen_yet_in").replace(
-              "{p0}",
+            message(locale, "stays_stay_accommodation_not_chosen_yet_in").replace(
+              "{area}",
               "Alishan",
             ),
           ),
@@ -76,9 +76,9 @@ for (const locale of ["nl", "en"] as const) {
         expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
         await page.keyboard.press("Escape");
-        await page.getByRole("button", { name: message(locale, "owner_new_stay") }).click();
+        await page.getByRole("button", { name: message(locale, "stays_new_stay") }).click();
         const dialog = page.getByRole("dialog");
-        const areaChoice = dialog.getByRole("combobox", { name: message(locale, "owner_area") });
+        const areaChoice = dialog.getByRole("combobox", { name: message(locale, "common_area") });
         await expect(areaChoice).toBeVisible();
         await areaChoice.focus();
         await page.keyboard.press("ArrowDown");
@@ -88,7 +88,7 @@ for (const locale of ["nl", "en"] as const) {
           (request) => request.method() === "POST" && request.url().endsWith("/stays"),
         );
         await dialog
-          .getByRole("button", { name: message(locale, "owner_add_stay"), exact: true })
+          .getByRole("button", { name: message(locale, "stays_add_stay"), exact: true })
           .click();
         expect((await posted).postDataJSON()).toMatchObject({
           area_id: "area-alishan",

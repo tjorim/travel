@@ -34,9 +34,7 @@ export function LinkList({
       <div className="capture-heading">
         <div>
           <h3>{m.publication_hidden_share_links()}</h3>
-          <p>
-            {m.publication_each_link_has_its_own_live_scope_and_can_later_be_revoked_or_rotated()}
-          </p>
+          <p>{m.publication_links_intro()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={onNew}>
           {m.publication_new_link()}
@@ -54,10 +52,12 @@ export function LinkList({
               >
                 <strong>{current.label}</strong>
                 <span>
-                  {m.publication_expires_line({
-                    p0: LINK_STATE_LABELS[current.state],
-                    p1: dateLabel(current.expires_at),
-                    p2: history.length ? m.publication_previous({ count: history.length }) : "",
+                  {m.publication_link_expiry_line({
+                    state: LINK_STATE_LABELS[current.state],
+                    date: dateLabel(current.expires_at),
+                    history: history.length
+                      ? m.publication_previous({ count: history.length })
+                      : "",
                   })}
                   {!!current.exclusions?.excluded.length &&
                     ` · ${m.exclusions_link_summary({ count: current.exclusions.excluded.length })}`}
@@ -94,11 +94,7 @@ export function LinkList({
           ))}
         </div>
       )}
-      {!hasLinks && !loading && (
-        <p>
-          {m.publication_no_share_links_yet_choose_new_link_to_create_a_hidden_link_with_its_own_()}
-        </p>
-      )}
+      {!hasLinks && !loading && <p>{m.publication_links_empty()}</p>}
     </div>
   );
 }

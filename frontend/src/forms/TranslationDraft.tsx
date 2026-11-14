@@ -62,8 +62,8 @@ export function TranslationDraft({
             onClick={() => start(direction)}
           >
             {direction.target === "en"
-              ? m.owner_translate_to_english()
-              : m.owner_translate_to_dutch()}
+              ? m.translations_translate_to_english()
+              : m.translations_translate_to_dutch()}
           </Button>
         ))}
       </div>
@@ -115,7 +115,7 @@ function TranslationRun({
     ownerRequest<TranslationDraftResponse>(
       owner.session,
       "/api/translation/drafts",
-      m.owner_the_translation_could_not_be_made_your_text_is_unchanged,
+      m.translations_error,
       { method: "POST", body: { text, source, target }, signal: controller.signal },
     )
       .then((result) => setState({ kind: "draft", text: result.text }))
@@ -123,10 +123,7 @@ function TranslationRun({
         if (!controller.signal.aborted)
           setState({
             kind: "error",
-            notice: errorNotice(
-              error,
-              m.owner_the_translation_could_not_be_made_your_text_is_unchanged,
-            ),
+            notice: errorNotice(error, m.translations_error),
           });
       });
     return () => controller.abort();
@@ -135,9 +132,9 @@ function TranslationRun({
   if (state.kind === "working")
     return (
       <div className="flex flex-wrap items-center gap-2" role="status">
-        <span className="help">{m.owner_translating_this_can_take_a_while_the_first_time()}</span>
+        <span className="help">{m.translations_first_run_hint()}</span>
         <Button type="button" className="compact secondary" onClick={close}>
-          {m.owner_cancel()}
+          {m.cancel()}
         </Button>
       </div>
     );
@@ -148,22 +145,20 @@ function TranslationRun({
           {noticeMessage(state.notice)}
         </Alert>
         <Button type="button" className="compact secondary" onClick={retry}>
-          {m.owner_try_again()}
+          {m.retry()}
         </Button>
         <Button type="button" className="compact secondary" onClick={close}>
-          {m.owner_cancel()}
+          {m.cancel()}
         </Button>
       </div>
     );
   return (
     <section className="grid gap-2 rounded-lg border border-dashed border-travel-control-border p-3">
-      <h4 className="m-0 text-sm font-bold">{m.owner_machine_translated_draft()}</h4>
-      <p className="help m-0">
-        {m.owner_check_names_of_places_and_dishes_and_expressions_before_using_the_draft()}
-      </p>
+      <h4 className="m-0 text-sm font-bold">{m.translations_machine_translated_draft()}</h4>
+      <p className="help m-0">{m.translations_check_hint()}</p>
       <Field>
         <FieldLabel>
-          <span>{m.owner_translation_draft_for({ p0: label })}</span>
+          <span>{m.translations_translation_draft_for({ label: label })}</span>
         </FieldLabel>
         <TravelTextarea
           lang={target}
@@ -178,10 +173,10 @@ function TranslationRun({
           disabled={!state.text.trim()}
           onClick={() => onAppend(state.text)}
         >
-          {m.owner_add_below_the_text()}
+          {m.translations_add_below_the_text()}
         </Button>
         <Button type="button" className="compact secondary" onClick={close}>
-          {m.owner_discard_draft()}
+          {m.translations_discard_draft()}
         </Button>
       </div>
     </section>

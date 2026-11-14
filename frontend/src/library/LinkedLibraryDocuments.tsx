@@ -19,7 +19,7 @@ export function LinkedLibraryDocuments({ tripId }: { tripId: string }) {
           <p>{m.library_manage_and_delete_these_essentials_in_the_library()}</p>
         </div>
         <Link className="action-link" to="/library">
-          {m.owner_go_to_library()}
+          {m.common_go_to_library()}
         </Link>
       </div>
       <div className="saved-records mt-0.5">
@@ -28,7 +28,7 @@ export function LinkedLibraryDocuments({ tripId }: { tripId: string }) {
             <div>
               <strong>{document.title}</strong>
               <span>
-                {document.original_filename ?? m.owner_unnamed_file()} ·{" "}
+                {document.original_filename ?? m.common_unnamed_file()} ·{" "}
                 {bytesLabel(document.byte_size)}
               </span>
             </div>

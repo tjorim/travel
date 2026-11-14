@@ -29,9 +29,9 @@ type Others = "cancel" | "remove";
 type Notice = { text: string; undo?: { groupId: string; eventId: string } } | { text: string };
 
 const REASONS: Record<AlternativeSuggestion["reason"], () => string> = {
-  overlapping_nights: () => m.owner_alternatives_reason_nights(),
-  overlapping_days: () => m.owner_alternatives_reason_days(),
-  same_journey: () => m.owner_alternatives_reason_journey(),
+  overlapping_nights: () => m.alternatives_reason_nights(),
+  overlapping_days: () => m.alternatives_reason_days(),
+  same_journey: () => m.alternatives_reason_journey(),
 };
 
 /**
@@ -87,10 +87,10 @@ export function AlternativesPanel({
     setError(null);
     try {
       const group = await create.mutateAsync({ memberIds: suggestion.member_ids });
-      setNotice({ text: m.owner_alternatives_grouped() });
+      setNotice({ text: m.alternatives_grouped() });
       setFocusGroup(group.id);
     } catch (problem) {
-      setError(errorMessage(problem, m.owner_the_alternatives_could_not_be_saved));
+      setError(errorMessage(problem, m.alternatives_the_alternatives_could_not_be_saved));
     }
   }
 
@@ -105,14 +105,14 @@ export function AlternativesPanel({
       setNotice({
         text:
           others === "remove"
-            ? m.owner_alternatives_chosen_removed({ name })
-            : m.owner_alternatives_chosen_cancelled({ name }),
+            ? m.alternatives_chosen_removed({ name })
+            : m.alternatives_chosen_cancelled({ name }),
         ...(result.undoable ? { undo: { groupId: group.id, eventId: result.event_id } } : {}),
       });
       setFocusGroup(group.id);
     } catch (problem) {
       setChoosing(null);
-      setError(errorMessage(problem, m.owner_the_choice_could_not_be_made));
+      setError(errorMessage(problem, m.alternatives_the_choice_could_not_be_made));
     }
   }
 
@@ -120,11 +120,11 @@ export function AlternativesPanel({
     setError(null);
     try {
       await undo.mutateAsync({ id: groupId, eventId });
-      setNotice({ text: m.owner_alternatives_undone() });
+      setNotice({ text: m.alternatives_undone() });
       setFocusGroup(groupId);
     } catch (problem) {
       setNotice(null);
-      setError(errorMessage(problem, m.owner_the_choice_could_not_be_undone));
+      setError(errorMessage(problem, m.alternatives_the_choice_could_not_be_undone));
     }
   }
 
@@ -135,10 +135,10 @@ export function AlternativesPanel({
     try {
       await dissolve.mutateAsync(group);
       setDissolving(null);
-      setNotice({ text: m.owner_alternatives_dissolved() });
+      setNotice({ text: m.alternatives_dissolved() });
     } catch (problem) {
       setDissolving(null);
-      setError(errorMessage(problem, m.owner_the_group_could_not_be_dissolved));
+      setError(errorMessage(problem, m.alternatives_the_group_could_not_be_dissolved));
     }
   }
 
@@ -149,7 +149,7 @@ export function AlternativesPanel({
     <section className="grid gap-2" aria-labelledby={`alternatives-${kind}-title`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 id={`alternatives-${kind}-title`} className="m-0">
-          {m.owner_alternatives_heading()}
+          {m.alternatives_heading()}
         </h4>
         {loose.length >= 2 && (
           <Button
@@ -158,13 +158,15 @@ export function AlternativesPanel({
             disabled={busy}
             onClick={() => setEditing("new")}
           >
-            {m.owner_alternatives_new_group()}
+            {m.alternatives_new_group()}
           </Button>
         )}
       </div>
-      <p className="help">{m.owner_alternatives_help()}</p>
+      <p className="help">{m.alternatives_help()}</p>
       {failed && (
-        <p role="alert">{errorMessage(failed, m.owner_your_alternatives_could_not_be_loaded)}</p>
+        <p role="alert">
+          {errorMessage(failed, m.alternatives_your_alternatives_could_not_be_loaded)}
+        </p>
       )}
       <div role="status" className="grid gap-1 empty:hidden">
         {notice && (
@@ -177,7 +179,7 @@ export function AlternativesPanel({
                 disabled={busy}
                 onClick={() => void undoChoice(notice.undo!.groupId, notice.undo!.eventId)}
               >
-                {m.owner_alternatives_undo()}
+                {m.alternatives_undo()}
               </Button>
             )}
           </p>
@@ -189,10 +191,7 @@ export function AlternativesPanel({
         </p>
       )}
       {suggestions.length > 0 && (
-        <ul
-          className="m-0 grid list-none gap-2 p-0"
-          aria-label={m.owner_alternatives_suggestions()}
-        >
+        <ul className="m-0 grid list-none gap-2 p-0" aria-label={m.alternatives_suggestions()}>
           {suggestions.map((suggestion) => {
             const listed = names(suggestion.member_ids);
             const dates = spanText(suggestion);
@@ -208,12 +207,12 @@ export function AlternativesPanel({
                     className="secondary compact"
                     type="button"
                     disabled={busy}
-                    aria-label={m.owner_alternatives_group_these_label({
+                    aria-label={m.alternatives_group_these_label({
                       names: listed.join(", "),
                     })}
                     onClick={() => void confirmSuggestion(suggestion)}
                   >
-                    {m.owner_alternatives_group_these()}
+                    {m.alternatives_group_these()}
                   </Button>
                 </div>
               </li>
@@ -237,8 +236,8 @@ export function AlternativesPanel({
             <p className="m-0 font-bold">{title}</p>
             <p className="help m-0">
               {chosen
-                ? m.owner_alternatives_chosen({ name: recordTitle(kind, chosen.record) })
-                : m.owner_alternatives_undecided()}
+                ? m.alternatives_chosen({ name: recordTitle(kind, chosen.record) })
+                : m.alternatives_undecided()}
             </p>
             {members.map((member) => {
               const name = recordTitle(kind, member.record);
@@ -257,17 +256,13 @@ export function AlternativesPanel({
                       className="secondary compact"
                       type="button"
                       disabled={busy || member.chosen}
-                      aria-label={
-                        member.chosen ? undefined : m.owner_alternatives_choose_label({ name })
-                      }
+                      aria-label={member.chosen ? undefined : m.alternatives_choose_label({ name })}
                       onClick={() => {
                         setOthers("cancel");
                         setChoosing({ group, id: member.id });
                       }}
                     >
-                      {member.chosen
-                        ? m.owner_alternatives_is_chosen()
-                        : m.owner_alternatives_choose()}
+                      {member.chosen ? m.alternatives_is_chosen() : m.alternatives_choose()}
                     </Button>
                   </div>
                 </article>
@@ -279,10 +274,10 @@ export function AlternativesPanel({
                 type="button"
                 onClick={() => setComparing(group)}
               >
-                {m.owner_alternatives_compare()}
+                {m.alternatives_compare()}
               </Button>
               <Button className="secondary compact" type="button" onClick={() => setEditing(group)}>
-                {m.owner_alternatives_edit_members()}
+                {m.alternatives_edit_members()}
               </Button>
               <Button
                 className="secondary compact"
@@ -290,7 +285,7 @@ export function AlternativesPanel({
                 disabled={busy}
                 onClick={() => setDissolving(group)}
               >
-                {m.owner_alternatives_dissolve()}
+                {m.alternatives_dissolve()}
               </Button>
             </div>
           </div>
@@ -298,34 +293,32 @@ export function AlternativesPanel({
       })}
       {choosing && (
         <DeleteConfirmation
-          title={m.owner_alternatives_choose_title({ name: choosingName })}
-          description={m.owner_alternatives_choose_description({ name: choosingName })}
-          confirmLabel={m.owner_alternatives_choose()}
+          title={m.alternatives_choose_title({ name: choosingName })}
+          description={m.alternatives_choose_description({ name: choosingName })}
+          confirmLabel={m.alternatives_choose()}
           confirmDisabled={choose.isPending}
           onCancel={() => setChoosing(null)}
           onConfirm={() => void confirmChoice()}
         >
           <ChoiceGroup<Others>
-            label={m.owner_alternatives_others_label()}
+            label={m.alternatives_others_label()}
             value={others}
             choices={[
-              { value: "cancel", label: m.owner_alternatives_others_cancel() },
-              { value: "remove", label: m.owner_alternatives_others_remove() },
+              { value: "cancel", label: m.alternatives_others_cancel() },
+              { value: "remove", label: m.alternatives_others_remove() },
             ]}
             onChange={setOthers}
           />
           <p className="help m-0">
-            {others === "remove"
-              ? m.owner_alternatives_remove_warning()
-              : m.owner_alternatives_cancel_note()}
+            {others === "remove" ? m.alternatives_remove_warning() : m.alternatives_cancel_note()}
           </p>
         </DeleteConfirmation>
       )}
       {dissolving && (
         <DeleteConfirmation
-          title={m.owner_alternatives_dissolve_title()}
-          description={m.owner_alternatives_dissolve_description()}
-          confirmLabel={m.owner_alternatives_dissolve()}
+          title={m.alternatives_dissolve_title()}
+          description={m.alternatives_dissolve_description()}
+          confirmLabel={m.alternatives_dissolve()}
           confirmDisabled={dissolve.isPending}
           onCancel={() => setDissolving(null)}
           onConfirm={() => void confirmDissolve()}
@@ -333,7 +326,7 @@ export function AlternativesPanel({
       )}
       <RecordDialog
         open={comparing !== null}
-        title={m.owner_alternatives_compare_title()}
+        title={m.alternatives_compare_title()}
         localeControl={false}
         onDismiss={() => setComparing(null)}
       >
@@ -352,7 +345,7 @@ export function AlternativesPanel({
             try {
               if (editing === "new") {
                 const group = await create.mutateAsync({ memberIds: ids });
-                setNotice({ text: m.owner_alternatives_grouped() });
+                setNotice({ text: m.alternatives_grouped() });
                 setFocusGroup(group.id);
               } else {
                 const current = editing.members.map((member) => member.record_id);
@@ -361,13 +354,13 @@ export function AlternativesPanel({
                   add: ids.filter((id) => !current.includes(id)),
                   remove: current.filter((id) => !ids.includes(id)),
                 });
-                setNotice({ text: m.owner_alternatives_members_saved() });
+                setNotice({ text: m.alternatives_members_saved() });
                 setFocusGroup(editing.id);
               }
               setEditing(null);
             } catch (problem) {
               setEditing(null);
-              setError(errorMessage(problem, m.owner_the_alternatives_could_not_be_saved));
+              setError(errorMessage(problem, m.alternatives_the_alternatives_could_not_be_saved));
             }
           }}
         />
@@ -415,14 +408,14 @@ function MembersDialog({
   return (
     <RecordDialog
       open
-      title={group ? m.owner_alternatives_edit_members() : m.owner_alternatives_new_group()}
+      title={group ? m.alternatives_edit_members() : m.alternatives_new_group()}
       localeControl={false}
       dirty={changed}
       onDismiss={onDismiss}
     >
       <FieldSet className="grid gap-2">
         <FieldLegend id={legendId} className="font-semibold">
-          {m.owner_alternatives_pick_members()}
+          {m.alternatives_pick_members()}
         </FieldLegend>
         <ul className="m-0 grid max-h-72 list-none gap-1.5 overflow-y-auto p-0 pr-1">
           {choices.map((record) => (
@@ -450,9 +443,7 @@ function MembersDialog({
             </li>
           ))}
         </ul>
-        {!group && picked.length < 2 && (
-          <p className="help m-0">{m.owner_alternatives_pick_two()}</p>
-        )}
+        {!group && picked.length < 2 && <p className="help m-0">{m.alternatives_pick_two()}</p>}
         <div className="button-row">
           <Button
             className="compact"
@@ -460,7 +451,7 @@ function MembersDialog({
             disabled={pending || !changed || (!group && picked.length < 2)}
             onClick={() => void onSave(picked)}
           >
-            {m.owner_alternatives_save_members()}
+            {m.alternatives_save_members()}
           </Button>
         </div>
       </FieldSet>

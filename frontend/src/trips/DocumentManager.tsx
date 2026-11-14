@@ -111,7 +111,9 @@ export function DocumentManager({
     if (!owner) return;
     if (offline.isPinned("trip_document", document.id)) {
       await offline.removeByResource("trip_document", document.id);
-      setNotice(textNotice(() => m.owner_is_no_longer_available_offline({ p0: document.title })));
+      setNotice(
+        textNotice(() => m.common_is_no_longer_available_offline({ title: document.title })),
+      );
       return;
     }
     const blob = await ownerFile(
@@ -128,7 +130,9 @@ export function DocumentManager({
       contentType: blob.type || document.content_type,
       bytes: await blob.arrayBuffer(),
     });
-    setNotice(textNotice(() => m.owner_is_saved_offline_on_this_device({ p0: document.title })));
+    setNotice(
+      textNotice(() => m.common_is_saved_offline_on_this_device({ title: document.title })),
+    );
   }
 
   function open(url: string, fallback: ErrorFallback) {
@@ -143,7 +147,7 @@ export function DocumentManager({
       : documentsQuery.isPending
         ? m.library_loading_your_private_documents()
         : documents.length
-          ? m.library_documents_and_originals_stay_in_your_private_travel_app()
+          ? m.library_originals_private_hint()
           : m.library_upload_a_private_document_when_you_want_to_keep_it());
 
   return (
@@ -151,7 +155,7 @@ export function DocumentManager({
       <div className="capture-heading">
         <div>
           <h3 id="documents-title">{m.library_documents()}</h3>
-          <p>{m.library_documents_always_stay_private_and_are_never_shared_with_visitors()}</p>
+          <p>{m.library_documents_never_shared_hint()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
           {m.library_new_document()}
@@ -168,11 +172,11 @@ export function DocumentManager({
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(document.id)}
-                aria-label={m.library_view_document({ p0: document.title })}
+                aria-label={m.library_view_document({ title: document.title })}
               >
                 <strong>{document.title}</strong>
                 <span>
-                  {document.original_filename ?? m.owner_unnamed_file()} ·{" "}
+                  {document.original_filename ?? m.common_unnamed_file()} ·{" "}
                   {bytesLabel(document.byte_size)}
                 </span>
               </Button>
@@ -194,8 +198,8 @@ export function DocumentManager({
                   }
                 >
                   {offline.isPinned("trip_document", document.id)
-                    ? m.owner_remove_offline_copy()
-                    : m.owner_save_offline()}
+                    ? m.common_remove_offline_copy()
+                    : m.common_save_offline()}
                 </Button>
               </div>
             </article>
@@ -214,7 +218,7 @@ export function DocumentManager({
             <div>
               <h3>{selected.title}</h3>
               <p>
-                {selected.original_filename ?? m.owner_unnamed_file()} ·{" "}
+                {selected.original_filename ?? m.common_unnamed_file()} ·{" "}
                 {bytesLabel(selected.byte_size)}
               </p>
             </div>
@@ -224,12 +228,12 @@ export function DocumentManager({
                 type="button"
                 onClick={() => dialog.setConfirmDelete(true)}
               >
-                {m.owner_delete()}
+                {m.common_delete()}
               </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation
-                title={m.library_delete_document({ p0: selected.title })}
+                title={m.library_delete_document({ title: selected.title })}
                 onCancel={() => dialog.setConfirmDelete(false)}
                 onConfirm={() => erase(selected)}
               />
@@ -251,7 +255,7 @@ export function DocumentManager({
                 }}
               >
                 {(field) => (
-                  <TextField field={field} label={m.owner_title()} required maxLength={160} />
+                  <TextField field={field} label={m.common_title()} required maxLength={160} />
                 )}
               </uploadRecord.form.Field>
               <uploadRecord.form.Field name="kind">
@@ -260,7 +264,7 @@ export function DocumentManager({
                     <option value="booking">{m.library_booking()}</option>
                     <option value="itinerary">{m.library_itinerary()}</option>
                     <option value="receipt">{m.library_receipt()}</option>
-                    <option value="other">{m.owner_other()}</option>
+                    <option value="other">{m.common_other()}</option>
                   </SelectField>
                 )}
               </uploadRecord.form.Field>

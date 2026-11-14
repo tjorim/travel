@@ -13,20 +13,20 @@ export function CompareTable({ kind, group }: { kind: AlternativeKind; group: Al
   );
   return (
     <div className="grid gap-2">
-      <p className="help m-0">{m.owner_alternatives_compare_help()}</p>
+      <p className="help m-0">{m.alternatives_compare_help()}</p>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left text-sm">
           <caption className="mb-2 text-left font-bold">{groupTitle(group)}</caption>
           <thead>
             <tr>
               <th scope="col" className="p-2">
-                <span className="sr-only">{m.owner_compare_detail()}</span>
+                <span className="sr-only">{m.alternatives_compare_detail()}</span>
               </th>
               {members.map((member, index) => (
                 <th scope="col" key={member.id} className="p-2 align-bottom">
                   {rows[0]?.values[index]}
                   {member.chosen && (
-                    <span className="block font-normal">{m.owner_alternatives_is_chosen()}</span>
+                    <span className="block font-normal">{m.alternatives_is_chosen()}</span>
                   )}
                 </th>
               ))}

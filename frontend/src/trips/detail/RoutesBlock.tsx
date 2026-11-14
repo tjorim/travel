@@ -22,8 +22,8 @@ function routeEndpoint(area: string, place: Location | null): string {
 export function RoutesBlock({ trip, routes }: { trip: Trip; routes: Route[] }) {
   useLocale();
   return (
-    <Section id="routes" title={m.owner_routes()}>
-      <DetailList empty={routes.length === 0} message={m.owner_no_routes_captured()}>
+    <Section id="routes" title={m.common_routes()}>
+      <DetailList empty={routes.length === 0} message={m.routes_no_routes_captured()}>
         {routes.map((route) => (
           <article key={route.id}>
             <RecordHeading tripId={trip.id} kind="route" id={route.id}>
@@ -39,7 +39,7 @@ export function RoutesBlock({ trip, routes }: { trip: Trip; routes: Route[] }) {
                     ? formatDay(route.departs_on)
                     : null,
                 route.geometry
-                  ? m.owner_line_with_points({ count: route.geometry.coordinates.length })
+                  ? m.routes_line_with_points({ count: route.geometry.coordinates.length })
                   : null,
               ]
                 .filter(Boolean)
@@ -56,7 +56,7 @@ export function RoutesBlock({ trip, routes }: { trip: Trip; routes: Route[] }) {
             </p>
             {route.booking_reference && (
               <p>
-                {m.owner_booking_reference()} {route.booking_reference}
+                {m.common_booking_reference()} {route.booking_reference}
               </p>
             )}
             <Markdown html={route.notes_html} text={route.notes} />

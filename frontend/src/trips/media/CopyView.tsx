@@ -62,7 +62,7 @@ export function CopyView({
           session={owner.session}
           url={previewUrl}
           alt={m.media_preview_of_the_copy_of({
-            p0: asset.original_filename ?? m.media_this_media_item_2(),
+            name: asset.original_filename ?? m.media_this_item_inline(),
           })}
           className="mb-1 block max-h-65 max-w-65 rounded-travel-media bg-travel-media-bg object-contain"
         />
@@ -95,7 +95,7 @@ export function CopyView({
             kind="media_derivative"
             id={derivative.id}
             value={derivative.visibility}
-            name={m.media_copy_of({ p0: asset.original_filename ?? "foto" })}
+            name={m.media_copy_of({ name: asset.original_filename ?? "foto" })}
             followsUpdate={
               trip.travel_updates.find((update) => update.id === derivative.travel_update_id)?.title
             }
@@ -110,8 +110,8 @@ export function CopyView({
         {canPreview && (
           <Button className="secondary compact" type="button" onClick={onToggleOffline}>
             {pinned
-              ? m.owner_remove_offline_copy()
-              : m.offline_save_offline({ p0: bytesLabel(derivative.byte_size ?? 0) })}
+              ? m.common_remove_offline_copy()
+              : m.offline_save_offline({ size: bytesLabel(derivative.byte_size ?? 0) })}
           </Button>
         )}
         {derivative.processing_state === "failed" && (
@@ -140,7 +140,7 @@ export function CopyView({
           </Button>
         )}
         <Button className="danger compact" type="button" onClick={onAskDelete}>
-          {m.owner_delete()}
+          {m.common_delete()}
         </Button>
       </div>
       {confirmingDelete && (

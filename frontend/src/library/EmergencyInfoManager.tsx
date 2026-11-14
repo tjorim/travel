@@ -118,7 +118,7 @@ export function EmergencyInfoManager() {
   async function togglePin(entry: EmergencyInfoEntry) {
     if (offline.isPinned("emergency_info", entry.id)) {
       await offline.removeByResource("emergency_info", entry.id);
-      setNotice(textNotice(() => m.owner_is_no_longer_available_offline({ p0: entry.label })));
+      setNotice(textNotice(() => m.common_is_no_longer_available_offline({ title: entry.label })));
       return;
     }
     const snapshot = {
@@ -136,7 +136,7 @@ export function EmergencyInfoManager() {
       contentType: "application/json",
       bytes: new TextEncoder().encode(JSON.stringify(snapshot, null, 2)).buffer as ArrayBuffer,
     });
-    setNotice(textNotice(() => m.owner_is_saved_offline_on_this_device({ p0: entry.label })));
+    setNotice(textNotice(() => m.common_is_saved_offline_on_this_device({ title: entry.label })));
   }
 
   const message =
@@ -145,7 +145,7 @@ export function EmergencyInfoManager() {
       ? errorMessage(entriesQuery.error, m.library_your_emergency_information_could_not_be_loaded)
       : entriesQuery.isPending
         ? m.library_loading_your_emergency_information()
-        : m.library_contacts_numbers_and_medical_notes_are_visible_only_to_you());
+        : m.library_emergency_privacy_hint());
 
   const loading = notice == null && entriesQuery.isPending && !entriesQuery.error;
 
@@ -154,9 +154,7 @@ export function EmergencyInfoManager() {
       <div className="capture-heading">
         <div>
           <h3 id="emergency-info-title">{m.offline_emergency_information()}</h3>
-          <p>
-            {m.library_contacts_relevant_numbers_and_brief_medical_or_care_notes_separate_from_()}
-          </p>
+          <p>{m.library_emergency_intro()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
           {m.library_new_entry()}
@@ -174,7 +172,7 @@ export function EmergencyInfoManager() {
                 className="document-select"
                 type="button"
                 onClick={() => dialog.inspect(entry.id)}
-                aria-label={m.library_view_emergency_information({ p0: entry.label })}
+                aria-label={m.library_view_emergency_information({ label: entry.label })}
               >
                 <strong>{entry.label}</strong>
                 <span>
@@ -189,17 +187,15 @@ export function EmergencyInfoManager() {
                   onClick={() => void togglePin(entry).catch(fail(m.offline_saving_offline_failed))}
                 >
                   {offline.isPinned("emergency_info", entry.id)
-                    ? m.owner_remove_offline_copy()
-                    : m.owner_save_offline()}
+                    ? m.common_remove_offline_copy()
+                    : m.common_save_offline()}
                 </Button>
               </div>
             </article>
           ))}
         </div>
       )}
-      {!entries.length && !entriesQuery.isPending && (
-        <p>{m.library_no_emergency_information_yet_add_a_contact_number_or_medical_note()}</p>
-      )}
+      {!entries.length && !entriesQuery.isPending && <p>{m.library_emergency_empty()}</p>}
       <RecordDialog
         open={editing || selected !== null}
         title={
@@ -224,19 +220,19 @@ export function EmergencyInfoManager() {
             </div>
             <div className="button-row">
               <Button type="button" onClick={() => edit(selected)}>
-                {m.owner_edit()}
+                {m.common_edit()}
               </Button>
               <Button
                 className="danger"
                 type="button"
                 onClick={() => dialog.setConfirmDelete(true)}
               >
-                {m.owner_delete()}
+                {m.common_delete()}
               </Button>
             </div>
             {dialog.confirmDelete && (
               <DeleteConfirmation
-                title={m.owner_delete_2({ p0: selected.label })}
+                title={m.common_delete_confirm_title({ name: selected.label })}
                 onCancel={() => dialog.setConfirmDelete(false)}
                 onConfirm={() => erase(selected)}
               />
@@ -247,7 +243,7 @@ export function EmergencyInfoManager() {
           <RecordForm
             record={record}
             submitLabel={editingId ? m.common_save() : m.common_add()}
-            pendingLabel={m.owner_saving()}
+            pendingLabel={m.common_saving()}
           >
             <div className="field-row">
               <record.form.Field name="kind">
@@ -300,7 +296,7 @@ export function EmergencyInfoManager() {
               {(field) => (
                 <MarkdownField
                   field={field}
-                  label={m.owner_notes()}
+                  label={m.common_notes()}
                   optional
                   maxLength={4000}
                   rows={3}

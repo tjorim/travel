@@ -135,11 +135,11 @@ export const PLACE_FIELDS = [
 
 export const checkOutAfterCheckIn = ({ value, fieldApi }: { value: string } & FormContext) =>
   value && value <= String(fieldApi.form.getFieldValue("checkInDate" as never) ?? "")
-    ? m.owner_check_out_is_no_earlier_than_the_morning_after_the_first_night
+    ? m.stays_check_out_earliest_hint
     : undefined;
-export const PLACE_REQUIRED = m.owner_choose_the_area_of_this_stay_or_search_for_the_accommodation;
+export const PLACE_REQUIRED = m.stays_area_choice_hint;
 export const httpsOnly = ({ value }: { value: string }) =>
-  value.trim() && !value.trim().startsWith("https://") ? m.owner_use_an_https_address : undefined;
+  value.trim() && !value.trim().startsWith("https://") ? m.common_use_an_https_address : undefined;
 
 export const locationLine = (place: Stay["location"] | undefined) =>
   place ? [...new Set([locationName(place), place.locality].filter(Boolean))].join(" · ") : "";
@@ -184,4 +184,4 @@ export function stayPlaceFields(values: StayValues): Record<string, unknown> {
 
 /** The accommodation line of a stay: its location, or that none is chosen yet. */
 export const accommodationLine = (stay: Pick<Stay, "location">) =>
-  stay.location ? locationLine(stay.location) : m.owner_accommodation_not_chosen_yet();
+  stay.location ? locationLine(stay.location) : m.stays_accommodation_not_chosen_yet();

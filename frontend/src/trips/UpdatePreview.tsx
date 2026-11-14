@@ -44,10 +44,10 @@ export function previewAudience(
 
 /** Why an update has no preview, as a short sentence; null when one can be shown. */
 export function previewBlocker(update: TravelUpdate, hasAudience: boolean): (() => string) | null {
-  if (update.visibility === "private") return () => m.owner_preview_private_update();
-  if (!update.body.trim()) return () => m.owner_preview_needs_text();
-  if (update.area && !update.area.label) return () => m.owner_preview_needs_area_name();
-  if (!hasAudience) return () => m.owner_preview_no_audience();
+  if (update.visibility === "private") return () => m.updates_preview_private_update();
+  if (!update.body.trim()) return () => m.updates_preview_needs_text();
+  if (update.area && !update.area.label) return () => m.updates_preview_needs_area_name();
+  if (!hasAudience) return () => m.updates_preview_no_audience();
   return null;
 }
 
@@ -94,7 +94,7 @@ export function useUpdatePreview(trip: Trip, onError: (error: unknown) => void) 
           scope: link.scope,
         })) as Projection;
         setPreview({
-          name: () => m.publication_preview_of({ p0: link.label }),
+          name: () => m.publication_preview_of({ name: link.label }),
           audience: "share",
           linkId: link.id,
           scope: link.scope,

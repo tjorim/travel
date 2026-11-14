@@ -135,7 +135,7 @@ export function LiveLocation({ tripId }: { tripId: string }) {
             {m.live_failed()}
           </Alert>
         )}
-        {sessions.isPending && <p>{m.live_loading()}</p>}
+        {sessions.isPending && <p>{m.common_loading()}</p>}
         {sessions.data?.map((row) => (
           <section key={row.id} className="grid min-w-0 gap-2 rounded-xl border p-3">
             <h3 className="break-all">{row.source}</h3>

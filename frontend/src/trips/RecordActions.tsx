@@ -17,11 +17,11 @@ export function RecordActions({
   return (
     <div className="button-row">
       <Button type="button" onClick={onEdit}>
-        {m.owner_edit()}
+        {m.common_edit()}
       </Button>
       {children}
       <Button className="danger" type="button" onClick={onDelete}>
-        {m.owner_delete()}
+        {m.common_delete()}
       </Button>
     </div>
   );

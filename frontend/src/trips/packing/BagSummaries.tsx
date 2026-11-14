@@ -24,12 +24,14 @@ export function BagSummaries({ bags, items }: { bags: Bag[]; items: Item[] }) {
               </p>
             )}
             <p>{count(rows)}</p>
-            <PackingProgress rows={rows} label={m.packing_progress({ p0: bag.name })} />
+            <PackingProgress rows={rows} label={m.packing_progress({ bag: bag.name })} />
             <p>
-              {m.packing_known_line_2({
-                p0: grams(known),
-                p1: unknown ? m.packing_weight_incomplete() : "",
-                p2: bag.weight_limit_g ? m.packing_limit({ p0: grams(bag.weight_limit_g) }) : "",
+              {m.packing_bag_known_weight_line({
+                weight: grams(known),
+                note: unknown ? m.packing_weight_incomplete() : "",
+                limit: bag.weight_limit_g
+                  ? m.packing_limit({ limit: grams(bag.weight_limit_g) })
+                  : "",
               })}
             </p>
             {bag.weight_limit_g !== null && known > bag.weight_limit_g && (

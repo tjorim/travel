@@ -63,7 +63,7 @@ export function ItemDialog({
       >
         <Field className="contents">
           <FieldLabel className="block">
-            {m.owner_name()}
+            {m.common_name()}
             <Input
               autoFocus
               required
@@ -172,7 +172,7 @@ export function ItemDialog({
               className="danger compact"
               onClick={() => onConfirmDelete({ kind: "item", id: dialog! })}
             >
-              {m.owner_delete()}
+              {m.common_delete()}
             </Button>
           )}
         </div>

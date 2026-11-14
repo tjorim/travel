@@ -36,13 +36,13 @@ export function orderedTrips<T extends Pick<Trip, "starts_on" | "ends_on">>(
 export function tripStateLabel(state: TripState): string {
   switch (state) {
     case "active":
-      return m.owner_travelling_now();
+      return m.trips_travelling_now();
     case "upcoming":
-      return m.owner_coming_soon();
+      return m.trips_coming_soon();
     case "planned":
-      return m.owner_still_to_plan();
+      return m.trips_still_to_plan();
     case "past":
-      return m.owner_past_trip();
+      return m.trips_past_trip();
   }
 }
 

@@ -55,17 +55,13 @@ export function AreaManager({
   );
   const dialog = useRecordDialog(areas);
   useDialogFocus(focusId, dialog.inspect);
-  const [message, setMessage] = useFeedback<string>(
-    textNotice(() =>
-      m.owner_an_area_is_a_city_or_region_without_an_address_it_is_not_automatically_p(),
-    ),
-  );
+  const [message, setMessage] = useFeedback<string>(textNotice(() => m.areas_definition_hint()));
 
   const { save, remove } = useAreaMutations(trip.id);
 
   const record = useRecordForm<Values, Area>({
     defaultValues: blank(),
-    fallback: m.owner_the_area_could_not_be_saved,
+    fallback: m.areas_the_area_could_not_be_saved,
     serverFields,
     submit: async (values) => {
       return save.mutateAsync({
@@ -82,11 +78,7 @@ export function AreaManager({
     },
     onSuccess: (area) => {
       close();
-      setMessage(
-        textNotice(() =>
-          m.owner_area_saved_you_can_deliberately_link_it_to_a_visit_travel_update_or_stay(),
-        ),
-      );
+      setMessage(textNotice(() => m.areas_saved_notice()));
       if (resumeLocation) {
         setResumeLocation(false);
         requestLocation(undefined, area.id);
@@ -112,12 +104,12 @@ export function AreaManager({
     remove.mutateAsync(area).then(
       () => {
         close();
-        setMessage(textNotice(() => m.owner_area_deleted()));
+        setMessage(textNotice(() => m.areas_area_deleted()));
       },
       (error: unknown) => {
         dialog.setConfirmDelete(false);
         setInUse(isResourceInUse(error));
-        dialog.setError(errorNotice(error, m.owner_the_area_could_not_be_deleted));
+        dialog.setError(errorNotice(error, m.areas_the_area_could_not_be_deleted));
       },
     );
   }
@@ -129,33 +121,31 @@ export function AreaManager({
       <span id="locations" />
       <div className="capture-heading">
         <div>
-          <h3 id="areas-title">{m.owner_areas_and_locations()}</h3>
-          <p>
-            {m.owner_a_city_or_region_you_can_reuse_locations_stays_travel_updates_and_transp()}
-          </p>
+          <h3 id="areas-title">{m.areas_and_locations()}</h3>
+          <p>{m.areas_intro()}</p>
         </div>
         <div className="button-row">
           <Button className="secondary compact" type="button" onClick={create}>
-            {m.owner_add_area()}
+            {m.common_add_area()}
           </Button>
           <Button className="secondary compact" type="button" onClick={() => requestLocation()}>
-            {m.owner_add_location()}
+            {m.areas_add_location()}
           </Button>
         </div>
       </div>
       <p className="help" role="status">
         {areasQuery.error
-          ? errorMessage(areasQuery.error, m.owner_your_areas_could_not_be_loaded)
+          ? errorMessage(areasQuery.error, m.areas_your_areas_could_not_be_loaded)
           : message}
       </p>
       {locationsQuery.error && (
         <p role="status">
-          {errorMessage(locationsQuery.error, m.owner_your_locations_could_not_be_loaded)}
+          {errorMessage(locationsQuery.error, m.areas_your_locations_could_not_be_loaded)}
         </p>
       )}
-      {locationsQuery.isPending && <p role="status">{m.owner_loading_locations()}</p>}
+      {locationsQuery.isPending && <p role="status">{m.areas_loading_locations()}</p>}
       <DuplicateSuggestions
-        title={m.owner_possible_duplicate_areas()}
+        title={m.areas_possible_duplicate_areas()}
         groups={duplicateAreaGroups}
         nameOf={(id) => areas.find((area) => area.id === id)?.label ?? ""}
         onReview={({ ids: [keepId, ...duplicateIds] }) => {
@@ -165,7 +155,7 @@ export function AreaManager({
         }}
       />
       <DuplicateSuggestions
-        title={m.owner_possible_duplicate_locations()}
+        title={m.areas_possible_duplicate_locations()}
         groups={duplicateLocationGroups}
         nameOf={(id) => {
           const place = locations.find((candidate) => candidate.id === id);
@@ -186,7 +176,7 @@ export function AreaManager({
         />
       ) : (
         !areasQuery.isPending &&
-        !areasQuery.error && <p>{m.owner_no_areas_yet_add_an_area_to_keep_locations_in_it()}</p>
+        !areasQuery.error && <p>{m.areas_no_areas_yet_add_an_area_to_keep_locations_in_it()}</p>
       )}
       <LocationManager
         trip={trip}
@@ -200,7 +190,7 @@ export function AreaManager({
       />
       <RecordDialog
         open={editing || selected !== null}
-        title={editing ? (editingId ? m.owner_edit_area() : m.owner_add_area()) : m.owner_area()}
+        title={editing ? (editingId ? m.areas_edit_area() : m.common_add_area()) : m.common_area()}
         dirty={editing && record.dirty}
         error={dialog.error}
         onDismiss={() => {

@@ -19,23 +19,23 @@ const KINDS: {
 }[] = [
   {
     kind: "stay",
-    name: m.owner_merge_record_stay,
-    count: (count) => m.owner_merge_widening_stays({ count }),
+    name: m.common_stay,
+    count: (count) => m.stays_count({ count }),
   },
   {
     kind: "visit",
-    name: m.owner_merge_record_visit,
-    count: (count) => m.owner_merge_widening_visits({ count }),
+    name: m.common_visit,
+    count: (count) => m.visits_count({ count }),
   },
   {
     kind: "route",
-    name: m.owner_merge_record_route,
-    count: (count) => m.owner_merge_widening_routes({ count }),
+    name: m.common_route,
+    count: (count) => m.routes_count({ count }),
   },
   {
     kind: "travel_update",
-    name: m.owner_merge_record_travel_update,
-    count: (count) => m.owner_merge_widening_travel_updates({ count }),
+    name: m.common_travel_update,
+    count: (count) => m.updates_count({ count }),
   },
 ];
 
@@ -64,7 +64,7 @@ export function MergeRecordChoices({ records, chosen, disabled, onChoose }: Prop
         return (
           <FieldSet className="grid min-w-0 gap-1.5" key={kind}>
             <FieldLegend className="font-semibold">
-              {m.owner_merge_make_private_group({ p0: count(group.length) })}
+              {m.merge_make_private_group({ count: count(group.length) })}
             </FieldLegend>
             <ul className="m-0 grid max-h-72 list-none gap-1.5 overflow-y-auto p-0 pr-1">
               {group.map((record) => (
@@ -112,7 +112,7 @@ function RecordChoice({
       <FieldLabel className="flex items-start gap-2 rounded-lg border border-travel-divider bg-travel-surface px-2.75 py-2.5 font-semibold">
         <TravelCheckbox
           className="mt-0.5 shrink-0"
-          aria-label={m.owner_merge_make_private_record({ p0: title })}
+          aria-label={m.merge_make_private_record({ title: title })}
           aria-describedby={detailsId}
           checked={checked}
           disabled={disabled}
@@ -121,12 +121,12 @@ function RecordChoice({
         <span className="grid min-w-0 gap-0.5">
           <span className="wrap-anywhere">{title}</span>
           <span id={detailsId} className="grid gap-0.5 text-sm font-normal wrap-anywhere">
-            <span>{m.owner_merge_record_newly_shown({ p0: audiences(record.widened_for) })}</span>
+            <span>{m.merge_record_newly_shown({ audiences: audiences(record.widened_for) })}</span>
             {record.hides_from.length > 0 && (
-              <span>{m.owner_merge_record_hides_from({ p0: audiences(record.hides_from) })}</span>
+              <span>{m.merge_record_hides_from({ audiences: audiences(record.hides_from) })}</span>
             )}
             {record.custom_picks > 0 && (
-              <span>{m.owner_merge_record_custom_picks({ count: record.custom_picks })}</span>
+              <span>{m.merge_record_custom_picks({ count: record.custom_picks })}</span>
             )}
           </span>
         </span>

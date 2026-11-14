@@ -10,8 +10,8 @@ import { DetailList } from "./DetailList";
 export function VisitsBlock({ trip, visits }: { trip: Trip; visits: Visit[] }) {
   useLocale();
   return (
-    <Section id="visits" title={m.owner_visits()}>
-      <DetailList empty={visits.length === 0} message={m.owner_no_visits_yet()} ordered>
+    <Section id="visits" title={m.common_visits()}>
+      <DetailList empty={visits.length === 0} message={m.visits_no_visits_yet()} ordered>
         {visits.map((visit) => (
           <li key={visit.id}>
             <RecordHeading tripId={trip.id} kind="visit" id={visit.id}>
@@ -27,7 +27,7 @@ export function VisitsBlock({ trip, visits }: { trip: Trip; visits: Visit[] }) {
             <Markdown html={visit.notes_html} text={visit.notes} />
             {visit.summary && (
               <>
-                <p className="markdown-label">{m.owner_for_visitors()}</p>
+                <p className="markdown-label">{m.visits_for_visitors()}</p>
                 <Markdown html={visit.summary_html} text={visit.summary} />
               </>
             )}

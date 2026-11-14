@@ -125,7 +125,7 @@ export function TripWorkspaceView({
   const areas = useTripResource(selectedId, "areas").data ?? [];
   // A page we were sent here from (a deleted trip) can leave a message behind.
   const arrivalNotice =
-    location.state.notice === "trip_deleted" ? m.owner_trip_deleted() : undefined;
+    location.state.notice === "trip_deleted" ? m.trips_trip_deleted() : undefined;
   const message = notice ?? arrivalNotice ?? tripsStatusMessage(session, tripsQuery, trips);
 
   function showOnMap(pointId: string) {
@@ -145,7 +145,7 @@ export function TripWorkspaceView({
       return <PackingTripOffline tripId={tripId} onRetry={() => void tripsQuery.refetch()} />;
     if (tripsQuery.isPending) return <EmptyState title={m.loading_trip()}>{message}</EmptyState>;
     if (tripsQuery.isError) return <EmptyState title={m.unavailable_trip()}>{message}</EmptyState>;
-    return <EmptyState title={m.trip_not_found()}>{m.owner_trip_unavailable()}</EmptyState>;
+    return <EmptyState title={m.trip_not_found()}>{m.trips_trip_unavailable()}</EmptyState>;
   }
 
   const Section = sectionById(section).component;

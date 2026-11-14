@@ -47,21 +47,21 @@ export function usePublicationCatalog(trip: Pick<Trip, "id">) {
         kind: "travel_update" as const,
         id: item.id,
         label: item.title,
-        detail: m.owner_travel_update(),
+        detail: m.common_travel_update(),
         visibility: item.visibility,
       })),
       ...(visitsQuery.data ?? []).map((item) => ({
         kind: "visit" as const,
         id: item.id,
         label: visitTitle(item),
-        detail: m.publication_visit_the_place_visitor_text_and_date_the_time_only_if_you_share_it(),
+        detail: m.publication_visit_fields_hint(),
         visibility: item.visibility,
       })),
       ...(placesQuery.data ?? []).map((item) => ({
         kind: "area" as const,
         id: item.id,
         label: areaName(item),
-        detail: m.owner_area(),
+        detail: m.common_area(),
         visibility: item.visibility,
       })),
       // Only locations the owner has named or shared: most locations are hotels and endpoints that stay private.
@@ -78,8 +78,7 @@ export function usePublicationCatalog(trip: Pick<Trip, "id">) {
         kind: "route" as const,
         id: item.id,
         label: `${ROUTE_MODE_LABELS[item.mode]}: ${routeTitle(item)}`,
-        detail:
-          m.publication_visitors_see_the_areas_transport_mode_and_line_never_the_booking_code_tr(),
+        detail: m.publication_route_fields_hint(),
         visibility: item.visibility,
       })),
       ...(staysQuery.data ?? []).map((item) => ({
@@ -87,7 +86,7 @@ export function usePublicationCatalog(trip: Pick<Trip, "id">) {
         id: item.id,
         label: stayLabel(item),
         detail: m.publication_visitors_see_only_and_the_nights({
-          p0: item.area ? areaName(item.area) : m.publication_no_area_selected_yet(),
+          area: item.area ? areaName(item.area) : m.publication_no_area_selected_yet(),
         }),
         visibility: item.visibility,
       })),

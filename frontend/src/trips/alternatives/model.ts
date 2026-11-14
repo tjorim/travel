@@ -61,7 +61,7 @@ export const groupTitle = (group: AlternativeGroup): string => {
     group.kind,
     membersOf(group).map((member) => member.record),
   );
-  return dates ? m.owner_alternatives_default_title({ dates }) : m.owner_alternatives_heading();
+  return dates ? m.alternatives_default_title({ dates }) : m.alternatives_heading();
 };
 
 /** The one line that tells a member apart: where, when and how settled. */
@@ -72,7 +72,7 @@ export function recordDetail(kind: AlternativeKind, record: AlternativeRecord): 
     parts.push(
       stay.area.label ? areaName(stay.area) : null,
       `${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)}`,
-      m.owner_night_count({ count: daysBetween(stay.check_in_date, stay.check_out_date) }),
+      m.common_night_count({ count: daysBetween(stay.check_in_date, stay.check_out_date) }),
       PLANNING_STATUS_LABELS[stay.status],
     );
   } else if (kind === "visit") {
@@ -101,45 +101,42 @@ const table = <T>(records: T[], columns: Column<T>[]): ComparisonRow[] =>
 
 const stayRows = (stays: Stay[]) =>
   table<Stay>(stays, [
-    [m.owner_compare_name(), stayLabel],
-    [m.owner_compare_area(), (stay) => areaName(stay.area)],
+    [m.common_name(), stayLabel],
+    [m.common_area(), (stay) => areaName(stay.area)],
     [
-      m.owner_compare_exact_location(),
+      m.alternatives_compare_exact_location(),
       (stay) =>
         stay.location
           ? [locationLine(stay.location), stay.location.address_line1].filter(Boolean).join(" · ")
-          : m.owner_no_exact_location_yet(),
+          : m.common_no_exact_location_yet(),
     ],
     [
-      m.owner_compare_dates(),
+      m.alternatives_compare_dates(),
       (stay) => `${formatDay(stay.check_in_date)} → ${formatDay(stay.check_out_date)}`,
     ],
-    [
-      m.owner_compare_nights(),
-      (stay) => String(daysBetween(stay.check_in_date, stay.check_out_date)),
-    ],
-    [m.owner_compare_status(), (stay) => PLANNING_STATUS_LABELS[stay.status]],
-    [m.owner_compare_website(), (stay) => stay.website_url],
-    [m.owner_compare_notes(), (stay) => stay.notes],
+    [m.common_nights(), (stay) => String(daysBetween(stay.check_in_date, stay.check_out_date))],
+    [m.common_status(), (stay) => PLANNING_STATUS_LABELS[stay.status]],
+    [m.common_website(), (stay) => stay.website_url],
+    [m.common_notes(), (stay) => stay.notes],
   ]);
 
 const visitRows = (visits: Visit[]) =>
   table<Visit>(visits, [
-    [m.owner_compare_name(), visitTitle],
-    [m.owner_compare_area(), (visit) => areaName(visit.area)],
-    [m.owner_compare_exact_location(), visitPlace],
-    [m.owner_compare_dates(), visitWhen],
-    [m.owner_compare_status(), (visit) => PLANNING_STATUS_LABELS[visit.status]],
-    [m.owner_compare_notes(), (visit) => visit.notes],
+    [m.common_name(), visitTitle],
+    [m.common_area(), (visit) => areaName(visit.area)],
+    [m.alternatives_compare_exact_location(), visitPlace],
+    [m.alternatives_compare_dates(), visitWhen],
+    [m.common_status(), (visit) => PLANNING_STATUS_LABELS[visit.status]],
+    [m.common_notes(), (visit) => visit.notes],
   ]);
 
 const routeRows = (routes: Route[]) =>
   table<Route>(routes, [
-    [m.owner_compare_name(), routeTitle],
-    [m.owner_compare_dates(), routeTimes],
-    [m.owner_compare_carrier(), (route) => route.carrier],
-    [m.owner_compare_status(), (route) => PLANNING_STATUS_LABELS[route.status]],
-    [m.owner_compare_notes(), (route) => route.notes],
+    [m.common_name(), routeTitle],
+    [m.alternatives_compare_dates(), routeTimes],
+    [m.common_carrier(), (route) => route.carrier],
+    [m.common_status(), (route) => PLANNING_STATUS_LABELS[route.status]],
+    [m.common_notes(), (route) => route.notes],
   ]);
 
 /**

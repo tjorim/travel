@@ -44,11 +44,7 @@ export function VisitManager({
   const dialog = useRecordDialog(visits);
   useDialogFocus(focusId, dialog.inspect);
   const { selected, editing, editingId } = dialog;
-  const [message, setMessage] = useFeedback<string>(
-    textNotice(() =>
-      m.owner_a_visit_is_a_stop_on_your_trip_an_area_or_location_and_when_it_stays_pri(),
-    ),
-  );
+  const [message, setMessage] = useFeedback<string>(textNotice(() => m.visits_intro()));
   // A place is only rewritten when the editor changed it.
   const baseline = useRef<Values>(blank());
   const { save, remove } = useVisitMutations(trip.id);
@@ -59,16 +55,18 @@ export function VisitManager({
 
   const record = useRecordForm<Values>({
     defaultValues: blank(),
-    fallback: m.owner_the_visit_could_not_be_saved,
+    fallback: m.visits_the_visit_could_not_be_saved,
     serverFields,
     submit: async (values) => {
       const id = dialog.editingId ?? null;
       if (!hasPlace(values.place))
-        throw new FeedbackError(() => m.owner_choose_where_the_visit_is_an_area_or_location());
+        throw new FeedbackError(() => m.visits_choose_where_the_visit_is_an_area_or_location());
       if (values.startTime && !values.startsOn)
-        throw new FeedbackError(() => m.owner_a_time_belongs_to_a_day_choose_the_first_day_first());
+        throw new FeedbackError(() =>
+          m.visits_a_time_belongs_to_a_day_choose_the_first_day_first(),
+        );
       if (values.endTime && !values.startTime)
-        throw new FeedbackError(() => m.owner_also_enter_a_start_time());
+        throw new FeedbackError(() => m.visits_also_enter_a_start_time());
       const saved = await save.mutateAsync({
         id,
         payload: {
@@ -94,7 +92,7 @@ export function VisitManager({
     },
     onSuccess: () => {
       close();
-      setMessage(textNotice(() => m.owner_visit_saved()));
+      setMessage(textNotice(() => m.visits_visit_saved()));
     },
   });
 
@@ -129,15 +127,15 @@ export function VisitManager({
     remove.mutateAsync(visit).then(async () => {
       await offline.removeByResource("visit", visit.id);
       close();
-      setMessage(textNotice(() => m.owner_visit_deleted()));
-    }, failInDialog(m.owner_the_visit_could_not_be_deleted));
+      setMessage(textNotice(() => m.visits_visit_deleted()));
+    }, failInDialog(m.visits_the_visit_could_not_be_deleted));
   }
 
   async function toggleOffline(visit: Visit) {
     if (offline.isPinned("visit", visit.id)) {
       await offline.removeByResource("visit", visit.id);
       setMessage(
-        textNotice(() => m.owner_is_no_longer_available_offline({ p0: visitTitle(visit) })),
+        textNotice(() => m.common_is_no_longer_available_offline({ title: visitTitle(visit) })),
       );
       return;
     }
@@ -151,7 +149,7 @@ export function VisitManager({
       bytes: new TextEncoder().encode(JSON.stringify(visit)).buffer as ArrayBuffer,
     });
     setMessage(
-      textNotice(() => m.owner_is_saved_offline_on_this_device({ p0: visitTitle(visit) })),
+      textNotice(() => m.common_is_saved_offline_on_this_device({ title: visitTitle(visit) })),
     );
   }
 
@@ -161,20 +159,18 @@ export function VisitManager({
     <section className="travel-card manager" aria-labelledby="visits-title">
       <div className="capture-heading">
         <div>
-          <h3 id="visits-title">{m.owner_visits()}</h3>
-          <p>
-            {m.owner_stops_on_your_trip_an_area_or_location_and_when_you_are_there_share_them()}
-          </p>
+          <h3 id="visits-title">{m.common_visits()}</h3>
+          <p>{m.visits_sharing_intro()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={create}>
-          {m.owner_new_visit()}
+          {m.visits_new_visit()}
         </Button>
       </div>
       <p className="help" role="status">
         {readError
-          ? errorMessage(readError, m.owner_your_visits_could_not_be_loaded)
+          ? errorMessage(readError, m.visits_your_visits_could_not_be_loaded)
           : visitsQuery.isPending
-            ? m.owner_loading_your_visits()
+            ? m.visits_loading_your_visits()
             : message}
       </p>
       <AlternativesPanel tripId={trip.id} kind="visit" records={visits} onOpen={dialog.inspect} />
@@ -187,16 +183,18 @@ export function VisitManager({
           onInspect={dialog.inspect}
           onShowOnMap={onShowOnMap && ((visit) => onShowOnMap(mapPointFor(visit)))}
           onToggleOffline={(visit) =>
-            void toggleOffline(visit).catch(fail(m.owner_the_visit_could_not_be_saved_offline))
+            void toggleOffline(visit).catch(fail(m.visits_the_visit_could_not_be_saved_offline))
           }
         />
       )}
       {!visitsQuery.isPending && !visitsQuery.error && visits.length === 0 && (
-        <p>{m.owner_no_visits_yet_add_one_to_organise_your_trip()}</p>
+        <p>{m.visits_no_visits_yet_add_one_to_organise_your_trip()}</p>
       )}
       <RecordDialog
         open={editing || selected !== null}
-        title={editing ? (editingId ? m.owner_edit_visit() : m.owner_add_visit()) : m.owner_visit()}
+        title={
+          editing ? (editingId ? m.visits_edit_visit() : m.visits_add_visit()) : m.common_visit()
+        }
         dirty={editing && record.dirty}
         error={dialog.error}
         onDismiss={close}

@@ -151,9 +151,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
       loadLink(saved);
       setNotice(
         textNotice(() =>
-          wasNew
-            ? m.publication_draft_saved_view_the_preview_and_activate_the_link_when_you_are_satisfie()
-            : m.publication_share_link_and_scope_saved(),
+          wasNew ? m.publication_draft_saved_notice() : m.publication_share_link_and_scope_saved(),
         ),
       );
     },
@@ -203,7 +201,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
       confirmation.ask({
         title: () => m.publication_discard_unsaved_link_changes(),
         description: () => m.publication_the_name_and_scope_you_edited_will_not_be_saved(),
-        confirmLabel: () => m.owner_discard_changes_2(),
+        confirmLabel: () => m.records_discard_changes_action(),
         onConfirm: open,
       });
       return;
@@ -277,7 +275,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     }
     const label = target.label;
     setPreview({
-      name: () => m.publication_preview_of({ p0: label }),
+      name: () => m.publication_preview_of({ name: label }),
       audience: "share",
       linkId: target.id,
       scope: candidate,
@@ -314,8 +312,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     if (!selectedLink) return;
     confirmation.ask({
       title: () => m.sharing_revoke_named_link({ name: selectedLink.label }),
-      description: () =>
-        m.sharing_anyone_with_the_current_secure_link_will_no_longer_be_able_to_open_the_h(),
+      description: () => m.sharing_rotate_warning(),
       confirmLabel: () => m.sharing_revoke_link(),
       onConfirm: () =>
         revoke.mutateAsync({ link: selectedLink, reason: reason.trim() || null }).then((saved) => {
@@ -379,10 +376,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
     <section className="travel-card manager gap-4.5" aria-labelledby="publication-manager-title">
       <div className="capture-heading">
         <div>
-          <h3 id="publication-manager-title">{m.owner_sharing()}</h3>
-          <p>
-            {m.publication_each_item_has_the_same_choice_private_everyone_or_select_per_audience_he()}
-          </p>
+          <h3 id="publication-manager-title">{m.common_sharing()}</h3>
+          <p>{m.publication_defaults_intro()}</p>
         </div>
       </div>
       <p className="help" role="status">
@@ -400,9 +395,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         <div className="capture-heading">
           <div>
             <h3>{m.publication_visibility_per_item()}</h3>
-            <p>
-              {m.publication_the_same_choice_as_in_each_items_editor_this_shows_a_setting_not_who_act()}
-            </p>
+            <p>{m.publication_setting_not_recipients_hint()}</p>
           </div>
         </div>
         <VisibilityOverview tripId={trip.id} catalog={catalog} />
@@ -422,7 +415,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
             catalog={catalog}
             hasDates={Boolean(trip.starts_on)}
             tripId={trip.id}
-            onError={fail(m.owner_visibility_save_failed)}
+            onError={fail(m.publication_visibility_save_failed)}
             disabled
           />
           <Button
@@ -453,11 +446,9 @@ export function PublicationManager({ trip }: { trip: Trip }) {
         toggling={togglePublic.isPending}
         previewing={previewPublicScope.isPending}
         onScopeChange={() => setPreview(null)}
-        onError={fail(m.owner_visibility_save_failed)}
+        onError={fail(m.publication_visibility_save_failed)}
         onCopyLink={() => void copyPublicLink().catch(fail(m.publication_copying_failed))}
-        onPreview={() =>
-          void previewPublic().catch(fail(m.publication_the_preview_could_not_be_loaded_2))
-        }
+        onPreview={() => void previewPublic().catch(fail(m.publication_preview_load_error_short))}
         onToggle={toggle}
       />
       <LinkList
@@ -488,7 +479,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                   catalog={catalog}
                   hasDates={Boolean(trip.starts_on)}
                   tripId={trip.id}
-                  onError={fail(m.owner_visibility_save_failed)}
+                  onError={fail(m.publication_visibility_save_failed)}
                   disabled
                   allowExclusions
                 />
@@ -506,7 +497,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
             <RecordForm
               record={linkRecord}
               submitLabel={selectedLink ? m.sharing_save_link() : m.publication_save_draft()}
-              pendingLabel={m.owner_saving()}
+              pendingLabel={m.common_saving()}
               disabled={lockedLink}
               actions={
                 <Button
@@ -519,7 +510,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                     previewLinkScope.isPending
                   }
                   onClick={() =>
-                    void previewLink().catch(fail(m.publication_the_preview_could_not_be_loaded_2))
+                    void previewLink().catch(fail(m.publication_preview_load_error_short))
                   }
                 >
                   {m.publication_view_preview()}
@@ -530,8 +521,8 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                 name="label"
                 listeners={{ onChange: () => setPreview(null) }}
                 validators={{
-                  onChange: requiredText(m.owner_give_the_link_a_name),
-                  onSubmit: requiredText(m.owner_give_the_link_a_name),
+                  onChange: requiredText(m.common_give_the_link_a_name),
+                  onSubmit: requiredText(m.common_give_the_link_a_name),
                 }}
               >
                 {(field) => (
@@ -557,7 +548,7 @@ export function PublicationManager({ trip }: { trip: Trip }) {
                     catalog={catalog}
                     hasDates={Boolean(trip.starts_on)}
                     tripId={trip.id}
-                    onError={fail(m.owner_visibility_save_failed)}
+                    onError={fail(m.publication_visibility_save_failed)}
                     disabled={lockedLink}
                     allowExclusions
                     preset={linkPreset}

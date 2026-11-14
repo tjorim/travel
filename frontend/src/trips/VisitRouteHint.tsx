@@ -17,7 +17,7 @@ export function RestatedRoutesNote({ routes }: { routes: RouteReference[] }) {
   if (!routes.length) return null;
   return (
     <p className="help" role="note">
-      {m.owner_restated_routes({ routes: routes.map((route) => `“${route.title}”`).join(", ") })}
+      {m.visits_restated_routes({ routes: routes.map((route) => `“${route.title}”`).join(", ") })}
     </p>
   );
 }
@@ -78,7 +78,7 @@ export function VisitRouteHint({ tripId, draft }: { tripId: string; draft: Draft
       ownerRequest<RouteReference[]>(
         owner!.session,
         `${tripPath(tripId, "visits")}/route-check`,
-        m.owner_the_route_check_failed,
+        m.visits_the_route_check_failed,
         { method: "POST", body: JSON.parse(settled!), signal },
       ),
   });

@@ -99,18 +99,18 @@ for (const locale of locales) {
       await page.goto(`/admin/trips/${ownerTrip.id}/plan`);
       await page
         .getByRole("button", {
-          name: new RegExp(`^${message(locale, "owner_areas_and_locations")}`),
+          name: new RegExp(`^${message(locale, "areas_and_locations")}`),
         })
         .click();
       await page
         .getByRole("button", {
-          name: message(locale, "owner_review_merge_of").replace("{p0}", "Taoyuan Airport"),
+          name: message(locale, "merge_review_merge_of").replace("{names}", "Taoyuan Airport"),
         })
         .click();
-      const dialog = page.getByRole("dialog", { name: message(locale, "owner_merge_locations") });
-      await dialog.getByRole("button", { name: message(locale, "owner_preview_merge") }).click();
+      const dialog = page.getByRole("dialog", { name: message(locale, "merge_locations") });
+      await dialog.getByRole("button", { name: message(locale, "merge_preview_merge") }).click();
       const region = dialog.getByRole("region", {
-        name: message(locale, "owner_merge_widening_title"),
+        name: message(locale, "merge_widening_title"),
       });
       await expect(region).toBeVisible();
       await expect(region.getByRole("group")).toHaveCount(4);

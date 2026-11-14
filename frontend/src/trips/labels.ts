@@ -22,7 +22,7 @@ export const DOCUMENT_KIND_LABELS: Record<DocumentAsset["document_kind"], string
     return m.library_receipt();
   },
   get other() {
-    return m.owner_other();
+    return m.common_other();
   },
 };
 
@@ -37,25 +37,25 @@ export const MEDIA_KIND_LABELS: Record<MediaAsset["media_kind"], string> = {
 
 export const PLANNING_STATUS_LABELS: Record<PlanningStatus, string> = {
   get idea() {
-    return m.owner_idea();
+    return m.trips_idea();
   },
   get planned() {
-    return m.owner_planned();
+    return m.trips_planned();
   },
   get confirmed() {
-    return m.owner_confirmed();
+    return m.trips_confirmed();
   },
   get cancelled() {
-    return m.owner_cancelled();
+    return m.trips_cancelled();
   },
 };
 
 export const VISIT_KIND_LABELS: Record<VisitKind, string> = {
   get free() {
-    return m.owner_leisure();
+    return m.trips_leisure();
   },
   get work() {
-    return m.owner_work();
+    return m.trips_work();
   },
 };
 
@@ -65,7 +65,7 @@ export const clock = (time: string | null): string => (time ? time.slice(0, 5) :
 export function visitWhen(
   visit: Pick<Visit, "starts_on" | "ends_on" | "start_time" | "end_time">,
 ): string {
-  if (!visit.starts_on) return m.owner_no_day_yet();
+  if (!visit.starts_on) return m.common_no_day_yet();
   const times = visit.start_time
     ? ` · ${clock(visit.start_time)}${visit.end_time ? `–${clock(visit.end_time)}` : ""}`
     : "";

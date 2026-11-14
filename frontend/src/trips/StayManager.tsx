@@ -51,11 +51,7 @@ export function StayManager({
   const documentsQuery = useTripResource(trip.id, "documents");
   const stayDialog = useRecordDialog(stays);
   useDialogFocus(focusId, stayDialog.inspect);
-  const [message, setMessage] = useFeedback<string>(
-    textNotice(() =>
-      m.owner_a_stay_is_private_if_you_share_it_visitors_only_see_the_city_or_area_and(),
-    ),
-  );
+  const [message, setMessage] = useFeedback<string>(textNotice(() => m.stays_visibility_hint()));
   const [deleteTarget, setDeleteTarget] = useState<Stay | null>(null);
   // A stay's place is only rewritten when one of its fields differs from what the editor opened with.
   const baseline = useRef<StayValues>(blankStay(trip));
@@ -76,9 +72,9 @@ export function StayManager({
       for (const alternative of alternatives)
         await saveStay.mutateAsync({ id: alternative.id, payload: { status: "cancelled" } });
       stayDialog.close();
-      setMessage(textNotice(() => m.owner_stay_alternatives_cancelled()));
+      setMessage(textNotice(() => m.alternatives_cancelled_notice()));
     } catch (error) {
-      stayDialog.setError(errorNotice(error, m.owner_the_stay_could_not_be_saved));
+      stayDialog.setError(errorNotice(error, m.stays_the_stay_could_not_be_saved));
     }
   }
   /** A quick change of length for a private stay that is still a plan: only the check-out moves. */
@@ -88,18 +84,18 @@ export function StayManager({
       await saveStay.mutateAsync({ id: stay.id, payload: { check_out_date: checkOut } });
       setMessage(
         textNotice(() =>
-          m.owner_stay_dates_changed({
+          m.stays_stay_dates_changed({
             dates: `${formatDay(stay.check_in_date)} → ${formatDay(checkOut)}`,
           }),
         ),
       );
     } catch (error) {
-      setMessage(errorNotice(error, m.owner_the_stay_could_not_be_saved));
+      setMessage(errorNotice(error, m.stays_the_stay_could_not_be_saved));
     }
   }
   const stayRecord = useRecordForm<StayValues>({
     defaultValues: blankStay(trip),
-    fallback: m.owner_the_stay_could_not_be_saved,
+    fallback: m.stays_the_stay_could_not_be_saved,
     serverFields: stayFields,
     submit: async (values) => {
       const propertyName = values.propertyName.trim();
@@ -127,7 +123,7 @@ export function StayManager({
     },
     onSuccess: () => {
       closeStay();
-      setMessage(textNotice(() => m.owner_private_stay_saved()));
+      setMessage(textNotice(() => m.stays_private_stay_saved()));
     },
   });
   // Only a new stay, or one whose place fields were edited, needs a place to send; the message sits on the Area field.
@@ -164,11 +160,11 @@ export function StayManager({
       () => {
         closeStay();
         setDeleteTarget(null);
-        setMessage(textNotice(() => m.owner_private_stay_deleted()));
+        setMessage(textNotice(() => m.stays_private_stay_deleted()));
       },
       (error: unknown) => {
         setDeleteTarget(null);
-        stayDialog.setError(errorNotice(error, m.owner_the_stay_could_not_be_deleted));
+        stayDialog.setError(errorNotice(error, m.stays_the_stay_could_not_be_deleted));
       },
     );
   }
@@ -194,18 +190,18 @@ export function StayManager({
     <section className="travel-card manager" aria-labelledby="stays-title">
       <div className="capture-heading">
         <div>
-          <h3 id="stays-title">{m.owner_stays()}</h3>
-          <p>{m.owner_a_stay_is_a_series_of_nights_check_in_during_the_afternoon_of_the_first()}</p>
+          <h3 id="stays-title">{m.common_stays()}</h3>
+          <p>{m.stays_intro()}</p>
         </div>
         <Button className="secondary compact" type="button" onClick={newStay}>
-          {m.owner_new_stay()}
+          {m.stays_new_stay()}
         </Button>
       </div>
       <p className="help" role="status">
         {readError
-          ? errorMessage(readError, m.owner_your_stays_could_not_be_loaded)
+          ? errorMessage(readError, m.stays_your_stays_could_not_be_loaded)
           : staysQuery.isPending
-            ? m.owner_loading_your_private_stays()
+            ? m.stays_loading_your_private_stays()
             : message}
       </p>
       <AlternativesPanel tripId={trip.id} kind="stay" records={stays} onOpen={stayDialog.inspect} />
@@ -220,7 +216,7 @@ export function StayManager({
       <RecordDialog
         open={editingStay || selectedStay !== null}
         title={
-          editingStay ? (editingStayId ? m.owner_edit_stay() : m.owner_add_stay()) : m.owner_stay()
+          editingStay ? (editingStayId ? m.stays_edit_stay() : m.stays_add_stay()) : m.common_stay()
         }
         dirty={editingStay && stayRecord.dirty}
         error={stayDialog.error}
@@ -252,7 +248,7 @@ export function StayManager({
       </RecordDialog>
       {deleteTarget && (
         <DeleteConfirmation
-          title={m.owner_delete_2({ p0: stayLabel(deleteTarget) })}
+          title={m.common_delete_confirm_title({ name: stayLabel(deleteTarget) })}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={confirmDelete}
         />

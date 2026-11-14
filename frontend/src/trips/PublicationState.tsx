@@ -11,7 +11,7 @@ export default function PublicationState({ tripId }: { tripId: string }) {
   const live = status.surface_state === "published";
   return (
     <Badge variant={live ? "live" : "offline"}>
-      {live ? m.owner_public_page_live() : m.owner_not_published()}
+      {live ? m.publication_public_page_live() : m.publication_not_published()}
     </Badge>
   );
 }

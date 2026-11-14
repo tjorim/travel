@@ -22,7 +22,7 @@ export function openBlobInNewTab(blob: Blob): void {
   const preview = window.open(objectUrl, "_blank", "noopener");
   if (!preview) {
     URL.revokeObjectURL(objectUrl);
-    throw new FeedbackError(() => m.owner_your_browser_blocked_opening_the_file());
+    throw new FeedbackError(() => m.feedback_your_browser_blocked_opening_the_file());
   }
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
 }

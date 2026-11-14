@@ -49,12 +49,12 @@ for (const locale of locales)
       );
       await page.goto(`/admin/trips/${ownerTrip.id}/plan`);
       await page
-        .getByRole("button", { name: `${message(locale, "owner_routes")} 1`, exact: true })
+        .getByRole("button", { name: `${message(locale, "common_routes")} 1`, exact: true })
         .click();
       await page.locator("button.document-select").filter({ hasText: "Example flight" }).click();
-      await page.getByRole("button", { name: message(locale, "owner_edit"), exact: true }).click();
+      await page.getByRole("button", { name: message(locale, "common_edit"), exact: true }).click();
       const dialog = page.getByRole("dialog");
-      await dialog.getByLabel(message(locale, "owner_track_file"), { exact: true }).setInputFiles({
+      await dialog.getByLabel(message(locale, "routes_track_file"), { exact: true }).setInputFiles({
         name: "synthetic.gpx",
         mimeType: "application/gpx+xml",
         buffer: Buffer.from("<gpx/>"),
@@ -72,13 +72,13 @@ for (const locale of locales)
         });
       });
       const preview = dialog.getByRole("button", {
-        name: message(locale, "owner_track_preview"),
+        name: message(locale, "routes_track_preview"),
         exact: true,
       });
       await preview.focus();
       await preview.press("Enter");
       const apply = dialog.getByRole("button", {
-        name: message(locale, "owner_track_apply"),
+        name: message(locale, "routes_track_apply"),
         exact: true,
       });
       await expect(apply).toBeVisible();
@@ -86,20 +86,20 @@ for (const locale of locales)
         (await new AxeBuilder({ page }).include('[role="dialog"]').analyze()).violations,
       ).toEqual([]);
       await dialog
-        .getByRole("button", { name: message(locale, "owner_track_cancel"), exact: true })
+        .getByRole("button", { name: message(locale, "routes_track_cancel"), exact: true })
         .click();
       await expect(apply).toHaveCount(0);
       await dialog
-        .getByText(message(locale, "owner_advanced_paste_coordinates_as_json"), { exact: true })
+        .getByText(message(locale, "routes_advanced_paste_coordinates_as_json"), { exact: true })
         .click();
       const existing = dialog.getByRole("textbox", {
-        name: message(locale, "owner_line_coordinates_json"),
+        name: message(locale, "routes_line_coordinates_json"),
       });
       expect(JSON.parse(await existing.inputValue())).toEqual([
         [1, 2],
         [3, 4],
       ]);
-      await dialog.getByLabel(message(locale, "owner_track_file"), { exact: true }).setInputFiles({
+      await dialog.getByLabel(message(locale, "routes_track_file"), { exact: true }).setInputFiles({
         name: "synthetic.gpx",
         mimeType: "application/gpx+xml",
         buffer: Buffer.from("<gpx/>"),
@@ -110,14 +110,14 @@ for (const locale of locales)
       await apply.press("Enter");
       await expect(preview).toBeFocused();
       const input = dialog.getByRole("textbox", {
-        name: message(locale, "owner_line_coordinates_json"),
+        name: message(locale, "routes_line_coordinates_json"),
       });
       expect(JSON.parse(await input.inputValue())).toEqual([
         [4.12, 50.12],
         [5.23, 51.23],
       ]);
       await dialog
-        .getByRole("button", { name: message(locale, "owner_track_cancel"), exact: true })
+        .getByRole("button", { name: message(locale, "routes_track_cancel"), exact: true })
         .click();
       expect(JSON.parse(await input.inputValue())).toEqual([
         [4.12, 50.12],
@@ -129,7 +129,10 @@ for (const locale of locales)
       );
       await page.keyboard.press("Escape");
       await page
-        .getByRole("button", { name: message(locale, "owner_discard_changes_2"), exact: true })
+        .getByRole("button", {
+          name: message(locale, "records_discard_changes_action"),
+          exact: true,
+        })
         .click();
       await expect(dialog).toHaveCount(0);
     });

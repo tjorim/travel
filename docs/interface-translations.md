@@ -63,23 +63,44 @@ cannot be seen by name; list it in `computedMessageKeys` in
 references, which needs no entry. A one-word connective (`of`, `on`, `van`, `op`,
 ...) or a word joined to other text by a leading or trailing separator or space
 (`· on`) fails as a sentence fragment: write a whole message with interpolation
-instead. A label ending in a colon is a whole label. The few fragments that still
-ship are listed in `fragmentMessages` in the same file, each with a reason; that
-list only shrinks and is never extended for new copy. Both lists are optional, so a
-project sharing the script without them is checked without exceptions.
+instead. A label ending in a colon is a whole label. A fragment that cannot be
+replaced yet is listed in `fragmentMessages` in the same file with a reason; the list
+is empty, only shrinks and is never extended for new copy. Both lists are optional, so
+a project sharing the script without them is checked without exceptions.
 
-Name a key after the area it belongs to (`packing_`, `media_`, `publication_`,
-`sharing_`, `library_`, `offline_`, `live_`, `precision_`), not after the file that
-happens to render it. A key that starts with a prefix listed in `retiredKeyPrefixes`
-(`assets_`) fails the audit. A key used by several areas takes the area of most of its
-call sites, or `common_` when none leads. Identical English and Dutch values under two
-keys are merged unless a noun and a button must be able to diverge.
+Name a key after the area it belongs to (`trips_`, `stays_`, `routes_`, `visits_`,
+`areas_`, `locations_`, `updates_`, `tasks_`, `capture_`, `map_`, `merge_`,
+`alternatives_`, `packing_`, `media_`, `publication_`, `sharing_`, `library_`,
+`offline_`, `live_`, `precision_`, `common_`, ...), not after the file that happens to
+render it. A key that starts with a prefix listed in `retiredKeyPrefixes` (`assets_`,
+`owner_`) fails the audit. A key used by several areas takes the area of most of its
+call sites, or `common_` when none leads.
+
+Name the rest of the key after the place and purpose of the message
+(`areas_delete_blocked_hint`, `locations_address_edit_hint`, `stays_intro`), never after
+the English sentence: reworded copy would leave a key that says something else. Keep a
+key short (about 60 characters at most) and give two messages that need the same text a
+name that says where each is used, not a numeric suffix (`_2`). Use the suffixes
+`_hint`, `_intro`, `_notice`, `_error`, `_warning`, `_empty`, `_title`, `_description`,
+`_label` and `_action` for the kind of text.
+
+Identical English and Dutch values under two keys are merged unless a noun and a
+button must be able to diverge. Kept on purpose: the `visitor_*` messages next to their
+owner-side nouns (a visitor view may be reworded without touching the editor), the
+`audit_*` record nouns, the `preset_*` and `sharing_` role labels, and values that
+match in English only (the Dutch differs, so the contexts differ).
 
 Messages that show a count take plural variants (`input count` plus
 `local countPlural = count: plural`) with a `one` and an `other` branch in every
 locale, so "1 day" never reads "1 days". Name parameters after what they hold
 (`{name}`, `{count}`, `{visits}`), not by position (`{p0}`); the plural regression
 test covers every plural message at 0, 1 and several.
+
+Copy that lives outside the catalogue follows the same rule: the PDF renderer's label
+tables (`backend/app/pdf_renderer.py`) and the Home Assistant translations
+(`custom_components/travel/translations/`) are checked by
+`backend/tests/test_label_parity.py`, which requires the same keys and placeholders in
+every locale. The frontend parity script is shared with other apps and is left alone.
 
 The scanner is a review aid. The `--all` output includes single-word enum values,
 CSS, selectors, ISO/Day.js patterns, URL/path fragments and other protocol literals.

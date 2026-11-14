@@ -4,55 +4,55 @@ export const SECTIONS: { id: string; label: string }[] = [
   {
     id: "updates",
     get label() {
-      return m.owner_travel_updates();
+      return m.common_travel_updates();
     },
   },
   {
     id: "visits",
     get label() {
-      return m.owner_visits();
+      return m.common_visits();
     },
   },
   {
     id: "stays",
     get label() {
-      return m.owner_stays();
+      return m.common_stays();
     },
   },
   {
     id: "routes",
     get label() {
-      return m.owner_routes();
+      return m.common_routes();
     },
   },
   {
     id: "tasks",
     get label() {
-      return m.owner_tasks();
+      return m.common_tasks();
     },
   },
   {
     id: "locations",
     get label() {
-      return m.owner_locations();
+      return m.common_locations();
     },
   },
   {
     id: "areas",
     get label() {
-      return m.owner_areas();
+      return m.common_areas();
     },
   },
   {
     id: "documents",
     get label() {
-      return m.owner_private_documents();
+      return m.common_private_documents();
     },
   },
   {
     id: "media",
     get label() {
-      return m.owner_private_media();
+      return m.common_private_media();
     },
   },
 ];

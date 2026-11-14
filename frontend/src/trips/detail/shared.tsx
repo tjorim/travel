@@ -53,14 +53,14 @@ export function RecordHeading({
     <div className="flex items-baseline justify-between gap-2.5 [&_h3]:m-0">
       <h3>{children}</h3>
       <RecordLink tripId={tripId} kind={kind} id={id}>
-        {m.owner_open()}
+        {m.common_open()}
       </RecordLink>
     </div>
   );
 }
 
 export function placeLabel(place: Location | null): string {
-  if (!place) return m.owner_no_location_captured();
+  if (!place) return m.common_no_location_captured();
   const name = locationName(place);
   const extra = [
     place.address_line1,

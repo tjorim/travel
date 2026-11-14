@@ -30,12 +30,12 @@ export function TripExport({
       const blob = await ownerFile(
         owner.session,
         `/api/trips/${encodeURIComponent(tripId)}/export`,
-        m.owner_trip_export_failed,
+        m.trips_trip_export_failed,
         { cache: "no-store" },
       );
       saveFile(new Blob([blob], { type: "application/json" }), `trip-${tripId}-export.json`);
     },
-    onSuccess: () => onNotice(textNotice(() => m.owner_trip_export_downloaded())),
+    onSuccess: () => onNotice(textNotice(() => m.trips_trip_export_downloaded())),
   });
 
   return (
@@ -48,16 +48,16 @@ export function TripExport({
       >
         {exportTrip.isPending ? (
           <>
-            <Spinner /> {m.owner_exporting_trip_data()}
+            <Spinner /> {m.trips_exporting_trip_data()}
           </>
         ) : (
-          m.owner_export_trip_data()
+          m.trips_export_trip_data()
         )}
       </Button>
-      <p className="help">{m.owner_trip_export_help()}</p>
+      <p className="help">{m.trips_trip_export_help()}</p>
       {exportTrip.isError && (
         <Alert variant="error" role="alert">
-          {errorMessage(exportTrip.error, m.owner_trip_export_failed)}
+          {errorMessage(exportTrip.error, m.trips_trip_export_failed)}
         </Alert>
       )}
       <TripPdfExport tripId={tripId} />

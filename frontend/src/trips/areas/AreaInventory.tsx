@@ -37,7 +37,7 @@ export function AreaInventory({
               className="document-select"
               type="button"
               onClick={() => onInspect(area.id)}
-              aria-label={m.owner_view_area({ p0: areaName(area) })}
+              aria-label={m.areas_view_area({ name: areaName(area) })}
             >
               <strong>{areaName(area)}</strong>
               <span>
@@ -49,7 +49,7 @@ export function AreaInventory({
               type="button"
               onClick={() => onAddLocation(area.id)}
             >
-              {m.owner_add_location()}
+              {m.areas_add_location()}
             </Button>
           </div>
           {locationsReady && (
@@ -77,7 +77,7 @@ export function AreaInventory({
                   </Button>
                 ))}
               {!locations.some((place) => place.area_id === area.id) && (
-                <p className="help">{m.owner_no_locations_in_this_area_yet()}</p>
+                <p className="help">{m.areas_no_locations_in_this_area_yet()}</p>
               )}
             </div>
           )}

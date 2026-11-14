@@ -41,34 +41,36 @@ export function AreaForm({
     );
   }
   return (
-    <RecordForm record={record} submitLabel={m.owner_save_area()} pendingLabel={m.owner_saving()}>
+    <RecordForm record={record} submitLabel={m.areas_save_area()} pendingLabel={m.common_saving()}>
       <PlaceSearchField
         tripId={tripId}
-        legend={m.owner_search_city_or_region()}
-        inputLabel={m.owner_search_for_a_city_or_region()}
-        placeholder={m.owner_for_example_taipei()}
-        help={m.owner_use_this_for_a_city_or_region_a_result_is_only_stored_when_you_save_and()}
+        legend={m.areas_search_city_or_region()}
+        inputLabel={m.areas_search_for_a_city_or_region()}
+        placeholder={m.areas_for_example_taipei()}
+        help={m.areas_search_hint()}
         onSelect={fillFromSearch}
       />
       <div className="field-row">
         <record.form.Field
           name="label"
           validators={{
-            onChange: requiredText(m.owner_give_the_area_a_name),
-            onSubmit: requiredText(m.owner_give_the_area_a_name),
+            onChange: requiredText(m.areas_give_the_area_a_name),
+            onSubmit: requiredText(m.areas_give_the_area_a_name),
           }}
         >
-          {(field) => <TextField field={field} label={m.owner_name()} required maxLength={120} />}
+          {(field) => <TextField field={field} label={m.common_name()} required maxLength={120} />}
         </record.form.Field>
         <record.form.Field name="countryCode">
           {(field) => (
-            <TextField field={field} label={m.owner_country_code()} optional maxLength={2} />
+            <TextField field={field} label={m.locations_country_code()} optional maxLength={2} />
           )}
         </record.form.Field>
       </div>
       <div className="field-row">
         <record.form.Field name="region">
-          {(field) => <TextField field={field} label={m.owner_region()} optional maxLength={120} />}
+          {(field) => (
+            <TextField field={field} label={m.locations_region()} optional maxLength={120} />
+          )}
         </record.form.Field>
         <record.form.Field
           name="timezone"
@@ -77,8 +79,8 @@ export function AreaForm({
           {(field) => (
             <TimeZoneField
               field={field}
-              label={m.owner_time_zone()}
-              optional={m.owner_optional_private()}
+              label={m.areas_time_zone()}
+              optional={m.areas_optional_private()}
               maxLength={64}
             />
           )}
@@ -96,7 +98,7 @@ export function AreaForm({
           {(field) => (
             <TextField
               field={field}
-              label={m.owner_latitude_2()}
+              label={m.areas_latitude_label()}
               optional
               type="number"
               min={-90}
@@ -112,7 +114,7 @@ export function AreaForm({
           {(field) => (
             <TextField
               field={field}
-              label={m.owner_longitude_2()}
+              label={m.areas_longitude_label()}
               optional
               type="number"
               min={-180}

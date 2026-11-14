@@ -63,46 +63,46 @@ type Section = {
 export const WORKSPACE_SECTIONS = [
   {
     id: "overview",
-    label: () => m.owner_overview(),
+    label: () => m.workspace_overview(),
     icon: LayoutDashboardIcon,
     component: WorkspaceOverview,
   },
   {
     id: "plan",
-    label: () => m.owner_plan(),
+    label: () => m.workspace_plan(),
     icon: CalendarDaysIcon,
     component: lazyView<SectionProps>(() => import("./PlanSection")),
     parts: [
-      { id: "agenda", label: () => m.owner_agenda(), records: [] },
-      { id: "areas", label: () => m.owner_areas_and_locations(), records: ["area", "location"] },
-      { id: "visits", label: () => m.owner_visits(), records: ["visit"] },
-      { id: "stays", label: () => m.owner_stays(), records: ["stay"] },
-      { id: "routes", label: () => m.owner_routes(), records: ["route"] },
+      { id: "agenda", label: () => m.agenda_agenda(), records: [] },
+      { id: "areas", label: () => m.areas_and_locations(), records: ["area", "location"] },
+      { id: "visits", label: () => m.common_visits(), records: ["visit"] },
+      { id: "stays", label: () => m.common_stays(), records: ["stay"] },
+      { id: "routes", label: () => m.common_routes(), records: ["route"] },
     ],
   },
   {
     id: "prepare",
-    label: () => m.owner_prepare(),
+    label: () => m.workspace_prepare(),
     icon: ClipboardCheckIcon,
     component: lazyView<SectionProps>(() => import("./PrepareSection")),
     parts: [
-      { id: "tasks", label: () => m.owner_things_to_arrange(), records: ["task"] },
+      { id: "tasks", label: () => m.tasks_things_to_arrange(), records: ["task"] },
       { id: "documents", label: () => m.library_documents(), records: ["document"] },
     ],
   },
   {
     id: "packing",
-    label: () => m.owner_packing(),
+    label: () => m.packing_packing(),
     icon: BackpackIcon,
     component: lazyView<SectionProps>(() => import("./PackingSection")),
   },
   {
     id: "story",
-    label: () => m.owner_story(),
+    label: () => m.workspace_story(),
     icon: BookOpenIcon,
     component: lazyView<SectionProps>(() => import("./StorySection")),
     parts: [
-      { id: "updates", label: () => m.owner_travel_updates(), records: ["update"] },
+      { id: "updates", label: () => m.common_travel_updates(), records: ["update"] },
       { id: "media", label: () => m.media_library(), records: ["media"] },
     ],
     // The media library used to have a tab of its own.
@@ -110,7 +110,7 @@ export const WORKSPACE_SECTIONS = [
   },
   {
     id: "sharing",
-    label: () => m.owner_sharing(),
+    label: () => m.common_sharing(),
     icon: Share2Icon,
     component: lazyView<SectionProps>(() => import("./SharingSection")),
   },

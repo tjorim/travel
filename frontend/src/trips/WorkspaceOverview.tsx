@@ -32,7 +32,7 @@ export function WorkspaceOverview({
                 className="secondary action-link"
                 to={`/trips/${encodeURIComponent(trip.id)}/details`}
               >
-                {m.owner_complete_private_overview()}
+                {m.workspace_complete_private_overview()}
               </Link>
             }
           />
@@ -55,7 +55,7 @@ export function WorkspaceOverview({
           aria-labelledby="updates-title"
         >
           <h3 className="m-0" id="updates-title">
-            {m.owner_travel_updates()}
+            {m.common_travel_updates()}
           </h3>
           {trip.travel_updates.length ? (
             <ul className="m-0 grid list-none gap-0 p-0">
@@ -75,9 +75,7 @@ export function WorkspaceOverview({
                 ))}
             </ul>
           ) : (
-            <p className="m-0 leading-normal text-travel-muted">
-              {m.owner_no_travel_updates_yet_capture_one_whenever_you_like()}
-            </p>
+            <p className="m-0 leading-normal text-travel-muted">{m.workspace_updates_empty()}</p>
           )}
         </section>
         <div className="min-w-0 min-[1100px]:col-start-1 min-[1100px]:row-start-3">

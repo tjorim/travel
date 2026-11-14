@@ -23,13 +23,13 @@ export function TripChoice({
   useLocale();
   return lockedTrip ? (
     <p className="m-0 font-bold text-travel-forest">
-      {m.owner_trip()} <strong>{lockedTrip.title}</strong>
+      {m.capture_trip()} <strong>{lockedTrip.title}</strong>
     </p>
   ) : (
     <Field>
-      <FieldLabel>{m.owner_trip_2()}</FieldLabel>
+      <FieldLabel>{m.capture_trip_label()}</FieldLabel>
       <AsyncSearchSelect
-        ariaLabel={m.owner_trip()}
+        ariaLabel={m.capture_trip()}
         value={draftTripId}
         selectedOption={selectedTrip ? { value: selectedTrip.id, label: selectedTrip.title } : null}
         defaultOptions={trips.slice(0, 50).map((trip) => ({ value: trip.id, label: trip.title }))}
