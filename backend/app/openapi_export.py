@@ -1,6 +1,6 @@
 """The OpenAPI document the frontend types are generated from.
 
-`frontend/openapi.json` is a committed snapshot of this document; `frontend/src/api-schema.ts` is generated
+`frontend/openapi.json` is a committed snapshot of this document; `frontend/src/api-schema/` is generated
 from it by `pnpm api:generate`. Run `uv run python -m app.openapi_export` from `backend/` to rewrite the
 snapshot, or with `--check` to fail when it is stale (the backend tests do the same).
 """

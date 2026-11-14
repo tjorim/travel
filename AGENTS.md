@@ -58,10 +58,11 @@ them over when you touch them.
 
 The frontend's API types are generated, never written by hand. `frontend/openapi.json` is a
 committed snapshot of the backend's OpenAPI document (`backend/app/openapi_export.py`) and
-`frontend/src/api-schema.ts` is generated from it with the pinned `openapi-typescript`. After
+`frontend/src/api-schema/` (one file per schema) is generated from it with the pinned Orval
+(`frontend/orval.config.mjs`: schemas only, `useTypeOverInterfaces`, no client or pnpmfile). After
 changing a response model or an endpoint in `backend/`, run `pnpm api:generate` in `frontend/`
-(it needs `uv`) and commit both files. `pnpm typecheck` runs `pnpm api:check` and fails when
-`api-schema.ts` is stale; the backend test `test_openapi_snapshot` fails when `openapi.json` is stale.
+(it needs `uv`) and commit `openapi.json` and `src/api-schema/`. `pnpm typecheck` runs `pnpm api:check` and fails when
+`src/api-schema/` is stale; the backend test `test_openapi_snapshot` fails when `openapi.json` is stale.
 Name a generated record for the screens in `frontend/src/api-types.ts`; do not declare an API
 record type in the frontend. Every JSON endpoint needs a `response_model` (a test enforces it),
 and a response model derives from `ResponseModel` in `backend/app/schemas.py` so a field with a
