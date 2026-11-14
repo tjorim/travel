@@ -44,7 +44,7 @@ from ..schemas import (
 from ..sharing_presets import apply_preset
 from ..storage import ObjectStorage
 from .delivery import inspect_delivered_file, navigation_target
-from .live_location import current_for_audience
+from .live_location import PUBLIC, AudienceRef, current_for_audience, forget_audience
 from .sharing import (
     LAZY_EXPIRY,
     activation_response,
@@ -214,6 +214,7 @@ def unpublish_public_projection(
     if surface is None or surface.state != SurfaceState.PUBLISHED:
         raise Conflict("This trip is not published", code="this_trip_is_not_published")
     surface.state = SurfaceState.UNPUBLISHED
+    forget_audience(session, AudienceRef.parse(PUBLIC), trip_id=trip_id)
     details: dict = {"scope_version": scope_fingerprint(surface.scope)}
     if payload is not None and payload.reason:
         details["reason"] = payload.reason
@@ -242,6 +243,7 @@ def expire_link(session: Session, link: ShareLink) -> None:
     """Record the active -> expired transition, stamping the audit event with the real expiry time rather than
     the time someone noticed. The caller commits."""
     link.state = LinkState.EXPIRED
+    forget_audience(session, AudienceRef.parse(link.id), trip_id=link.trip_id)
     record_audit_event(
         session,
         trip_id=link.trip_id,
@@ -488,6 +490,7 @@ def revoke_share_link(
     if link.state != LinkState.ACTIVE:
         raise Conflict("Only an active link can be revoked", code="only_an_active_link_can_be_revoked")
     link.state = LinkState.REVOKED
+    forget_audience(session, AudienceRef.parse(link.id), trip_id=trip_id)
     link.token = None
     link.revoked_at = datetime.now(UTC)
     details: dict = {}
@@ -513,6 +516,7 @@ def rotate_share_link(
     if old_link.state != LinkState.ACTIVE:
         raise Conflict("Only an active link can be rotated", code="only_an_active_link_can_be_rotated")
     old_link.state = LinkState.REVOKED
+    forget_audience(session, AudienceRef.parse(old_link.id), trip_id=trip_id)
     old_link.token = None
     old_link.revoked_at = datetime.now(UTC)
 

@@ -294,6 +294,42 @@
               }
             }
           }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "observed_at": {
+                    "format": "date-time",
+                    "title": "Observed At",
+                    "type": "string"
+                  },
+                  "latitude": {
+                    "maximum": 90,
+                    "minimum": -90,
+                    "title": "Latitude",
+                    "type": "number"
+                  },
+                  "longitude": {
+                    "maximum": 180,
+                    "minimum": -180,
+                    "title": "Longitude",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "observed_at",
+                  "latitude",
+                  "longitude"
+                ],
+                "title": "LivePositionInput",
+                "type": "object"
+              }
+            }
+          }
         }
       }
     },
@@ -470,10 +506,12 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "One JSON point per line: `id`, `observed_at`, `latitude` and `longitude`.",
             "content": {
-              "application/json": {
-                "schema": {}
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
@@ -14358,9 +14396,14 @@
                 "10km"
               ]
             },
+            "propertyNames": {
+              "maxLength": 32,
+              "minLength": 1
+            },
             "type": "object",
             "maxProperties": 100,
-            "title": "Audiences"
+            "title": "Audiences",
+            "description": "The audiences that receive the current position, with the precision each receives, keyed by `public` for the public view, or the id of one of the trip's share links. A link that is revoked, expired or rotated loses its setting. It replaces the saved audiences: one left out is removed together with its delay."
           },
           "delays": {
             "anyOf": [
@@ -14376,6 +14419,10 @@
                     86400
                   ]
                 },
+                "propertyNames": {
+                  "maxLength": 32,
+                  "minLength": 1
+                },
                 "type": "object",
                 "maxProperties": 100
               },
@@ -14383,7 +14430,8 @@
                 "type": "null"
               }
             ],
-            "title": "Delays"
+            "title": "Delays",
+            "description": "Seconds to hold the position back, per audience in `audiences`. Only the audiences named here change; one that has no saved delay starts at 0. Omit it to keep every saved delay."
           }
         },
         "additionalProperties": false,
@@ -14397,8 +14445,10 @@
         "properties": {
           "source": {
             "type": "string",
-            "pattern": "^(person|device_tracker)\\.[a-z0-9_]{1,100}$",
-            "title": "Source"
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Source",
+            "description": "An opaque name the owner gives the position source, such as a Home Assistant entity id. Letters, digits, `.`, `_`, `:` and `-`, starting with a letter or digit; Travel never interprets it."
           }
         },
         "additionalProperties": false,
@@ -14432,14 +14482,16 @@
               ]
             },
             "type": "object",
-            "title": "Audiences"
+            "title": "Audiences",
+            "description": "The precision each audience receives, keyed by `public` for the public view, or the id of one of the trip's share links. A link that is revoked, expired or rotated loses its setting."
           },
           "delays": {
             "additionalProperties": {
               "type": "integer"
             },
             "type": "object",
-            "title": "Delays"
+            "title": "Delays",
+            "description": "The delay of each audience in `audiences`, in seconds."
           },
           "previews": {
             "additionalProperties": {
@@ -14466,6 +14518,16 @@
             "type": "boolean",
             "title": "Stale",
             "description": "The newest point is more than an hour old."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
           }
         },
         "type": "object",
@@ -14477,7 +14539,9 @@
           "delays",
           "previews",
           "current",
-          "stale"
+          "stale",
+          "created_at",
+          "updated_at"
         ],
         "title": "LiveSessionResponse"
       },

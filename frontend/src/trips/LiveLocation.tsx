@@ -17,6 +17,8 @@ import { saveFile } from "./save-file";
 import type { LiveSession, LiveTrackPage } from "../api-types";
 
 type Precision = "off" | "exact" | "1km" | "10km";
+// The delays the API accepts, in seconds.
+const DELAYS = [0, 900, 1800, 3600, 7200, 86400] as const;
 export function LiveLocation({ tripId }: { tripId: string }) {
   useLocale();
   const owner = useOwner();
@@ -101,16 +103,18 @@ export function LiveLocation({ tripId }: { tripId: string }) {
         <ChoiceGroup
           label={m.live_delay_label({ audience: label })}
           value={String(draft.delays?.[audience] ?? 0)}
-          choices={[0, 900, 1800, 3600, 7200, 86400].map((seconds) => ({
+          choices={DELAYS.map((seconds) => ({
             value: String(seconds),
             label: m.live_delay_value({
               count: seconds / 60,
               minutes: formatNumber(seconds / 60),
             }),
           }))}
-          onChange={(value) =>
-            setDraft({ ...draft, delays: { ...draft.delays, [audience]: Number(value) } })
-          }
+          onChange={(value) => {
+            const seconds = DELAYS.find((delay) => String(delay) === value);
+            if (seconds !== undefined)
+              setDraft({ ...draft, delays: { ...draft.delays, [audience]: seconds } });
+          }}
         />
       )}
     </div>
@@ -252,7 +256,8 @@ export function LiveLocation({ tripId }: { tripId: string }) {
               <FieldLabel>{m.live_source()}</FieldLabel>
               <Input
                 required
-                pattern="(person|device_tracker)\.[a-z0-9_]+"
+                maxLength={128}
+                pattern="[A-Za-z0-9][A-Za-z0-9._:\-]*"
                 value={source}
                 onChange={(event) => setSource(event.target.value)}
               />
@@ -276,7 +281,9 @@ export function LiveLocation({ tripId }: { tripId: string }) {
             <div className="grid gap-3">
               <p>{m.live_audience_warning()}</p>
               {audienceControls("public", m.live_public())}
-              {links.data?.map((link) => audienceControls(link.id, link.label))}
+              {links.data
+                ?.filter((link) => link.state === "draft" || link.state === "active")
+                .map((link) => audienceControls(link.id, link.label))}
               <Button
                 type="button"
                 disabled={change.isPending || links.isPending || links.isError}

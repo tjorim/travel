@@ -681,6 +681,10 @@ coordinates and tracks are excluded from PDF, Atom and ordinary trip exports;
 owner track export is a separate deliberate download. Database and HA backups
 may retain deleted history until their independent retention expires.
 
+Each audience of a live session (the public view or one hidden link) is a row of `live_session_audiences` with its
+own precision and delay; its source is an opaque owner-chosen identifier. A row goes with its link, and revoking,
+expiring or rotating a link or unpublishing the public view removes it ([decision 244](decisions/244-live-location-tracks.md#storage-and-api-alignment-363-2026-11-14)).
+
 ## Per-audience delayed delivery (#332)
 
 Review each audience's precision, intentional delay and actual delivered observation

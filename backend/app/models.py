@@ -48,6 +48,23 @@ class LinkState(StrEnum):
     EXPIRED = "expired"
 
 
+class LiveAudienceKind(StrEnum):
+    """Who a live-location setting is for: the public view, or one hidden link."""
+
+    PUBLIC = "public"
+    LINK = "link"
+
+
+class LivePrecision(StrEnum):
+    EXACT = "exact"
+    KM1 = "1km"
+    KM10 = "10km"
+
+
+# The delays an owner may choose for a live-location audience, in seconds (decision 244).
+LIVE_DELAYS = (0, 900, 1800, 3600, 7200, 86400)
+
+
 class ObjectState(StrEnum):
     STAGED = "staged"
     AVAILABLE = "available"
@@ -286,6 +303,10 @@ class Area(Base):
     locations filed under it."""
 
     __tablename__ = "areas"
+    __table_args__ = (
+        CheckConstraint("latitude >= -90 AND latitude <= 90", name="ck_areas_latitude"),
+        CheckConstraint("longitude >= -180 AND longitude <= 180", name="ck_areas_longitude"),
+    )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -323,6 +344,16 @@ class Location(Base):
         CheckConstraint(
             "osm_element_type IS NULL OR osm_element_type IN ('node', 'way', 'relation')",
             name="ck_locations_osm_element_type",
+        ),
+        CheckConstraint("latitude >= -90 AND latitude <= 90", name="ck_locations_latitude"),
+        CheckConstraint("longitude >= -180 AND longitude <= 180", name="ck_locations_longitude"),
+        CheckConstraint(
+            "viewport_north >= -90 AND viewport_north <= 90 AND viewport_south >= -90 AND viewport_south <= 90",
+            name="ck_locations_viewport_latitudes",
+        ),
+        CheckConstraint(
+            "viewport_east >= -180 AND viewport_east <= 180 AND viewport_west >= -180 AND viewport_west <= 180",
+            name="ck_locations_viewport_longitudes",
         ),
     )
 
@@ -1534,7 +1565,10 @@ class MediaWorkerJob(Base):
 
 
 class LiveSession(Base):
-    """Explicit owner/source/trip binding; never traversed by story projections."""
+    """Explicit owner/source/trip binding; never traversed by story projections.
+
+    ``source`` is an opaque identifier the owner chooses; Travel never interprets it. The audiences that may receive
+    the current position, each with its own precision and delay, are the rows of ``audiences``."""
 
     __tablename__ = "live_sessions"
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
@@ -1543,9 +1577,63 @@ class LiveSession(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     watermark: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    current_id: Mapped[str | None] = mapped_column(String(32))
-    audiences: Mapped[dict] = mapped_column(JSON, default=dict)
-    delays: Mapped[dict] = mapped_column(JSON, default=dict)
+    # The newest accepted point. Deleting the tracks clears it; the circular reference is added after both tables.
+    current_id: Mapped[str | None] = mapped_column(
+        ForeignKey("live_points.id", ondelete="SET NULL", use_alter=True, name="fk_live_sessions_current_point")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    audiences: Mapped[list[LiveSessionAudience]] = relationship(
+        back_populates="session", cascade="all, delete-orphan", passive_deletes=True, order_by="LiveSessionAudience.id"
+    )
+
+
+class LiveSessionAudience(Base):
+    """One audience a session's current position may be shown to, with the precision and delay chosen for it.
+
+    The audience is its kind plus the record it names: the public view has none, a hidden link names its
+    ``share_link_id``. The row goes with the link (``ON DELETE CASCADE``); the application also removes it when the
+    link is revoked, expires or is rotated and when the public view is unpublished, so a setting never outlives the
+    audience it was for. Collection members receive no live location (decision 244) and have no kind here."""
+
+    __tablename__ = "live_session_audiences"
+    __table_args__ = (
+        UniqueConstraint("session_id", "share_link_id", name="uq_live_session_audiences_link"),
+        Index(
+            "uq_live_session_audiences_public",
+            "session_id",
+            unique=True,
+            postgresql_where=text("kind = 'public'"),
+            sqlite_where=text("kind = 'public'"),
+        ),
+        CheckConstraint("(kind = 'link') = (share_link_id IS NOT NULL)", name="ck_live_session_audiences_link_pair"),
+        CheckConstraint(
+            "delay_seconds IN (" + ", ".join(str(delay) for delay in LIVE_DELAYS) + ")",
+            name="ck_live_session_audiences_delay",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
+    session_id: Mapped[str] = mapped_column(ForeignKey("live_sessions.id", ondelete="CASCADE"), nullable=False)
+    kind: Mapped[LiveAudienceKind] = mapped_column(
+        _enum_column(LiveAudienceKind, "travel_live_audience_kind"), nullable=False
+    )
+    share_link_id: Mapped[str | None] = mapped_column(
+        ForeignKey("share_links.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    precision: Mapped[LivePrecision] = mapped_column(
+        _enum_column(LivePrecision, "travel_live_precision"), nullable=False
+    )
+    delay_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    session: Mapped[LiveSession] = relationship(back_populates="audiences")
 
 
 class LivePoint(Base):
@@ -1556,8 +1644,8 @@ class LivePoint(Base):
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
     __table_args__ = (
-        UniqueConstraint("session_id", "observed_at"),
+        UniqueConstraint("session_id", "observed_at", name="uq_live_points_session_observed"),
         Index("ix_live_points_session_id_id", "session_id", "id"),
-        CheckConstraint("latitude >= -90 AND latitude <= 90"),
-        CheckConstraint("longitude >= -180 AND longitude <= 180"),
+        CheckConstraint("latitude >= -90 AND latitude <= 90", name="ck_live_points_latitude"),
+        CheckConstraint("longitude >= -180 AND longitude <= 180", name="ck_live_points_longitude"),
     )

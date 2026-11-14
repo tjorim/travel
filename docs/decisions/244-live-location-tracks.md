@@ -83,3 +83,33 @@ eligible point and preserves the replay watermark. Retained tracks remain
 owner-only, excluded from Atom, PDFs and ordinary trip exports. There are no new
 GPS sources, coordinate logs, background jobs or infrastructure requirements;
 production OAuth provisioning remains apps#333.
+
+## Storage and API alignment (#363, 2026-11-14)
+
+The privacy boundaries above are unchanged: tracks stay owner-only, visitor delivery goes through the single
+`current_for_audience` function, and collection members receive no live location. This only changes how the
+settings are stored and described.
+
+- **Source.** `source` is an opaque identifier the owner chooses, 1 to 128 characters of letters, digits, `.`, `_`,
+  `:` and `-`, starting with a letter or digit. The core API no longer knows the Home Assistant entity-id format;
+  the Home Assistant integration still sends its entity id, and every stored value stays valid.
+- **Audiences are rows.** The two JSON dictionaries `audiences` and `delays` are replaced by one
+  `live_session_audiences` row per session and audience, holding its precision and delay. An audience is its kind
+  plus the record it names: the public view (`public`, no record) or one hidden link (`link`, the link's id). On the
+  wire and in code the audience is still the key `public` or the link id; `AudienceRef` maps it to the row. Tables stay
+  per kind (#360): a collection member would add its own kind and nullable foreign key, and has none today.
+- **No stale settings.** A link's row references `share_links` with `ON DELETE CASCADE`. Revoking, expiring or
+  rotating a link and unpublishing the public view remove the row explicitly (`forget_audience`), so a setting never
+  outlives the audience it was for and a republished page or a re-created link does not resume sharing. Deleting a
+  trip or a session removes its rows. Setting an audience needs a draft or active link of the same trip.
+- **Delays.** A delay belongs to its audience row: removing an audience removes its delay, and an audience added later
+  starts at zero unless the request names one. A partial `delays` map still changes only the audiences it names, and
+  omitting it keeps every saved delay of the audiences that remain.
+- **Tables.** `live_sessions` gains `created_at` and `updated_at`; `current_id` is a foreign key to `live_points`
+  (cleared when the point is deleted); the `live_points` constraints are named; areas and locations get the same
+  coordinate range checks. Migration 032 moves the saved dictionaries into rows, dropping those of links that were
+  deleted, revoked or expired, and the downgrade writes the dictionaries again.
+- **API.** The request and response models live in `schemas.py` (requests on `InputModel`), every route declares its
+  response model and the operations are typed in the OpenAPI schema. Errors use specific codes (`live_session_limit`,
+  `live_disabled`, `live_timestamp`, `live_order`, `live_rate_limit`, `live_audience_unavailable`,
+  `live_delay_audience`, `live_position_too_large`, `live_invalid_position`, and `not_found`).
