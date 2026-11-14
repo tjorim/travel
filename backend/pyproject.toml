@@ -36,7 +36,7 @@ dev = [
   "pytest==9.2.0",
   "python-travel",
   "ruff==0.17.4",
-  "ty==0.0.99",
+  "ty==0.0.101",
 ]
 
 [tool.hatch.build.targets.wheel]
