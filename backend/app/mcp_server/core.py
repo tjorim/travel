@@ -35,8 +35,8 @@ logger = logging.getLogger("app.mcp_server")
 class BinaryUpload(schemas.InputModel):
     """A bounded, explicit binary input for an owner-selected local file.
 
-    The base64 string travels inside the JSON of the tool call. Over HTTP the whole request is capped at 4 MiB (the
-    MCP transport's ceiling), which leaves about 3 MiB of file; the stdio server has no such cap. The decoded size is
+    The base64 string travels inside the JSON of the tool call. Over HTTP the whole request is capped at 48 MiB
+    (``MCP_MAX_REQUEST_BODY_BYTES``), which leaves about 36 MiB of file; the stdio server has no such cap. The decoded size is
     always limited to the media upload limit (#84).
     """
 
@@ -46,7 +46,7 @@ class BinaryUpload(schemas.InputModel):
         min_length=1,
         max_length=300_000_000,
         description=(
-            "The file, base64-encoded. Over HTTP MCP the whole request is limited to 4 MiB (about 3 MiB of file); "
+            "The file, base64-encoded. Over HTTP MCP the whole request is limited to 48 MiB (about 36 MiB of file); "
             "send a larger file through the multipart upload API."
         ),
     )

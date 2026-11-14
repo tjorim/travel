@@ -96,17 +96,31 @@ file with an enforced decoded limit, then follows the same ingestion path.
 Clients handling large files should use the multipart upload API; eliminating
 the encoded JSON allocation requires a different MCP binary transport (tracked in tjorim/travel#84).
 
-Over HTTP the MCP transport caps every request body at 4 MiB (the MCP SDK's
-`DEFAULT_MAX_REQUEST_BODY_SIZE`, which FastMCP does not let an application raise), so a base64
-upload holds about 3 MiB of file and the encoded JSON can never exceed 4 MiB per request.
-`RequestBodyCap` (`app/mcp_server/server.py`) refuses a declared larger body with `413` and
-`mcp_request_too_large` before the throttle, token check or any read, and the SDK stops a
-streamed body at the same ceiling; `test_the_mcp_request_ceiling_matches_the_transport_sdk`
-fails if the SDK moves it. Only the local stdio server (development) can receive a larger
-body. A synthetic 150 MiB stdio upload (`tests/test_mcp_upload_memory.py`) grew the peak RSS
+Over HTTP the MCP transport caps every request body at 48 MiB (`MCP_MAX_REQUEST_BODY_BYTES`
+in `app/mcp_server/server.py`), so a base64 upload holds about 36 MiB of file (a body of exactly the
+limit decodes to just under it, after the call's JSON framing). That covers phone photos,
+scanned PDFs and short clips; anything larger uses the multipart API or, later, the upload
+handle in #84. The MCP SDK's own default is 4 MiB and FastMCP does not pass the setting on, so
+`TravelStreamableHTTPSessionManager` (a subclass of FastMCP's session manager, installed over
+the name FastMCP builds it by) reapplies the one constant to the SDK's limit, and
+`RequestBodyCap` refuses a declared larger body with `413` and `mcp_request_too_large` before the
+throttle, token check or any read; the SDK stops a streamed body at the same ceiling. Tests
+through the production mount (`test_mcp_server.py`) accept a body of exactly the limit and refuse
+one byte more, and fail if a FastMCP or SDK upgrade stops honouring the override. Only the local
+stdio server (development) can receive a larger body.
+
+Memory: a synthetic 150 MiB stdio upload (`tests/test_mcp_upload_memory.py`) grew the peak RSS
 by about 400 MiB while parsing, twice the 200 MiB of encoded JSON, because `json.loads`
 decodes the bytes to text and then builds the string; decoding, staging, the durable copy
-and the read-back then grew it by 4 MiB more.
+and the read-back then grew it by 4 MiB more. Through uvicorn and the production mount, a
+48 MiB document upload (the largest body accepted, just under 36 MiB of file) grew the server's peak RSS
+by about 148 MiB, 3.1 times the body (the SDK's buffered body and its copy, then the parsed
+text and string); three concurrent ones grew it by about 445 MiB and a 4 MiB body by 16 MiB. The
+upload slots above gate only the staged ingestion that follows, not the read and parse, so the
+worst case is the number of requests in flight times about 150 MiB. Only the owner's token
+reaches the body (authentication runs before it is read), and the decoded file then streams
+through chunks and the slots; a deployment that cannot spare that for several simultaneous
+large calls should lower `MCP_MAX_REQUEST_BODY_BYTES` rather than the semaphore.
 Photo validation still decodes pixels under Pillow's decompression-bomb limits;
 the streaming memory guarantee concerns encoded file bytes, not decoded pixels.
 

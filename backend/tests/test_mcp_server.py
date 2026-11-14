@@ -13,10 +13,11 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from fastmcp import Client, FastMCP
 from fastmcp.exceptions import ToolError
+from fastmcp.server import http as fastmcp_http
 from fastmcp.server.auth.providers.jwt import RSAKeyPair
 from fastmcp.tools.base import Tool
 from fastmcp.utilities.json_schema import dereference_refs
-from mcp.server.transport_security import DEFAULT_MAX_REQUEST_BODY_SIZE
+from mcp.server.transport_security import DEFAULT_MAX_REQUEST_BODY_SIZE, RequestBodyLimitMiddleware
 from pydantic import ValidationError
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import sessionmaker
@@ -41,7 +42,8 @@ from app.mcp_server import (
     mount_mcp,
 )
 from app.mcp_server import core as mcp_core
-from app.mcp_server.server import MCP_MAX_REQUEST_BODY_BYTES
+from app.mcp_server.core import BinaryUpload
+from app.mcp_server.server import MCP_MAX_REQUEST_BODY_BYTES, TravelStreamableHTTPSessionManager
 from app.models import (
     AuditEvent,
     AuditEventKind,
@@ -499,19 +501,47 @@ def test_mcp_http_refuses_an_oversized_streamed_body_as_it_arrives(mcp_resource:
     application, pair = mcp_resource
     chunk = b"x" * (1024 * 1024)
 
-    def chunks():  # no Content-Length, so only the transport's own counting can stop it
-        for _ in range(8):
+    def chunks(total: int):  # no Content-Length, so only the transport's own counting can stop it
+        for _ in range(total // len(chunk)):
             yield chunk
+        yield b"x" * (total % len(chunk))
 
     with TestClient(application, base_url="https://travel.example.test") as client:
-        refused = client.post("/mcp/", content=chunks(), headers=_bearer(pair))
+        # The SDK's own limit is what stops this one: it must be the raised one, not its 4 MiB default, in both directions.
+        within = client.post("/mcp/", content=chunks(MCP_MAX_REQUEST_BODY_BYTES), headers=_bearer(pair))
+        over = client.post("/mcp/", content=chunks(MCP_MAX_REQUEST_BODY_BYTES + 1), headers=_bearer(pair))
 
-    assert refused.status_code == 413
+    assert within.status_code != 413  # read in full, then refused as something other than a JSON-RPC message
+    assert over.status_code == 413
 
 
-def test_the_mcp_request_ceiling_matches_the_transport_sdk() -> None:
-    # Our message names the SDK's own ceiling; if the SDK moves it, the documented upload size must be revisited.
-    assert MCP_MAX_REQUEST_BODY_BYTES == DEFAULT_MAX_REQUEST_BODY_SIZE
+def test_mcp_http_accepts_a_declared_body_up_to_the_request_limit(mcp_resource: tuple[FastAPI, RSAKeyPair]) -> None:
+    application, pair = mcp_resource
+    with TestClient(application, base_url="https://travel.example.test") as client:
+        headers = _bearer(pair)
+        within = client.post("/mcp/", content=b"x" * MCP_MAX_REQUEST_BODY_BYTES, headers=headers)
+        over = client.post("/mcp/", content=b"x" * (MCP_MAX_REQUEST_BODY_BYTES + 1), headers=headers)
+
+    # The body passed both limits and failed only as a JSON-RPC message; one byte more is the 413 of ``RequestBodyCap``.
+    assert within.status_code != 413
+    assert over.status_code == 413
+    assert over.json()["errors"][0]["code"] == "mcp_request_too_large"
+
+
+def test_the_session_manager_applies_the_request_limit_instead_of_the_sdk_default() -> None:
+    # FastMCP builds its session manager without ``max_request_body_size``; if an upgrade renames what we override,
+    # or stops building it by the name ``app.mcp_server.server`` replaces, the SDK's 4 MiB default returns and this fails.
+    assert MCP_MAX_REQUEST_BODY_BYTES > DEFAULT_MAX_REQUEST_BODY_SIZE
+    assert fastmcp_http.FastMCPStreamableHTTPSessionManager is TravelStreamableHTTPSessionManager
+    manager = TravelStreamableHTTPSessionManager(app=FastMCP("limits")._mcp_server)
+    assert manager.max_request_body_size == MCP_MAX_REQUEST_BODY_BYTES
+    assert isinstance(manager.asgi_app, RequestBodyLimitMiddleware)
+    assert manager.asgi_app.max_body_size == MCP_MAX_REQUEST_BODY_BYTES
+
+
+def test_the_upload_schema_states_the_request_limit() -> None:
+    description = BinaryUpload.model_json_schema()["properties"]["data_base64"]["description"]
+    assert f"{MCP_MAX_REQUEST_BODY_BYTES // 1024 // 1024} MiB" in description
 
 
 MCP_LIMIT = 3

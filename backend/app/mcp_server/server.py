@@ -14,12 +14,14 @@ from fastapi import FastAPI, Request
 from fastmcp import FastMCP
 from fastmcp.exceptions import DisabledError, FastMCPError, NotFoundError, ToolError
 from fastmcp.exceptions import ValidationError as ArgumentValidationError
+from fastmcp.server import http as fastmcp_http
 from fastmcp.server.auth.providers.jwt import JWTVerifier
 from fastmcp.server.auth.providers.keycloak import KeycloakAuthProvider
-from fastmcp.server.http import StarletteWithLifespan
+from fastmcp.server.http import FastMCPStreamableHTTPSessionManager, StarletteWithLifespan
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 from fastmcp.server.transforms.search import BM25SearchTransform
 from fastmcp.tools.base import Tool
+from mcp.server.transport_security import RequestBodyLimitMiddleware
 from mcp.types import ToolAnnotations
 from pydantic import AnyHttpUrl, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
@@ -447,14 +449,35 @@ class AuthenticationFailureLimiter:
         await self.app(scope, receive, send_counting_401)
 
 
-# The ceiling the MCP SDK's streamable HTTP transport applies to a request body (``DEFAULT_MAX_REQUEST_BODY_SIZE``;
-# FastMCP offers no way to change it). It bounds the encoded JSON of every tool call, so a base64 upload over HTTP is
-# limited to about three quarters of it. A larger file goes through the multipart upload API (#84).
-MCP_MAX_REQUEST_BODY_BYTES = 4 * 1024 * 1024
+# The ceiling on the body of an MCP HTTP request. It bounds the encoded JSON of every tool call, so a base64 upload
+# over HTTP holds about three quarters of it less the JSON framing (48 MiB gives files up to about 36 MiB: phone
+# photos, scanned PDFs and short clips). One constant sets both this app's refusal below and the SDK's own limit, which
+# ``TravelStreamableHTTPSessionManager`` raises from the SDK's 4 MiB default (FastMCP does not expose it). Each request
+# in flight costs about three times its size in memory (docs/object-storage.md, ``test_mcp_upload_memory.py``). A larger
+# file goes through the multipart upload API or the upload handle still open in #84.
+MCP_MAX_REQUEST_BODY_BYTES = 48 * 1024 * 1024
 MCP_REQUEST_TOO_LARGE_DETAIL = (
-    "MCP request bodies are limited to 4 MiB, so a base64 upload over MCP holds about 3 MiB. "
+    "MCP request bodies are limited to 48 MiB, so a base64 upload over MCP holds about 36 MiB of file. "
     "Upload larger files through the multipart upload API."
 )
+
+
+class TravelStreamableHTTPSessionManager(FastMCPStreamableHTTPSessionManager):
+    """FastMCP's session manager with this app's request body ceiling instead of the SDK's 4 MiB default.
+
+    The SDK constructor takes ``max_request_body_size`` but FastMCP's does not pass it on, so it is reapplied here
+    through the two public attributes the SDK's constructor derives from it. ``test_mcp_server.py`` fails if an
+    upgrade stops honouring this.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.max_request_body_size = MCP_MAX_REQUEST_BODY_BYTES
+        self.asgi_app = RequestBodyLimitMiddleware(self._handle_request, MCP_MAX_REQUEST_BODY_BYTES)
+
+
+# FastMCP builds its session manager by this module-level name when the app's lifespan starts.
+fastmcp_http.FastMCPStreamableHTTPSessionManager = TravelStreamableHTTPSessionManager  # ty: ignore[invalid-assignment]
 
 
 class RequestBodyCap:
