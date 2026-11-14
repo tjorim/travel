@@ -119,6 +119,45 @@ def test_a_collection_member_has_the_same_future_disclosure_review_as_a_link() -
         assert empty.model_dump() == {"transport": 0, "day_dates": 0}
 
 
+def test_a_collection_member_future_disclosure_route_answers_like_the_link_one() -> None:
+    owner = client_for("owner-1")
+    found = _audiences(owner)
+    trip_id, link_id, member_id = found["trip"]["id"], found["link"]["id"], found["member"]["id"]
+    collection_id = found["collection"]["id"]
+    member_path = f"/api/collections/{collection_id}/members/{member_id}/future-disclosure"
+    link_path = f"/api/trips/{trip_id}/share-links/{link_id}/future-disclosure"
+
+    saved = owner.post(member_path)
+    assert saved.status_code == 200, saved.text
+    assert saved.json() == owner.post(link_path).json() == {"transport": 1, "day_dates": 1}
+    # The candidate is counted instead of the saved scope, and nothing is stored.
+    empty = {"items": [], "defaults": None}
+    assert owner.post(member_path, json=empty).json() == {"transport": 0, "day_dates": 0}
+    assert owner.post(member_path).json() == {"transport": 1, "day_dates": 1}
+    # A date cap in the candidate is applied like a save, and exactly as a link applies it.
+    month = {"items": found["member"]["scope"]["items"], "defaults": {"date_precision": "month"}}
+    capped = owner.post(member_path, json=month).json()
+    assert capped == owner.post(link_path, json=month).json()
+    assert capped["day_dates"] == 0
+    # An invalid candidate is refused as the save refuses it.
+    invalid = {"items": [item("route", "no-such-route")], "defaults": None}
+    assert owner.post(member_path, json=invalid).status_code == owner.post(link_path, json=invalid).status_code
+    assert owner.post(member_path, json=invalid).status_code in {404, 409, 422}
+
+
+def test_a_collection_member_future_disclosure_review_is_owner_only_and_scoped_to_its_collection() -> None:
+    owner = client_for("owner-1")
+    found = _audiences(owner)
+    collection_id, member_id = found["collection"]["id"], found["member"]["id"]
+    other = owner.post("/api/collections", json={"label": "Other"}).json()
+    unknown = owner.post(f"/api/collections/{other['id']}/members/{member_id}/future-disclosure")
+    assert unknown.status_code == 404
+    path = f"/api/collections/{collection_id}/members/{member_id}/future-disclosure"
+    stranger = client_for("stranger-9")
+    assert stranger.post(path).status_code == 404
+    assert client_for("owner-1").post(path).status_code == 200
+
+
 def test_a_public_view_that_was_never_saved_previews_with_the_month_cap_it_will_hold() -> None:
     owner = client_for("owner-1")
     trip = create_trip(owner)

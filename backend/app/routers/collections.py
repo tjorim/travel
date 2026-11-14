@@ -34,6 +34,7 @@ from ..schemas import (
     CollectionResponse,
     CollectionUpdate,
     ExclusionWideningConflict,
+    FutureDisclosure,
     Identifier,
     ProjectionDocument,
     SafeText,
@@ -160,6 +161,20 @@ def preview_collection_member(
     persist_lazy_expiry(session)
     response.headers["Cache-Control"] = "no-store"
     return document
+
+
+@router.post("/{collection_id}/members/{member_id}/future-disclosure", response_model=FutureDisclosure)
+def review_collection_member_future(
+    collection_id: Identifier,
+    member_id: Identifier,
+    session: SessionDep,
+    subject: SubjectDep,
+    payload: ShareScopeInput | None = None,
+) -> FutureDisclosure:
+    """The same review as a hidden link's, for a collection member's candidate scope. Stores nothing."""
+    result = service.review_member_future(session, subject, collection_id, member_id, payload)
+    persist_lazy_expiry(session)
+    return result
 
 
 @router.post("/{collection_id}/members/{member_id}/preview/files/{local_id}")

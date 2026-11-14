@@ -16,6 +16,8 @@ import {
   exclusionWidening,
 } from "../trips/publication/ExclusionWideningDialog";
 import { ScopeEditor } from "../trips/publication/ScopeEditor";
+import { FutureDisclosureList, futureDisclosureLines } from "../trips/publication/SharingReview";
+import { useFutureDisclosure } from "../trips/publication/use-future-disclosure";
 import type { PresetAppliedAudience } from "../trips/publication/use-sharing-presets";
 import { usePublicationCatalog } from "../trips/publication/use-publication-catalog";
 import {
@@ -24,6 +26,34 @@ import {
   type Collection,
   type CollectionMember,
 } from "./collections";
+
+/** What the previewed scope would show of a trip that has not started yet, worded as the link preview words it. */
+function MemberFutureDisclosure({
+  collection,
+  member,
+  tripId,
+  scope,
+}: {
+  collection: Collection;
+  member: CollectionMember;
+  tripId: string;
+  scope: ShareScope;
+}) {
+  useLocale();
+  const future = useFutureDisclosure(
+    tripId,
+    { kind: "member", collectionId: collection.id, memberId: member.id },
+    scope,
+  );
+  return (
+    <FutureDisclosureList
+      lines={futureDisclosureLines(
+        future.data ?? { transport: 0, day_dates: 0 },
+        m.publication_collection_member({ name: collection.label }),
+      )}
+    />
+  );
+}
 
 /** Chooses what one member trip shows inside a collection, with a preview of the unsaved choice. */
 export function MemberScopeDialog({
@@ -144,6 +174,12 @@ export function MemberScopeDialog({
         )}
         {preview && session && (
           <>
+            <MemberFutureDisclosure
+              collection={collection}
+              member={member}
+              tripId={trip.id}
+              scope={preview.scope}
+            />
             <p className="help">{m.sharing_preview_unsaved_note()}</p>
             <RenderedPreview
               projection={preview.document}
