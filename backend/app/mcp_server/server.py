@@ -447,6 +447,43 @@ class AuthenticationFailureLimiter:
         await self.app(scope, receive, send_counting_401)
 
 
+# The ceiling the MCP SDK's streamable HTTP transport applies to a request body (``DEFAULT_MAX_REQUEST_BODY_SIZE``;
+# FastMCP offers no way to change it). It bounds the encoded JSON of every tool call, so a base64 upload over HTTP is
+# limited to about three quarters of it. A larger file goes through the multipart upload API (#84).
+MCP_MAX_REQUEST_BODY_BYTES = 4 * 1024 * 1024
+MCP_REQUEST_TOO_LARGE_DETAIL = (
+    "MCP request bodies are limited to 4 MiB, so a base64 upload over MCP holds about 3 MiB. "
+    "Upload larger files through the multipart upload API."
+)
+
+
+class RequestBodyCap:
+    """Refuse a request that declares a body above the MCP ceiling before anything reads it.
+
+    The SDK enforces the same ceiling as it reads, and answers a bare ``413``. A declared length is known up front,
+    so this refuses it with a message that names the limit and the alternative, without receiving a single chunk.
+    """
+
+    def __init__(self, app: ASGIApp, limit: int = MCP_MAX_REQUEST_BODY_BYTES) -> None:
+        self.app = app
+        self.limit = limit
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            declared = next((value for key, value in scope["headers"] if key.lower() == b"content-length"), b"")
+            if declared.isdigit() and int(declared) > self.limit:
+                response = JSONResponse(
+                    {
+                        "detail": MCP_REQUEST_TOO_LARGE_DETAIL,
+                        "errors": [{"code": "mcp_request_too_large", "params": {"limit": self.limit}, "path": []}],
+                    },
+                    status_code=413,
+                )
+                await response(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+
 def create_mcp_http_app(
     factory: sessionmaker[Session] = SessionLocal, **http_app_kwargs: Any
 ) -> tuple[FastMCP, StarletteWithLifespan]:
@@ -464,6 +501,8 @@ def create_mcp_http_app(
     # FastMCP runs its own authentication ahead of every middleware passed above, so the failed-attempt limit must be
     # added to the app to sit outside it and refuse a throttled client before its token is verified (#46).
     mcp_app.add_middleware(AuthenticationFailureLimiter, verifier=getattr(server.auth, "token_verifier", None))
+    # Outermost: an oversized declared body is refused before the throttle, the token check or any read.
+    mcp_app.add_middleware(RequestBodyCap)
     return server, mcp_app
 
 

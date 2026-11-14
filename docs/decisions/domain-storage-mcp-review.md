@@ -195,7 +195,15 @@ explicitly described as a proposed reproduction. No new test is added in this PR
    if moving commit control into a shared service in future.
 5. **Binary transport and output differences (intentional, #84).** MCP retains
    encoded JSON and decodes base64 into a temporary file (`:77–104`), then calls
-   the same bounded ingestion service. HTTP uses multipart. Response/status and
+   the same bounded ingestion service. HTTP uses multipart. Over HTTP MCP every
+   request body is capped at 4 MiB by the transport (about 3 MiB of file), now
+   enforced and tested explicitly (`RequestBodyCap`, `tests/test_mcp_upload_memory.py`);
+   the stdio measurement is in `docs/object-storage.md`. The bounded upload
+   handle the issue proposes stays open: it needs a decision on a one-time
+   capability URL that accepts bytes outside the MCP token's audience, on a
+   staging location shared by workers and its cleanup schedule (VPS work in
+   tjorim/apps), and on which MCP clients can send a binary `PUT` at all.
+   Response/status and
    headers such as `Retry-After` are not returned as HTTP metadata by MCP;
    `_call` translates handler HTTP exceptions into tool errors (`:429–435`).
    MCP compact lists and removal of `*_html` (`:107–185`) differ from full form

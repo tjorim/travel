@@ -16,6 +16,7 @@ from fastmcp.exceptions import ToolError
 from fastmcp.server.auth.providers.jwt import RSAKeyPair
 from fastmcp.tools.base import Tool
 from fastmcp.utilities.json_schema import dereference_refs
+from mcp.server.transport_security import DEFAULT_MAX_REQUEST_BODY_SIZE
 from pydantic import ValidationError
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import sessionmaker
@@ -39,6 +40,8 @@ from app.mcp_server import (
     mcp_http_enabled,
     mount_mcp,
 )
+from app.mcp_server import core as mcp_core
+from app.mcp_server.server import MCP_MAX_REQUEST_BODY_BYTES
 from app.models import (
     AuditEvent,
     AuditEventKind,
@@ -52,6 +55,7 @@ from app.models import (
     Visibility,
 )
 from app.services import trips as trips_service
+from app.storage import LocalObjectStorage
 from app.task_alerts import process_due_task_alerts
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -430,6 +434,84 @@ def test_mcp_rejects_a_token_signed_by_another_key(mcp_resource: tuple[FastAPI, 
         refused = client.post("/mcp/", json=WHOAMI_CALL, headers=_bearer(RSAKeyPair.generate()))
 
     assert refused.status_code == 401
+
+
+def _result(response: httpx2.Response) -> dict[str, Any]:
+    """The JSON-RPC message of a tool-call response, whether it came as plain JSON or as one SSE event."""
+    text = response.text
+    data = next((line[6:] for line in text.splitlines() if line.startswith("data: ")), text)
+    return json.loads(data)
+
+
+def _call(name: str, arguments: dict[str, Any], request_id: int = 1) -> dict[str, Any]:
+    return {
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "method": "tools/call",
+        "params": {"name": name, "arguments": arguments},
+    }
+
+
+def test_mcp_http_stores_a_base64_upload_that_fits_the_request_limit(
+    mcp_resource: tuple[FastAPI, RSAKeyPair], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(mcp_core, "get_storage", lambda: LocalObjectStorage(root=str(tmp_path)))
+    application, pair = mcp_resource
+    data = b"synthetic booking confirmation" * 90_000  # about 2.6 MiB, 3.5 MiB once encoded
+    upload = {"filename": "big.txt", "content_type": "text/plain", "data_base64": base64.b64encode(data).decode()}
+    with TestClient(application, base_url="https://travel.example.test") as client:
+        headers = _bearer(pair)
+        trip = _result(client.post("/mcp/", json=_call("create_trip", {"payload": {"title": "Big"}}), headers=headers))
+        trip_id = trip["result"]["structuredContent"]["id"]
+        stored = client.post(
+            "/mcp/",
+            json=_call(
+                "upload_document", {"trip_id": trip_id, "title": "Big", "document_kind": "other", "file": upload}
+            ),
+            headers=headers,
+        )
+
+    assert stored.status_code == 200
+    assert not _result(stored)["result"].get("isError"), stored.text[:300]
+    with TestingSessionLocal() as session:
+        [document] = session.scalars(select(DocumentAsset))
+        assert document.title == "Big"
+    assert any(path.is_file() for path in tmp_path.rglob("*"))
+
+
+def test_mcp_http_refuses_an_oversized_declared_body_before_reading_or_authenticating_it(
+    mcp_resource: tuple[FastAPI, RSAKeyPair],
+) -> None:
+    application, _ = mcp_resource
+    body = b"x" * (MCP_MAX_REQUEST_BODY_BYTES + 1)
+    with TestClient(application, base_url="https://travel.example.test") as client:
+        refused = client.post("/mcp/", content=body, headers=MCP_HEADERS)
+
+    # 413, not the 401 an unauthenticated request would otherwise get: nothing was read or verified.
+    assert refused.status_code == 413
+    assert refused.json()["errors"] == [
+        {"code": "mcp_request_too_large", "params": {"limit": MCP_MAX_REQUEST_BODY_BYTES}, "path": []}
+    ]
+    assert "multipart" in refused.json()["detail"]
+
+
+def test_mcp_http_refuses_an_oversized_streamed_body_as_it_arrives(mcp_resource: tuple[FastAPI, RSAKeyPair]) -> None:
+    application, pair = mcp_resource
+    chunk = b"x" * (1024 * 1024)
+
+    def chunks():  # no Content-Length, so only the transport's own counting can stop it
+        for _ in range(8):
+            yield chunk
+
+    with TestClient(application, base_url="https://travel.example.test") as client:
+        refused = client.post("/mcp/", content=chunks(), headers=_bearer(pair))
+
+    assert refused.status_code == 413
+
+
+def test_the_mcp_request_ceiling_matches_the_transport_sdk() -> None:
+    # Our message names the SDK's own ceiling; if the SDK moves it, the documented upload size must be revisited.
+    assert MCP_MAX_REQUEST_BODY_BYTES == DEFAULT_MAX_REQUEST_BODY_SIZE
 
 
 MCP_LIMIT = 3

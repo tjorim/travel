@@ -95,6 +95,18 @@ string before tool execution. Decoding now uses aligned chunks into a temporary
 file with an enforced decoded limit, then follows the same ingestion path.
 Clients handling large files should use the multipart upload API; eliminating
 the encoded JSON allocation requires a different MCP binary transport (tracked in tjorim/travel#84).
+
+Over HTTP the MCP transport caps every request body at 4 MiB (the MCP SDK's
+`DEFAULT_MAX_REQUEST_BODY_SIZE`, which FastMCP does not let an application raise), so a base64
+upload holds about 3 MiB of file and the encoded JSON can never exceed 4 MiB per request.
+`RequestBodyCap` (`app/mcp_server/server.py`) refuses a declared larger body with `413` and
+`mcp_request_too_large` before the throttle, token check or any read, and the SDK stops a
+streamed body at the same ceiling; `test_the_mcp_request_ceiling_matches_the_transport_sdk`
+fails if the SDK moves it. Only the local stdio server (development) can receive a larger
+body. A synthetic 150 MiB stdio upload (`tests/test_mcp_upload_memory.py`) grew the peak RSS
+by about 400 MiB while parsing, twice the 200 MiB of encoded JSON, because `json.loads`
+decodes the bytes to text and then builds the string; decoding, staging, the durable copy
+and the read-back then grew it by 4 MiB more.
 Photo validation still decodes pixels under Pillow's decompression-bomb limits;
 the streaming memory guarantee concerns encoded file bytes, not decoded pixels.
 
