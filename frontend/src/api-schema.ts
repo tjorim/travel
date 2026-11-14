@@ -3554,18 +3554,27 @@ export interface components {
         LiveSessionConfigure: {
             /** Enabled */
             enabled: boolean;
-            /** Audiences */
+            /**
+             * Audiences
+             * @description The audiences that receive the current position, with the precision each receives, keyed by `public` for the public view, or the id of one of the trip's share links. A link that is revoked, expired or rotated loses its setting. It replaces the saved audiences: one left out is removed together with its delay.
+             */
             audiences?: {
                 [key: string]: "exact" | "1km" | "10km";
             };
-            /** Delays */
+            /**
+             * Delays
+             * @description Seconds to hold the position back, per audience in `audiences`. Only the audiences named here change; one that has no saved delay starts at 0. Omit it to keep every saved delay.
+             */
             delays?: {
                 [key: string]: 0 | 900 | 1800 | 3600 | 7200 | 86400;
             } | null;
         };
         /** LiveSessionCreate */
         LiveSessionCreate: {
-            /** Source */
+            /**
+             * Source
+             * @description An opaque name the owner gives the position source, such as a Home Assistant entity id. Letters, digits, `.`, `_`, `:` and `-`, starting with a letter or digit; Travel never interprets it.
+             */
             source: string;
         };
         /** LiveSessionResponse */
@@ -3576,11 +3585,17 @@ export interface components {
             source: string;
             /** Enabled */
             enabled: boolean;
-            /** Audiences */
+            /**
+             * Audiences
+             * @description The precision each audience receives, keyed by `public` for the public view, or the id of one of the trip's share links. A link that is revoked, expired or rotated loses its setting.
+             */
             audiences: {
                 [key: string]: "exact" | "1km" | "10km";
             };
-            /** Delays */
+            /**
+             * Delays
+             * @description The delay of each audience in `audiences`, in seconds.
+             */
             delays: {
                 [key: string]: number;
             };
@@ -3597,6 +3612,16 @@ export interface components {
              * @description The newest point is more than an hour old.
              */
             stale: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** LiveTrackPage */
         LiveTrackPage: {
@@ -7073,7 +7098,21 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Observed At
+                     * Format: date-time
+                     */
+                    observed_at: string;
+                    /** Latitude */
+                    latitude: number;
+                    /** Longitude */
+                    longitude: number;
+                };
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -7172,13 +7211,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description One JSON point per line: `id`, `observed_at`, `latitude` and `longitude`. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/x-ndjson": string;
                 };
             };
             /** @description Validation Error */

@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from test_packing import TestingSessionLocal, client_for, setup_function, teardown_function  # noqa: F401
 
-from app.models import LivePoint, LiveSession
+from app.models import LivePoint, LivePrecision, LiveSession
 from app.routers import live_location as live_router
 from app.services import live_location as live
 
@@ -112,7 +112,7 @@ def test_projection_and_export_are_separate(monkeypatch):
     with TestingSessionLocal() as session:
         row = session.get(LiveSession, sid)
         assert row is not None
-        row.audiences = {"public": "10km"}
+        row.audiences[0].precision = LivePrecision.KM10
         session.commit()
         assert live.current_for_audience(session, trip, "public")[0]["latitude"] == 12.3
 
@@ -275,9 +275,14 @@ def test_delayed_public_and_links_revoke_disable_and_clock_order(monkeypatch):
     assert preview["latitude"] == 66.12 and preview["delay_seconds"] == 900
     assert client.post(base + f"/share-links/{links[0]['id']}/revoke").status_code == 200
     assert client.get(urls[1]).status_code == 404
-    assert client.put(path, json={"enabled": False, "audiences": audiences}).status_code == 200
+    # Revoking the link took its setting with it, so the session no longer lists it and it cannot be set again.
+    kept = {key: value for key, value in audiences.items() if key != links[0]["id"]}
+    session_now = client.get(root).json()[0]
+    assert session_now["audiences"] == kept and links[0]["id"] not in session_now["delays"]
+    assert client.put(path, json={"enabled": False, "audiences": audiences}).status_code == 422
+    assert client.put(path, json={"enabled": False, "audiences": kept}).status_code == 200
     assert all("current_locations" not in client.get(url).json() for url in [urls[0], urls[2]])
-    assert client.put(path, json={"enabled": True, "audiences": audiences}).status_code == 200
+    assert client.put(path, json={"enabled": True, "audiences": kept}).status_code == 200
     assert "current_locations" not in client.get(urls[0]).json()
     assert client.post(path + "/positions", json=payload(clock)).status_code == 200
     assert client.get(urls[1]).status_code == 404

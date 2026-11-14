@@ -756,7 +756,7 @@
   "live_public": "Public trip",
   "live_revoke": "Revoke and delete source",
   "live_save": "Save audience choices",
-  "live_source": "HA entity ID (person or device_tracker)",
+  "live_source": "Position source (for example a Home Assistant entity ID)",
   "live_stale": "Stale",
   "live_start": "Start collection",
   "live_stop": "Stop collection and delivery",

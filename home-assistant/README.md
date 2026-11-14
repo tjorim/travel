@@ -153,7 +153,8 @@ to-do platform were consulted; Travel adds no Daynest integration-key/SSE featur
 
 Tasks and packing work with location disabled (the default). No Dawarich or HA
 history access is needed. In Travel's trip sharing tab, open **Live location and
-private tracks**, add the exact `person.*` or `device_tracker.*` entity ID and
+private tracks**, add the exact `person.*` or `device_tracker.*` entity ID (Travel
+treats it as an opaque source name; the integration only forwards these two kinds) and
 start collection. In HA's Travel options, select the location trip and then its
 enabled source. Task-trip selection is independent. A different entity needs a
 new Travel source; a person changing its underlying device keeps its identity.
