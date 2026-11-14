@@ -73,7 +73,7 @@ it("lists a pinned document, opens it, and removes it individually", async () =>
     subject: SUBJECT,
     resourceKind: "library_document",
     resourceId: "doc-1",
-    metadataUrl: "/api/library/documents/doc-1",
+    metadataUrl: "/api/documents/doc-1",
     title: "Insurance policy",
     contentType: "application/pdf",
     bytes: new TextEncoder().encode("private pdf bytes").buffer as ArrayBuffer,
@@ -182,7 +182,7 @@ it("clears every pinned copy on this device after confirmation", async () => {
     subject: SUBJECT,
     resourceKind: "library_document",
     resourceId: "doc-1",
-    metadataUrl: "/api/library/documents/doc-1",
+    metadataUrl: "/api/documents/doc-1",
     title: "Insurance policy",
     contentType: "application/pdf",
     bytes: new TextEncoder().encode("bytes").buffer as ArrayBuffer,
@@ -229,7 +229,7 @@ it("shows a disclosure when the browser declines persistent storage", async () =
     subject: SUBJECT,
     resourceKind: "library_document",
     resourceId: "doc-1",
-    metadataUrl: "/api/library/documents/doc-1",
+    metadataUrl: "/api/documents/doc-1",
     title: "Insurance policy",
     contentType: "application/pdf",
     bytes: new TextEncoder().encode("bytes").buffer as ArrayBuffer,
@@ -265,14 +265,14 @@ it.each(["invalid JSON", "unknown error"])("does not renew access after %s", asy
     subject: SUBJECT,
     resourceKind: "library_document",
     resourceId: "doc-1",
-    metadataUrl: "/api/library/documents/doc-1",
+    metadataUrl: "/api/documents/doc-1",
     title: "Saved policy",
     contentType: "application/pdf",
     bytes: new TextEncoder().encode("private").buffer as ArrayBuffer,
   });
   let probed = false;
   server.use(
-    http.get("/api/library/documents/doc-1", () => {
+    http.get("/api/documents/doc-1", () => {
       probed = true;
       return new HttpResponse("invalid JSON", { headers: { "Content-Type": "application/json" } });
     }),
@@ -304,7 +304,7 @@ it.each(["nl", "en"] as const)(
       subject: SUBJECT,
       resourceKind: "library_document",
       resourceId: "doc-1",
-      metadataUrl: "/api/library/documents/doc-1",
+      metadataUrl: "/api/documents/doc-1",
       title: "Saved policy",
       contentType: "application/pdf",
       bytes: new TextEncoder().encode("private").buffer as ArrayBuffer,

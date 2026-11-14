@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { changeLocale } from "./locale";
 import { m } from "./paraglide/messages.js";
 import { renderWithOwner, resetOfflineDb, testToken } from "./query/test-utils";
-import { DocumentLibraryManager } from "./library/DocumentLibraryManager";
+import { DocumentManager } from "./documents/DocumentManager";
 import { PublicationManager } from "./trips/PublicationManager";
 import { PackingManager } from "./trips/PackingManager";
 import { PackingOfflineView } from "./trips/PackingOfflineView";
@@ -53,7 +53,7 @@ const json = (data: unknown, status = 200) => new Response(JSON.stringify(data),
 
 it("keeps a selected upload, authored title, focus and discard confirmation when switching", async () => {
   serveApi(vi.fn(() => Promise.resolve(json([]))));
-  renderWithOwner(<DocumentLibraryManager />);
+  renderWithOwner(<DocumentManager />);
   fireEvent.click(screen.getByRole("button", { name: "Nieuw document" }));
   const title = screen.getByRole("textbox", { name: "Titel" }) as HTMLInputElement;
   const upload = screen.getByLabelText("Privébestand") as HTMLInputElement;
@@ -321,7 +321,7 @@ it("opens the same encrypted document bytes in both locales and still rejects an
     subject: "owner-1",
     resourceKind: "trip_document",
     resourceId: "document",
-    metadataUrl: "/api/trips/trip/documents/document",
+    metadataUrl: "/api/documents/document",
     title: "Eigen bestandsnaam",
     contentType: "application/pdf",
     bytes,
@@ -360,7 +360,7 @@ it("keeps decryption diagnostics separate from retained localized offline failur
     subject: "owner-1",
     resourceKind: "trip_document",
     resourceId: "document",
-    metadataUrl: "/api/trips/trip/documents/document",
+    metadataUrl: "/api/documents/document",
     title: "Eigen document",
     contentType: "application/pdf",
     bytes: new TextEncoder().encode("Fictional private bytes").buffer as ArrayBuffer,

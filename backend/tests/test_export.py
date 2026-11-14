@@ -96,9 +96,10 @@ def teardown_function() -> None:
     app.dependency_overrides.clear()
 
 
-def _stored(session: Session, trip_id: str, key: str, *, sha: str) -> StoredObject:
+def _stored(session: Session, trip_id: str | None, key: str, *, sha: str, owner: str | None = None) -> StoredObject:
     stored = StoredObject(
         trip_id=trip_id,
+        owner_subject=owner,
         bucket=CANARIES["bucket"],
         object_key=key,
         sha256=sha * 64,
@@ -186,8 +187,9 @@ def build_rich_trip(owner: str = "owner-1") -> dict[str, str]:
         )
         session.add_all([derivative, TravelUpdateMediaAsset(travel_update_id=update.id, media_asset_id=asset.id)])
 
-        doc_object = _stored(session, trip.id, "canary-object-key/doc.bin", sha="c")
+        doc_object = _stored(session, None, "canary-object-key/doc.bin", sha="c", owner=owner)
         document = DocumentAsset(
+            owner_subject=owner,
             trip_id=trip.id,
             original_object_id=doc_object.id,
             document_kind=DocumentKind.BOOKING,
@@ -201,6 +203,18 @@ def build_rich_trip(owner: str = "owner-1") -> dict[str, str]:
                 RouteDocumentAsset(route_id=route.id, document_asset_id=document.id),
                 StayDocumentAsset(stay_id=stay.id, document_asset_id=document.id),
             ]
+        )
+
+        # An unfiled document is the owner's, not the trip's, and is never part of a trip's export.
+        library_object = _stored(session, None, "canary-object-key/library.bin", sha="9", owner=owner)
+        session.add(
+            DocumentAsset(
+                owner_subject=owner,
+                trip_id=None,
+                original_object_id=library_object.id,
+                document_kind=DocumentKind.OTHER,
+                title=CANARIES["library"],
+            )
         )
 
         # Soft-deleted records are not live content.

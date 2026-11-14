@@ -61,7 +61,8 @@ const trip: Trip = {
     },
   ],
 };
-const path = (resource: string) => `/api/trips/trip/${resource}`;
+const path = (resource: string) =>
+  resource === "documents" ? "/api/documents?trip_id=trip" : `/api/trips/trip/${resource}`;
 
 let api: FakeApi;
 function seed(overrides: Record<string, unknown[]> = {}) {
@@ -79,7 +80,6 @@ function seed(overrides: Record<string, unknown[]> = {}) {
   api = fakeApi();
   api.collection("/api/trips", [trip as never]);
   api.collection("/api/trips/trip/travel-updates", trip.travel_updates);
-  api.collection("/api/library/documents?linked_trip_id=trip", []);
   for (const [resource, rows] of Object.entries(collections))
     api.collection(path(resource), rows as never[]);
 }
@@ -149,9 +149,8 @@ it("shows a saved location's own name instead of its repeated locality", async (
   expect(screen.getByRole("heading", { name: "Longshan Temple · Taipei · TW" })).toBeTruthy();
 });
 
-it("shows saved travel context, linked documents, and update media in the private overview", async () => {
+it("shows saved travel context and update media in the private overview", async () => {
   stubObjectUrls("blob:preview");
-  const open = vi.spyOn(window, "open").mockReturnValue({} as Window);
   seed({
     locations: [
       {
@@ -226,17 +225,7 @@ it("shows saved travel context, linked documents, and update media in the privat
   api.collection("/api/trips/trip/travel-updates", [
     { ...trip.travel_updates[0], media_asset_ids: ["p1"] },
   ]);
-  api.collection("/api/library/documents?linked_trip_id=trip", [
-    {
-      id: "ld1",
-      title: "Verzekering",
-      original_filename: "policy.pdf",
-      byte_size: 400,
-      file_url: "/api/library/documents/ld1/original",
-    },
-  ]);
   api.on("GET", /\/media\/p1\/thumbnail$/, () => "image");
-  api.on("GET", /\/library\/documents\/ld1\/original$/, () => "pdf");
   renderDetail();
   await screen.findByRole("heading", { name: "Exampleland" });
   expect(screen.getByText("Drie weken")).toBeTruthy();
@@ -253,7 +242,6 @@ it("shows saved travel context, linked documents, and update media in the privat
     }),
   ).toBeTruthy();
   expect(screen.getByText(/Herinnering:/)).toBeTruthy();
-  expect(screen.getByRole("heading", { name: "Verzekering" })).toBeTruthy();
   await waitFor(() =>
     expect(
       screen.getByRole("group", { name: "Media bij Eerste avond" }).querySelector("img"),
@@ -265,8 +253,6 @@ it("shows saved travel context, linked documents, and update media in the privat
       .querySelector("a")
       ?.getAttribute("href"),
   ).toBe("/trips/trip/story");
-  fireEvent.click(screen.getByRole("button", { name: "Bibliotheekdocument openen" }));
-  await waitFor(() => expect(open).toHaveBeenCalledWith("blob:preview", "_blank", "noopener"));
   expect(api.unexpected).toEqual([]);
 });
 
@@ -277,7 +263,7 @@ it("shows a loading state, then an error rather than half a trip when one read f
       Promise.resolve(
         url === "/api/trips"
           ? new Response(JSON.stringify([trip]), { status: 200 })
-          : url.endsWith("/documents")
+          : url.startsWith("/api/documents")
             ? new Response(JSON.stringify({ detail: "kapot" }), { status: 500 })
             : new Response("[]", { status: 200 }),
       ),
@@ -310,7 +296,7 @@ it("opens a private document with the authenticated download", async () => {
         document_kind: "booking",
         original_filename: "ticket.pdf",
         byte_size: 100,
-        file_url: "/api/trips/trip/documents/d1/original",
+        file_url: "/api/documents/d1/original",
       },
     ],
   });
@@ -331,7 +317,7 @@ it("reports a document that cannot be opened without leaving the page", async ()
         document_kind: "booking",
         original_filename: "ticket.pdf",
         byte_size: 100,
-        file_url: "/api/trips/trip/documents/d1/original",
+        file_url: "/api/documents/d1/original",
       },
     ],
   });

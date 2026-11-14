@@ -21,9 +21,9 @@ from app.models import (
     Base,
     DocumentAsset,
     DocumentKind,
+    MediaAsset,
+    MediaKind,
     ObjectState,
-    OwnerDocument,
-    OwnerStoredObject,
     StoredObject,
     Trip,
 )
@@ -62,37 +62,33 @@ def database(request):
 @pytest.fixture
 def inventory(database, tmp_path):
     storage = LocalObjectStorage(str(tmp_path))
+    storage.put("synthetic/photo", b"photo")
     storage.put("synthetic/document", b"document")
-    storage.put("synthetic/library", b"library")
     with database() as session:
         trip = Trip(owner_subject="owner", title="Synthetic")
         session.add(trip)
         session.flush()
         fields = {"sha256": "0" * 64, "byte_size": 8, "content_type": "application/pdf", "state": ObjectState.AVAILABLE}
-        stored = StoredObject(trip_id=trip.id, object_key="synthetic/document", **fields)
-        library = OwnerStoredObject(owner_subject="owner", object_key="synthetic/library", **fields)
-        session.add_all([stored, library])
+        stored = StoredObject(trip_id=trip.id, object_key="synthetic/photo", **fields)
+        original = StoredObject(owner_subject="owner", object_key="synthetic/document", **fields)
+        session.add_all([stored, original])
         session.flush()
-        session.add(
-            DocumentAsset(
-                trip_id=trip.id, original_object_id=stored.id, title="Synthetic", document_kind=DocumentKind.OTHER
-            )
-        )
-        linked = OwnerDocument(
+        session.add(MediaAsset(trip_id=trip.id, original_object_id=stored.id, media_kind=MediaKind.PHOTO))
+        filed = DocumentAsset(
             owner_subject="owner",
-            original_object_id=library.id,
-            linked_trip_id=trip.id,
-            title="Synthetic library",
+            trip_id=trip.id,
+            original_object_id=original.id,
+            title="Synthetic",
             document_kind=DocumentKind.OTHER,
         )
-        session.add(linked)
+        session.add(filed)
         session.commit()
-        return storage, trip.id, stored.id, linked.id
+        return storage, trip.id, stored.id, filed.id
 
 
 @pytest.mark.parametrize("transport", ["http", "mcp"])
 def test_trip_deletion_keeps_retryable_inventory(database, inventory, monkeypatch, transport):
-    storage, trip_id, object_id, linked_id = inventory
+    storage, trip_id, object_id, document_id = inventory
     if transport == "http":
         app = FastAPI()
         app.add_exception_handler(Refusal, service_error_handler)
@@ -117,8 +113,9 @@ def test_trip_deletion_keeps_retryable_inventory(database, inventory, monkeypatc
         assert pending is not None
         assert pending.state == ObjectState.PURGE_PENDING
         assert pending.trip_id is None
-        assert session.get(OwnerDocument, linked_id).linked_trip_id is None
-        assert storage.exists("synthetic/document")
+        # The owner's document is not the trip's: it is unfiled and keeps its file.
+        assert session.get(DocumentAsset, document_id).trip_id is None
+        assert storage.exists("synthetic/photo")
         real_delete = storage.delete
 
         def failed_delete(key):
@@ -129,12 +126,12 @@ def test_trip_deletion_keeps_retryable_inventory(database, inventory, monkeypatc
             purge_deleted_media(session, storage, older_than=timedelta(days=30))
         session.rollback()
         assert session.get(StoredObject, object_id).state == ObjectState.PURGE_PENDING
-        assert storage.exists("synthetic/document")
+        assert storage.exists("synthetic/photo")
         monkeypatch.setattr(storage, "delete", real_delete)
         assert purge_deleted_media(session, storage, older_than=timedelta(days=30)) == 1
-        assert list(session.scalars(select(StoredObject))) == []
-        assert not storage.exists("synthetic/document")
-        assert storage.exists("synthetic/library")
+        assert [stored.object_key for stored in session.scalars(select(StoredObject))] == ["synthetic/document"]
+        assert not storage.exists("synthetic/photo")
+        assert storage.exists("synthetic/document")
 
 
 def test_failed_commit_preserves_trip_and_files(database, inventory, monkeypatch):
@@ -153,16 +150,16 @@ def test_failed_commit_preserves_trip_and_files(database, inventory, monkeypatch
         stored = session.get(StoredObject, object_id)
         assert stored.trip_id == trip_id
         assert stored.state == ObjectState.AVAILABLE
-        assert storage.exists("synthetic/document")
+        assert storage.exists("synthetic/photo")
 
 
 def test_detached_inventory_enters_pending_state_before_purge(database, inventory, monkeypatch):
     storage, _, object_id, _ = inventory
     with database() as session:
         # Model a retained inventory row missed by the deletion snapshot.
-        # The associated document is removed first, as it is on trip deletion.
-        document = session.scalar(select(DocumentAsset).where(DocumentAsset.original_object_id == object_id))
-        session.delete(document)
+        # The associated photo is removed first, as it is on trip deletion.
+        photo = session.scalar(select(MediaAsset).where(MediaAsset.original_object_id == object_id))
+        session.delete(photo)
         session.get(StoredObject, object_id).trip_id = None
         session.commit()
     real_delete = storage.delete

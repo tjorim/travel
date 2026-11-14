@@ -181,7 +181,6 @@ _ADDITIVE_WRITE_TOOLS = frozenset(
         "save_area",
         "upload_media",
         "upload_document",
-        "upload_library_document",
         "approve_media_derivative",
         "activate_share_link",
         "activate_collection",

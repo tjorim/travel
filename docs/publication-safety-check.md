@@ -134,7 +134,7 @@ a member shows what that trip's "Family" link shows), and also:
 - [ ] After removing a trip or revoking, expect the member pages to stop
       immediately, but not copies a recipient already holds.
 
-Documents in the owner-wide library and in trips have no scope choice, visitor
+Documents, whether unfiled or filed under a trip, have no scope choice, visitor
 field or file route, so there is nothing to check for them.
 
 ## If something was shared by mistake

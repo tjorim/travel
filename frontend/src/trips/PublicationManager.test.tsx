@@ -202,7 +202,7 @@ beforeEach(() => {
         travel_update_id: null,
       },
     ])
-    .collection("/api/trips/trip/documents", [])
+    .collection("/api/documents?trip_id=trip", [])
     .collection("/api/trips/trip/travel-updates", trip.travel_updates);
   server.use(http.get("/api/trips/trip/audit-events", () => HttpResponse.json([])));
   api.on("PUT", /\/visibility\/[^/]+\/[^/]+$/, (body) => body);

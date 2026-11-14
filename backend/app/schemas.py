@@ -2788,42 +2788,29 @@ class MediaTravelUpdateCandidatesResponse(ResponseModel):
 # --- Owner-managed documents --------------------------------------------------------
 
 
-class DocumentAssetResponse(ResponseModel):
-    id: str
-    document_kind: DocumentKind
-    title: str
-    byte_size: int
-    content_type: str
-    original_filename: str | None
-    created_at: datetime
-    deleted_at: datetime | None
-    file_url: str
-    model_config = ConfigDict(from_attributes=True)
-
-
-# --- Owner-wide document library and emergency information --------------------------
-
-
-class OwnerDocumentUpdate(InputModel):
+class DocumentUpdate(InputModel):
     non_nullable_fields = frozenset(["title", "document_kind"])
 
     title: str | None = Field(default=None, min_length=1, max_length=160)
     document_kind: DocumentKind | None = None
-    linked_trip_id: Identifier | None = Field(default=None)
+    # The trip the document is filed under; null unfiles it.
+    trip_id: Identifier | None = Field(default=None)
 
 
-class OwnerDocumentResponse(ResponseModel):
+class DocumentResponse(ResponseModel):
     id: str
     document_kind: DocumentKind
     title: str
     byte_size: int
     content_type: str
     original_filename: str | None
-    linked_trip_id: str | None
+    trip_id: str | None
     created_at: datetime
-    deleted_at: datetime | None
     file_url: str
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Emergency information ----------------------------------------------------------
 
 
 class EmergencyInfoEntryCreate(InputModel):

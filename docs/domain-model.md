@@ -44,13 +44,13 @@ Everything in a trip is one of these. The Dutch word is what the owner sees.
   (*accommodatie nog niet gekozen*) the stay is filed under its area alone: no
   placeholder location is created for it. The stored area is the stay's own
   `area_id`, always equal to the area of its location when it has one. A stay
-  can attach trip documents by id (`document_asset_ids`, a `StayDocumentAsset`
-  link, at most 12), such as its booking confirmation, exactly as a route
-  does ([#257](https://github.com/tjorim/travel/issues/257)). The link is
-  owner-only: it names a document the trip already holds, deleting the stay
-  removes only the link, and deleting the document detaches it from the stay,
-  as for a route. A document is never delivered to a visitor, whatever the
-  stay's visibility.
+  can attach documents filed under its trip by id (`document_asset_ids`, a
+  `StayDocumentAsset` link, at most 12), such as its booking confirmation,
+  exactly as a route does ([#257](https://github.com/tjorim/travel/issues/257)).
+  The link is owner-only: it names a document the trip already holds, deleting
+  the stay removes only the link, and deleting the document detaches it from the
+  stay, as for a route. A document is never delivered to a visitor, whatever the
+  stay's visibility. See *Documents* below.
 - **Route** (*route*): how the trip gets from one area to another, by a travel
   mode (flight, train, bus, ferry, car, bike, walk or other). See below.
 - **Alternative group** (*alternatieven*): the owner's own set of two or more
@@ -310,6 +310,9 @@ carries all three.
   out (`exclude`), plus the trip title, summary and date precision, and the
   audience's own date precision (see *Date precision* below). It never names
   fields.
+- **Document** (*document*): a private file the owner keeps. It belongs to the
+  owner, is optionally filed under one trip, and can be attached to that trip's
+  stays and routes. See *Documents* below.
 - **Private original**: something whose exact content must never leave the
   owner boundary: a stay's property and booking, a location's address, a route's
   booking, a photo original, a document original.
@@ -535,9 +538,38 @@ record order, from a missing time or from a private record. A route's day is sha
 on one; routes alone never make an audience a day audience. Records already shown
 with a story update (same area and day) are not repeated in the plan.
 
+## Documents
+
+There is one document model ([#368](https://github.com/tjorim/travel/issues/368)): a `document_assets` row and its
+original in `stored_objects`, one service (`services/documents.py`, with `document/service.py` for the stored file),
+one API (`/documents`) and one manager in the PWA. It replaces the trip documents and the owner library, which
+stored the same thing twice and had drifted apart.
+
+- **Owner.** A document belongs to the authenticated owner (`owner_subject`), never to a trip. Every read and write
+  checks the owner; no published response ever carries a document, its title, its file or its filing.
+- **Filing.** A document is filed under at most one trip (`trip_id`), or under none. Filing and unfiling is an edit
+  (`PATCH /documents/{id}`, `trip_id` a trip the owner owns, or `null`); the file does not move. An unfiled
+  document is a reusable essential such as an insurance policy; a filed one belongs with that trip's Prepare
+  section and exports.
+- **Attachment.** A document can be attached to a stay or route (`document_asset_ids`) only when it is filed
+  under that stay's or route's own trip. An unfiled document, or one filed elsewhere, is refused. A document cannot
+  be moved to another trip, or unfiled, while it is attached to a stay or route; detach it first, so an attachment
+  never outlives the filing it depends on.
+- **Deleting.** Deleting a stay or route removes only its links. Deleting a document removes its links and its file
+  (the same bytes stay while another document holds them). **Deleting a trip does not delete its documents: they
+  are unfiled and keep their files**, because a document is the owner's, not the trip's; every other private record
+  of the trip goes with it.
+- **The file.** Identical bytes are stored once per owner (`uq_stored_object_owner_sha256`), whichever trips hold
+  them; one trip holds a given file once (re-uploading it there returns the existing document). The stored object
+  keeps `owner_subject`, never a trip, so moving a document never rewrites a key (`docs/object-storage.md`).
+- **Surface.** `/documents` is the API (upload, list with `trip_id` or `unfiled`, read, edit, delete, original);
+  `/trips/{trip_id}/documents` and `/library/documents` remain for one release as deprecated aliases that call the
+  same service (`linked_trip_id` there is `trip_id`). The MCP tools are `upload_document` (optional `trip_id`),
+  `list_documents`, `get_document`, `update_document` and `delete_document`.
+
 ## Where a twin is still needed
 
-Twins are kept only for **photos and videos**, where the application generates a different shareable artifact. Documents are always private, either in the owner-wide library or specific to a trip; neither home is published.
+Twins are kept only for **photos and videos**, where the application generates a different shareable artifact. Documents are always private and are never published, whichever trip they are filed under.
 An area, a location, a route, a stay and a reisupdate are shared as themselves
 through their allowlist, so there is no second record to keep in step. A
 record that cannot be shared safely yet is refused with a reason: a location

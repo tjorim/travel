@@ -59,7 +59,8 @@ confirmation; [#257](https://github.com/tjorim/travel/issues/257)) was added
 without changing the schema version, because adding a field is compatible; a
 consumer that ignores unknown keys loses only the attachments. It is always
 present (an empty list for a stay without documents), orders the ids by when
-they were attached, and omits soft-deleted documents, like `routes[].document_ids`.
+they were attached, like `routes[].document_ids`. Documents have no soft deletion: a removed document
+is gone from the export, its attachments and its file.
 
 `visits[].position` was removed in `travel/trip-export@2` (#367), so the version
 was raised: removing a field is not compatible. Visits are no longer ordered by
@@ -108,11 +109,12 @@ Excluded by design, and covered by canary tests in `backend/tests/test_export.py
 - Storage buckets, object keys and object paths, including worker job source keys.
 - Share-link tokens, capability URLs and verifiers; provider tokens and secrets;
   provider session handles (import sessions are not exported).
-- Other owners' data and any owner-wide record: library documents (even linked to
-  this trip), emergency information and packing templates.
+- Other owners' data and any owner-wide record: documents not filed under this trip
+  (a document filed under it is exported as metadata, like the trip's media),
+  emergency information and packing templates.
 - Visitor projections and other derived views (agenda, map viewports, rendered
   Markdown, thumbnails).
-- Soft-deleted media and documents, and trip task alerts (notification state).
+- Soft-deleted media, and trip task alerts (notification state).
 - Sharing, collection and owner activity audit events. The export itself is recorded in the
   owner activity table (see below).
 

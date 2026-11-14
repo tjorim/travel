@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from app import maintenance
 from app.database import Base
-from app.models import ObjectState, OwnerStoredObject, StoredObject, Trip
+from app.models import ObjectState, StoredObject, Trip
 from app.storage import LocalObjectStorage, lock_object_deletion
 from app.storage_reconcile import remove_unreferenced_objects, unreferenced_objects
 
@@ -38,7 +38,7 @@ def put(storage: LocalObjectStorage, key: str, modified: float) -> Path:
 def row(session: Session, key: str, *, state: ObjectState = ObjectState.AVAILABLE, owner: bool = False) -> None:
     fields = {"object_key": key, "sha256": "0" * 64, "byte_size": 5, "content_type": "image/jpeg", "state": state}
     if owner:
-        session.add(OwnerStoredObject(owner_subject="owner-1", **fields))
+        session.add(StoredObject(owner_subject="owner-1", **fields))
     else:
         trip = Trip(owner_subject="owner-1", title="Synthetic test")
         session.add(trip)

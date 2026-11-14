@@ -6,7 +6,7 @@ import { http, HttpResponse } from "msw";
 
 import { AuthProvider } from "../auth-context";
 import { changeLocale } from "../locale";
-import { DocumentLibraryManager } from "../library/DocumentLibraryManager";
+import { DocumentManager } from "../documents/DocumentManager";
 import { EmergencyInfoManager } from "../library/EmergencyInfoManager";
 import { server } from "../mocks/server";
 import { renderWithOwner, resetOfflineDb } from "../query/test-utils";
@@ -38,9 +38,9 @@ const document = {
   byte_size: 512,
   content_type: "application/pdf",
   original_filename: "policy.pdf",
-  linked_trip_id: null,
+  trip_id: null,
   created_at: "2054-01-01T00:00:00Z",
-  file_url: "/api/library/documents/doc-1/original",
+  file_url: "/api/documents/doc-1/original",
 };
 const contact = {
   id: "entry-1",
@@ -53,9 +53,9 @@ const contact = {
 
 function serveLibrary(): void {
   server.use(
-    http.get("/api/library/documents", () => HttpResponse.json([document])),
-    http.get("/api/library/documents/doc-1", () => HttpResponse.json(document)),
-    http.get("/api/library/documents/doc-1/original", () =>
+    http.get("/api/documents", () => HttpResponse.json([document])),
+    http.get("/api/documents/doc-1", () => HttpResponse.json(document)),
+    http.get("/api/documents/doc-1/original", () =>
       HttpResponse.arrayBuffer(new TextEncoder().encode("private pdf bytes").buffer, {
         headers: { "Content-Type": "application/pdf" },
       }),
@@ -69,7 +69,7 @@ function serveLibrary(): void {
 function renderLibrary() {
   return renderWithOwner(
     <AuthProvider>
-      <DocumentLibraryManager />
+      <DocumentManager />
       <EmergencyInfoManager />
       <OfflineManager />
     </AuthProvider>,
@@ -161,7 +161,7 @@ it("keeps every mounted consumer in step as copies are saved, removed and cleare
 });
 
 it("leaves every consumer on the previous state when a save fails", async () => {
-  server.use(http.get("/api/library/documents/doc-1/original", () => HttpResponse.error()));
+  server.use(http.get("/api/documents/doc-1/original", () => HttpResponse.error()));
   renderLibrary();
   const documents = within(
     (await screen.findByText("Insurance policy")).closest("section") as HTMLElement,
@@ -179,7 +179,7 @@ it("updates mounted consumers when revalidation deletes a copy", async () => {
     subject: SUBJECT,
     resourceKind: "library_document",
     resourceId: "doc-1",
-    metadataUrl: "/api/library/documents/doc-1",
+    metadataUrl: "/api/documents/doc-1",
     title: "Insurance policy",
     contentType: "application/pdf",
     bytes: new TextEncoder().encode("x").buffer as ArrayBuffer,

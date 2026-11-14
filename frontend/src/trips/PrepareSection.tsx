@@ -1,8 +1,7 @@
-import { LinkedLibraryDocuments } from "../library/LinkedLibraryDocuments";
+import { DocumentManager } from "../documents/DocumentManager";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
-import { useLinkedLibraryDocuments, useTripResource } from "../query/owner-queries";
-import { DocumentManager } from "./DocumentManager";
+import { useTripResource } from "../query/owner-queries";
 import { HomeLink } from "./HomeLink";
 import { focusFor } from "./record-focus";
 import { SectionAccordion } from "./SectionAccordion";
@@ -18,8 +17,6 @@ export default function PrepareSection({ trip, recordFocus }: SectionProps) {
   const { isOpen, setOpen } = useOpenSections(PARTS, recordFocus);
   const tasks = useTripResource(trip.id, "trip-tasks").data;
   const documents = useTripResource(trip.id, "documents").data;
-  // The linked-documents card has its own link to the library; without one the section still points there.
-  const linkedDocuments = useLinkedLibraryDocuments(trip.id).data;
   const [tasksPart, documentsPart] = PARTS;
   return (
     <>
@@ -40,8 +37,7 @@ export default function PrepareSection({ trip, recordFocus }: SectionProps) {
         onOpenChange={(value) => setOpen(documentsPart.id, value)}
       >
         <DocumentManager trip={trip} focusId={focusFor(recordFocus, "document")} />
-        <LinkedLibraryDocuments tripId={trip.id} />
-        {!linkedDocuments?.length && <HomeLink to="/library">{m.common_go_to_library()}</HomeLink>}
+        <HomeLink to="/library">{m.common_go_to_library()}</HomeLink>
       </SectionAccordion>
     </>
   );

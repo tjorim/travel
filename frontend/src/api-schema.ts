@@ -1792,7 +1792,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/trips/{trip_id}/documents/uploads": {
+    "/api/documents/uploads": {
         parameters: {
             query?: never;
             header?: never;
@@ -1802,7 +1802,80 @@ export interface paths {
         get?: never;
         put?: never;
         /** Upload Document */
-        post: operations["upload_document_api_trips__trip_id__documents_uploads_post"];
+        post: operations["upload_document_api_documents_uploads_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Documents */
+        get: operations["list_documents_api_documents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Document */
+        get: operations["get_document_api_documents__document_id__get"];
+        put?: never;
+        post?: never;
+        /** Remove Document */
+        delete: operations["remove_document_api_documents__document_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Document */
+        patch: operations["update_document_api_documents__document_id__patch"];
+        trace?: never;
+    };
+    "/api/documents/{document_id}/original": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Document Original */
+        get: operations["get_document_original_api_documents__document_id__original_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trips/{trip_id}/documents/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Trip Document
+         * @deprecated
+         */
+        post: operations["upload_trip_document_api_trips__trip_id__documents_uploads_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1816,8 +1889,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Documents */
-        get: operations["list_documents_api_trips__trip_id__documents_get"];
+        /**
+         * List Trip Documents
+         * @deprecated
+         */
+        get: operations["list_trip_documents_api_trips__trip_id__documents_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1833,12 +1909,18 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Document */
-        get: operations["get_document_api_trips__trip_id__documents__document_id__get"];
+        /**
+         * Get Trip Document
+         * @deprecated
+         */
+        get: operations["get_trip_document_api_trips__trip_id__documents__document_id__get"];
         put?: never;
         post?: never;
-        /** Remove Document */
-        delete: operations["remove_document_api_trips__trip_id__documents__document_id__delete"];
+        /**
+         * Remove Trip Document
+         * @deprecated
+         */
+        delete: operations["remove_trip_document_api_trips__trip_id__documents__document_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1851,8 +1933,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Document Original */
-        get: operations["get_document_original_api_trips__trip_id__documents__document_id__original_get"];
+        /**
+         * Get Trip Document Original
+         * @deprecated
+         */
+        get: operations["get_trip_document_original_api_trips__trip_id__documents__document_id__original_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1870,7 +1955,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Upload Library Document */
+        /**
+         * Upload Library Document
+         * @deprecated
+         */
         post: operations["upload_library_document_api_library_documents_uploads_post"];
         delete?: never;
         options?: never;
@@ -1885,7 +1973,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Library Documents */
+        /**
+         * List Library Documents
+         * @deprecated
+         */
         get: operations["list_library_documents_api_library_documents_get"];
         put?: never;
         post?: never;
@@ -1902,15 +1993,24 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Library Document */
+        /**
+         * Get Library Document
+         * @deprecated
+         */
         get: operations["get_library_document_api_library_documents__document_id__get"];
         put?: never;
         post?: never;
-        /** Remove Library Document */
+        /**
+         * Remove Library Document
+         * @deprecated
+         */
         delete: operations["remove_library_document_api_library_documents__document_id__delete"];
         options?: never;
         head?: never;
-        /** Update Library Document */
+        /**
+         * Update Library Document
+         * @deprecated
+         */
         patch: operations["update_library_document_api_library_documents__document_id__patch"];
         trace?: never;
     };
@@ -1921,7 +2021,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Library Document Original */
+        /**
+         * Get Library Document Original
+         * @deprecated
+         */
         get: operations["get_library_document_original_api_library_documents__document_id__original_get"];
         put?: never;
         post?: never;
@@ -2974,13 +3077,15 @@ export interface components {
          * @enum {string}
          */
         AuditTargetType: "public_surface" | "share_link" | "location" | "area" | "record" | "alternative_group";
-        /** Body_upload_document_api_trips__trip_id__documents_uploads_post */
-        Body_upload_document_api_trips__trip_id__documents_uploads_post: {
+        /** Body_upload_document_api_documents_uploads_post */
+        Body_upload_document_api_documents_uploads_post: {
             /** Title */
             title: string;
             document_kind: components["schemas"]["DocumentKind"];
             /** File */
             file: string;
+            /** Trip Id */
+            trip_id?: string | null;
         };
         /** Body_upload_library_document_api_library_documents_uploads_post */
         Body_upload_library_document_api_library_documents_uploads_post: {
@@ -2994,6 +3099,14 @@ export interface components {
         };
         /** Body_upload_media_api_trips__trip_id__media_uploads_post */
         Body_upload_media_api_trips__trip_id__media_uploads_post: {
+            /** File */
+            file: string;
+        };
+        /** Body_upload_trip_document_api_trips__trip_id__documents_uploads_post */
+        Body_upload_trip_document_api_trips__trip_id__documents_uploads_post: {
+            /** Title */
+            title: string;
+            document_kind: components["schemas"]["DocumentKind"];
             /** File */
             file: string;
         };
@@ -3195,8 +3308,13 @@ export interface components {
          * @enum {string}
          */
         DerivativeReviewState: "pending" | "approved";
-        /** DocumentAssetResponse */
-        DocumentAssetResponse: {
+        /**
+         * DocumentKind
+         * @enum {string}
+         */
+        DocumentKind: "booking" | "itinerary" | "receipt" | "other";
+        /** DocumentResponse */
+        DocumentResponse: {
             /** Id */
             id: string;
             document_kind: components["schemas"]["DocumentKind"];
@@ -3208,21 +3326,24 @@ export interface components {
             content_type: string;
             /** Original Filename */
             original_filename: string | null;
+            /** Trip Id */
+            trip_id: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-            /** Deleted At */
-            deleted_at: string | null;
             /** File Url */
             file_url: string;
         };
-        /**
-         * DocumentKind
-         * @enum {string}
-         */
-        DocumentKind: "booking" | "itinerary" | "receipt" | "other";
+        /** DocumentUpdate */
+        DocumentUpdate: {
+            /** Title */
+            title?: string | null;
+            document_kind?: components["schemas"]["DocumentKind"] | null;
+            /** Trip Id */
+            trip_id?: string | null;
+        };
         /** EmergencyInfoEntryCreate */
         EmergencyInfoEntryCreate: {
             kind: components["schemas"]["EmergencyInfoKind"];
@@ -4453,39 +4574,6 @@ export interface components {
             id: string | null;
             /** Count */
             count: number | null;
-        };
-        /** OwnerDocumentResponse */
-        OwnerDocumentResponse: {
-            /** Id */
-            id: string;
-            document_kind: components["schemas"]["DocumentKind"];
-            /** Title */
-            title: string;
-            /** Byte Size */
-            byte_size: number;
-            /** Content Type */
-            content_type: string;
-            /** Original Filename */
-            original_filename: string | null;
-            /** Linked Trip Id */
-            linked_trip_id: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Deleted At */
-            deleted_at: string | null;
-            /** File Url */
-            file_url: string;
-        };
-        /** OwnerDocumentUpdate */
-        OwnerDocumentUpdate: {
-            /** Title */
-            title?: string | null;
-            document_kind?: components["schemas"]["DocumentKind"] | null;
-            /** Linked Trip Id */
-            linked_trip_id?: string | null;
         };
         /** OwnerIdentityResponse */
         OwnerIdentityResponse: {
@@ -6783,9 +6871,10 @@ export type AuditMergedRecord = components['schemas']['AuditMergedRecord'];
 export type AuditPrecisionAudience = components['schemas']['AuditPrecisionAudience'];
 export type AuditReasonInput = components['schemas']['AuditReasonInput'];
 export type AuditTargetType = components['schemas']['AuditTargetType'];
-export type BodyUploadDocumentApiTripsTripIdDocumentsUploadsPost = components['schemas']['Body_upload_document_api_trips__trip_id__documents_uploads_post'];
+export type BodyUploadDocumentApiDocumentsUploadsPost = components['schemas']['Body_upload_document_api_documents_uploads_post'];
 export type BodyUploadLibraryDocumentApiLibraryDocumentsUploadsPost = components['schemas']['Body_upload_library_document_api_library_documents_uploads_post'];
 export type BodyUploadMediaApiTripsTripIdMediaUploadsPost = components['schemas']['Body_upload_media_api_trips__trip_id__media_uploads_post'];
+export type BodyUploadTripDocumentApiTripsTripIdDocumentsUploadsPost = components['schemas']['Body_upload_trip_document_api_trips__trip_id__documents_uploads_post'];
 export type CollectionAuditEventResponse = components['schemas']['CollectionAuditEventResponse'];
 export type CollectionCreate = components['schemas']['CollectionCreate'];
 export type CollectionIndexDocument = components['schemas']['CollectionIndexDocument'];
@@ -6799,8 +6888,9 @@ export type CurrentLocation = components['schemas']['CurrentLocation'];
 export type DatePrecision = components['schemas']['DatePrecision'];
 export type DerivativePurpose = components['schemas']['DerivativePurpose'];
 export type DerivativeReviewState = components['schemas']['DerivativeReviewState'];
-export type DocumentAssetResponse = components['schemas']['DocumentAssetResponse'];
 export type DocumentKind = components['schemas']['DocumentKind'];
+export type DocumentResponse = components['schemas']['DocumentResponse'];
+export type DocumentUpdate = components['schemas']['DocumentUpdate'];
 export type EmergencyInfoEntryCreate = components['schemas']['EmergencyInfoEntryCreate'];
 export type EmergencyInfoEntryResponse = components['schemas']['EmergencyInfoEntryResponse'];
 export type EmergencyInfoEntryUpdate = components['schemas']['EmergencyInfoEntryUpdate'];
@@ -6865,8 +6955,6 @@ export type OidcDiscoveryConfig = components['schemas']['OidcDiscoveryConfig'];
 export type OverviewAudience = components['schemas']['OverviewAudience'];
 export type OverviewRecordPrecision = components['schemas']['OverviewRecordPrecision'];
 export type OverviewWarning = components['schemas']['OverviewWarning'];
-export type OwnerDocumentResponse = components['schemas']['OwnerDocumentResponse'];
-export type OwnerDocumentUpdate = components['schemas']['OwnerDocumentUpdate'];
 export type OwnerIdentityResponse = components['schemas']['OwnerIdentityResponse'];
 export type PackingBagCreate = components['schemas']['PackingBagCreate'];
 export type PackingBagResponse = components['schemas']['PackingBagResponse'];
@@ -11720,18 +11808,16 @@ export interface operations {
             };
         };
     };
-    upload_document_api_trips__trip_id__documents_uploads_post: {
+    upload_document_api_documents_uploads_post: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                trip_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["Body_upload_document_api_trips__trip_id__documents_uploads_post"];
+                "multipart/form-data": components["schemas"]["Body_upload_document_api_documents_uploads_post"];
             };
         };
         responses: {
@@ -11741,7 +11827,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DocumentAssetResponse"];
+                    "application/json": components["schemas"]["DocumentResponse"];
                 };
             };
             /** @description Validation Error */
@@ -11755,7 +11841,200 @@ export interface operations {
             };
         };
     };
-    list_documents_api_trips__trip_id__documents_get: {
+    list_documents_api_documents_get: {
+        parameters: {
+            query?: {
+                trip_id?: string | null;
+                unfiled?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_document_api_documents__document_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_document_api_documents__document_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_document_api_documents__document_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_document_original_api_documents__document_id__original_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_trip_document_api_trips__trip_id__documents_uploads_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_trip_document_api_trips__trip_id__documents_uploads_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_trip_documents_api_trips__trip_id__documents_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11772,7 +12051,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DocumentAssetResponse"][];
+                    "application/json": components["schemas"]["DocumentResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -11786,7 +12065,7 @@ export interface operations {
             };
         };
     };
-    get_document_api_trips__trip_id__documents__document_id__get: {
+    get_trip_document_api_trips__trip_id__documents__document_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11804,7 +12083,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DocumentAssetResponse"];
+                    "application/json": components["schemas"]["DocumentResponse"];
                 };
             };
             /** @description Validation Error */
@@ -11818,7 +12097,7 @@ export interface operations {
             };
         };
     };
-    remove_document_api_trips__trip_id__documents__document_id__delete: {
+    remove_trip_document_api_trips__trip_id__documents__document_id__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -11848,7 +12127,7 @@ export interface operations {
             };
         };
     };
-    get_document_original_api_trips__trip_id__documents__document_id__original_get: {
+    get_trip_document_original_api_trips__trip_id__documents__document_id__original_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -11899,7 +12178,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OwnerDocumentResponse"];
+                    "application/json": components["schemas"]["DocumentResponse"];
                 };
             };
             /** @description Validation Error */
@@ -11930,7 +12209,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OwnerDocumentResponse"][];
+                    "application/json": components["schemas"]["DocumentResponse"][];
                 };
             };
             /** @description Validation Error */
@@ -11961,7 +12240,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OwnerDocumentResponse"];
+                    "application/json": components["schemas"]["DocumentResponse"];
                 };
             };
             /** @description Validation Error */
@@ -12015,7 +12294,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["OwnerDocumentUpdate"];
+                "application/json": components["schemas"]["DocumentUpdate"];
             };
         };
         responses: {
@@ -12025,7 +12304,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OwnerDocumentResponse"];
+                    "application/json": components["schemas"]["DocumentResponse"];
                 };
             };
             /** @description Validation Error */

@@ -15,7 +15,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import OwnerStoredObject, StoredObject
+from .models import StoredObject
 from .storage import ObjectStorage
 
 
@@ -24,7 +24,6 @@ def unreferenced_objects(
 ) -> list[str]:
     """Keys of stored files older than *older_than* that no object row names, in any state."""
     referenced = set(session.scalars(select(StoredObject.object_key)))
-    referenced.update(session.scalars(select(OwnerStoredObject.object_key)))
     cutoff = ((now or datetime.now(UTC)) - older_than).timestamp()
     return sorted(key for key, modified in storage.objects() if modified < cutoff and key not in referenced)
 

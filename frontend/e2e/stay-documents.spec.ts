@@ -20,8 +20,9 @@ const confirmation = {
   byte_size: 100,
   content_type: "text/plain",
   original_filename: "confirmation.txt",
+  trip_id: "trip-1",
   created_at: "2054-11-01T10:00:00Z",
-  file_url: "/api/trips/trip-1/documents/document-confirmation/original",
+  file_url: "/api/documents/document-confirmation/original",
 };
 const stay = {
   id: "stay-riverside",
@@ -54,7 +55,9 @@ for (const locale of ["nl", "en"] as const) {
         await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
         const base = `**/api/trips/${ownerTrip.id}`;
         await page.route(`${base}/areas`, (route) => route.fulfill({ json: [area] }));
-        await page.route(`${base}/documents`, (route) => route.fulfill({ json: [confirmation] }));
+        await page.route(/\/api\/documents\?trip_id=/, (route) =>
+          route.fulfill({ json: [confirmation] }),
+        );
         await page.route(`${base}/stays`, (route) => route.fulfill({ json: [stay] }));
         let patched: Record<string, unknown> | null = null;
         await page.route(`${base}/stays/${stay.id}`, (route) => {

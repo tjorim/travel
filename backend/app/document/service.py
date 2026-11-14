@@ -1,4 +1,7 @@
-"""Copy-verify-record handling for private trip documents.
+"""Copy-verify-record handling for owner documents.
+
+A document belongs to the owner and is optionally filed under one trip; its original is a ``StoredObject`` owned by
+the owner, so the file stays where it is when the document moves between trips.
 
 Nothing here commits (``docs/object-storage.md``): an upload writes and verifies the bytes, then flushes the
 row, and the caller commits after, so the bytes exist before the row does (rule 1). A removal marks the
@@ -23,18 +26,14 @@ class DocumentError(MediaImportError):
 def trip_documents(session: Session, trip_id: str, document_asset_ids: list[str]) -> list[DocumentAsset]:
     """Resolve documents to attach to one record of an already-authorized trip, in the order given.
 
-    A client can only attach non-deleted documents owned by this trip; any other id refuses the whole list.
-    Routes and stays share this check, so a document can never be linked across trips.
+    A client can only attach documents filed under this trip; any other id refuses the whole list. Routes and
+    stays share this check, so a document can never be attached across trips, nor while it is unfiled.
     """
     if not document_asset_ids:
         return []
     assets = list(
         session.scalars(
-            select(DocumentAsset).where(
-                DocumentAsset.trip_id == trip_id,
-                DocumentAsset.id.in_(document_asset_ids),
-                DocumentAsset.deleted_at.is_(None),
-            )
+            select(DocumentAsset).where(DocumentAsset.trip_id == trip_id, DocumentAsset.id.in_(document_asset_ids))
         )
     )
     if len(assets) != len(document_asset_ids):
@@ -46,30 +45,41 @@ def trip_documents(session: Session, trip_id: str, document_asset_ids: list[str]
     return [by_id[asset_id] for asset_id in document_asset_ids]
 
 
+def existing_document(
+    session: Session, *, original_object_id: str, trip_id: str | None, excluding: str | None = None
+) -> DocumentAsset | None:
+    """The document that already holds this file under this trip (or unfiled), if any."""
+    query = select(DocumentAsset).where(DocumentAsset.original_object_id == original_object_id)
+    query = query.where(DocumentAsset.trip_id.is_(None) if trip_id is None else DocumentAsset.trip_id == trip_id)
+    if excluding is not None:
+        query = query.where(DocumentAsset.id != excluding)
+    return session.scalar(query)
+
+
 def direct_upload(
     session: Session,
     storage: ObjectStorage,
     *,
-    trip_id: str,
+    owner_subject: str,
+    trip_id: str | None,
     filename: str,
     content_type: str,
     data: bytes | StagedUpload,
     document_kind: DocumentKind,
     title: str,
 ) -> tuple[DocumentAsset, bool]:
-    """Store an owner original and create one retry-safe asset record."""
+    """Store an owner original and create one retry-safe document record under the trip (or unfiled)."""
     try:
         title = TypeAdapter(DocumentTitle).validate_python(title)
     except ValidationError as error:
         raise DocumentError("Invalid document title", code="invalid_document_title") from error
-    stored = store_uploaded_object(session, storage, trip_id=trip_id, data=data, content_type=content_type)
-    existing = session.scalar(
-        select(DocumentAsset).where(DocumentAsset.trip_id == trip_id, DocumentAsset.original_object_id == stored.id)
-    )
+    stored = store_uploaded_object(session, storage, owner_subject=owner_subject, data=data, content_type=content_type)
+    existing = existing_document(session, original_object_id=stored.id, trip_id=trip_id)
     if existing is not None:
         return existing, False
 
     asset = DocumentAsset(
+        owner_subject=owner_subject,
         trip_id=trip_id,
         original_object_id=stored.id,
         document_kind=document_kind,
@@ -82,11 +92,11 @@ def direct_upload(
 
 
 def delete_document_asset(session: Session, *, document_asset: DocumentAsset) -> PendingPurge:
-    """Remove a trip document and mark its unreferenced stored original ``purge_pending``."""
+    """Remove a document and mark its stored original ``purge_pending`` when no other document or media uses it."""
     object_id = document_asset.original_object_id
     session.delete(document_asset)
     session.flush()
     if not _object_is_referenced(session, object_id):
         session.get_one(StoredObject, object_id).state = ObjectState.PURGE_PENDING
     session.flush()
-    return PendingPurge(trip_objects=(object_id,))
+    return PendingPurge(objects=(object_id,))

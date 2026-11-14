@@ -119,7 +119,7 @@ function seed(routes: Route[] = [], locations: Location[] = [], areas: Area[] = 
       update: (row, body) => ({ ...row, ...body }),
     })
     .collection("/api/trips/trip/areas", areas)
-    .collection("/api/trips/trip/documents", [ticket])
+    .collection("/api/documents?trip_id=trip", [ticket])
     .collection("/api/trips/trip/locations", locations);
   api.on("POST", /\/areas\/suggest$/, () => ({ existing_area_id: "taipei", area: taipei }));
 }

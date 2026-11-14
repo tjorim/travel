@@ -18,6 +18,8 @@ export const OFFLINE_SCHEMA_VERSION = "travel/offline-copy@1";
 export const OFFLINE_LEASE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type OfflineResourceKind =
+  | "document"
+  // Copies saved before trip documents and library documents became one resource.
   | "library_document"
   | "trip_document"
   | "emergency_info"

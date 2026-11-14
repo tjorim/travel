@@ -215,20 +215,26 @@ def _store_bytes(
     session: Session,
     storage: ObjectStorage,
     *,
-    trip_id: str,
+    trip_id: str | None = None,
+    owner_subject: str | None = None,
     data: bytes | StagedUpload,
     content_type: str,
     object_key: str | None = None,
 ) -> StoredObject:
+    """Write, verify and record one object for a trip (media) or an owner (documents), reusing identical bytes.
+
+    Exactly one of ``trip_id`` and ``owner_subject`` names the home (``StoredObject`` has one); the same bytes are
+    stored once per home, never across homes."""
+    if (trip_id is None) == (owner_subject is None):
+        raise ValueError("An object belongs to either a trip or an owner")
     digest = sha256_hex(data)
+    home = StoredObject.trip_id == trip_id if trip_id is not None else StoredObject.owner_subject == owner_subject
     # Serialize reuse of a pending object with the purge's final deletion.
-    existing = session.scalar(
-        select(StoredObject).where(StoredObject.trip_id == trip_id, StoredObject.sha256 == digest).with_for_update()
-    )
+    existing = session.scalar(select(StoredObject).where(home, StoredObject.sha256 == digest).with_for_update())
     if existing is not None and existing.state == ObjectState.AVAILABLE:
         return existing
 
-    key = existing.object_key if existing is not None else (object_key or f"{trip_id}/{opaque_id()}")
+    key = existing.object_key if existing is not None else (object_key or f"{trip_id or 'owner'}/{opaque_id()}")
     storage.put(key, data)
     verified = verify_object(storage, key, digest)
 
@@ -240,6 +246,8 @@ def _store_bytes(
     else:
         obj = StoredObject(
             trip_id=trip_id,
+            owner_subject=owner_subject,
+            bucket="media" if trip_id is not None else "library",
             object_key=key,
             sha256=digest,
             byte_size=len(data),
@@ -286,21 +294,29 @@ def read_bounded_upload[Error: MediaImportError](
 
 
 def store_uploaded_object(
-    session: Session, storage: ObjectStorage, *, trip_id: str, data: bytes | StagedUpload, content_type: str
+    session: Session,
+    storage: ObjectStorage,
+    *,
+    trip_id: str | None = None,
+    owner_subject: str | None = None,
+    data: bytes | StagedUpload,
+    content_type: str,
 ) -> StoredObject:
     """Store one bounded owner-uploaded object through the shared durable
     copy-and-verify path.
 
-    This is intentionally not media-specific: document uploads use the
-    same trip-local checksum, opaque key, storage read-back verification and
-    ``StoredObject`` inventory as media. Callers attach their own canonical
-    resource only after this function returns an available object.
+    This is intentionally not media-specific: a media upload names its trip and a document upload names its owner
+    (``owner_subject``), and both use the same checksum, opaque key, storage read-back verification and
+    ``StoredObject`` inventory. Callers attach their own canonical resource only after this function returns an
+    available object.
     """
     if not data:
         raise MediaImportError("Het bestand is leeg.", code="file_empty")
     if len(data) > settings.media_max_upload_bytes:
         raise upload_too_large_error()
-    return _store_bytes(session, storage, trip_id=trip_id, data=data, content_type=content_type)
+    return _store_bytes(
+        session, storage, trip_id=trip_id, owner_subject=owner_subject, data=data, content_type=content_type
+    )
 
 
 def _existing_media_asset_for_object(session: Session, trip_id: str, stored_object_id: str) -> MediaAsset | None:
@@ -780,16 +796,11 @@ class PendingPurge:
     or skipped finalise leaves the rows ``purge_pending``, which the scheduled purge retries.
     """
 
-    trip_objects: tuple[str, ...] = ()
-    owner_objects: tuple[str, ...] = ()
+    objects: tuple[str, ...] = ()
 
     def finalise(self, session: Session, storage: ObjectStorage) -> None:
-        if self.trip_objects:
-            _purge_pending_objects(session, storage, object_ids=list(self.trip_objects))
-        if self.owner_objects:
-            from ..library.service import purge_owner_objects
-
-            purge_owner_objects(session, storage, object_ids=list(self.owner_objects))
+        if self.objects:
+            _purge_pending_objects(session, storage, object_ids=list(self.objects))
 
 
 def delete_media_derivative(session: Session, *, derivative: MediaDerivative) -> PendingPurge:
@@ -811,7 +822,7 @@ def delete_media_derivative(session: Session, *, derivative: MediaDerivative) ->
         if not _object_is_referenced(session, object_id):
             session.get_one(StoredObject, object_id).state = ObjectState.PURGE_PENDING
     session.flush()
-    return PendingPurge(trip_objects=tuple(object_ids))
+    return PendingPurge(objects=tuple(object_ids))
 
 
 def purge_deleted_media(session: Session, storage: ObjectStorage, *, older_than: timedelta) -> int:
@@ -843,16 +854,14 @@ def purge_deleted_media(session: Session, storage: ObjectStorage, *, older_than:
     # SET NULL also retains inventory from an upload that committed after the
     # deleting transaction took its inventory. It has no surviving trip and
     # must enter the same committed pending state before any physical purge.
-    for stored in session.scalars(select(StoredObject).where(StoredObject.trip_id.is_(None))):
+    for stored in session.scalars(
+        select(StoredObject).where(StoredObject.trip_id.is_(None), StoredObject.owner_subject.is_(None))
+    ):
         if not _object_is_referenced(session, stored.id):
             stored.state = ObjectState.PURGE_PENDING
     session.commit()
 
-    purged = _purge_pending_objects(session, storage)
-    # The same scheduled storage purge retries failed owner-library deletions.
-    from ..library.service import purge_owner_objects
-
-    return purged + purge_owner_objects(session, storage)
+    return _purge_pending_objects(session, storage)
 
 
 def _purge_pending_objects(session: Session, storage: ObjectStorage, *, object_ids: list[str] | None = None) -> int:

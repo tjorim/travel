@@ -191,6 +191,10 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
       return m.api_departure_day_mismatch();
     case "one_or_more_documents_are_unavailable_for_this_trip":
       return m.api_one_or_more_documents_are_unavailable_for_this_trip();
+    case "detach_the_document_from_stays_and_routes_before_moving_it":
+      return m.api_detach_the_document_from_stays_and_routes_before_moving_it();
+    case "that_trip_already_holds_this_file":
+      return m.api_that_trip_already_holds_this_file();
     case "a_time_without_an_offset_needs_the_end_s_time_zone":
       return m.api_a_time_without_an_offset_needs_the_end_s_time_zone();
     case "a_route_needs_both_its_areas":

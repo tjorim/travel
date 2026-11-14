@@ -323,11 +323,9 @@ def test_packing_alternative_and_library_refusals_have_the_same_code_over_http_a
             lambda: backend.undo_alternative_choice(trip_id, "missing", confirm=True),
         ),
         "unknown trip document": _same_refusal(
-            http.get(f"{base}/documents/missing"), lambda: backend.get_document(trip_id, "missing")
+            http.get(f"{base}/documents/missing"), lambda: backend.get_document("missing", trip_id)
         ),
-        "unknown library document": _same_refusal(
-            http.get("/api/library/documents/missing"), lambda: backend.get_library_document("missing")
-        ),
+        "unknown document": _same_refusal(http.get("/api/documents/missing"), lambda: backend.get_document("missing")),
         "unknown emergency entry": _same_refusal(
             http.get("/api/library/emergency-info/missing"), lambda: backend.get_emergency_info_entry("missing")
         ),
@@ -460,14 +458,14 @@ def test_the_storage_lifecycle_commits_only_when_it_purges() -> None:
     Uploads write bytes and flush rows (rule 1), a removal marks ``purge_pending`` and returns a ``PendingPurge``
     (rule 3), and only the purges commit themselves: they run after the caller's commit, under the deletion lock,
     and delete their own rows."""
-    for module in ("document/service.py", "library/service.py", "media/service.py"):
+    for module in ("document/service.py", "media/service.py"):
         tree = ast.parse((APP / module).read_text())
         committing = {
             function.name
             for function in ast.walk(tree)
             if isinstance(function, ast.FunctionDef) and _commit_calls(function)
         }
-        assert committing <= {"purge_deleted_media", "_purge_pending_objects", "purge_owner_objects"}, module
+        assert committing <= {"purge_deleted_media", "_purge_pending_objects"}, module
 
 
 def test_the_mcp_batch_commit_is_never_replaced() -> None:
@@ -825,7 +823,7 @@ def _uploaded_document(session: Session, storage: LocalObjectStorage, trip_id: s
         session,
         storage,
         "owner-1",
-        trip_id,
+        trip_id=trip_id,
         title="Ticket",
         document_kind=DocumentKind.OTHER,
         filename="ticket.txt",
@@ -870,7 +868,7 @@ def test_a_removal_deletes_the_bytes_only_after_the_caller_commits_the_purge_mar
         session.commit()
 
     with TestingSessionLocal() as session:
-        document_service.remove_document(session, "owner-1", trip_id, document_id)
+        document_service.remove_document(session, "owner-1", document_id)
         session.rollback()  # the caller gave up: nothing was marked, nothing was deleted
     with TestingSessionLocal() as session:
         assert session.scalar(select(func.count()).select_from(DocumentAsset)) == 1
@@ -878,7 +876,7 @@ def test_a_removal_deletes_the_bytes_only_after_the_caller_commits_the_purge_mar
         assert len([path for path in tmp_path.rglob("*") if path.is_file()]) == 1
 
     with TestingSessionLocal() as session:
-        purge = document_service.remove_document(session, "owner-1", trip_id, document_id)
+        purge = document_service.remove_document(session, "owner-1", document_id)
         session.commit()
         # Rule 3: the mark is committed, the bytes are still there until the purge runs.
         assert session.scalars(select(StoredObject.state)).one() == ObjectState.PURGE_PENDING
@@ -895,14 +893,14 @@ def test_the_mcp_tool_finalises_a_removal_only_after_its_own_commit(
     monkeypatch.setattr(mcp_core, "get_storage", lambda: LocalObjectStorage(str(tmp_path)))
     trip_id, _ = _trip_with_area(http)
     upload = BinaryUpload(filename="ticket.txt", content_type="text/plain", data_base64="cHJpdmF0ZSBib29raW5n")
-    document = backend.upload_document(trip_id, "Ticket", DocumentKind.OTHER, upload)
+    document = backend.upload_document("Ticket", DocumentKind.OTHER, upload, trip_id)
     assert len([path for path in tmp_path.rglob("*") if path.is_file()]) == 1
 
     with pytest.raises(ValueError, match="confirm"):
-        backend.delete_document(trip_id, document["id"])
+        backend.delete_document(document["id"], trip_id=trip_id)
     assert len([path for path in tmp_path.rglob("*") if path.is_file()]) == 1
 
-    assert backend.delete_document(trip_id, document["id"], confirm=True) == {"status": "deleted"}
+    assert backend.delete_document(document["id"], confirm=True, trip_id=trip_id) == {"status": "deleted"}
     assert [path for path in tmp_path.rglob("*") if path.is_file()] == []
     with TestingSessionLocal() as session:
         assert session.scalar(select(func.count()).select_from(StoredObject)) == 0

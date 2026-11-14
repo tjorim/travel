@@ -18,11 +18,12 @@ export const ownerKeys = {
   /** Redacted copies of one document or media asset. Nested under the asset list, so refreshing the list refreshes them. */
   derivatives: (subject: string, tripId: string, kind: DerivativeParent, assetId: string) =>
     [...scope(subject), "trip", tripId, kind, assetId, "derivatives"] as const,
+  /** Every record of every trip: what a document written outside one trip's view refreshes. */
+  anyTrip: (subject: string) => [...scope(subject), "trip"] as const,
   library: (subject: string, resource: LibraryResource) =>
     [...scope(subject), "library", resource] as const,
-  /** Library documents linked to one trip. Nested under the library documents. */
-  linkedLibraryDocuments: (subject: string, tripId: string) =>
-    [...scope(subject), "library", "documents", "linked", tripId] as const,
+  /** The owner's documents, whichever trip they are filed under. */
+  documents: (subject: string) => [...scope(subject), "documents"] as const,
   /** Owner-wide collection links and their members. */
   collections: (subject: string) => [...scope(subject), "collections"] as const,
   providers: (subject: string) => [...scope(subject), "provider-tokens"] as const,
@@ -46,4 +47,4 @@ export type TripResource =
   | "overview";
 
 export type DerivativeParent = "media";
-export type LibraryResource = "documents" | "emergency-info";
+export type LibraryResource = "emergency-info";

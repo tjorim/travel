@@ -200,7 +200,7 @@ router blocker.
 
 Audited consumers: TripEditor, CaptureDialog, AreaManager, LocationManager,
 StayManager, RouteManager, VisitManager, TripTaskManager, TravelUpdateManager,
-DocumentManager, DocumentLibraryManager, EmergencyInfoManager, MediaManager
+DocumentManager (one for a trip's documents and the owner's library), EmergencyInfoManager, MediaManager
 (derivative/presentation forms), and PublicationManager (public/link forms).
 All shared RecordForm consumers previously disabled only Submit and could lose
 post-submit edits on reset/success; the pending contract now covers all of them.

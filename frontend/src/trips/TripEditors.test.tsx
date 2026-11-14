@@ -93,7 +93,7 @@ beforeEach(() => {
     .collection("/api/trips/trip/routes", [route])
     .collection("/api/trips/trip/areas", [taipei])
     .collection("/api/trips/trip/locations", [])
-    .collection("/api/trips/trip/documents", [])
+    .collection("/api/documents?trip_id=trip", [])
     .collection("/api/trips/trip/alternative-groups", [])
     .on("POST", /\/api\/trips\/trip\/visits\/route-check$/, () => []);
 });

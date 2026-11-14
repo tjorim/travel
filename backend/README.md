@@ -80,10 +80,10 @@ bearer token whose validated OpenID Connect `sub` matches the trip owner:
 | `DELETE` | `/trips/{trip_id}/media/{media_id}/derivatives/{derivative_id}` | Permanently remove a generated derivative and withdraw it from every live share scope. |
 | `POST` | `/trips/{trip_id}/media/{media_id}/derivatives/{derivative_id}/approve` | Owner review sign-off; only an approved derivative may ever be referenced by a share scope. |
 | `GET` | `/trips/{trip_id}/media/{media_id}/derivatives/{derivative_id}/file` | Owner-only, `no-store` derivative file delivery. |
-| `POST`, `GET` | `/trips/{trip_id}/documents/uploads`, `/trips/{trip_id}/documents` | Upload and list owner-only trip documents. Documents have no share scope or visitor representation. |
-| `GET`, `DELETE` | `/trips/{trip_id}/documents/{document_id}` | Read or permanently delete a trip document and its stored file. |
-| `GET` | `/trips/{trip_id}/documents/{document_id}/original` | Owner-only, `no-store` original file delivery. |
-| `POST`, `GET`, `DELETE` | `/library/documents...` | Manage owner-wide documents; deletion permanently removes the stored file. These files are never published. |
+| `POST`, `GET` | `/documents/uploads`, `/documents` | Upload (optionally filed under `trip_id`) and list the owner's documents (`trip_id` or `unfiled` filters). Documents have no share scope or visitor representation. |
+| `GET`, `PATCH`, `DELETE` | `/documents/{document_id}` | Read, edit (title, kind, filing under a trip) or permanently delete a document and its stored file. |
+| `GET` | `/documents/{document_id}/original` | Owner-only, `no-store` original file delivery. |
+| `POST`, `GET`, `PATCH`, `DELETE` | `/trips/{trip_id}/documents...`, `/library/documents...` | Deprecated aliases of `/documents`, kept for one release (the first fixes the trip, the second calls `trip_id` `linked_trip_id`); the same service answers. |
 | `POST` | `/trips/{trip_id}/media/imports/{provider}/sessions` | Start a Google Photos Picker or GoPro Cloud selection session. |
 | `POST` | `/trips/{trip_id}/media/imports/{provider}/sessions/{session_id}/complete` | Import every item the owner selected; safe to retry after a partial failure. |
 | `GET` | `/provider-tokens` | Owner-only non-secret status. Google Photos is available only when OAuth credentials, redirect URI and encryption key are configured; GoPro Cloud remains unavailable pending its beta OAuth contract. |
