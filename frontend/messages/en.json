@@ -1640,6 +1640,7 @@
   "publication_check_intro": "What each active or draft audience currently receives, and what you should review.",
   "publication_choose_in_sharing": "Choose in Sharing",
   "publication_choose_who_sees_each_item_new_items_are_private": "Choose who sees each item. New items are private.",
+  "publication_collection_member": "Collection “{name}”",
   "publication_copy_link_action": "Copy link",
   "publication_copying_failed": "Copying failed.",
   "publication_count_day_dated_records": [

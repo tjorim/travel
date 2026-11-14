@@ -215,3 +215,59 @@ it("reviews and applies a preset to a collection member, then shows the scope th
   const checkbox = await section.findByRole("checkbox", { name: "Toon “Aankomst” op deze link" });
   await waitFor(() => expect(checkbox.getAttribute("aria-checked")).toBe("true"));
 });
+
+it("reviews what the previewed member scope shows of a trip that has not started, as a link preview does", async () => {
+  api.on("POST", /\/api\/collections\/c1\/members\/m1\/preview$/, () => ({
+    schema_version: "travel/unlisted-trip@1",
+    title: "Exampleland",
+  }));
+  api.on("POST", /\/api\/collections\/c1\/members\/m1\/future-disclosure$/, () => ({
+    transport: 2,
+    day_dates: 1,
+  }));
+  renderWithOwner(
+    <MemberScopeDialog
+      collection={collection("active")}
+      member={member}
+      trip={trip}
+      onClose={() => undefined}
+    />,
+  );
+  await screen.findByRole("region", { name: "Weggelaten voor dit publiek" });
+  // Nothing is reviewed before the owner asks for the preview.
+  expect(api.count("POST /api/collections/c1/members/m1/future-disclosure")).toBe(0);
+  fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
+  expect(await screen.findByText(/Verzamellink “Familie” kan vóór de reis lezen/)).toBeTruthy();
+  expect(screen.getByText(/Verzamellink “Familie” toont datums per dag/)).toBeTruthy();
+  // The candidate scope that was previewed is the one counted, and nothing is saved.
+  expect(api.lastBody<ShareScope>("POST /api/collections/c1/members/m1/future-disclosure")).toEqual(
+    member.scope,
+  );
+  expect(api.count("PUT /api/collections/c1/members/m1")).toBe(0);
+});
+
+it("shows no review when the previewed member scope shows nothing of the future", async () => {
+  api.on("POST", /\/api\/collections\/c1\/members\/m1\/preview$/, () => ({
+    schema_version: "travel/unlisted-trip@1",
+    title: "Exampleland",
+  }));
+  api.on("POST", /\/api\/collections\/c1\/members\/m1\/future-disclosure$/, () => ({
+    transport: 0,
+    day_dates: 0,
+  }));
+  renderWithOwner(
+    <MemberScopeDialog
+      collection={collection("active")}
+      member={member}
+      trip={trip}
+      onClose={() => undefined}
+    />,
+  );
+  await screen.findByRole("region", { name: "Weggelaten voor dit publiek" });
+  fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
+  await waitFor(() =>
+    expect(api.count("POST /api/collections/c1/members/m1/future-disclosure")).toBe(1),
+  );
+  expect(screen.getByText("Weergegeven preview")).toBeTruthy();
+  expect(screen.queryByText(/kan vóór de reis lezen/)).toBeNull();
+});

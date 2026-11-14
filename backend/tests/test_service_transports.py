@@ -22,7 +22,7 @@ from app.config import settings
 from app.database import Base, get_session
 from app.errors import Refusal, ServiceError
 from app.main import app
-from app.mcp_server import BinaryUpload, TravelMcpBackend, create_mcp_server
+from app.mcp_server import MCP_TOOL_CAPABILITIES, BinaryUpload, TravelMcpBackend, create_mcp_server
 from app.mcp_server import core as mcp_core
 from app.models import (
     Collection,
@@ -599,6 +599,80 @@ def test_a_collection_member_of_a_revoked_collection_cannot_be_edited_over_eithe
             lambda: backend.update_collection_member(collection_id, member["id"], schemas.ShareScopeInput(), True),
         )
         == "a_revoked_or_expired_collection_cannot_be_edited"
+    )
+
+
+def test_the_future_disclosure_review_is_the_same_over_http_and_mcp_for_every_audience(
+    http: TestClient, backend: TravelMcpBackend
+) -> None:
+    """The public view, a hidden link and a collection member count the same trip alike on both transports (#426)."""
+    trip_id = http.post("/api/trips", json={"title": "Not started", "starts_on": "2054-04-01"}).json()["id"]
+    departure, arrival = _area(http, trip_id, "Amsterdam"), _area(http, trip_id, "Taipei")
+    route = http.post(
+        f"/api/trips/{trip_id}/routes",
+        json={
+            "mode": "flight",
+            "departure_area_id": departure,
+            "arrival_area_id": arrival,
+            "departs_on": "2054-04-02",
+            "departs_at": "2054-04-02T09:00:00Z",
+            "arrives_at": "2054-04-02T23:00:00Z",
+        },
+    ).json()
+    http.put(f"/api/trips/{trip_id}/visibility/route/{route['id']}", json={"visibility": "custom"})
+    scope = {"items": [{"kind": "route", "id": route["id"]}], "defaults": None}
+    link = http.post(f"/api/trips/{trip_id}/share-links", json={"label": "Family", "scope": scope}).json()
+    collection_id = http.post("/api/collections", json={"label": "Friends"}).json()["id"]
+    member = http.post(f"/api/collections/{collection_id}/members", json={"trip_id": trip_id, "scope": scope}).json()[
+        "members"
+    ][0]
+    candidate = schemas.ShareScopeInput(**scope)
+    empty = schemas.ShareScopeInput(items=[], defaults=None)
+
+    for name in (
+        "preview_public_projection_future_disclosure",
+        "preview_share_link_future_disclosure",
+        "preview_collection_member_future_disclosure",
+    ):
+        assert MCP_TOOL_CAPABILITIES[name] == {"effect": "read", "requires_confirmation": False}
+
+    routes = {
+        "public": f"/api/trips/{trip_id}/public-projection/future-disclosure",
+        "link": f"/api/trips/{trip_id}/share-links/{link['id']}/future-disclosure",
+        "member": f"/api/collections/{collection_id}/members/{member['id']}/future-disclosure",
+    }
+    tools = {
+        "public": lambda body: backend.preview_public_projection_future_disclosure(trip_id, body),
+        "link": lambda body: backend.preview_share_link_future_disclosure(trip_id, link["id"], body),
+        "member": lambda body: backend.preview_collection_member_future_disclosure(collection_id, member["id"], body),
+    }
+    for kind, route_path in routes.items():
+        for body, expected in (
+            (candidate, {"transport": 1, "day_dates": 1}),
+            (empty, {"transport": 0, "day_dates": 0}),
+        ):
+            response = http.post(route_path, json=body.model_dump(mode="json"))
+            assert response.status_code == 200, response.text
+            assert response.json() == tools[kind](body) == expected, kind
+    # With no candidate both transports review the saved scope.
+    assert http.post(routes["member"]).json() == backend.preview_collection_member_future_disclosure(
+        collection_id, member["id"]
+    )
+
+    base = f"/api/collections/{collection_id}"
+    assert (
+        _same_refusal(
+            http.post(f"{base}/members/missing/future-disclosure"),
+            lambda: backend.preview_collection_member_future_disclosure(collection_id, "missing"),
+        )
+        == "not_found"
+    )
+    assert (
+        _same_refusal(
+            http.post("/api/collections/missing/members/missing/future-disclosure"),
+            lambda: backend.preview_collection_member_future_disclosure("missing", "missing"),
+        )
+        == "not_found"
     )
 
 

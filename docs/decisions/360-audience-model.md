@@ -68,10 +68,13 @@ They now run the same code for everything above. The differences that remain are
 - **Live location.** A member has no `live_location_key`: live location names the public view or one hidden link,
   never a collection member ([decision 244](244-live-location-tracks.md)). A member's document carries no
   `current_locations`, as before.
-- **Future-disclosure.** The review itself (`audiences.review_future`) takes any audience and a service function
-  exists for a member (`collections.review_member_future`), so a member has the same check. It has no route, MCP tool
-  or screen yet: adding a route changes the OpenAPI document, which this decision keeps unchanged. The route, the
-  tool and the screen for a member are tracked in [#426](https://github.com/tjorim/travel/issues/426).
+- **Future-disclosure.** The review itself (`audiences.review_future`) takes any audience, so a member has the same
+  check as a link: the service function `collections.review_member_future`, the route
+  `POST /api/collections/{collection_id}/members/{member_id}/future-disclosure`, the MCP tool
+  `preview_collection_member_future_disclosure` and the review in the member's scope dialog. This difference was
+  closed in [#426](https://github.com/tjorim/travel/issues/426): the route is the only change to the OpenAPI
+  document and no audience receives anything different. The public view and a hidden link now also have an MCP
+  tool for the review (`preview_public_projection_future_disclosure`, `preview_share_link_future_disclosure`).
 - **Widening acknowledgement.** The field stays where each route has always had it (see above); both reach one
   refusal, `exclusion_widening_needs_acknowledgement`.
 - **Lifecycle.** A link has its own token, rotation and feed; a member shares its collection's capability and
