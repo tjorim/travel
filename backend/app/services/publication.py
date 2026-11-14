@@ -56,7 +56,7 @@ from .sharing import (
     refuse_unacknowledged_widening,
     scope_change_details,
 )
-from .trips import owned_trip
+from .trips import lock_trip, owned_trip
 
 EDITABLE_LINK_STATES = (LinkState.DRAFT, LinkState.ACTIVE)
 
@@ -208,6 +208,7 @@ def publish_public_projection(session: Session, subject: str, trip_id: Identifie
 def unpublish_public_projection(
     session: Session, subject: str, trip_id: Identifier, payload: AuditReasonInput | None = None
 ) -> PublicProjectionStatusResponse:
+    lock_trip(session, trip_id, subject)
     owned_trip(session, trip_id, subject)
     surface = session.get(PublicSurface, trip_id)
     if surface is None or surface.state != SurfaceState.PUBLISHED:
@@ -278,6 +279,7 @@ def owned_link(session: Session, subject: str, trip_id: Identifier, link_id: Ide
 def create_share_link(
     session: Session, subject: str, trip_id: Identifier, payload: ShareLinkCreate
 ) -> ShareLinkResponse:
+    lock_trip(session, trip_id, subject)
     scope = apply_scope(session, subject, trip_id, payload.scope, None)
     link = ShareLink(trip_id=trip_id, label=payload.label, series_id="", scope=scope, state=LinkState.DRAFT)
     session.add(link)
@@ -451,6 +453,7 @@ def _activate_link(link: ShareLink, expires_in_days: int | None) -> str:
 def activate_share_link(
     session: Session, subject: str, trip_id: Identifier, link_id: Identifier, payload: ShareLinkActivateRequest
 ) -> ShareLinkActivateResponse:
+    lock_trip(session, trip_id, subject)
     link = owned_link(session, subject, trip_id, link_id)
     if link.state != LinkState.DRAFT:
         raise Conflict("Only a draft link can be activated", code="only_a_draft_link_can_be_activated")
@@ -480,6 +483,7 @@ def revoke_share_link(
     link_id: Identifier,
     payload: AuditReasonInput | None = None,
 ) -> ShareLinkResponse:
+    lock_trip(session, trip_id, subject)
     link = owned_link(session, subject, trip_id, link_id)
     if link.state != LinkState.ACTIVE:
         raise Conflict("Only an active link can be revoked", code="only_an_active_link_can_be_revoked")
@@ -504,6 +508,7 @@ def revoke_share_link(
 def rotate_share_link(
     session: Session, subject: str, trip_id: Identifier, link_id: Identifier, payload: ShareLinkActivateRequest
 ) -> ShareLinkActivateResponse:
+    lock_trip(session, trip_id, subject)
     old_link = owned_link(session, subject, trip_id, link_id)
     if old_link.state != LinkState.ACTIVE:
         raise Conflict("Only an active link can be rotated", code="only_an_active_link_can_be_rotated")

@@ -344,8 +344,11 @@ purged together, in one transaction, by `purge-expired-audit-events` once a row 
 | `owner_activity_events` (`OwnerActivityEvent`) | Every MCP tool call (also a rejected one) and each HTTP trip or PDF export, with its `transport` (`mcp` or `http`). | `action`: an operation code | **Kept** until the 24-month expiry, with the trip id. |
 
 Why keeping them is safe. A row holds the trip, collection, link, record and audience ids, the owner subject, a scope
-fingerprint, counts, the record kind and visibility values, and an owner-entered reason; never a title, note, address,
-link label, token, filename, request body or recipient identity. After the trip is deleted those ids point at nothing:
+fingerprint, counts, and the record kind and visibility values; never a title, note, address, token, filename, request
+body or recipient identity. While its trip exists, a sharing row can also hold the owner-entered link label or reason.
+Deleting the trip removes both from its sharing rows in the same transaction, under the trip row's lock, and a writer
+of such a row takes the same lock first, so it either finishes before the scrub or finds the trip gone. A collection
+row keeps its collection's label until it expires, because a collection is not trip content. After the trip is deleted those ids point at nothing:
 `GET /trips/{id}/audit-events` answers 404 because the owner no longer owns the trip, so the retained sharing
 rows are not listed anywhere and exist only until expiry and in backups. The collection and owner activity rows stay
 listable by their owner (collections) or through the MCP activity tool. Database and Home Assistant backups may keep a
