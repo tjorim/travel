@@ -25,6 +25,8 @@ function eventMessage(event: AuditEvent) {
     "location.merge": m.audit_location_merge,
     "area.merge": m.audit_area_merge,
     "record.precision_follow_audience": m.audit_precision_follow,
+    "public_projection.preset_apply": m.audit_preset_apply,
+    "share_link.preset_apply": m.audit_preset_apply,
   };
   if (event.kind === "location.update")
     return m.audit_location_update({

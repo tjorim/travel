@@ -47,6 +47,7 @@ from .models import (
     AuditEventKind,
     AuditTargetType,
     Collection,
+    CollectionAuditKind,
     CollectionMember,
     DerivativePurpose,
     LinkState,
@@ -821,7 +822,7 @@ def apply_preset(
             actor_subject=subject,
             collection_id=holder.collection_id,
             trip_id=holder.trip_id,
-            kind="collection.member_preset_apply",
+            kind=CollectionAuditKind.MEMBER_PRESET_APPLY,
             details={"member_id": holder.id, **details},
         )
     else:
@@ -829,7 +830,9 @@ def apply_preset(
             session,
             trip_id=trip.id,
             actor_subject=subject,
-            kind=AuditEventKind.AUDIENCE_PRESET_APPLY,
+            kind=AuditEventKind.PUBLIC_PROJECTION_PRESET_APPLY
+            if isinstance(holder, PublicSurface)
+            else AuditEventKind.SHARE_LINK_PRESET_APPLY,
             target_type=AuditTargetType.PUBLIC_SURFACE
             if isinstance(holder, PublicSurface)
             else AuditTargetType.SHARE_LINK,

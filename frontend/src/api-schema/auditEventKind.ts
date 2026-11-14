@@ -6,6 +6,10 @@
  * OpenAPI spec version: snapshot
  */
 
+/**
+ * The code list of sharing audit events. The column is a plain string checked against this list when a row is
+ * written, so adding a kind needs no migration.
+ */
 export type AuditEventKind = typeof AuditEventKind[keyof typeof AuditEventKind];
 
 
@@ -29,5 +33,6 @@ export const AuditEventKind = {
   recordprecision_follow_audience: 'record.precision_follow_audience',
   alternative_groupchoose: 'alternative_group.choose',
   alternative_groupundo_choice: 'alternative_group.undo_choice',
-  audiencepreset_apply: 'audience.preset_apply',
+  public_projectionpreset_apply: 'public_projection.preset_apply',
+  share_linkpreset_apply: 'share_link.preset_apply',
 } as const;

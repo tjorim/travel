@@ -17,7 +17,7 @@ from ..audit import SYSTEM_ACTOR, record_collection_event, scope_fingerprint
 from ..capability import verifier_for
 from ..errors import Conflict, InvalidRevision, RevisionConflict
 from ..exclusion_review import exclusion_changes, scope_exclusions, widening
-from ..models import Collection, CollectionMember, LinkState, PublicSurface, ShareLink, Trip
+from ..models import Collection, CollectionAuditKind, CollectionMember, LinkState, PublicSurface, ShareLink, Trip
 from ..projection import delivered, render_projection
 from ..schemas import (
     CollectionIndexDocument,
@@ -196,7 +196,7 @@ def expire_collection(session: Session, collection: Collection) -> None:
         owner_subject=collection.owner_subject,
         actor_subject=SYSTEM_ACTOR,
         collection_id=collection.id,
-        kind="collection.expire",
+        kind=CollectionAuditKind.EXPIRE,
         occurred_at=collection.expires_at,
     )
     session.flush()

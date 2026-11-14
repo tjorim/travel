@@ -31,7 +31,7 @@ application side ([#336](https://github.com/tjorim/travel-private/issues/336)).
 - **Verification** (FastMCP `JWTVerifier`): Keycloak signature (JWKS), issuer,
   expiry, the `openid` scope and the audience above. The owner is the token's
   `sub`; tools never take a subject argument. Deletion and publication
-  confirmation and the `mcp_audit_events` rows are unchanged.
+  confirmation and the `owner_activity_events` rows (named `mcp_audit_events` until #364) are unchanged.
 
 A token is valid until `exp`; Keycloak session revocation takes effect when the
 short-lived access token expires, because the verifier does not introspect.

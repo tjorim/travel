@@ -29,11 +29,11 @@ from app.models import (
     ImportRecord,
     LinkState,
     Location,
-    McpAuditEvent,
     MediaAsset,
     MediaDerivative,
     MediaKind,
     ObjectState,
+    OwnerActivityEvent,
     PackingBag,
     PackingItem,
     PackingList,
@@ -249,8 +249,9 @@ def build_rich_trip(owner: str = "owner-1") -> dict[str, str]:
             )  # fmt: skip
         )
         session.add(
-            McpAuditEvent(
+            OwnerActivityEvent(
                 owner_subject=owner,
+                transport="mcp",
                 action="trip.get",
                 resource_type="trip",
                 trip_id=trip.id,
@@ -365,7 +366,9 @@ def test_other_owners_trip_is_not_found_and_not_audited() -> None:
     assert export(stranger, ids["trip"]).status_code == 404
     assert export(stranger, "0" * 32).status_code == 404
     with TestingSessionLocal() as session:
-        actions = list(session.scalars(select(McpAuditEvent.action).where(McpAuditEvent.action == EXPORT_AUDIT_ACTION)))
+        actions = list(
+            session.scalars(select(OwnerActivityEvent.action).where(OwnerActivityEvent.action == EXPORT_AUDIT_ACTION))
+        )
     assert actions == []
 
 
@@ -375,11 +378,14 @@ def test_each_export_is_audited_without_a_payload() -> None:
     assert export(owner, ids["trip"]).status_code == 200
     assert export(owner, ids["trip"]).status_code == 200
     with TestingSessionLocal() as session:
-        events = list(session.scalars(select(McpAuditEvent).where(McpAuditEvent.action == EXPORT_AUDIT_ACTION)))
+        events = list(
+            session.scalars(select(OwnerActivityEvent).where(OwnerActivityEvent.action == EXPORT_AUDIT_ACTION))
+        )
     assert len(events) == 2
     for event in events:
         assert (event.owner_subject, event.trip_id, event.result) == ("owner-1", ids["trip"], "success")
-        assert event.details == {"schema_version": EXPORT_SCHEMA_VERSION, "transport": "http"}
+        assert event.details == {"schema_version": EXPORT_SCHEMA_VERSION}
+        assert event.transport == "http"
 
 
 def test_export_is_read_only_and_requires_authentication() -> None:

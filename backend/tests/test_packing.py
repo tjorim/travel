@@ -12,7 +12,7 @@ from app.config import settings
 from app.database import Base, get_session
 from app.main import app
 from app.mcp_server import TravelMcpBackend
-from app.models import McpAuditEvent
+from app.models import OwnerActivityEvent
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -172,7 +172,7 @@ def test_mcp_packing_flow_and_payload_free_audit(monkeypatch: pytest.MonkeyPatch
     assert backend.delete_packing_bag(trip["id"], packing_list["id"], bag["id"], confirm=True) == {"status": "deleted"}
     assert backend.delete_packing_list(trip["id"], packing_list["id"], confirm=True) == {"status": "deleted"}
     with TestingSessionLocal() as session:
-        events = list(session.scalars(select(McpAuditEvent).where(McpAuditEvent.action.like("packing_%"))))
+        events = list(session.scalars(select(OwnerActivityEvent).where(OwnerActivityEvent.action.like("packing_%"))))
         assert events
         assert all("Private medicine" not in str(event.details) for event in events)
         assert all("Sensitive detail" not in str(event.details) for event in events)

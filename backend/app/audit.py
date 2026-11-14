@@ -21,9 +21,10 @@ from .models import (
     AuditTargetType,
     Collection,
     CollectionAuditEvent,
+    CollectionAuditKind,
     CollectionMember,
     LinkState,
-    McpAuditEvent,
+    OwnerActivityEvent,
     PublicSurface,
     ShareLink,
     SurfaceState,
@@ -34,7 +35,7 @@ from .models import (
 # request) has no authenticated owner subject to attribute it to.
 SYSTEM_ACTOR = "system"
 
-# Shared publication and best-effort MCP audit retention window (#36, #116).
+# Retention window of all three audit tables (#36, #116, #364).
 RETENTION_WINDOW = timedelta(days=730)
 
 
@@ -77,7 +78,7 @@ def record_collection_event(
     owner_subject: str,
     actor_subject: str,
     collection_id: str,
-    kind: str,
+    kind: CollectionAuditKind,
     trip_id: str | None = None,
     details: dict[str, Any] | None = None,
     occurred_at: datetime | None = None,
@@ -98,16 +99,31 @@ def record_collection_event(
     return event
 
 
-def purge_expired_audit_events(session: Session, *, older_than: timedelta = RETENTION_WINDOW) -> int:
-    """Purge both private audit histories using one cutoff and transaction.
+# Owner-entered free text a sharing event may carry. It goes when the trip is deleted; ids, kinds, counts and
+# fingerprints stay until the event expires (decision 36).
+_OWNER_TEXT_KEYS = ("label", "reason")
 
-    MCP invocation recording remains best effort; retention does not make
+
+def scrub_trip_audit_text(session: Session, trip_id: str) -> None:
+    """Drop the owner's free text (a link label, a reason) from a trip's sharing events before the trip is deleted.
+
+    The events themselves outlive the trip, so what remains must say nothing about it. Runs in the caller's
+    transaction."""
+    for event in session.scalars(select(AuditEvent).where(AuditEvent.trip_id == trip_id)):
+        if any(key in event.details for key in _OWNER_TEXT_KEYS):
+            event.details = {key: value for key, value in event.details.items() if key not in _OWNER_TEXT_KEYS}
+
+
+def purge_expired_audit_events(session: Session, *, older_than: timedelta = RETENTION_WINDOW) -> int:
+    """Purge all three audit tables (sharing, collection and owner activity) with one cutoff in one transaction.
+
+    Owner activity recording remains best effort; retention does not make
     recording atomic with domain mutations. The maintenance command uses this
-    policy default, including records whose trip has already been deleted.
+    policy default, including records whose trip or collection has already been deleted.
     """
     cutoff = datetime.now(UTC) - older_than
     purged = 0
-    for model in (AuditEvent, McpAuditEvent, CollectionAuditEvent):
+    for model in (AuditEvent, CollectionAuditEvent, OwnerActivityEvent):
         result = cast(CursorResult, session.execute(delete(model).where(model.occurred_at < cutoff)))
         purged += result.rowcount
     session.commit()

@@ -49,8 +49,8 @@ from app.models import (
     AuditEventKind,
     DocumentAsset,
     DocumentKind,
-    McpAuditEvent,
     ObjectState,
+    OwnerActivityEvent,
     StoredObject,
     TravelUpdate,
     Trip,
@@ -88,7 +88,7 @@ def test_owner_tools_use_application_validation_and_audit_each_result(backend: T
         backend.delete_trip(trip["id"])
 
     with TestingSessionLocal() as session:
-        events = list(session.scalars(select(McpAuditEvent).order_by(McpAuditEvent.occurred_at)))
+        events = list(session.scalars(select(OwnerActivityEvent).order_by(OwnerActivityEvent.occurred_at)))
         assert [(event.action, event.result) for event in events] == [
             ("trip.create", "succeeded"),
             ("trip.delete", "rejected"),
@@ -109,9 +109,9 @@ def test_delete_trip_retains_success_and_rejection_audits(backend: TravelMcpBack
         assert session.get(Trip, trip_id) is None
         events = list(
             session.scalars(
-                select(McpAuditEvent)
-                .where(McpAuditEvent.action == "trip.delete")
-                .order_by(McpAuditEvent.occurred_at, McpAuditEvent.id)
+                select(OwnerActivityEvent)
+                .where(OwnerActivityEvent.action == "trip.delete")
+                .order_by(OwnerActivityEvent.occurred_at, OwnerActivityEvent.id)
             )
         )
         assert sorted((event.result, event.trip_id) for event in events) == [
@@ -146,7 +146,9 @@ def test_mcp_cannot_cross_owner_boundary(backend: TravelMcpBackend, monkeypatch:
 
     with TestingSessionLocal() as session:
         rejected = session.scalar(
-            select(McpAuditEvent).where(McpAuditEvent.owner_subject == "owner-2", McpAuditEvent.action == "trip.get")
+            select(OwnerActivityEvent).where(
+                OwnerActivityEvent.owner_subject == "owner-2", OwnerActivityEvent.action == "trip.get"
+            )
         )
         assert rejected is not None
         assert rejected.result == "rejected"
@@ -665,7 +667,7 @@ def test_a_rejected_mcp_token_leaves_no_audit_row(mcp_resource: tuple[FastAPI, R
         assert client.post("/mcp/", json=trips, headers=_bearer(pair)).status_code == 200
 
     with TestingSessionLocal() as session:
-        assert {event.owner_subject for event in session.scalars(select(McpAuditEvent))} == {"owner-9"}
+        assert {event.owner_subject for event in session.scalars(select(OwnerActivityEvent))} == {"owner-9"}
 
 
 def test_mcp_audience_defaults_to_the_canonical_url_and_never_the_api_audience(
@@ -823,7 +825,7 @@ def test_parallel_list_calls_all_succeed_and_are_each_audited(
     results = asyncio.run(run())
     assert [result for result in results if isinstance(result, Exception) or result.is_error] == []
     with factory() as session:
-        events = list(session.scalars(select(McpAuditEvent)))
+        events = list(session.scalars(select(OwnerActivityEvent)))
     assert sorted(event.result for event in events) == ["succeeded"] * 46
     assert all(event.details.get("request_id") for event in events)
 
@@ -849,7 +851,7 @@ def test_response_validation_failure_is_a_correlated_tool_error_audited_once(
     message = result.content[0].text
     assert "get_trip failed validation" in message and "Reference:" in message
     with TestingSessionLocal() as session:
-        rejected = list(session.scalars(select(McpAuditEvent).where(McpAuditEvent.result == "rejected")))
+        rejected = list(session.scalars(select(OwnerActivityEvent).where(OwnerActivityEvent.result == "rejected")))
     assert len(rejected) == 1
     assert rejected[0].action == "trip.get"
     assert rejected[0].details["request_id"] in message
@@ -877,7 +879,7 @@ def test_invalid_arguments_are_audited_without_the_payload(
         assert "payload.starts_on" in message and "Reference:" in message
         assert "SECRET-DATE" not in message and "input_value" not in message
     with TestingSessionLocal() as session:
-        events = list(session.scalars(select(McpAuditEvent)))
+        events = list(session.scalars(select(OwnerActivityEvent)))
     assert [(event.action, event.result, event.resource_type) for event in events] == [
         ("create_trip", "rejected", "tool_invocation")
     ] * 2
@@ -913,7 +915,7 @@ def test_an_unknown_field_is_a_rejection_naming_it_and_the_value_is_not_audited(
     assert "payload.state:extra_forbidden" in result.content[0].text
     assert "SECRET-STATE" not in result.content[0].text
     with TestingSessionLocal() as session:
-        rejected = session.scalars(select(McpAuditEvent).where(McpAuditEvent.result == "rejected")).one()
+        rejected = session.scalars(select(OwnerActivityEvent).where(OwnerActivityEvent.result == "rejected")).one()
     assert (rejected.action, rejected.resource_type) == ("update_visit", "tool_invocation")
     assert rejected.details["error"] == "Validation failed (payload.state:extra_forbidden)"
     assert "SECRET-STATE" not in json.dumps(rejected.details) + caplog.text
@@ -927,7 +929,7 @@ def test_unknown_tools_are_not_audited_and_keep_their_specific_error(backend: Tr
     result = asyncio.run(run())
     assert result.is_error and "Unknown tool" in result.content[0].text
     with TestingSessionLocal() as session:
-        assert list(session.scalars(select(McpAuditEvent))) == []
+        assert list(session.scalars(select(OwnerActivityEvent))) == []
 
 
 def test_tool_errors_carry_the_reference_that_is_in_the_audit_row(backend: TravelMcpBackend) -> None:
@@ -938,7 +940,7 @@ def test_tool_errors_carry_the_reference_that_is_in_the_audit_row(backend: Trave
     result = asyncio.run(run())
     assert result.is_error and "Trip not found" in result.content[0].text
     with TestingSessionLocal() as session:
-        rejected = session.scalars(select(McpAuditEvent)).one()
+        rejected = session.scalars(select(OwnerActivityEvent)).one()
     assert (rejected.action, rejected.result) == ("trip.get", "rejected")
     assert f"Reference: {rejected.details['request_id']}" in result.content[0].text
 
@@ -954,7 +956,7 @@ def test_an_unexpected_exception_type_becomes_a_correlated_tool_error(backend: T
         asyncio.run(middleware.on_call_tool(context, fail))
     assert "SECRET" not in str(raised.value)
     with TestingSessionLocal() as session:
-        assert session.scalars(select(McpAuditEvent)).one().resource_type == "tool_invocation"
+        assert session.scalars(select(OwnerActivityEvent)).one().resource_type == "tool_invocation"
 
 
 def test_capability_manifest_covers_every_registered_tool_with_consistent_annotations(
@@ -1161,7 +1163,9 @@ def test_batch_create_adds_everything_or_nothing(backend: TravelMcpBackend) -> N
     with TestingSessionLocal() as session:
         results = [
             event.result
-            for event in session.scalars(select(McpAuditEvent).where(McpAuditEvent.action == "trip.batch_create"))
+            for event in session.scalars(
+                select(OwnerActivityEvent).where(OwnerActivityEvent.action == "trip.batch_create")
+            )
         ]
     assert sorted(results) == ["rejected", "succeeded"]
 
@@ -1313,7 +1317,10 @@ def test_duplicates_merge_and_unused_areas_and_locations_delete_over_mcp(backend
     assert backend.delete_area(trip_id, unassigned, confirm=True) == {"status": "deleted"}
 
     with TestingSessionLocal() as session:
-        actions = [event.action for event in session.scalars(select(McpAuditEvent).order_by(McpAuditEvent.occurred_at))]
+        actions = [
+            event.action
+            for event in session.scalars(select(OwnerActivityEvent).order_by(OwnerActivityEvent.occurred_at))
+        ]
     assert "location.merge_preview" in actions and "location.merge" in actions and "area.delete" in actions
     assert MCP_TOOL_CAPABILITIES["merge_locations"] == {"effect": "write", "requires_confirmation": True}
 
@@ -1386,7 +1393,9 @@ def test_merge_locations_over_mcp_refuses_unacknowledged_widening_with_the_struc
     assert merged["applied"] is True and backend.list_stays(trip_id)[0]["location_id"] == hotel["id"]
     with TestingSessionLocal() as session:
         rejected = [
-            e for e in session.scalars(select(McpAuditEvent)) if e.action == "location.merge" and e.result == "rejected"
+            e
+            for e in session.scalars(select(OwnerActivityEvent))
+            if e.action == "location.merge" and e.result == "rejected"
         ]
     # The tool's own rejection audit keeps the code, never the names the review quotes.
     assert [event.details["error"] for event in rejected] == ["merge_widening_needs_acknowledgement"]
@@ -1425,9 +1434,9 @@ def test_mcp_reads_and_writes_markdown_source_without_rendered_html(backend: Tra
 
 
 def _audit_rows(*actions: str) -> list[tuple[str, str, str | None, str | None, str]]:
-    query = select(McpAuditEvent).order_by(McpAuditEvent.action)
+    query = select(OwnerActivityEvent).order_by(OwnerActivityEvent.action)
     if actions:
-        query = query.where(McpAuditEvent.action.in_(actions))
+        query = query.where(OwnerActivityEvent.action.in_(actions))
     with TestingSessionLocal() as session:
         return [(e.action, e.resource_type, e.resource_id, e.trip_id, e.result) for e in session.scalars(query)]
 
@@ -1565,7 +1574,7 @@ def test_a_rejection_through_call_tool_is_audited_once_under_the_inner_tool(
         ("visit.delete", "visit", visit_id, trip_id, "rejected"),
     ]
     with TestingSessionLocal() as session:
-        details = [event.details for event in session.scalars(select(McpAuditEvent))]
+        details = [event.details for event in session.scalars(select(OwnerActivityEvent))]
     assert "SECRET-STATE" not in json.dumps(details) + caplog.text
     assert backend.get_visit(trip_id, visit_id)["id"] == visit_id
 
@@ -1650,7 +1659,9 @@ def test_update_location_refuses_an_unacknowledged_visitor_change_with_a_json_re
     # The rejection audit keeps the code, never the owner's text.
     with TestingSessionLocal() as session:
         rejected = session.scalars(
-            select(McpAuditEvent).where(McpAuditEvent.action == "location.update", McpAuditEvent.result == "rejected")
+            select(OwnerActivityEvent).where(
+                OwnerActivityEvent.action == "location.update", OwnerActivityEvent.result == "rejected"
+            )
         ).one()
         assert rejected.details == {"error": "visitor_visible_change_needs_acknowledgement"}
 
@@ -1792,7 +1803,7 @@ def test_committed_create_survives_audit_outage_without_logging_payload(
         trip = backend.create_trip(schemas.TripCreate(title="Synthetic private title"))
     with TestingSessionLocal() as session:
         assert session.get(Trip, trip["id"]).title == "Synthetic private title"
-        assert list(session.scalars(select(McpAuditEvent))) == []
+        assert list(session.scalars(select(OwnerActivityEvent))) == []
     assert "MCP audit write failed for trip.create" in caplog.text
     assert "RuntimeError" in caplog.text
     assert "synthetic-secret-payload" not in caplog.text
@@ -1969,7 +1980,7 @@ def test_a_sharing_preset_is_applied_over_mcp_with_the_same_rules_as_the_applica
     )
     assert unchanged["applied"] is False
     with TestingSessionLocal() as session:
-        (event,) = session.scalars(select(AuditEvent).where(AuditEvent.kind == AuditEventKind.AUDIENCE_PRESET_APPLY))
+        (event,) = session.scalars(select(AuditEvent).where(AuditEvent.kind == AuditEventKind.SHARE_LINK_PRESET_APPLY))
         assert event.details["widening_acknowledged"] is True and "Arrived" not in json.dumps(event.details)
 
     created = backend.create_share_link(

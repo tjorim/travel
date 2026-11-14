@@ -19,7 +19,7 @@ from ..audit import record_collection_event, scope_fingerprint
 from ..capability import generate_token, verifier_for
 from ..errors import Conflict, RecordNotFound, service_error
 from ..exclusion_review import exclusion_changes, widening
-from ..models import Collection, CollectionAuditEvent, CollectionMember, LinkState, Trip
+from ..models import Collection, CollectionAuditEvent, CollectionAuditKind, CollectionMember, LinkState, Trip
 from ..projection import ScopeError, prepare_scope, render_projection
 from ..schemas import (
     AuditReasonInput,
@@ -120,7 +120,7 @@ def create_collection(session: Session, subject: str, payload: CollectionCreate)
         owner_subject=subject,
         actor_subject=subject,
         collection_id=collection.id,
-        kind="collection.create",
+        kind=CollectionAuditKind.CREATE,
         details={"label": collection.label},
     )
     return collection_response(session, collection)
@@ -166,7 +166,7 @@ def update_collection(
         owner_subject=subject,
         actor_subject=subject,
         collection_id=collection.id,
-        kind="collection.update",
+        kind=CollectionAuditKind.UPDATE,
         details={"fields": sorted(fields)},
     )
     return collection_response(session, collection)
@@ -183,7 +183,7 @@ def delete_collection(session: Session, subject: str, collection_id: Identifier)
         owner_subject=subject,
         actor_subject=subject,
         collection_id=collection.id,
-        kind="collection.delete",
+        kind=CollectionAuditKind.DELETE,
         details={"label": collection.label},
     )
     session.delete(collection)
@@ -222,7 +222,7 @@ def add_collection_member(
         actor_subject=subject,
         collection_id=collection.id,
         trip_id=payload.trip_id,
-        kind="collection.member_add",
+        kind=CollectionAuditKind.MEMBER_ADD,
         details={"member_id": member.id, "scope_version": scope_fingerprint(scope)},
     )
     if payload.preset is not None:
@@ -274,7 +274,7 @@ def set_collection_member_scope(
             actor_subject=subject,
             collection_id=collection.id,
             trip_id=member.trip_id,
-            kind="collection.member_scope_change",
+            kind=CollectionAuditKind.MEMBER_SCOPE_CHANGE,
             details=details,
         )
     session.flush()
@@ -294,7 +294,7 @@ def remove_collection_member(
         actor_subject=subject,
         collection_id=collection.id,
         trip_id=member.trip_id,
-        kind="collection.member_remove",
+        kind=CollectionAuditKind.MEMBER_REMOVE,
         details={"member_id": member.id, "scope_version": scope_fingerprint(member.scope)},
     )
     collection.members.remove(member)
@@ -379,7 +379,7 @@ def activate_collection(
         owner_subject=subject,
         actor_subject=subject,
         collection_id=collection.id,
-        kind="collection.activate",
+        kind=CollectionAuditKind.ACTIVATE,
         details=details,
     )
     return collection_response(session, collection)
@@ -402,7 +402,7 @@ def revoke_collection(
         owner_subject=subject,
         actor_subject=subject,
         collection_id=collection.id,
-        kind="collection.revoke",
+        kind=CollectionAuditKind.REVOKE,
         details=details,
     )
     return collection_response(session, collection)
@@ -429,7 +429,7 @@ def rotate_collection(
         owner_subject=subject,
         actor_subject=subject,
         collection_id=collection.id,
-        kind="collection.rotate",
+        kind=CollectionAuditKind.ROTATE,
         details=details,
     )
     return collection_response(session, collection)

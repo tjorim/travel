@@ -1,3 +1,4 @@
+import json
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 
@@ -275,7 +276,7 @@ def test_travel_update_visibility_through_create_and_patch_is_audited() -> None:
 
 def test_purge_bounds_both_audit_tables_at_the_same_exact_cutoff(monkeypatch) -> None:
     from app import audit
-    from app.models import McpAuditEvent
+    from app.models import OwnerActivityEvent
 
     now = datetime(2054, 6, 1, tzinfo=UTC)
 
@@ -294,8 +295,9 @@ def test_purge_bounds_both_audit_tables_at_the_same_exact_cutoff(monkeypatch) ->
         for subject in ("owner-1", "owner-2"):
             for offset in (-1, 0, 1):
                 session.add(
-                    McpAuditEvent(
+                    OwnerActivityEvent(
                         owner_subject=subject,
+                        transport="mcp",
                         action="trip.read",
                         resource_type="trip",
                         trip_id="deleted-synthetic-trip",
@@ -307,7 +309,7 @@ def test_purge_bounds_both_audit_tables_at_the_same_exact_cutoff(monkeypatch) ->
         session.commit()
         assert purge_expired_audit_events(session) == 3
         assert session.scalar(select(AuditEvent)) is None
-        retained = list(session.scalars(select(McpAuditEvent)))
+        retained = list(session.scalars(select(OwnerActivityEvent)))
         assert len(retained) == 4
         assert {row.owner_subject for row in retained} == {"owner-1", "owner-2"}
         assert all(row.occurred_at.replace(tzinfo=UTC) >= cutoff for row in retained)
@@ -318,21 +320,26 @@ def test_audit_purge_failure_can_roll_back_both_histories(monkeypatch) -> None:
     import pytest
     from sqlalchemy import event
 
-    from app.models import McpAuditEvent
+    from app.models import OwnerActivityEvent
 
     owner = client_for("owner-1")
     trip = create_trip(owner)
     owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
     with TestingSessionLocal() as session:
         session.add(
-            McpAuditEvent(
-                owner_subject="owner-1", action="trip.read", resource_type="trip", result="succeeded", details={}
+            OwnerActivityEvent(
+                owner_subject="owner-1",
+                transport="mcp",
+                action="trip.read",
+                resource_type="trip",
+                result="succeeded",
+                details={},
             )
         )
         session.commit()
 
         def reject_mcp_delete(state):
-            if state.is_delete and state.statement.table.name == "mcp_audit_events":
+            if state.is_delete and state.statement.table.name == "owner_activity_events":
                 raise RuntimeError("synthetic database outage")
 
         event.listen(session, "do_orm_execute", reject_mcp_delete)
@@ -340,4 +347,90 @@ def test_audit_purge_failure_can_roll_back_both_histories(monkeypatch) -> None:
             purge_expired_audit_events(session, older_than=timedelta(seconds=-1))
         session.rollback()
         assert len(list(session.scalars(select(AuditEvent)))) == 1
-        assert len(list(session.scalars(select(McpAuditEvent)))) == 1
+        assert len(list(session.scalars(select(OwnerActivityEvent)))) == 1
+
+
+def test_sharing_audit_events_survive_trip_deletion_and_hold_only_ids() -> None:
+    owner = client_for("owner-1")
+    trip = create_trip(owner, title="Secret Exampleland Title")
+    owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
+    link = owner.post(f"/api/trips/{trip['id']}/share-links", json={"label": "Secret Family Label", "scope": SCOPE})
+    assert link.status_code == 201, link.text
+    activate = f"/api/trips/{trip['id']}/share-links/{link.json()['id']}/activate"
+    assert owner.post(activate, json={"expires_in_days": 30}).status_code == 200
+    owner.post(f"/api/trips/{trip['id']}/share-links/{link.json()['id']}/revoke", json={"reason": "Done"})
+    assert owner.delete(f"/api/trips/{trip['id']}").status_code == 204
+
+    # The owner no longer reads the trip's history; the rows stay until their 24-month expiry.
+    assert owner.get(f"/api/trips/{trip['id']}/audit-events").status_code == 404
+    with TestingSessionLocal() as session:
+        rows = list(session.scalars(select(AuditEvent).where(AuditEvent.trip_id == trip["id"])))
+        assert {row.kind for row in rows} >= {"public_projection.publish", "share_link.create", "share_link.revoke"}
+        stored = json.dumps([[row.kind, row.target_id, row.details] for row in rows])
+        assert "Secret Exampleland Title" not in stored and "Secret Family Label" not in stored
+        assert not AuditEvent.__table__.c.trip_id.foreign_keys
+        count = len(rows)
+    with TestingSessionLocal() as session:
+        assert purge_expired_audit_events(session, older_than=timedelta(seconds=-1)) == count
+
+
+def test_the_audit_tables_validate_their_kinds_when_a_row_is_written() -> None:
+    import pytest
+
+    from app.models import ActivityTransport, AuditEventKind, CollectionAuditEvent, OwnerActivityEvent
+
+    event = AuditEvent(trip_id="t", actor_subject="o", kind=AuditEventKind.SHARE_LINK_CREATE, target_type="share_link")
+    assert event.kind == "share_link.create" and type(event.kind) is str
+    with pytest.raises(ValueError, match="AuditEventKind"):
+        AuditEvent(trip_id="t", actor_subject="o", kind="share_link.unknown", target_type="share_link")
+    with pytest.raises(ValueError, match="AuditTargetType"):
+        AuditEvent(trip_id="t", actor_subject="o", kind="share_link.create", target_type="trip")
+    with pytest.raises(ValueError, match="CollectionAuditKind"):
+        CollectionAuditEvent(owner_subject="o", actor_subject="o", collection_id="c", kind="collection.unknown")
+    activity = OwnerActivityEvent(
+        owner_subject="o",
+        transport=ActivityTransport.HTTP,
+        action="trip.export",
+        resource_type="trip",
+        result="success",
+    )
+    assert activity.transport == "http" and type(activity.transport) is str
+    with pytest.raises(ValueError, match="ActivityTransport"):
+        OwnerActivityEvent(owner_subject="o", transport="smtp", action="trip.export", resource_type="trip")
+    with pytest.raises(ValueError, match="action"):
+        OwnerActivityEvent(owner_subject="o", transport="mcp", action="Trip Export!", resource_type="trip")
+
+
+def test_purge_removes_all_three_audit_tables_in_one_transaction_including_deleted_trips_and_collections() -> None:
+    from app.models import CollectionAuditEvent, OwnerActivityEvent
+
+    owner = client_for("owner-1")
+    trip = create_trip(owner)
+    owner.post(f"/api/trips/{trip['id']}/public-projection/publish")
+    collection = owner.post("/api/collections", json={"label": "Family"})
+    assert collection.status_code == 201, collection.text
+    owner.delete(f"/api/trips/{trip['id']}")
+    owner.delete(f"/api/collections/{collection.json()['id']}")
+    with TestingSessionLocal() as session:
+        session.add(
+            OwnerActivityEvent(
+                owner_subject="owner-1",
+                transport="http",
+                action="trip.export",
+                resource_type="trip",
+                trip_id=trip["id"],
+                result="success",
+            )
+        )
+        session.commit()
+        assert session.scalar(select(AuditEvent)) is not None
+        assert session.scalar(select(CollectionAuditEvent)) is not None
+        assert purge_expired_audit_events(session, older_than=timedelta(days=730)) == 0
+
+        commits = []
+        original_commit = session.commit
+        session.commit = lambda: (commits.append(1), original_commit())[1]  # type: ignore[method-assign]
+        purged = purge_expired_audit_events(session, older_than=timedelta(seconds=-1))
+        assert purged >= 4 and commits == [1]
+        for model in (AuditEvent, CollectionAuditEvent, OwnerActivityEvent):
+            assert session.scalar(select(model)) is None

@@ -305,6 +305,7 @@
   "audit_merge_widened": "Newly shown to visitors by the merge. Public page: {publicCount}; share links: {linkCount}.",
   "audit_precision_follow": "Visits and stays now follow each audience’s date precision.",
   "audit_precision_follow_audiences": "More precise dates for visitors. Public page: {publicCount}; share links: {linkCount}.",
+  "audit_preset_apply": "A sharing preset was applied.",
   "audit_private": "private",
   "audit_public_scope": "Public page selection changed.",
   "audit_publish": "Public page published.",
