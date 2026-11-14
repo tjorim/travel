@@ -3,7 +3,8 @@
 Visitor delivery calls only ``current_for_audience``. Everything else here is owner-only: tracks never reach a
 visitor, an export of a trip or a preview other than the current, rounded and delayed position.
 
-An audience is named by one key in code and on the wire: ``public`` for the public view, or the id of a share link.
+An audience is named by one key in code and on the wire: ``public`` for the public view, or the id of a hidden link
+(``Audience.live_location_key``; a collection member has none, so live location is never shown to one, decision 244).
 ``AudienceRef`` turns it into the kind and referenced id a ``LiveSessionAudience`` row stores."""
 
 from collections.abc import Iterator
@@ -13,15 +14,14 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import ColumnElement, and_, delete, select
 from sqlalchemy.orm import Session
 
+from ..audience import PUBLIC_KEY, Audience, Reach, audiences_of_trip
 from ..errors import Conflict, RecordNotFound, Refusal, TooManyRequests
 from ..models import (
-    LinkState,
     LiveAudienceKind,
     LivePoint,
     LivePrecision,
     LiveSession,
     LiveSessionAudience,
-    ShareLink,
     Trip,
 )
 from ..schemas import (
@@ -36,11 +36,9 @@ from ..schemas import (
 )
 from .trips import owned_trip
 
-PUBLIC = "public"
+PUBLIC = PUBLIC_KEY
 SESSION_LIMIT = 20
 DIGITS = {LivePrecision.EXACT: None, LivePrecision.KM1: 2, LivePrecision.KM10: 1}
-# A link that has not delivered anything yet (a draft) may be prepared in advance; a revoked or expired one is gone.
-CONFIGURABLE_LINK_STATES = (LinkState.DRAFT, LinkState.ACTIVE)
 
 
 def now() -> datetime:
@@ -80,14 +78,17 @@ class AudienceRef:
         )
 
 
-def forget_audience(session: Session, audience: AudienceRef, *, trip_id: str) -> None:
+def forget_audience(session: Session, audience: Audience) -> None:
     """Remove the live-location setting of an audience that stops being one: an unpublished public view, or a link
     that was revoked, expired or rotated. (A deleted link takes its settings with it by ``ON DELETE CASCADE``.)
-    The caller commits. The tracks and the session's own state are untouched."""
-    session_ids = select(LiveSession.id).where(LiveSession.trip_id == trip_id)
+    The caller commits. The tracks and the session's own state are untouched. An audience live location cannot
+    name (a collection member) has no setting to remove."""
+    if audience.live_location_key is None:
+        return
+    session_ids = select(LiveSession.id).where(LiveSession.trip_id == audience.trip_id)
     session.execute(
         delete(LiveSessionAudience)
-        .where(LiveSessionAudience.session_id.in_(session_ids), audience.matches)
+        .where(LiveSessionAudience.session_id.in_(session_ids), AudienceRef.parse(audience.live_location_key).matches)
         .execution_options(synchronize_session="fetch")
     )
 
@@ -215,15 +216,13 @@ def configure_session(
     requested = {AudienceRef.parse(key): precision for key, precision in data.audiences.items()}
     link_ids = {ref.link_id for ref in requested if ref.link_id is not None}
     if link_ids:
-        usable = set(
-            session.scalars(
-                select(ShareLink.id).where(
-                    ShareLink.id.in_(link_ids),
-                    ShareLink.trip_id == trip_id,
-                    ShareLink.state.in_(CONFIGURABLE_LINK_STATES),
-                )
-            )
-        )
+        # A link that has not delivered anything yet (a draft) may be prepared in advance; a revoked or expired one
+        # is gone. Only an audience live location can name qualifies.
+        usable = {
+            audience.live_location_key
+            for audience in audiences_of_trip(session, trip_id, Reach.OPEN)
+            if audience.live_location_key is not None
+        }
         if link_ids - usable:
             raise Refusal("Unknown or unavailable audience", code="live_audience_unavailable", field="audiences")
     saved = {AudienceRef.of(setting): setting for setting in row.audiences}

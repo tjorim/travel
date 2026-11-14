@@ -13,7 +13,7 @@ from datetime import date
 from typing import Any
 
 from .access import receivers
-from .audit import PUBLIC_AUDIENCE, LiveAudience
+from .audience import Audience
 from .errors import Conflict
 from .models import Area, Location
 from .schemas import MergeAudience, MergeRecordRef, MergeWidenedRecord
@@ -33,7 +33,7 @@ class FieldChange:
     field: str
     before: Any
     after: Any
-    audiences: list[LiveAudience]
+    audiences: list[Audience]
     # An area move also names the area labels and how many records ride along.
     before_label: str | None = None
     after_label: str | None = None
@@ -74,7 +74,7 @@ def location_visitor_view(location: Location) -> dict[str, str | None]:
 
 
 def text_changes(
-    before: dict[str, str | None], after: dict[str, str | None], audiences: list[LiveAudience]
+    before: dict[str, str | None], after: dict[str, str | None], audiences: list[Audience]
 ) -> list[FieldChange]:
     """Fields whose visitor-readable value differs: sharing the address counts as adding its parts."""
     if not audiences:
@@ -86,7 +86,7 @@ def text_changes(
     ]
 
 
-def reached_by(kind: str, record: Any, live: list[LiveAudience]) -> list[LiveAudience]:
+def reached_by(kind: str, record: Any, live: list[Audience]) -> list[Audience]:
     """The live audiences that receive this record by the rule delivery applies."""
     reached = receivers(kind, record, [(audience.id, audience.scope) for audience in live])
     return [audience for audience in live if audience.id in reached]
@@ -126,13 +126,13 @@ class MovedRecord:
 class Widened:
     """An audience that starts to read more of the kept record, and how many moved records show it."""
 
-    audience: LiveAudience
+    audience: Audience
     counts: dict[str, int]
 
     @property
     def name(self) -> str:
         """The audience as the merge warnings name it, like ``narrowed_audiences``."""
-        return "public page" if self.audience.id == PUBLIC_AUDIENCE else f"link {self.audience.label!r}"
+        return self.audience.display_name
 
     def as_detail(self) -> dict[str, Any]:
         return {"audience": self.audience.id, "label": self.audience.label, **self.counts}
@@ -148,15 +148,15 @@ class WidenedRecord:
 
     kind: str  # the share kind: ``stay``, ``visit``, ``route`` or ``travel_update``
     record: Any
-    gained: list[LiveAudience]
-    readers: list[LiveAudience]
+    gained: list[Audience]
+    readers: list[Audience]
 
     @property
     def ref(self) -> tuple[str, str]:
         return self.kind, self.record.id
 
 
-def widened_records(live: list[LiveAudience], moved: list[MovedRecord]) -> list[WidenedRecord]:
+def widened_records(live: list[Audience], moved: list[MovedRecord]) -> list[WidenedRecord]:
     """The moved records that newly show a place to a live audience that already receives them.
 
     A moved record already reaches an audience when it is delivered to it. The
@@ -202,9 +202,7 @@ def widened_records(live: list[LiveAudience], moved: list[MovedRecord]) -> list[
     return found
 
 
-def merge_widening(
-    live: list[LiveAudience], found: list[WidenedRecord], private: set[tuple[str, str]]
-) -> list[Widened]:
+def merge_widening(live: list[Audience], found: list[WidenedRecord], private: set[tuple[str, str]]) -> list[Widened]:
     """The live audiences that newly read a place, with the records that show it, per kind.
 
     Records the owner chose to make private first read nothing, so they are left out."""
@@ -241,7 +239,7 @@ def chosen_private(refs: list[MergeRecordRef], found: list[WidenedRecord]) -> se
     return chosen
 
 
-def audience_detail(audience: LiveAudience) -> MergeAudience:
+def audience_detail(audience: Audience) -> MergeAudience:
     return MergeAudience(audience=audience.id, label=audience.label)
 
 

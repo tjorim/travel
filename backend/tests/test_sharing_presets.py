@@ -24,15 +24,16 @@ from test_publication import (  # noqa: F401
 
 from app import sharing_presets
 from app.access import COLLECTIONS
+from app.audience import Audience, LinkAudience, PublicAudience
 from app.audit import scope_fingerprint
 from app.database import Base
 from app.errors import ServiceError
 from app.main import app
-from app.models import AuditEvent, ShareLink, Trip, Visibility
+from app.models import AuditEvent, PublicSurface, ShareLink, Trip, Visibility
 from app.precision import audience_precision, effective_precision, is_finer, own_value
 from app.projection import delivered
 from app.services.trips import trip_query
-from app.sharing_presets import PRESETS, PresetAudience, plan_preset
+from app.sharing_presets import PRESETS, plan_preset
 
 PRESET_IDS = list(PRESETS)
 
@@ -151,23 +152,14 @@ def load(session: Session, world: World) -> Trip:
     return trip
 
 
-def link_audience(session: Session, link_id: str, *, live: bool = False) -> PresetAudience:
+def link_audience(session: Session, link_id: str) -> Audience:
     link = session.get(ShareLink, link_id)
     assert link is not None
-    return PresetAudience(
-        id=f"link:{link.id}", kind="link", label=link.label, scope=link.scope, live=live, can_exclude=True
-    )
+    return LinkAudience(link)
 
 
-def public_audience(scope: dict | None = None) -> PresetAudience:
-    return PresetAudience(
-        id="public",
-        kind="public",
-        label=None,
-        scope=scope or {"defaults": {"date_precision": "month"}},
-        live=True,
-        can_exclude=False,
-    )
+def public_audience(scope: dict | None = None) -> Audience:
+    return PublicAudience(PublicSurface(trip_id="trip", scope=scope or {"defaults": {"date_precision": "month"}}))
 
 
 # --- the first preset set ------------------------------------------------------------
@@ -522,7 +514,9 @@ def test_re_applying_a_plan_is_an_empty_plan(world: World) -> None:
             plan = plan_preset(trip, audience, preset)
             for kind, record_id in plan.promoted():
                 next(i for i in COLLECTIONS[kind](trip) if i.id == record_id).visibility = Visibility.CUSTOM
-            applied = PresetAudience(**{**audience.__dict__, "scope": plan.scope_after})
+            applied = LinkAudience(
+                ShareLink(id=audience.record_id, trip_id=audience.trip_id, label=audience.label, scope=plan.scope_after)
+            )
             again = plan_preset(trip, applied, preset)
             assert again.changes == [] and again.scope_after == plan.scope_after
             assert scope_fingerprint(again.scope_after) == scope_fingerprint(plan.scope_after)
@@ -696,7 +690,6 @@ def test_a_review_leaves_the_session_clean_so_a_later_commit_cannot_persist_it(w
 def test_a_review_of_an_unsaved_public_view_does_not_create_it(world: World) -> None:
     everything(world, "private")
     assert review(world, "public", "story_only").status_code == 200
-    from app.models import PublicSurface
 
     with Session(engine) as session:
         assert session.get(PublicSurface, world.id) is None

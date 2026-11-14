@@ -32,31 +32,19 @@ import hashlib
 import json
 from collections import Counter
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field, replace
-from datetime import UTC, date, datetime
+from dataclasses import dataclass, field
+from datetime import date
 from typing import Any, Literal
 
-from sqlalchemy import inspect, select
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from .access import COLLECTIONS, set_visibility, sharing_blocker
-from .audit import record_audit_event, record_collection_event, scope_fingerprint
+from .audience import Audience, Reach, StoredAudience, audiences_of_trip
+from .audit import record_audience_event, scope_fingerprint
 from .errors import Conflict, ServiceError, service_error
 from .exclusions import KIND_ORDER, closure, is_excludable, stored_exclusions
-from .models import (
-    AuditEventKind,
-    AuditTargetType,
-    Collection,
-    CollectionAuditKind,
-    CollectionMember,
-    DerivativePurpose,
-    LinkState,
-    PublicSurface,
-    ShareLink,
-    SurfaceState,
-    Trip,
-    Visibility,
-)
+from .models import DerivativePurpose, Trip, Visibility
 from .precision import audience_precision, coarser, effective_precision, is_finer, own_value, route_precision
 from .projection import ScopeError, delivered, prepare_scope
 from .schemas import (
@@ -114,18 +102,6 @@ PRESETS: dict[str, SharingPreset] = {
 }
 
 
-@dataclass(frozen=True)
-class PresetAudience:
-    """The audience a preset is planned for: its id as the audit trail names it, its stored scope and its rules."""
-
-    id: str  # ``public``, ``link:<id>`` or ``collection:<member id>``
-    kind: Literal["public", "link", "collection_member"]
-    label: str | None
-    scope: dict
-    live: bool
-    can_exclude: bool
-
-
 Ref = tuple[str, str]
 
 
@@ -163,7 +139,7 @@ class Replacement:
 @dataclass
 class PresetPlan:
     preset: SharingPreset
-    audience: PresetAudience
+    audience: Audience
     target: dict[str, set[str]]
     changes: list[Change]
     scope_after: dict
@@ -294,7 +270,7 @@ def _index(trip: Trip) -> dict[Ref, Any]:
     return {(kind, item.id): item for kind in KIND_ORDER for item in COLLECTIONS[kind](trip)}
 
 
-def plan_preset(trip: Trip, audience: PresetAudience, preset_id: str) -> PresetPlan:
+def plan_preset(trip: Trip, audience: Audience, preset_id: str) -> PresetPlan:
     """What choosing this preset for this audience would write, from the trip's records as they are now.
 
     Pure: it reads records and the audience's stored scope and changes nothing. Applying the plan is another step."""
@@ -419,23 +395,11 @@ def _hides_target(trip: Trip, ref: Ref, target: dict[str, set[str]]) -> bool:
     return any(ids & target.get(kind, set()) for kind, ids in hidden.items())
 
 
-def _other_audiences(session: Session, trip_id: str, audience: PresetAudience) -> list[tuple[str, dict]]:
+def _other_audiences(session: Session, trip_id: str, audience: Audience) -> list[tuple[str, dict]]:
     """Every other audience of the trip that can still deliver (drafts too, they deliver once activated), by id."""
-    others: list[tuple[str, dict]] = []
-    surface = session.get(PublicSurface, trip_id)
-    if surface is not None:
-        others.append(("public", surface.scope))
-    for link in session.scalars(
-        select(ShareLink).where(ShareLink.trip_id == trip_id, ShareLink.state.in_((LinkState.DRAFT, LinkState.ACTIVE)))
-    ):
-        others.append((f"link:{link.id}", link.scope))
-    for member, _collection in session.execute(
-        select(CollectionMember, Collection)
-        .join(Collection, Collection.id == CollectionMember.collection_id)
-        .where(CollectionMember.trip_id == trip_id, Collection.state.in_((LinkState.DRAFT, LinkState.ACTIVE)))
-    ):
-        others.append((f"collection:{member.id}", member.scope))
-    return [(name, scope) for name, scope in others if name != audience.id]
+    return [
+        (other.id, other.scope) for other in audiences_of_trip(session, trip_id, Reach.OPEN) if other.id != audience.id
+    ]
 
 
 def _received(trip: Trip, scope: dict) -> dict[str, set[str]]:
@@ -490,19 +454,25 @@ def _fingerprint(plan: PresetPlan, before: dict) -> str:
     return hashlib.sha256(canonical.encode()).hexdigest()[:16]
 
 
-def review_preset(session: Session, trip: Trip, audience: PresetAudience, preset_id: str) -> SharingPresetReview:
+def review_preset(session: Session, trip: Trip, audience: Audience, preset_id: str) -> SharingPresetReview:
     """Plan a preset for one audience and review it. Writes nothing; see ``build_review``."""
     return build_review(session, trip, audience, plan_preset(trip, audience, preset_id))
 
 
-def build_review(session: Session, trip: Trip, audience: PresetAudience, plan: PresetPlan) -> SharingPresetReview:
+def build_review(
+    session: Session, trip: Trip, audience: Audience, plan: PresetPlan, *, live: bool | None = None
+) -> SharingPresetReview:
     """Compare what the audience receives before and after a plan. Writes nothing.
 
     The planned visibility changes are made inside a nested transaction that is always rolled back, and the "after"
     is rendered by ``projection.delivered`` from the planned scope, which is never stored. Only that one function says
     what an audience receives, so the review cannot disagree with delivery. No revision is claimed, no audit event is
     recorded, and no other audience is touched: that is checked while the plan is applied, and a plan that would
-    change what another audience receives fails instead of being reviewed."""
+    change what another audience receives fails instead of being reviewed.
+
+    ``live`` overrides whether the audience delivers now: an audience created together with its preset has received
+    nothing yet."""
+    live = audience.live if live is None else live
     index = _index(trip)
 
     def ref_of(ref: Ref) -> PresetRecordRef:
@@ -551,7 +521,7 @@ def build_review(session: Session, trip: Trip, audience: PresetAudience, plan: P
     return SharingPresetReview(
         schema_version=PRESET_SCHEMA_VERSION,
         preset=plan.preset.id,
-        audience=PresetAudienceInfo(id=audience.id, kind=audience.kind, label=audience.label, live=audience.live),
+        audience=PresetAudienceInfo(id=audience.id, kind=audience.kind.value, label=audience.label, live=live),
         applicable=plan.refusal is None,
         refusal=plan.refusal,
         changes=[PresetChange(action=c.action, **ref_of((c.kind, c.id)).model_dump()) for c in plan.changes],
@@ -570,7 +540,7 @@ def build_review(session: Session, trip: Trip, audience: PresetAudience, plan: P
         replaces_exceptions=[
             PresetReplacesException(reason=r.reason, **ref_of((r.kind, r.id)).model_dump()) for r in plan.replaces
         ],
-        requires_acknowledgement=audience.live and comparison is not None and bool(comparison.widened),
+        requires_acknowledgement=live and comparison is not None and bool(comparison.widened),
         fingerprint=_fingerprint(plan, audience.scope),
     )
 
@@ -604,45 +574,6 @@ def _left_as_is(plan: PresetPlan, shown: dict[str, list[Any]], ref_of) -> list[P
 PRESET_WIDENING_CODE = "preset_widening_needs_acknowledgement"
 PRESET_STALE_CODE = "preset_preview_is_stale"
 PRESET_TOO_LARGE_CODE = "preset_too_large"
-# Records whose visibility a preset can change; it may only ever write ``custom`` (never ``everyone``).
-Holder = PublicSurface | ShareLink | CollectionMember
-
-
-def expired(expires_at: datetime | None) -> bool:
-    if expires_at is None:
-        return False
-    return (expires_at if expires_at.tzinfo is not None else expires_at.replace(tzinfo=UTC)) <= datetime.now(UTC)
-
-
-def audience_of(holder: Holder) -> PresetAudience:
-    """The audience a stored public view, link or collection member is, with its current scope and rules."""
-    if isinstance(holder, PublicSurface):
-        return PresetAudience(
-            id="public",
-            kind="public",
-            label=None,
-            scope=holder.scope,
-            live=holder.state == SurfaceState.PUBLISHED,
-            can_exclude=False,
-        )
-    if isinstance(holder, ShareLink):
-        return PresetAudience(
-            id=f"link:{holder.id}",
-            kind="link",
-            label=holder.label,
-            scope=holder.scope,
-            live=holder.state == LinkState.ACTIVE and not expired(holder.expires_at),
-            can_exclude=True,
-        )
-    collection = holder.collection
-    return PresetAudience(
-        id=f"collection:{holder.id}",
-        kind="collection_member",
-        label=collection.label,
-        scope=holder.scope,
-        live=collection.state == LinkState.ACTIVE and not expired(collection.expires_at),
-        can_exclude=True,
-    )
 
 
 def preset_exceptions(trip: Trip, scope: dict, preset_id: str | None) -> PresetExceptions | None:
@@ -671,11 +602,11 @@ def preset_exceptions(trip: Trip, scope: dict, preset_id: str | None) -> PresetE
     )
 
 
-def exceptions_of(trip: Trip, holder: Holder) -> PresetExceptions | None:
+def exceptions_of(trip: Trip, audience: Audience | StoredAudience) -> PresetExceptions | None:
     """The exceptions of a stored audience for the owner's responses: ``None`` when it carries no preset label."""
-    if not holder.applied_preset:
+    if not audience.applied_preset:
         return None
-    return preset_exceptions(trip, holder.scope, holder.applied_preset)
+    return preset_exceptions(trip, audience.scope, audience.applied_preset)
 
 
 # --- applying a preset ------------------------------------------------------------------------------------
@@ -721,7 +652,7 @@ def apply_preset(
     session: Session,
     trip: Trip,
     subject: str,
-    holder: Holder,
+    audience: Audience,
     preset_id: str,
     *,
     fingerprint: str | None,
@@ -747,11 +678,11 @@ def apply_preset(
     anything was written."""
     if claim is not None:
         claim()
-    audience = audience_of(holder)
-    if new:
-        audience = replace(audience, live=False)
+    scope_before = audience.scope
+    # An audience created together with its preset has received nothing yet.
+    live = audience.live and not new
     plan = plan_preset(trip, audience, preset_id)
-    review = build_review(session, trip, audience, plan)
+    review = build_review(session, trip, audience, plan, live=live)
     if not new and review.fingerprint != fingerprint:
         raise _refuse(PRESET_STALE_CODE, {"review": review.model_dump(mode="json")}, session)
     if plan.refusal is not None:
@@ -768,7 +699,7 @@ def apply_preset(
             },
             session,
         )
-    if not new and not plan.changes and not review.precision.changed and holder.applied_preset == preset_id:
+    if not new and not plan.changes and not review.precision.changed and audience.applied_preset == preset_id:
         session.rollback()  # nothing to write: give the claimed revision back
         return review, False
 
@@ -783,13 +714,12 @@ def apply_preset(
             session.rollback()
             raise ServiceError("A sharing preset never writes everyone", code="preset_must_not_write_everyone")
         session.flush()
-        scope = prepare_scope(trip, plan.scope_after, audience.scope, allow_exclusions=audience.can_exclude)
+        scope = prepare_scope(trip, plan.scope_after, scope_before, allow_exclusions=audience.can_exclude)
     except (ScopeError, ServiceError) as error:
         session.rollback()
         raise service_error(error) from error
-    holder.scope = scope
-    holder.applied_preset = preset_id
-    holder.applied_preset_at = datetime.now(UTC)
+    audience.scope = scope
+    audience.label_preset(preset_id)
     session.flush()
     if {name: _received(trip, scope) for name, scope in others} != others_before:
         session.rollback()
@@ -803,7 +733,7 @@ def apply_preset(
         "preset": preset_id,
         "audience": audience.id,
         "on_creation": new,
-        "live": audience.live,
+        "live": live,
         "widening_acknowledged": acknowledged,
         "changes": review.change_counts,
         "widened": comparison.added,
@@ -812,31 +742,8 @@ def apply_preset(
         "needs_decision": _kind_counts(review.needs_decision),
         "replaced_exceptions": _kind_counts(review.replaces_exceptions),
         "precision": {"before": review.precision.before, "after": review.precision.after},
-        "scope_version_before": scope_fingerprint(audience.scope),
+        "scope_version_before": scope_fingerprint(scope_before),
         "scope_version_after": scope_fingerprint(scope),
     }
-    if isinstance(holder, CollectionMember):
-        record_collection_event(
-            session,
-            owner_subject=subject,
-            actor_subject=subject,
-            collection_id=holder.collection_id,
-            trip_id=holder.trip_id,
-            kind=CollectionAuditKind.MEMBER_PRESET_APPLY,
-            details={"member_id": holder.id, **details},
-        )
-    else:
-        record_audit_event(
-            session,
-            trip_id=trip.id,
-            actor_subject=subject,
-            kind=AuditEventKind.PUBLIC_PROJECTION_PRESET_APPLY
-            if isinstance(holder, PublicSurface)
-            else AuditEventKind.SHARE_LINK_PRESET_APPLY,
-            target_type=AuditTargetType.PUBLIC_SURFACE
-            if isinstance(holder, PublicSurface)
-            else AuditTargetType.SHARE_LINK,
-            target_id=holder.trip_id if isinstance(holder, PublicSurface) else holder.id,
-            details=details,
-        )
+    record_audience_event(session, subject=subject, audience=audience, event="preset_apply", details=details)
     return review, True

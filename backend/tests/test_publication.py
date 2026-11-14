@@ -1496,9 +1496,10 @@ def test_scope_revisions_reject_stale_owner_writes() -> None:
 
 
 def test_concurrent_scope_claims_use_database_revision() -> None:
+    from app.audience import PublicAudience
     from app.errors import RevisionConflict
     from app.models import PublicSurface
-    from app.services.sharing import claim_revision
+    from app.services.audiences import claim_revision
 
     client = client_for("owner-1")
     trip = create_trip(client)
@@ -1508,13 +1509,13 @@ def test_concurrent_scope_claims_use_database_revision() -> None:
         second_record = second.get(PublicSurface, trip["id"])
         assert first_record is not None and second_record is not None
         expected = f'"{first_record.revision}"'
-        claim_revision(first, first_record, expected)
+        claim_revision(first, PublicAudience(first_record), expected)
         first.commit()
         # Both sessions loaded before either save: the stale identity-map value cannot win.
         import pytest
 
         with pytest.raises(RevisionConflict) as conflict:
-            claim_revision(second, second_record, expected)
+            claim_revision(second, PublicAudience(second_record), expected)
         assert conflict.value.status_code == 412
 
 

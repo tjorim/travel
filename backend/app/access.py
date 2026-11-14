@@ -10,26 +10,22 @@ when a record is deleted or stops being ``custom``.
 from collections.abc import Callable
 from typing import Any
 
-from sqlalchemy import event, inspect, select
+from sqlalchemy import event, inspect
 from sqlalchemy.orm import Session, object_session
 
+from .audience import Reach, audiences_of_trip
 from .errors import ServiceError
 from .live_scopes import remove_from_live_scopes
 from .models import (
     Area,
-    Collection,
-    CollectionMember,
     DerivativeProcessingState,
     DerivativePurpose,
     DerivativeReviewState,
-    LinkState,
     Location,
     MediaDerivative,
     MediaKind,
     PlanningStatus,
-    PublicSurface,
     Route,
-    ShareLink,
     Stay,
     TravelUpdate,
     Trip,
@@ -176,23 +172,7 @@ def is_delivered(kind: str, record: Any, chosen: set[str]) -> bool:
 
 def trip_audiences(session: Session, trip_id: str) -> list[tuple[str, dict]]:
     """Each audience that can still receive this trip's records: its name and live scope."""
-    audiences = []
-    if (surface := session.get(PublicSurface, trip_id)) is not None:
-        audiences.append(("public page", surface.scope))
-    for link in session.scalars(
-        select(ShareLink)
-        .where(ShareLink.trip_id == trip_id, ShareLink.state.in_((LinkState.DRAFT, LinkState.ACTIVE)))
-        .order_by(ShareLink.created_at)
-    ):
-        audiences.append((f"link {link.label!r}", link.scope))
-    for member, collection in session.execute(
-        select(CollectionMember, Collection)
-        .join(Collection, Collection.id == CollectionMember.collection_id)
-        .where(CollectionMember.trip_id == trip_id, Collection.state.in_((LinkState.DRAFT, LinkState.ACTIVE)))
-        .order_by(CollectionMember.created_at)
-    ):
-        audiences.append((f"collection {collection.label!r}", member.scope))
-    return audiences
+    return [(audience.display_name, audience.scope) for audience in audiences_of_trip(session, trip_id, Reach.OPEN)]
 
 
 def _excluded(kind: str, record: Any, scope: dict) -> bool:
