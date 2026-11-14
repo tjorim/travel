@@ -305,6 +305,7 @@
   "audit_merge_widened": "Door het samenvoegen nieuw getoond aan bezoekers. Openbare pagina: {publicCount}; deellinks: {linkCount}.",
   "audit_precision_follow": "Bezoeken en verblijven volgen nu de datumprecisie van elk publiek.",
   "audit_precision_follow_audiences": "Preciezere datums voor bezoekers. Openbare pagina: {publicCount}; deellinks: {linkCount}.",
+  "audit_preset_apply": "Er is een voorinstelling toegepast.",
   "audit_private": "privé",
   "audit_public_scope": "Selectie van de openbare pagina gewijzigd.",
   "audit_publish": "Openbare pagina gepubliceerd.",

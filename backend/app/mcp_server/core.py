@@ -23,7 +23,7 @@ from .. import schemas
 from ..config import settings
 from ..database import SessionLocal
 from ..errors import Refusal
-from ..models import McpAuditEvent
+from ..models import ActivityTransport, OwnerActivityEvent
 from ..storage import ObjectStorage, get_storage
 
 Result = TypeVar("Result")
@@ -178,8 +178,9 @@ class McpTools:
         if request_id:
             details["request_id"] = request_id
         session.add(
-            McpAuditEvent(
+            OwnerActivityEvent(
                 owner_subject=subject,
+                transport=ActivityTransport.MCP,
                 action=action,
                 resource_type=resource_type,
                 resource_id=resource_id,

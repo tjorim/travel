@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import UTC, date, datetime, time
 from enum import StrEnum
@@ -20,7 +21,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.types import JSON
 
 from .database import Base
@@ -179,6 +180,9 @@ class TaskAlertKind(StrEnum):
 
 
 class AuditEventKind(StrEnum):
+    """The code list of sharing audit events. The column is a plain string checked against this list when a row is
+    written, so adding a kind needs no migration."""
+
     PUBLIC_PROJECTION_PUBLISH = "public_projection.publish"
     PUBLIC_PROJECTION_UNPUBLISH = "public_projection.unpublish"
     SHARE_LINK_CREATE = "share_link.create"
@@ -205,7 +209,32 @@ class AuditEventKind(StrEnum):
     ALTERNATIVE_CHOOSE = "alternative_group.choose"
     ALTERNATIVE_UNDO_CHOICE = "alternative_group.undo_choice"
     # Applying a sharing preset rewrites one audience's scope and the visibility of the records it lists at once (#241).
-    AUDIENCE_PRESET_APPLY = "audience.preset_apply"
+    # Named after the audience it targets, like the scope changes; a collection member's apply is a collection event.
+    PUBLIC_PROJECTION_PRESET_APPLY = "public_projection.preset_apply"
+    SHARE_LINK_PRESET_APPLY = "share_link.preset_apply"
+
+
+class CollectionAuditKind(StrEnum):
+    """The code list of collection audit events (validated at write time, like `AuditEventKind`)."""
+
+    CREATE = "collection.create"
+    UPDATE = "collection.update"
+    DELETE = "collection.delete"
+    ACTIVATE = "collection.activate"
+    REVOKE = "collection.revoke"
+    ROTATE = "collection.rotate"
+    EXPIRE = "collection.expire"
+    MEMBER_ADD = "collection.member_add"
+    MEMBER_REMOVE = "collection.member_remove"
+    MEMBER_SCOPE_CHANGE = "collection.member_scope_change"
+    MEMBER_PRESET_APPLY = "collection.member_preset_apply"
+
+
+class ActivityTransport(StrEnum):
+    """How an owner operation reached the service."""
+
+    MCP = "mcp"
+    HTTP = "http"
 
 
 class AuditTargetType(StrEnum):
@@ -223,6 +252,19 @@ class AlternativeGroupKind(StrEnum):
     STAY = "stay"
     VISIT = "visit"
     ROUTE = "route"
+
+
+def _code(codes: type[StrEnum], value: object) -> str:
+    """Check a code against its list when a row is written and store it as a plain string."""
+    try:
+        return codes(value).value
+    except ValueError:
+        raise ValueError(f"Unknown {codes.__name__} code: {value!r}") from None
+
+
+# An owner activity action is an MCP tool or operation name such as ``trip.export_pdf`` or ``create_trip``; the
+# list grows with every tool, so the shape is checked instead of a code list.
+_ACTIVITY_ACTION = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)*$")
 
 
 def _enum_column(enum_cls: type[StrEnum], name: str):
@@ -1092,9 +1134,9 @@ class CollectionAuditEvent(Base):
     """Owner-only audit trail for collection lifecycle and membership changes.
 
     Collections belong to the owner, not a trip, so these events are kept apart
-    from `AuditEvent`. Ids are kept after a collection or trip is deleted. Like
-    `AuditEvent`, `details` never holds a raw token or recipient identity.
-    Retained and purged with the other sharing audits."""
+    from `AuditEvent`. Ids are kept after a collection or trip is deleted (there
+    is no foreign key). Like `AuditEvent`, `details` never holds a raw token or
+    recipient identity. Retained and purged with the other audit tables."""
 
     __tablename__ = "collection_audit_events"
 
@@ -1107,6 +1149,10 @@ class CollectionAuditEvent(Base):
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     details: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
+    @validates("kind")
+    def _validate_kind(self, _key: str, value: object) -> str:
+        return _code(CollectionAuditKind, value)
+
 
 class AuditEvent(Base):
     """Owner-only audit trail for publication/share-link lifecycle
@@ -1116,34 +1162,46 @@ class AuditEvent(Base):
     an unlisted link is a forwardable capability and recording who redeemed
     it would defeat that model. Retained per the sharing policy's 24-month
     window; `purge_expired_audit_events` (`app.audit`) hard-deletes rows past
-    it."""
+    it. `trip_id` is an id only (no foreign key): the events outlive a deleted
+    trip until that window ends, and hold no trip content to leak (decision 36)."""
 
     __tablename__ = "audit_events"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
-    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
+    trip_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     actor_subject: Mapped[str] = mapped_column(String(255), nullable=False)
-    kind: Mapped[AuditEventKind] = mapped_column(_enum_column(AuditEventKind, "travel_audit_event_kind"))
-    target_type: Mapped[AuditTargetType] = mapped_column(_enum_column(AuditTargetType, "travel_audit_target_type"))
+    kind: Mapped[str] = mapped_column(String(60), nullable=False)
+    target_type: Mapped[str] = mapped_column(String(32), nullable=False)
     target_id: Mapped[str] = mapped_column(String(32), nullable=False)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     details: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
+    @validates("kind")
+    def _validate_kind(self, _key: str, value: object) -> str:
+        return _code(AuditEventKind, value)
 
-class McpAuditEvent(Base):
-    """Append-only record of an authenticated owner MCP tool invocation.
+    @validates("target_type")
+    def _validate_target_type(self, _key: str, value: object) -> str:
+        return _code(AuditTargetType, value)
+
+
+class OwnerActivityEvent(Base):
+    """Append-only record of an authenticated owner operation that is not a sharing change: an MCP tool
+    invocation, or an HTTP trip export or PDF export (`transport` says which).
 
     This is intentionally distinct from :class:`AuditEvent`, whose small,
     audience-safe vocabulary records publication-link lifecycle changes.  MCP
     tools need an owner operational audit for *every* invocation, including a
     rejected one, without ever recording request bodies, uploaded bytes, or a
-    share-link URL.
+    share-link URL.  Ids are kept after a trip is deleted (there is no foreign
+    key); the rows are purged with the other audit tables.
     """
 
-    __tablename__ = "mcp_audit_events"
+    __tablename__ = "owner_activity_events"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    transport: Mapped[str] = mapped_column(String(16), nullable=False)
     action: Mapped[str] = mapped_column(String(120), nullable=False)
     resource_type: Mapped[str] = mapped_column(String(80), nullable=False)
     resource_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -1155,6 +1213,16 @@ class McpAuditEvent(Base):
     # tool payload: it can contain private notes, raw media, OAuth tokens, or
     # share capabilities.
     details: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+
+    @validates("transport")
+    def _validate_transport(self, _key: str, value: object) -> str:
+        return _code(ActivityTransport, value)
+
+    @validates("action")
+    def _validate_action(self, _key: str, value: object) -> str:
+        if not isinstance(value, str) or not _ACTIVITY_ACTION.fullmatch(value):
+            raise ValueError(f"Owner activity action must be a lowercase tool or operation code: {value!r}")
+        return value
 
 
 class StoredObject(Base):

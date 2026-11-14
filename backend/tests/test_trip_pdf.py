@@ -16,7 +16,7 @@ from test_export import (
     teardown_function,
 )
 
-from app.models import McpAuditEvent, PublicSurface, ShareLink, TravelUpdate, Trip, Visibility
+from app.models import OwnerActivityEvent, PublicSurface, ShareLink, TravelUpdate, Trip, Visibility
 from app.projection import render_projection
 from app.services.trips import owned_trip
 from app.storage import get_storage
@@ -90,8 +90,9 @@ def test_private_pdf_delivery_audit_and_no_files(locale):
     assert response.headers["cache-control"] == "private, no-store"
     assert response.headers["content-type"] == "application/pdf"
     with TestingSessionLocal() as session:
-        audit = session.scalar(select(McpAuditEvent).where(McpAuditEvent.action == "trip.export_pdf"))
-        assert audit.details == {"transport": "http"}
+        audit = session.scalar(select(OwnerActivityEvent).where(OwnerActivityEvent.action == "trip.export_pdf"))
+        assert audit.details == {}
+        assert audit.transport == "http"
         assert audit.trip_id == ids["trip"]
     assert (
         client_for("someone-else")

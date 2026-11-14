@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from ..access import set_cover
+from ..audit import scrub_trip_audit_text
 from ..errors import RecordNotFound, Refusal, ServiceError, service_error
 from ..models import (
     Location,
@@ -159,5 +160,6 @@ def delete_trip(session: Session, subject: str, trip_id: Identifier) -> None:
         stored.state = ObjectState.PURGE_PENDING
         stored.trip_id = None
     session.flush()
+    scrub_trip_audit_text(session, trip_id)
     session.delete(trip)
     session.flush()

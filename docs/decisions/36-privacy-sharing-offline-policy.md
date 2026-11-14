@@ -327,7 +327,34 @@ owner-authenticated link-management view but are not copied into recipient-facin
 access logs. The service deliberately does not create recipient profiles or
 retain recipient IP addresses as a sharing feature. Audit events are owner-only
 and retained for 24 months, then deleted unless a shorter legal or security
-requirement applies.
+requirement applies. What happens to them when a trip or collection is deleted
+is stated under [Audit records and deletion](#audit-records-and-deletion-364).
+
+## Audit records and deletion (#364)
+
+Three owner-only tables hold audit records. All three keep **ids only, no foreign key**, store the kind as a plain
+string checked against a code list in `app.models` when the row is written (a new kind needs no migration), and are
+purged together, in one transaction, by `purge-expired-audit-events` once a row is 24 months old
+(`RETENTION_WINDOW`, 730 days). The command also removes the rows of trips and collections that no longer exist.
+
+| Table (model) | Records | Kind | When its trip or collection is deleted |
+|---|---|---|---|
+| `audit_events` (`AuditEvent`) | Publication, link, feed, scope, visibility, merge and preset changes of one trip. Read per trip by `GET /trips/{id}/audit-events`. | `AuditEventKind` | **Kept** until the 24-month expiry. Deleting the trip does not delete its sharing history. |
+| `collection_audit_events` (`CollectionAuditEvent`) | Collection lifecycle and membership changes. Read by `GET /collections/audit-events`. | `CollectionAuditKind` | **Kept** until the 24-month expiry, with the collection id and the member trip id. |
+| `owner_activity_events` (`OwnerActivityEvent`) | Every MCP tool call (also a rejected one) and each HTTP trip or PDF export, with its `transport` (`mcp` or `http`). | `action`: an operation code | **Kept** until the 24-month expiry, with the trip id. |
+
+Why keeping them is safe. A row holds the trip, collection, link, record and audience ids, the owner subject, a scope
+fingerprint, counts, the record kind and visibility values, and an owner-entered reason; never a title, note, address,
+link label, token, filename, request body or recipient identity. After the trip is deleted those ids point at nothing:
+`GET /trips/{id}/audit-events` answers 404 because the owner no longer owns the trip, so the retained sharing
+rows are not listed anywhere and exist only until expiry and in backups. The collection and owner activity rows stay
+listable by their owner (collections) or through the MCP activity tool. Database and Home Assistant backups may keep a
+deleted row until their own retention ends. Rolling back the application to code before migration 031 deletes the
+sharing rows of already deleted trips (a foreign key cannot hold them) and any row of a kind the older code does not know.
+
+A kind is renamed only with a data migration. Applying a sharing preset is recorded as `public_projection.preset_apply`
+or `share_link.preset_apply` (named after the audience, like the scope changes) and, for a collection member, as
+`collection.member_preset_apply`; it was `audience.preset_apply` before migration 031.
 
 ## Offline copies and cache behavior
 
@@ -578,8 +605,8 @@ This amendment changes no allowlist and no rule of this policy:
   `409 preset_widening_needs_acknowledgement` until `confirm_widening`. The apply also
   carries the review's fingerprint (`409 preset_preview_is_stale`) and the audience's
   revision (decision 15). A draft or unpublished audience delivers nothing yet.
-- **One audit event per apply** (`audience.preset_apply`, or
-  `collection.member_preset_apply`), with ids and counts only.
+- **One audit event per apply** (`public_projection.preset_apply` or
+  `share_link.preset_apply`, or `collection.member_preset_apply`), with ids and counts only.
 - **The owner and MCP share one handler**: `list_sharing_presets`, `preview_sharing_preset`
   and `apply_sharing_preset` (a confirmed write) call the same functions as the REST routes
   and are found through the layered discovery of decision 196.

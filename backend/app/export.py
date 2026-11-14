@@ -19,15 +19,16 @@ from sqlalchemy.orm import Session, aliased
 from .models import (
     TRAVEL_UPDATE_ORDER,
     VISIT_ORDER,
+    ActivityTransport,
     AlternativeGroup,
     AlternativeGroupMember,
     Area,
     DocumentAsset,
     ImportRecord,
     Location,
-    McpAuditEvent,
     MediaAsset,
     MediaDerivative,
+    OwnerActivityEvent,
     PackingBag,
     PackingItem,
     PackingList,
@@ -149,14 +150,15 @@ def _batched(session: Session, statement: Any) -> Any:
 def record_export(session: Session, *, subject: str, trip_id: str) -> None:
     """Record that an export happened, without any payload, then commit."""
     session.add(
-        McpAuditEvent(
+        OwnerActivityEvent(
             owner_subject=subject,
+            transport=ActivityTransport.HTTP,
             action=EXPORT_AUDIT_ACTION,
             resource_type="trip",
             resource_id=trip_id,
             trip_id=trip_id,
             result="success",
-            details={"schema_version": EXPORT_SCHEMA_VERSION, "transport": "http"},
+            details={"schema_version": EXPORT_SCHEMA_VERSION},
         )
     )
     session.commit()
