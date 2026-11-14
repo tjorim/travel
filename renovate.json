@@ -30,6 +30,14 @@
       "groupName": "timezonefinder"
     },
     {
+      "description": [
+        "python-travel is published: keep its dependency floors wide so Home Assistant's pins still resolve, and update only its lockfile"
+      ],
+      "matchDatasources": ["pypi"],
+      "matchFileNames": ["python-travel/**"],
+      "rangeStrategy": "update-lockfile"
+    },
+    {
       "description": ["frontend/**"],
       "matchDatasources": ["npm"],
       "matchFileNames": ["frontend/**"],
