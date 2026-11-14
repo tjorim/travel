@@ -124,6 +124,18 @@ export function futureDisclosureLines(disclosure: FutureDisclosure, name: string
   ];
 }
 
+/** The lines of `futureDisclosureLines` as one list; nothing when the audience shows nothing of the future. */
+export function FutureDisclosureList({ lines }: { lines: string[] }) {
+  if (lines.length === 0) return null;
+  return (
+    <ul className="m-0 grid list-disc gap-0.5 pl-5 text-travel-review-warning">
+      {lines.map((line) => (
+        <li key={line}>{line}</li>
+      ))}
+    </ul>
+  );
+}
+
 /** Describe canonical warning codes; server prose is diagnostic only. */
 function reviewText(warning: OverviewWarning, audiences: OverviewAudience[]): string {
   const name =

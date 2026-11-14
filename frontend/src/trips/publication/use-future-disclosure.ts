@@ -4,7 +4,28 @@ import { m } from "../../paraglide/messages.js";
 import { ownerRequest } from "../../query/api";
 import { ownerKeys } from "../../query/keys";
 import { tripPath, useOwner } from "../../query/owner-queries";
+import { collectionsPath } from "../../sharing/collections";
 import type { FutureDisclosure, ShareScope } from "../../api-types";
+
+/** The audience a candidate scope is reviewed for: the public view, a hidden link or a collection member. */
+export type FutureDisclosureAudience =
+  | { kind: "public" }
+  | { kind: "link"; linkId: string | undefined }
+  | { kind: "member"; collectionId: string; memberId: string };
+
+function futureDisclosurePath(tripId: string, audience: FutureDisclosureAudience): string {
+  switch (audience.kind) {
+    case "public":
+      return tripPath(tripId, "public-projection/future-disclosure");
+    case "link":
+      return tripPath(
+        tripId,
+        `share-links/${encodeURIComponent(audience.linkId ?? "")}/future-disclosure`,
+      );
+    case "member":
+      return `${collectionsPath}/${encodeURIComponent(audience.collectionId)}/members/${encodeURIComponent(audience.memberId)}/future-disclosure`;
+  }
+}
 
 /**
  * What a candidate scope would show of a trip that has not started yet: routes with exact times or a carrier, and
@@ -13,17 +34,11 @@ import type { FutureDisclosure, ShareScope } from "../../api-types";
  */
 export function useFutureDisclosure(
   tripId: string,
-  audience: { kind: "public" } | { kind: "link"; linkId: string | undefined },
+  audience: FutureDisclosureAudience,
   scope: ShareScope,
 ) {
   const owner = useOwner();
-  const path =
-    audience.kind === "public"
-      ? tripPath(tripId, "public-projection/future-disclosure")
-      : tripPath(
-          tripId,
-          `share-links/${encodeURIComponent(audience.linkId ?? "")}/future-disclosure`,
-        );
+  const path = futureDisclosurePath(tripId, audience);
   return useQuery({
     queryKey: [
       ...ownerKeys.trip(owner?.subject ?? "", tripId),
@@ -31,7 +46,7 @@ export function useFutureDisclosure(
       audience,
       scope,
     ],
-    enabled: owner !== null && (audience.kind === "public" || Boolean(audience.linkId)),
+    enabled: owner !== null && (audience.kind !== "link" || Boolean(audience.linkId)),
     // Keep the previous answer on screen while a changed candidate is counted, so the review does not flicker.
     placeholderData: keepPreviousData,
     queryFn: ({ signal }) =>

@@ -259,7 +259,7 @@ def review_member_future(
 ) -> FutureDisclosure:
     """What a member's candidate scope would show of a trip that has not started yet. Stores nothing.
 
-    The same review as a hidden link has; no route, MCP tool or screen asks for it for a member yet (decision 360)."""
+    The same review as a hidden link has (decision 360, #426)."""
     return audiences.review_future(
         session, subject, audiences.owned_member(session, subject, collection_id, member_id), candidate
     )

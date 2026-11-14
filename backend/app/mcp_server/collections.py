@@ -139,6 +139,22 @@ class CollectionTools(McpTools):
             lambda x: _model(x, schemas.ProjectionDocument),
         )
 
+    def preview_collection_member_future_disclosure(
+        self,
+        collection_id: schemas.Identifier,
+        member_id: schemas.Identifier,
+        scope: schemas.ShareScopeInput | None = None,
+    ) -> dict[str, Any]:
+        """Review what a collection member would show of a trip that has not started yet: transport (routes with a future departure) and day dates (records that would read by day). scope is the candidate selection to review (omit it for the saved one); it is counted from the same document the member's preview renders. Returns transport and day_dates counts only. Stores nothing."""
+        return self._call(
+            "collection.future_disclosure",
+            "collection",
+            collection_id,
+            None,
+            lambda s, sub: collection_service.review_member_future(s, sub, collection_id, member_id, scope),
+            lambda x: _model(x, schemas.FutureDisclosure),
+        )
+
     def activate_collection(
         self, collection_id: schemas.Identifier, payload: schemas.ShareLinkActivateRequest, confirm: bool = False
     ) -> dict[str, Any]:

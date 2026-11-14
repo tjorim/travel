@@ -335,7 +335,11 @@ receives is still decided by `projection.delivered` alone.
 The kinds differ only where a decision says so: the public view cannot exclude records (it is the baseline), a
 collection member shares its collection's capability and state, and live location names the public view or a hidden
 link, never a collection member ([decision 244](decisions/244-live-location-tracks.md)). A member has the same
-future-disclosure review as a link in the service layer; no route, tool or screen exposes it for a member yet
+future-disclosure review as a link, in the service layer, the owner API
+(`POST /api/collections/{collection_id}/members/{member_id}/future-disclosure`, like `POST …/public-projection/future-disclosure`
+and `POST …/share-links/{link_id}/future-disclosure`), the MCP tools `preview_public_projection_future_disclosure`,
+`preview_share_link_future_disclosure` and `preview_collection_member_future_disclosure`, and the member's scope dialog;
+each counts the candidate scope as `FutureDisclosure` and stores nothing
 ([#426](https://github.com/tjorim/travel/issues/426)).
 
 ## What a record shows when it is shared

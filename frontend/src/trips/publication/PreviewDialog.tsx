@@ -8,7 +8,7 @@ import { RecordDialog } from "../../RecordDialog";
 import type { ShareLink, ShareScope } from "../../api-types";
 import { RenderedPreview } from "../RenderedPreview";
 import { kindCountsText, LINK_STATE_LABELS, projectionSummary } from "./catalog";
-import { futureDisclosureLines } from "./SharingReview";
+import { FutureDisclosureList, futureDisclosureLines } from "./SharingReview";
 import { useExclusionReview } from "./use-exclusion-review";
 import { useFutureDisclosure } from "./use-future-disclosure";
 
@@ -85,13 +85,7 @@ export function PreviewDialog({
               ` ${m.exclusions_preview_also({ counts: kindCountsText(review.data?.also_hidden) })}`}
           </p>
         )}
-        {futureLines.length > 0 && (
-          <ul className="m-0 grid list-disc gap-0.5 pl-5 text-travel-review-warning">
-            {futureLines.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        )}
+        <FutureDisclosureList lines={futureLines} />
         <p className="help">{m.sharing_preview_unsaved_note()}</p>
         <RenderedPreview
           projection={preview.document}

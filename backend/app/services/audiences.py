@@ -214,7 +214,8 @@ def review_future(
 
     The same scope the preview renders, counted from the same document, so the preview's review and the delivered
     fields cannot disagree. Stores nothing and records no audit event. The review is the same for every kind of
-    audience; ``POST .../future-disclosure`` exists for the public view and a hidden link (decision 360)."""
+    audience; ``POST .../future-disclosure`` exists for the public view, a hidden link and a collection member
+    (decision 360)."""
     trip, scope = preview_scope(session, subject, audience, candidate)
     document = render_projection(trip, scope, UNLISTED_SCHEMA)
     return FutureDisclosure(**future_counts(trip, document, datetime.now(UTC).date()))
