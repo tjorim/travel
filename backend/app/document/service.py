@@ -31,9 +31,15 @@ def trip_documents(session: Session, trip_id: str, document_asset_ids: list[str]
     """
     if not document_asset_ids:
         return []
+    # A shared lock until the caller commits: moving or unfiling the same document (``update_document``) takes
+    # ``FOR NO KEY UPDATE``, so it waits for this attachment to be written, then sees the link and refuses. That mode
+    # does not conflict with the ``FOR KEY SHARE`` of the link's own foreign-key check or with the trip delete's
+    # update of the filing, so none of them can deadlock with it.
     assets = list(
         session.scalars(
-            select(DocumentAsset).where(DocumentAsset.trip_id == trip_id, DocumentAsset.id.in_(document_asset_ids))
+            select(DocumentAsset)
+            .where(DocumentAsset.trip_id == trip_id, DocumentAsset.id.in_(document_asset_ids))
+            .with_for_update(read=True)
         )
     )
     if len(assets) != len(document_asset_ids):
@@ -48,12 +54,12 @@ def trip_documents(session: Session, trip_id: str, document_asset_ids: list[str]
 def existing_document(
     session: Session, *, original_object_id: str, trip_id: str | None, excluding: str | None = None
 ) -> DocumentAsset | None:
-    """The document that already holds this file under this trip (or unfiled), if any."""
+    """The oldest document that already holds this file under this trip (or unfiled), if any."""
     query = select(DocumentAsset).where(DocumentAsset.original_object_id == original_object_id)
     query = query.where(DocumentAsset.trip_id.is_(None) if trip_id is None else DocumentAsset.trip_id == trip_id)
     if excluding is not None:
         query = query.where(DocumentAsset.id != excluding)
-    return session.scalar(query)
+    return session.scalar(query.order_by(DocumentAsset.created_at, DocumentAsset.id).limit(1))
 
 
 def direct_upload(

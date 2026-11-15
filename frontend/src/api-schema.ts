@@ -3656,6 +3656,21 @@ export interface components {
          * @enum {string}
          */
         ImportSessionState: "pending" | "completed" | "expired";
+        /**
+         * LibraryDocumentUpdate
+         * @description The body of the deprecated ``PATCH /library/documents/{id}``: ``linked_trip_id`` is the old name of ``trip_id``.
+         *
+         *     Omitted keeps the filing, null unfiles, an id files the document under that trip.
+         */
+        LibraryDocumentUpdate: {
+            /** Title */
+            title?: string | null;
+            document_kind?: components["schemas"]["DocumentKind"] | null;
+            /** Trip Id */
+            trip_id?: string | null;
+            /** Linked Trip Id */
+            linked_trip_id?: string | null;
+        };
         /** LinkPresetApplyResult */
         LinkPresetApplyResult: {
             /** Applied */
@@ -6914,6 +6929,7 @@ export type ImportProvider = components['schemas']['ImportProvider'];
 export type ImportSessionCompleteResponse = components['schemas']['ImportSessionCompleteResponse'];
 export type ImportSessionResponse = components['schemas']['ImportSessionResponse'];
 export type ImportSessionState = components['schemas']['ImportSessionState'];
+export type LibraryDocumentUpdate = components['schemas']['LibraryDocumentUpdate'];
 export type LinkPresetApplyResult = components['schemas']['LinkPresetApplyResult'];
 export type LinkState = components['schemas']['LinkState'];
 export type LivePointResponse = components['schemas']['LivePointResponse'];
@@ -12294,7 +12310,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DocumentUpdate"];
+                "application/json": components["schemas"]["LibraryDocumentUpdate"];
             };
         };
         responses: {

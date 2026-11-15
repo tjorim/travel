@@ -16,7 +16,7 @@ import subprocess
 import sys
 import warnings
 from collections.abc import Callable, Generator
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -24,6 +24,7 @@ from typing import BinaryIO
 
 from PIL import Image, ImageOps
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -220,6 +221,7 @@ def _store_bytes(
     data: bytes | StagedUpload,
     content_type: str,
     object_key: str | None = None,
+    retry: bool = False,
 ) -> StoredObject:
     """Write, verify and record one object for a trip (media) or an owner (documents), reusing identical bytes.
 
@@ -243,6 +245,7 @@ def _store_bytes(
         existing.content_type = content_type
         existing.state = ObjectState.AVAILABLE if verified else ObjectState.QUARANTINED
         obj = existing
+        session.flush()
     else:
         obj = StoredObject(
             trip_id=trip_id,
@@ -254,8 +257,29 @@ def _store_bytes(
             content_type=content_type,
             state=ObjectState.AVAILABLE if verified else ObjectState.QUARANTINED,
         )
-        session.add(obj)
-    session.flush()
+        try:
+            # SQLite (development only, one writer) cannot race, and pysqlite would commit the whole transaction at
+            # a savepoint it opens before any statement, so only PostgreSQL gets one.
+            with session.begin_nested() if session.get_bind().dialect.name == "postgresql" else nullcontext():
+                session.add(obj)
+                session.flush()
+        except IntegrityError:
+            # A concurrent upload of the same bytes recorded its row first (the unique key on the home and checksum
+            # waited for it to commit). The bytes just written sit under a key no row names: nothing refers to
+            # them, and `reconcile-objects` removes them like those of any rolled-back upload (rule 1, docs/object-storage.md).
+            # Take the winner's object, written again under its own key if it is not available.
+            if retry:
+                raise
+            return _store_bytes(
+                session,
+                storage,
+                trip_id=trip_id,
+                owner_subject=owner_subject,
+                data=data,
+                content_type=content_type,
+                object_key=object_key,
+                retry=True,
+            )
     if not verified:
         raise MediaImportError(
             "Stored object failed checksum verification after write",

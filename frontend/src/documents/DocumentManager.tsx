@@ -328,7 +328,7 @@ export function DocumentManager({
               : m.library_upload_document()
             : m.library_document()
         }
-        dirty={editing && record.dirty}
+        dirty={editing && (record.dirty || file !== null)}
         error={dialog.error}
         onDismiss={close}
       >

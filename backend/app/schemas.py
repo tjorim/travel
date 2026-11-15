@@ -2797,6 +2797,26 @@ class DocumentUpdate(InputModel):
     trip_id: Identifier | None = Field(default=None)
 
 
+class LibraryDocumentUpdate(DocumentUpdate):
+    """The body of the deprecated ``PATCH /library/documents/{id}``: ``linked_trip_id`` is the old name of ``trip_id``.
+
+    Omitted keeps the filing, null unfiles, an id files the document under that trip."""
+
+    linked_trip_id: Identifier | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def one_trip_value(self):
+        if {"trip_id", "linked_trip_id"} <= self.model_fields_set and self.trip_id != self.linked_trip_id:
+            raise PydanticCustomError("trip_fields_differ", "trip_id and linked_trip_id name different trips")
+        return self
+
+    def as_document_update(self) -> DocumentUpdate:
+        fields = self.model_dump(exclude_unset=True)
+        if "linked_trip_id" in fields:
+            fields["trip_id"] = fields.pop("linked_trip_id")
+        return DocumentUpdate.model_validate(fields)
+
+
 class DocumentResponse(ResponseModel):
     id: str
     document_kind: DocumentKind

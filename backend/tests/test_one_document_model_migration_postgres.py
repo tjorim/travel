@@ -322,3 +322,63 @@ def test_the_downgrade_refuses_what_the_old_schema_cannot_hold(database, tmp_pat
             )
     with pytest.raises(RuntimeError, match="several trips"):
         command.downgrade(config, PREVIOUS)
+
+
+def test_the_downgrade_gives_a_document_the_photo_object_when_both_hold_the_same_bytes_in_one_trip(
+    database, tmp_path
+) -> None:
+    """Two objects now, one before: the old schema keeps one object per trip and checksum."""
+    engine, config = database
+    storage = LocalObjectStorage(str(tmp_path))
+    command.upgrade(config, "head")
+    with Session(engine) as session:
+        trip = Trip(owner_subject="owner-1", title="Exampleland")
+        session.add(trip)
+        session.commit()
+        trip_id = trip.id
+    digest = "7" * 64
+    with engine.begin() as connection:
+        columns = "id, bucket, object_key, sha256, byte_size, content_type, state, trip_id, owner_subject"
+        for name, key, trip_home, owner in (
+            ("photo", "trip/photo", trip_id, None),
+            ("owned", "owner/document", None, "owner-1"),
+        ):
+            connection.execute(
+                text(
+                    f"INSERT INTO public.stored_objects ({columns}) "  # noqa: S608
+                    "VALUES (:id, 'media', :key, :sha, 7, 'image/jpeg', 'available', :trip, :owner)"
+                ),
+                {"id": name, "key": key, "sha": digest, "trip": trip_home, "owner": owner},
+            )
+            storage.put(key, b"synthetic")
+        connection.execute(
+            text(
+                "INSERT INTO public.document_assets (id, owner_subject, trip_id, original_object_id, document_kind, "
+                "title, owner_metadata) VALUES ('document', 'owner-1', :trip, 'owned', 'other', 'Receipt', '{}')"
+            ),
+            {"trip": trip_id},
+        )
+    with Session(engine) as session:
+        session.add(MediaAsset(trip_id=trip_id, original_object_id="photo", media_kind=MediaKind.PHOTO))
+        session.commit()
+
+    command.downgrade(config, PREVIOUS)
+
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT original_object_id FROM public.document_assets")) == "photo"
+        assert (
+            connection.scalar(text("SELECT count(*) FROM public.stored_objects WHERE sha256 = :sha"), {"sha": digest})
+            == 1
+        )
+        # The document's own object is kept as purge inventory of the library, its bytes untouched.
+        row = connection.execute(text("SELECT state::text, owner_subject FROM public.owner_stored_objects")).one()
+        assert tuple(row) == ("purge_pending", "owner-1")
+    assert storage.exists("trip/photo") and storage.exists("owner/document")
+    # Upgrading again merges the two objects of the owner's file and releases the extra one for the locked purge.
+    command.upgrade(config, "head")
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT original_object_id FROM public.document_assets")) == "photo"
+        released = connection.execute(
+            text("SELECT state::text, owner_subject, trip_id FROM public.stored_objects WHERE id = 'owned'")
+        ).one()
+        assert tuple(released) == ("purge_pending", None, None)

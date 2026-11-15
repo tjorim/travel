@@ -13,6 +13,7 @@ bytes may be deleted only for a row already committed as ``purge_pending``.
 from typing import BinaryIO
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError, InvalidRequestError
 from sqlalchemy.orm import Session
 
 from ..document.service import DocumentError, delete_document_asset, direct_upload, existing_document
@@ -124,6 +125,14 @@ def update_document(
     it is refused until the owner detaches it from those stays and routes."""
     asset = owned_document_asset(session, subject, document_id)
     updates = payload.model_dump(exclude_unset=True)
+    if "trip_id" in updates:
+        # Read the filing and the attachments under the row lock. An attachment being written holds a shared lock
+        # (``trip_documents``), so it finishes first and is seen below; one that starts later waits and then finds the
+        # document filed elsewhere. ``FOR NO KEY UPDATE`` leaves the link's foreign-key check and the trip delete alone.
+        try:
+            session.refresh(asset, with_for_update={"key_share": True})
+        except InvalidRequestError as error:  # removed while this edit waited
+            raise RecordNotFound("Document not found") from error
     if "trip_id" in updates and updates["trip_id"] != asset.trip_id:
         target = updates["trip_id"]
         if target is not None:
@@ -137,11 +146,18 @@ def update_document(
                 "Detach the document from stays and routes before filing it under another trip",
                 code="detach_the_document_from_stays_and_routes_before_moving_it",
             )
-        if existing_document(session, original_object_id=asset.original_object_id, trip_id=target, excluding=asset.id):
+        if target is not None and existing_document(
+            session, original_object_id=asset.original_object_id, trip_id=target, excluding=asset.id
+        ):
             raise Refusal("That trip already holds a document with this file", code="that_trip_already_holds_this_file")
-    for field, value in updates.items():
-        setattr(asset, field, value)
-    session.flush()
+    try:
+        for field, value in updates.items():
+            setattr(asset, field, value)
+        session.flush()
+    except IntegrityError as error:  # the trip took the same file between the check above and now
+        raise Refusal(
+            "That trip already holds a document with this file", code="that_trip_already_holds_this_file"
+        ) from error
     session.refresh(asset)
     return document_response(asset)
 

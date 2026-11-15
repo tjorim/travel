@@ -560,11 +560,15 @@ stored the same thing twice and had drifted apart.
   are unfiled and keep their files**, because a document is the owner's, not the trip's; every other private record
   of the trip goes with it.
 - **The file.** Identical bytes are stored once per owner (`uq_stored_object_owner_sha256`), whichever trips hold
-  them; one trip holds a given file once (re-uploading it there returns the existing document). The stored object
+  them; one trip holds a given file once (re-uploading it there returns the existing document), while unfiled
+  documents may share one, because deleting a trip unfiles its documents and none is dropped for it. Attaching and
+  moving a document lock its row (shared for an attachment, `FOR NO KEY UPDATE` for a move), so the two cannot
+  interleave. The stored object
   keeps `owner_subject`, never a trip, so moving a document never rewrites a key (`docs/object-storage.md`).
 - **Surface.** `/documents` is the API (upload, list with `trip_id` or `unfiled`, read, edit, delete, original);
   `/trips/{trip_id}/documents` and `/library/documents` remain for one release as deprecated aliases that call the
-  same service (`linked_trip_id` there is `trip_id`). The MCP tools are `upload_document` (optional `trip_id`),
+  same service (`linked_trip_id` there is `trip_id`, and the library's `PATCH` still reads it: omitted keeps the
+  filing, null unfiles). The MCP tools are `upload_document` (optional `trip_id`),
   `list_documents`, `get_document`, `update_document` and `delete_document`.
 
 ## Where a twin is still needed

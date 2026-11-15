@@ -66,7 +66,10 @@ document is filed under never touches the object:
 - Filing a document under another trip, unfiling it, and deleting its trip change only the `document_assets` row.
   The object keeps its key and bytes (rule 2) and nothing is purged.
 - Identical bytes are one object per owner (`uq_stored_object_owner_sha256`), shared by every document that holds
-  them. Deleting a document marks the object `purge_pending` only when no other document, photo or derivative
+  them. Two first uploads of the same bytes can both miss the lookup: the insert of the later one waits for the first
+  to commit, fails on the unique key inside a savepoint, and takes the winner's object. The bytes it had already
+  written under its own fresh key are named by no row, like those of a rolled-back upload, and `reconcile-objects`
+  removes them (rule 1; nothing is deleted outside the purge). Deleting a document marks the object `purge_pending` only when no other document, photo or derivative
   names it (`_object_is_referenced`); the purge re-checks under the row lock and restores a still-referenced
   object to `available`.
 - `byte_size` is a 64-bit integer: the upload limit (`TRAVEL_MEDIA_MAX_UPLOAD_BYTES`, 200 MiB by default) is a
@@ -75,7 +78,9 @@ document is filed under never touches the object:
 - Migration 033 merged the trip documents and the owner library: it copied the owner inventory into `stored_objects`
   with the same ids and keys, and released a duplicate (same owner, same bytes) as `purge_pending` for the locked
   purge. It moved, rewrote and deleted no file. `reconcile-objects` is clean before and after it (tested on
-  PostgreSQL in `tests/test_one_document_model_migration_postgres.py`).
+  PostgreSQL in `tests/test_one_document_model_migration_postgres.py`). Its downgrade gives a document the photo's
+  object when both hold the same bytes in one trip (the old schema keeps one object per trip and checksum) and keeps
+  the document's own object as `purge_pending` inventory, bytes untouched.
 
 ## Unreferenced files
 

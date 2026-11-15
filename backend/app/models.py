@@ -1464,7 +1464,9 @@ class DocumentAsset(Base):
 
     __tablename__ = "document_assets"
     __table_args__ = (
-        # One document per file and trip (retry-safe upload); the same bytes may sit under several trips.
+        # One document per file and trip (retry-safe upload); the same bytes may sit under several trips. Unfiled
+        # documents are deliberately not unique: deleting a trip unfiles its documents, and two of them may then
+        # hold the same file. No document is dropped to make a trip delete fit.
         Index(
             "uq_document_assets_object_trip",
             "original_object_id",
@@ -1472,13 +1474,6 @@ class DocumentAsset(Base):
             unique=True,
             postgresql_where=text("trip_id IS NOT NULL"),
             sqlite_where=text("trip_id IS NOT NULL"),
-        ),
-        Index(
-            "uq_document_assets_object_unfiled",
-            "original_object_id",
-            unique=True,
-            postgresql_where=text("trip_id IS NULL"),
-            sqlite_where=text("trip_id IS NULL"),
         ),
     )
 

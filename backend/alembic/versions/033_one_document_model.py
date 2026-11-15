@@ -5,7 +5,8 @@ attached to that trip's stays and routes.
 
 * ``document_assets`` becomes the one document table. It gains ``owner_subject``, its ``trip_id`` becomes optional
   (``ON DELETE SET NULL``: deleting a trip unfiles its documents) and ``original_object_id`` stops being unique,
-  because the same bytes may sit under several trips. One document holds a file per trip (or unfiled).
+  because the same bytes may sit under several trips. A trip holds a file once; unfiled documents may share one (deleting
+  trips unfiles their documents, and none is dropped for it).
 * ``owner_documents`` is copied into it (``linked_trip_id`` becomes ``trip_id``) and dropped.
 * ``stored_objects`` becomes the one inventory. It gains ``owner_subject`` (the home of a document original, with
   identical bytes stored once per owner) and a 64-bit ``byte_size``. ``owner_stored_objects`` is copied into it, ids
@@ -18,7 +19,9 @@ attached to that trip's stays and routes.
 
 The downgrade moves unfiled documents back to the library tables and filed ones back to trip documents. It refuses
 while one file is held by documents of several trips, or by a document and a photo of another trip, because the old
-schema cannot hold that; remove or re-upload one of them first. It also refuses a ``byte_size`` over 2 GiB.
+schema cannot hold that; remove or re-upload one of them first. It also refuses a ``byte_size`` over 2 GiB. A
+document and a photo of one trip with identical bytes (two objects now, one before) go back to the photo's object;
+the document's own object stays as ``purge_pending`` inventory for the locked purge, its bytes untouched.
 
 Revision ID: 033_one_document_model
 Revises: 032_live_audiences
@@ -202,13 +205,6 @@ def upgrade() -> None:
         unique=True,
         postgresql_where=sa.text("trip_id IS NOT NULL"),
     )
-    op.create_index(
-        "uq_document_assets_object_unfiled",
-        "document_assets",
-        ["original_object_id"],
-        unique=True,
-        postgresql_where=sa.text("trip_id IS NULL"),
-    )
 
 
 def downgrade() -> None:
@@ -231,12 +227,27 @@ def downgrade() -> None:
     if bind.scalar(sa.text("SELECT count(*) FROM public.stored_objects WHERE byte_size > 2147483647")):
         raise RuntimeError("A stored object is larger than 2 GiB; remove it before downgrading")
 
-    op.drop_index("uq_document_assets_object_unfiled", table_name="document_assets")
     op.drop_index("uq_document_assets_object_trip", table_name="document_assets")
     op.drop_index("ix_document_assets_original_object_id", table_name="document_assets")
     op.drop_index("ix_document_assets_owner_subject", table_name="document_assets")
     op.drop_index("uq_stored_object_owner_sha256", table_name="stored_objects")
     op.drop_index("ix_stored_objects_owner_subject", table_name="stored_objects")
+
+    # A photo and a document of one trip with identical bytes are two objects now, as they were one before: the old
+    # schema holds one object per trip and checksum, so the document goes back to the trip's object. The owner's copy
+    # is left unreferenced as purge inventory (its bytes are not touched; the locked purge removes them).
+    op.execute(
+        "UPDATE public.document_assets SET original_object_id = shared.id "
+        "FROM public.stored_objects own, public.stored_objects shared "
+        "WHERE own.id = document_assets.original_object_id AND document_assets.trip_id IS NOT NULL "
+        "AND own.trip_id IS NULL AND shared.trip_id = document_assets.trip_id "
+        "AND shared.sha256 = own.sha256 AND shared.id <> own.id"
+    )
+    op.execute(
+        "UPDATE public.stored_objects SET state = 'purge_pending' "
+        "WHERE owner_subject IS NOT NULL AND trip_id IS NULL "
+        "AND NOT EXISTS (SELECT 1 FROM public.document_assets WHERE original_object_id = stored_objects.id)"
+    )
 
     op.execute(
         """

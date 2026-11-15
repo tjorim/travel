@@ -9459,7 +9459,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DocumentUpdate"
+                "$ref": "#/components/schemas/LibraryDocumentUpdate"
               }
             }
           }
@@ -14783,6 +14783,63 @@
           "expired"
         ],
         "title": "ImportSessionState"
+      },
+      "LibraryDocumentUpdate": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "document_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trip_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trip Id"
+          },
+          "linked_trip_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Trip Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "LibraryDocumentUpdate",
+        "description": "The body of the deprecated ``PATCH /library/documents/{id}``: ``linked_trip_id`` is the old name of ``trip_id``.\n\nOmitted keeps the filing, null unfiles, an id files the document under that trip."
       },
       "LinkPresetApplyResult": {
         "properties": {

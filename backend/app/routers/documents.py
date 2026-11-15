@@ -15,7 +15,7 @@ from ..auth import current_subject
 from ..database import get_session
 from ..media.ranges import private_original_headers
 from ..models import DocumentKind
-from ..schemas import DocumentResponse, DocumentTitle, DocumentUpdate, Identifier
+from ..schemas import DocumentResponse, DocumentTitle, DocumentUpdate, Identifier, LibraryDocumentUpdate
 from ..services import documents as service
 from ..storage import ObjectStorage, get_storage
 
@@ -209,9 +209,9 @@ def get_library_document(document_id: Identifier, session: SessionDep, subject: 
 
 @library_router.patch("/{document_id}", response_model=DocumentResponse)
 def update_library_document(
-    document_id: Identifier, payload: DocumentUpdate, session: SessionDep, subject: SubjectDep
+    document_id: Identifier, payload: LibraryDocumentUpdate, session: SessionDep, subject: SubjectDep
 ) -> DocumentResponse:
-    updated = service.update_document(session, subject, document_id, payload)
+    updated = service.update_document(session, subject, document_id, payload.as_document_update())
     session.commit()
     return updated
 

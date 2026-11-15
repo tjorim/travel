@@ -293,3 +293,25 @@ it("deletes a document after explicit confirmation", async () => {
   );
   expect(api.count("DELETE /api/documents/d3")).toBe(1);
 });
+
+it("asks before dismissing an upload that only has a file chosen", async () => {
+  renderWithOwner(<DocumentManager trip={trip} />);
+  await screen.findByText("Vliegticket");
+  fireEvent.click(screen.getByRole("button", { name: "Nieuw document" }));
+  // No title typed: the chosen file alone is work to lose.
+  pickFile(document.querySelector('input[type="file"]'));
+  fireEvent.click(screen.getByRole("button", { name: "Document uploaden sluiten" }));
+  await screen.findByRole("alertdialog", { name: "Wijzigingen verwerpen?" });
+  expect(screen.getByLabelText("Titel")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Wijzigingen verwerpen" }));
+  await waitFor(() => expect(screen.queryByLabelText("Titel")).toBeNull());
+});
+
+it("closes an untouched upload dialog without asking", async () => {
+  renderWithOwner(<DocumentManager trip={trip} />);
+  await screen.findByText("Vliegticket");
+  fireEvent.click(screen.getByRole("button", { name: "Nieuw document" }));
+  fireEvent.click(screen.getByRole("button", { name: "Document uploaden sluiten" }));
+  await waitFor(() => expect(screen.queryByLabelText("Titel")).toBeNull());
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+});

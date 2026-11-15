@@ -285,3 +285,56 @@ def test_originals_are_never_sniffed_and_unsafe_types_download_instead_of_render
     safe = owner.get(pdf["file_url"])
     assert safe.headers["x-content-type-options"] == "nosniff"
     assert "content-disposition" not in safe.headers
+
+
+def test_deleting_trips_that_share_a_file_with_each_other_or_an_unfiled_document_keeps_every_document(
+    tmp_path: Path,
+) -> None:
+    owner = client_for("owner-1", tmp_path)
+    first, second = create_trip(owner), create_trip(owner)
+    data = {"title": "Policy", "document_kind": "other"}
+    files = {"file": ("policy.txt", b"the same bytes", "text/plain")}
+    unfiled = owner.post("/api/documents/uploads", data=data, files=files).json()
+    filed = [
+        owner.post("/api/documents/uploads", data=data | {"trip_id": trip["id"]}, files=files).json()
+        for trip in (first, second)
+    ]
+
+    # An unfiled document already holds the file, and then so does each trip being deleted.
+    assert owner.delete(f"/api/trips/{first['id']}").status_code == 204
+    assert owner.delete(f"/api/trips/{second['id']}").status_code == 204
+
+    documents = owner.get("/api/documents").json()
+    assert {document["id"] for document in documents} == {unfiled["id"], filed[0]["id"], filed[1]["id"]}
+    assert {document["trip_id"] for document in documents} == {None}
+    with TestingSessionLocal() as session:
+        assert session.query(StoredObject).count() == 1
+    assert len([path for path in tmp_path.rglob("*") if path.is_file()]) == 1
+    # Uploading the file again is a retry of an unfiled document that holds it, not a fourth.
+    again = owner.post("/api/documents/uploads", data=data, files=files)
+    assert (again.status_code, again.json()["id"] in {document["id"] for document in documents}) == (200, True)
+    assert len(owner.get("/api/documents").json()) == 3
+    # The file stays until the last document goes.
+    for document in documents:
+        assert owner.delete(f"/api/documents/{document['id']}").status_code == 204
+    assert [path for path in tmp_path.rglob("*") if path.is_file()] == []
+
+
+def test_the_library_patch_alias_still_reads_linked_trip_id(tmp_path: Path) -> None:
+    owner = client_for("owner-1", tmp_path)
+    trip, other_trip = create_trip(owner), create_trip(owner)
+    document = upload_document(owner, trip["id"])
+    path = f"/api/library/documents/{document['id']}"
+
+    moved = owner.patch(path, json={"linked_trip_id": other_trip["id"]})
+    assert (moved.status_code, moved.json()["trip_id"]) == (200, other_trip["id"])
+    renamed = owner.patch(path, json={"title": "Renamed"})  # omitted: the filing is unchanged
+    assert (renamed.json()["title"], renamed.json()["trip_id"]) == ("Renamed", other_trip["id"])
+    unfiled = owner.patch(path, json={"linked_trip_id": None})  # explicit null: unfiled
+    assert unfiled.json()["trip_id"] is None
+    # The new name works there too; two different trips in one body are refused, and the title cannot be null.
+    assert owner.patch(path, json={"trip_id": trip["id"]}).json()["trip_id"] == trip["id"]
+    both = owner.patch(path, json={"trip_id": trip["id"], "linked_trip_id": other_trip["id"]})
+    assert both.status_code == 422
+    assert owner.patch(path, json={"title": None}).status_code == 422
+    assert owner.get(path).json()["trip_id"] == trip["id"]
