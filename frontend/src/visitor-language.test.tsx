@@ -87,16 +87,18 @@ afterEach(() => {
 
 it("asks for the trip's own language when the visitor chose none, and reads the interface in it", async () => {
   const calls = serve();
-  // The visitor's browser would otherwise show this page in English.
+  // The visitor's browser would otherwise show this page in English, and the translation runtime may well have
+  // written that default to storage: it is still no choice of theirs.
   act(() => changeLocale("en"));
   localStorage.clear();
+  localStorage.setItem("travel-locale", "en");
   render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
   await screen.findByRole("heading", { name: "Rondreis Taiwan" });
   expect(calls[0]).toBe(`/api/shared/${token}`);
   await waitFor(() => expect(selectedLocale()).toBe("nl"));
   expect(window.document.documentElement.lang).toBe("nl");
-  // Taking the trip's language is not a choice of the visitor: nothing is remembered.
-  expect(localStorage.getItem("travel-locale")).toBeNull();
+  // Taking the trip's language is not a choice of the visitor: nothing is remembered as one.
+  expect(localStorage.getItem("travel-locale-choice")).toBeNull();
 });
 
 it("marks authored text with the language it is delivered in, whatever the interface says", async () => {
@@ -133,7 +135,7 @@ it("asks again in the language the visitor chooses and shows what the server del
   expect(screen.getAllByText("Museum")[0]?.getAttribute("lang")).toBe("en");
   expect(screen.queryByText("Rondreis Taiwan")).toBeNull();
   // The choice is the visitor's own now: it is remembered and asked for from then on.
-  expect(localStorage.getItem("travel-locale")).toBe("en");
+  expect(localStorage.getItem("travel-locale-choice")).toBe("en");
   cleanup();
   render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
   await screen.findByRole("heading", { name: "Taiwan tour" });

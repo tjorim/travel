@@ -9,6 +9,8 @@ export const area = {
   id: "area-tainan",
   visibility: "private",
   label: "Tainan",
+  label_nl: "Tainan",
+  label_en: null,
   region: null,
   country_code: "TW",
   latitude: 22.99,
@@ -16,9 +18,20 @@ export const area = {
   timezone: null,
 };
 
+/** What the server does with texts sent in both languages: the plain name reads the Dutch text, else the English one. */
+const resolved = (record: Record<string, unknown>) => {
+  const values = { ...record };
+  for (const field of ["title", "label", "summary"])
+    if (`${field}_nl` in values || `${field}_en` in values)
+      values[field] = values[`${field}_nl`] || values[`${field}_en`] || null;
+  return values;
+};
+
 const visit = (id: string, title: string, overrides: Record<string, unknown> = {}) => ({
   id,
   title,
+  title_nl: title,
+  title_en: null,
   kind: null,
   status: "planned",
   starts_on: "2054-11-12",
@@ -62,6 +75,8 @@ const route = (id: string, label: string, overrides: Record<string, unknown> = {
   id,
   mode: "train",
   label,
+  label_nl: label,
+  label_en: null,
   status: "planned",
   visibility: "private",
   departure_area: area,
@@ -110,8 +125,8 @@ export async function routeAgendaRecords(
       if (method === "POST") {
         const created =
           resource === "visits"
-            ? visit(`visit-${list.length + 10}`, String(body.title ?? ""), body)
-            : { id: `${resource}-${list.length + 10}`, ...body };
+            ? resolved(visit(`visit-${list.length + 10}`, "", body))
+            : resolved({ id: `${resource}-${list.length + 10}`, ...body });
         list.push(created);
         return request.fulfill({ json: created, status: 201 });
       }
@@ -132,7 +147,7 @@ export async function routeAgendaRecords(
         list.splice(index, 1);
         return request.fulfill({ status: 204 });
       }
-      list[index] = { ...list[index], ...body };
+      list[index] = resolved({ ...list[index], ...body });
       return request.fulfill({ json: list[index] });
     });
   }

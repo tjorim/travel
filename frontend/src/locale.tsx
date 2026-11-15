@@ -54,10 +54,15 @@ function updateDocument() {
   document.title = `Travel · ${window.location.pathname.startsWith("/admin") ? m.trips() : window.location.pathname.startsWith("/share/") ? m.shared_trip() : window.location.pathname.startsWith("/trips/") ? m.public_trip() : m.on_the_road()}`;
   document.querySelector('meta[name="description"]')?.setAttribute("content", m.description());
 }
-/** The language the visitor chose themselves (here or on an earlier visit), or null when they never did. */
-export function storedLocale(): Locale | null {
+/**
+ * Where the visitor's own choice of language is kept. `travel-locale` cannot say it: the translation runtime writes
+ * the language it starts in back to it, so it also holds a browser default nobody chose.
+ */
+const CHOICE_KEY = "travel-locale-choice";
+/** The language the visitor chose themselves with the language control (here or on an earlier visit), else null. */
+export function chosenLocale(): Locale | null {
   try {
-    const stored = localStorage.getItem("travel-locale");
+    const stored = localStorage.getItem(CHOICE_KEY);
     return stored === "nl" || stored === "en" ? stored : null;
   } catch {
     return null;
@@ -76,6 +81,11 @@ export function adoptLocale(next: Locale) {
 }
 export function changeLocale(next: Locale) {
   setLocale(next, { reload: false });
+  try {
+    localStorage.setItem(CHOICE_KEY, next);
+  } catch {
+    /* Keep the in-memory choice. */
+  }
   updateDocument();
   window.dispatchEvent(new Event("travel-locale-change"));
   listeners.forEach((listener) => listener());

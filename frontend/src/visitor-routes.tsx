@@ -1,7 +1,7 @@
 import { cn } from "cn";
 import { ApiError, apiFailure, errorMessage } from "./query/api";
 import { m } from "./paraglide/messages.js";
-import { adoptLocale, storedLocale, useLocale } from "./locale";
+import { adoptLocale, chosenLocale, useLocale } from "./locale";
 import type { ContentLanguage } from "./content-language";
 import { deliveredLanguage, isContentLanguage, withLanguage } from "./visitor-language";
 import { VisitorTopBar } from "./VisitorTopBar";
@@ -479,7 +479,7 @@ function VisitorPage({
   // What the visitor chose themselves, here or on an earlier visit. Without a choice the document comes in the
   // trip's own language (the server says which) and the interface follows it; a later choice asks for the
   // document again in that language. Back in the trip's own language there is nothing to ask for.
-  const requested = adopted !== null && locale !== adopted ? locale : storedLocale();
+  const requested = adopted !== null && locale !== adopted ? locale : chosenLocale();
   // A new choice of language replaces the texts without blanking the page; another trip or a retry starts over.
   const loadedFor = useRef("");
   const [attempt, setAttempt] = useState(0);

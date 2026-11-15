@@ -1,8 +1,7 @@
 # Dutch/English translation drafts (#305)
 
-The owner can ask for a machine-translated draft of a long-form Markdown field
-(trip summary, visit notes, reisupdate body, stay and route notes). The feature
-is an explicit action; it never translates on save, publishes, or replaces
+The owner can ask for a machine-translated draft of a text a visitor can receive, to fill the language that
+field is still empty in. The feature is an explicit action; it never translates on save, publishes, or replaces
 authored text. Interface translations are separate (`interface-translations.md`).
 
 ## Dutch and English texts (#376)
@@ -15,18 +14,19 @@ endpoint is unchanged and stores nothing.
 - A draft is never stored by the API, the MCP tools or the backend: the owner reviews it and saves the record, and
   the saved text is an ordinary `<field>_<language>` write. Nothing is translated on save or on delivery, and a
   language the owner did not write is delivered as the other one, marked with `<field>_lang`.
-- The editor (a later phase of #376) fills the empty language of the field being edited instead of appending to the
-  field, keeps it marked as an unreviewed machine draft until the record is saved, and offers it only on the fields
-  a visitor can receive. **Add below the text** and the buttons on owner-only fields (stay, route, location and
-  visit notes, private notes) are removed there; their text is single-language and is never shared.
-- Until that editor change, the flow below is what the web app still does.
+- The editor fills the empty language of the field being edited (`LocalizedField`), keeps it marked as an
+  unreviewed machine draft until the record is saved, and offers it only on the fields a visitor can receive. There
+  is no **Add below the text**, and the buttons on owner-only fields (stay, route, location and visit notes, private
+  notes, documents) are gone; their text is single-language and is never shared.
 - Not stored: whether a text was machine-translated, and whether the other language changed since. Marking a
   translation as possibly out of date needs a timestamp per language per field and is not part of this change.
 
 ## Flow
 
-1. The Markdown editor offers **Translate to English** and **Translate to Dutch**
-   while the field has text. Short fields (captions, contact details) do not.
+1. A field with text in one language and none in the other offers one action, for the other language: **Draft
+   from Dutch** or **Draft from English** (whichever has the text). Titles, names, captions and alternative text
+   have it too. The field is the one on screen after the Dutch | English switch; a field with text in both
+   languages, or in neither, offers nothing.
 2. `POST /api/translation/drafts` (owner-authenticated) takes
    `{text, source, target}` with `nl`/`en`, at most 8 000 characters, and
    returns `{text, source, target, machine_translated: true}`. Nothing is stored,
@@ -34,14 +34,15 @@ endpoint is unchanged and stores nothing.
    Cloudflare allows for a proxied request on the Free plan (a 524 otherwise):
    about 170 characters/s plus a 15-30 s cold start. Longer text is rejected
    with a length error; the owner translates it in parts.
-3. The editor shows a "Machine-translated draft" with a review warning (place
-   and dish names and idioms may be wrong). The draft is editable; **Add below
-   the text** appends it after the authored text, **Discard draft** drops it.
+3. The draft goes straight into the empty language's field, under a notice "Machine-translated draft, not
+   reviewed yet" with a review warning (place and dish names and idioms may be wrong). It is an ordinary edit of
+   that field: the owner changes it, **Discard draft** empties it again, and nothing is stored until the record
+   is saved, which also ends the notice. The other language's text is never touched.
 4. Cancelling aborts the request. The backend checks for a departed caller
    before each piece and stops translating.
 
 A failure (service not configured, unreachable, malformed answer) shows a
-translated message with **Try again**; the field's text is unchanged.
+translated message with **Try again**; the field's text is unchanged. Cancelling aborts the request.
 
 ## Backend behaviour
 

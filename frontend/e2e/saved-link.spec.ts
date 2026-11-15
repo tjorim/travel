@@ -16,7 +16,7 @@ for (const locale of ["nl", "en"] as const) {
     });
     await mockApi(page);
     await choosePreferences(page, locale, "light");
-    await page.route(`**/api/shared/${sharedToken}`, (route) =>
+    await page.route(`**/api/shared/${sharedToken}{,?*}`, (route) =>
       route.fulfill({
         json: {
           schema_version: "travel/unlisted-trip@1",

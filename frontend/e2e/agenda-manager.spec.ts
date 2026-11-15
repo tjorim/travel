@@ -109,7 +109,7 @@ for (const locale of locales) {
         expect(records.writes.at(-1)).toMatchObject({
           method: "PATCH",
           path: "/api/trips/trip-1/visits/visit-1",
-          body: { title: "Old harbour walk" },
+          body: { title_nl: "Old harbour walk" },
         });
 
         // Delete: a question first, and cancelling it changes nothing.
@@ -172,7 +172,7 @@ for (const locale of locales) {
         expect(records.writes.at(-1)).toMatchObject({
           method: "POST",
           path: "/api/trips/trip-1/visits",
-          body: { title: "Tea house", starts_on: null },
+          body: { title_nl: "Tea house", starts_on: null },
         });
 
         // Audience: set where the owner sees what sharing means, in the record's dialog; the row then says it.
