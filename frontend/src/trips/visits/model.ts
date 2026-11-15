@@ -53,7 +53,8 @@ export const visitPlace = (visit: Pick<Visit, "area" | "location">): string =>
 
 export type Values = {
   place: PlaceValue;
-  title: string;
+  titleNl: string;
+  titleEn: string;
   kind: VisitKind | "";
   status: PlanningStatus;
   startsOn: string;
@@ -61,7 +62,8 @@ export type Values = {
   startTime: string;
   endTime: string;
   notes: string;
-  summary: string;
+  summaryNl: string;
+  summaryEn: string;
   shareTime: boolean;
   /** Empty follows each audience's own date precision. */
   shareDatePrecision: DatePrecision | "";
@@ -69,7 +71,8 @@ export type Values = {
 
 export const blank = (): Values => ({
   place: emptyPlace(),
-  title: "",
+  titleNl: "",
+  titleEn: "",
   kind: "",
   status: "planned",
   startsOn: "",
@@ -77,7 +80,8 @@ export const blank = (): Values => ({
   startTime: "",
   endTime: "",
   notes: "",
-  summary: "",
+  summaryNl: "",
+  summaryEn: "",
   shareTime: false,
   shareDatePrecision: "",
 });
@@ -89,7 +93,8 @@ export const visitFromPrefill = (prefill: CreatePrefill): Values => ({
 });
 export const fromVisit = (visit: Visit): Values => ({
   place: placeOfVisit(visit),
-  title: visit.title ?? "",
+  titleNl: visit.title_nl ?? "",
+  titleEn: visit.title_en ?? "",
   kind: visit.kind ?? "",
   status: visit.status,
   startsOn: visit.starts_on ?? "",
@@ -97,12 +102,15 @@ export const fromVisit = (visit: Visit): Values => ({
   startTime: clock(visit.start_time),
   endTime: clock(visit.end_time),
   notes: visit.notes ?? "",
-  summary: visit.summary ?? "",
+  summaryNl: visit.summary_nl ?? "",
+  summaryEn: visit.summary_en ?? "",
   shareTime: visit.share_time,
   shareDatePrecision: visit.share_date_precision ?? "",
 });
 export const serverFields = {
-  title: "title",
+  title: "titleNl",
+  title_nl: "titleNl",
+  title_en: "titleEn",
   kind: "kind",
   status: "status",
   starts_on: "startsOn",
@@ -110,7 +118,9 @@ export const serverFields = {
   start_time: "startTime",
   end_time: "endTime",
   notes: "notes",
-  summary: "summary",
+  summary: "summaryNl",
+  summary_nl: "summaryNl",
+  summary_en: "summaryEn",
   share_time: "shareTime",
   share_date_precision: "shareDatePrecision",
 };

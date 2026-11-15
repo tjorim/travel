@@ -144,7 +144,8 @@ beforeEach(() => {
       if (updates && method === "GET")
         return json(trips.find((item) => item.id === updates[1])?.travel_updates ?? []);
       if (url === "/api/trips" && method === "POST") {
-        const created = trip("t3", String(body.title));
+        const created = trip("t3", String(body.title_nl));
+        expect(body.content_language).toBe("nl");
         trips = [...trips, created];
         return json(created, 201);
       }
@@ -154,8 +155,10 @@ beforeEach(() => {
           item.id === match[1]
             ? {
                 ...item,
-                title: String(body.title),
-                summary: (body.summary as string | null) ?? null,
+                title: String(body.title_nl),
+                title_nl: String(body.title_nl),
+                summary: (body.summary_nl as string | null) ?? null,
+                summary_nl: (body.summary_nl as string | null) ?? null,
               }
             : item,
         );

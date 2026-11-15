@@ -81,7 +81,8 @@ export function LocationManager({
     submit: (values) => {
       const fields = {
         display_name: optional(values.displayName),
-        label: optional(values.label),
+        label_nl: optional(values.labelNl),
+        label_en: optional(values.labelEn),
         address_line1: optional(values.addressLine1),
         address_line2: optional(values.addressLine2),
         locality: optional(values.locality),
@@ -186,7 +187,7 @@ export function LocationManager({
     setSuggestion(result);
     const proposed = {
       displayName: result.display_name,
-      label: result.label,
+      [trip.content_language === "en" ? "labelEn" : "labelNl"]: result.label,
       addressLine1: result.address_line1,
       addressLine2: result.address_line2,
       locality: result.locality,

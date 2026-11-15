@@ -4,7 +4,7 @@ import { createRootRoute } from "@tanstack/react-router";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { fakeApi, type FakeApi } from "../query/fake-api";
+import { fakeApi, resolveTexts, type FakeApi } from "../query/fake-api";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
 import { emptyDraft, readDraft, saveDraft } from "../capture-draft";
@@ -98,7 +98,7 @@ beforeEach(() => {
     state.trip = {
       ...state.trip,
       travel_updates: state.trip.travel_updates.map((item) =>
-        item.id === match[1] ? { ...item, ...(body as object) } : item,
+        item.id === match[1] ? resolveTexts({ ...item, ...(body as object) }) : item,
       ),
     };
     return state.trip.travel_updates.find((item) => item.id === match[1]);

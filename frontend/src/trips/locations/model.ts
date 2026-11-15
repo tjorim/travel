@@ -6,7 +6,8 @@ import { type Location, type PublicProjectionStatus, type ShareLink } from "../.
 export type Values = {
   areaId: string;
   displayName: string;
-  label: string;
+  labelNl: string;
+  labelEn: string;
   addressLine1: string;
   addressLine2: string;
   locality: string;
@@ -19,7 +20,8 @@ export type Values = {
 export const blank = (areaId = ""): Values => ({
   areaId,
   displayName: "",
-  label: "",
+  labelNl: "",
+  labelEn: "",
   addressLine1: "",
   addressLine2: "",
   locality: "",
@@ -32,7 +34,8 @@ export const blank = (areaId = ""): Values => ({
 export const fromPlace = (place: Location): Values => ({
   areaId: place.area_id,
   displayName: place.display_name ?? "",
-  label: place.label ?? "",
+  labelNl: place.label_nl ?? "",
+  labelEn: place.label_en ?? "",
   addressLine1: place.address_line1 ?? "",
   addressLine2: place.address_line2 ?? "",
   locality: place.locality ?? "",
@@ -117,7 +120,9 @@ export const optional = (value: string) => value.trim() || null;
 export const serverFields = {
   area_id: "areaId",
   display_name: "displayName",
-  label: "label",
+  label: "labelNl",
+  label_nl: "labelNl",
+  label_en: "labelEn",
   address_line1: "addressLine1",
   address_line2: "addressLine2",
   locality: "locality",
@@ -221,7 +226,8 @@ const ADDRESS_VALUES: [VisitorField, keyof Values][] = [
 /** The text fields of a location as visitors read them: the address parts only while it is shared. */
 function visitorText(values: Values): Partial<Record<VisitorField, string | null>> {
   const shown: Partial<Record<VisitorField, string | null>> = {
-    label: optional(values.label),
+    // Either language is read by some visitor, so a change to either is a change to the name.
+    label: [optional(values.labelNl), optional(values.labelEn)].join("\u0000"),
     locality: optional(values.locality),
     country_code: optional(values.countryCode)?.toUpperCase() ?? null,
   };

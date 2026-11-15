@@ -8,6 +8,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { server } from "../mocks/server";
 import * as offlineStore from "../offline/offline-store";
+import { localized } from "../query/fake-api";
 import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils";
 import type { Area, Route, Stay, Trip, Visit } from "../api-types";
 import { AgendaManager } from "./AgendaManager";
@@ -55,7 +56,7 @@ const trip: Trip = {
   travel_updates: [],
 };
 const visit = (id: string, title: string, overrides: Partial<Visit> = {}): Visit =>
-  ({
+  localized({
     id,
     area: taipei,
     location: null,
@@ -97,7 +98,7 @@ const stay = (id: string, name: string, overrides: Partial<Stay> = {}): Stay =>
     ...overrides,
   }) as Stay;
 const route = (id: string, label: string, overrides: Partial<Route> = {}): Route =>
-  ({
+  localized({
     id,
     mode: "train",
     label,

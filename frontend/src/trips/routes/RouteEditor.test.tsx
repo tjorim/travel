@@ -244,7 +244,8 @@ it("needs only a mode and two areas", async () => {
     departs_at: null,
     arrives_at: null,
     geometry: null,
-    label: null,
+    label_nl: null,
+    label_en: null,
   });
   expect(
     api.lastBody<{ departure_location: unknown }>("POST /api/trips/trip/routes")
@@ -493,7 +494,7 @@ it("offers the areas' points to a drawn line, and shows a saved line in its edit
   fireEvent.click(screen.getByRole("button", { name: "Route opslaan" }));
   await agendaRow("Route: Oostkust noord");
   expect(api.lastBody("PATCH /api/trips/trip/routes/r-line")).toMatchObject({
-    label: "Oostkust noord",
+    label_nl: "Oostkust noord",
     geometry: {
       type: "LineString",
       coordinates: [

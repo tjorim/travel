@@ -1,6 +1,7 @@
 import { Navigate, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { useContext, useCallback, useEffect, useMemo, useState } from "react";
 
+import { ContentLanguageProvider } from "../content-language";
 import { OwnerHeaderContext } from "../owner-header-context";
 import { PackingTripOffline } from "../trips/packing/PackingTripOffline";
 import { useAuth } from "../auth-context";
@@ -152,56 +153,58 @@ export function TripWorkspaceView({
 
   // Every trip-bound manager remounts per trip, so no editor or dialog carries one trip's record into another.
   return (
-    <section className="grid grid-cols-1 gap-1.5" aria-label={trip.title} key={trip.id}>
-      {phone && <h1 className="sr-only">{trip.title}</h1>}
-      <div className="max-[679px]:hidden">
-        <WorkspaceBreadcrumb section={section} />
-      </div>
-      {/* Only navigation changes presentation; content and editors keep their ownership. */}
-      <div className="grid min-w-0 grid-cols-1 gap-1.5 trip-sidebar:grid-cols-travel-workspace trip-sidebar:items-start trip-sidebar:gap-6">
-        <div
-          data-trip-sidebar
-          className="grid min-w-0 gap-1.5 trip-sidebar:sticky trip-sidebar:top-4 trip-sidebar:max-h-travel-sidebar trip-sidebar:overflow-y-auto trip-sidebar:overscroll-contain trip-sidebar:p-1"
-        >
-          <div className="max-[679px]:hidden">
-            <WorkspaceHeader trip={trip} onEdit={() => setEditing(true)} />
+    <ContentLanguageProvider language={trip.content_language} key={trip.id}>
+      <section className="grid grid-cols-1 gap-1.5" aria-label={trip.title}>
+        {phone && <h1 className="sr-only">{trip.title}</h1>}
+        <div className="max-[679px]:hidden">
+          <WorkspaceBreadcrumb section={section} />
+        </div>
+        {/* Only navigation changes presentation; content and editors keep their ownership. */}
+        <div className="grid min-w-0 grid-cols-1 gap-1.5 trip-sidebar:grid-cols-travel-workspace trip-sidebar:items-start trip-sidebar:gap-6">
+          <div
+            data-trip-sidebar
+            className="grid min-w-0 gap-1.5 trip-sidebar:sticky trip-sidebar:top-4 trip-sidebar:max-h-travel-sidebar trip-sidebar:overflow-y-auto trip-sidebar:overscroll-contain trip-sidebar:p-1"
+          >
+            <div className="max-[679px]:hidden">
+              <WorkspaceHeader trip={trip} onEdit={() => setEditing(true)} />
+            </div>
+            <WorkspaceNavigation tripId={trip.id} current={section} title={trip.title} />
           </div>
-          <WorkspaceNavigation tripId={trip.id} current={section} title={trip.title} />
+          <div data-trip-content className="grid min-w-0 gap-1.5">
+            <TripEditor
+              key={`edit-${trip.id}`}
+              trip={trip}
+              open={editing}
+              onClose={() => setEditing(false)}
+              onSaved={() => undefined}
+              onDeleted={() => void navigate({ to: "/trips", state: { notice: "trip_deleted" } })}
+              onNotice={setNotice}
+            />
+            <WorkspaceSearch tripId={trip.id} />
+            {(notice ?? arrivalNotice) && (
+              <p className="help" role="status">
+                {notice ?? arrivalNotice}
+              </p>
+            )}
+            <h2 id="workspace-section-heading" tabIndex={-1} className="sr-only">
+              {sectionById(section).label()}
+            </h2>
+            <Section
+              trip={trip}
+              areas={areas}
+              recordFocus={recordFocus}
+              mapFocus={mapFocus}
+              onOpenMapRecord={openMapRecord}
+              onOpenAgendaRecord={openAgendaRecord}
+              onShowOnMap={showOnMap}
+              createRequest={createRequest}
+              onCreateRecord={createRecord}
+              onCreateHandled={() => setCreateRequest(null)}
+              onStartCaptureFromCandidate={startCaptureFromCandidate}
+            />
+          </div>
         </div>
-        <div data-trip-content className="grid min-w-0 gap-1.5">
-          <TripEditor
-            key={`edit-${trip.id}`}
-            trip={trip}
-            open={editing}
-            onClose={() => setEditing(false)}
-            onSaved={() => undefined}
-            onDeleted={() => void navigate({ to: "/trips", state: { notice: "trip_deleted" } })}
-            onNotice={setNotice}
-          />
-          <WorkspaceSearch tripId={trip.id} />
-          {(notice ?? arrivalNotice) && (
-            <p className="help" role="status">
-              {notice ?? arrivalNotice}
-            </p>
-          )}
-          <h2 id="workspace-section-heading" tabIndex={-1} className="sr-only">
-            {sectionById(section).label()}
-          </h2>
-          <Section
-            trip={trip}
-            areas={areas}
-            recordFocus={recordFocus}
-            mapFocus={mapFocus}
-            onOpenMapRecord={openMapRecord}
-            onOpenAgendaRecord={openAgendaRecord}
-            onShowOnMap={showOnMap}
-            createRequest={createRequest}
-            onCreateRecord={createRecord}
-            onCreateHandled={() => setCreateRequest(null)}
-            onStartCaptureFromCandidate={startCaptureFromCandidate}
-          />
-        </div>
-      </div>
-    </section>
+      </section>
+    </ContentLanguageProvider>
   );
 }

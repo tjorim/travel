@@ -22,6 +22,8 @@ const place = (fields: Partial<Location> = {}) =>
     area_id: "a1",
     display_name: "Main Station, Taipei",
     label: null,
+    label_nl: fields.label ?? null,
+    label_en: null,
     address_line1: "1 Zhongxiao W Rd",
     address_line2: null,
     postal_code: null,
@@ -87,7 +89,7 @@ it("lists only the changed fields visitors read, and the address only while it i
   const saved = place({ label: "Hotel", country_code: "TW", share_address: false });
   const edited = {
     ...fromPlace(saved),
-    label: "Hotel 2",
+    labelNl: "Hotel 2",
     countryCode: "tw",
     addressLine1: "Elders",
   };
@@ -103,7 +105,9 @@ it("lists only the changed fields visitors read, and the address only while it i
       shareAddress: false,
     }),
   ).toEqual(["address_line1"]);
-  expect(pendingVisitorFields(saved, { ...edited, label: "Hotel", addressLine1: "" })).toEqual([]);
+  expect(pendingVisitorFields(saved, { ...edited, labelNl: "Hotel", addressLine1: "" })).toEqual(
+    [],
+  );
 });
 
 it("reads a visitor review only from the server's 409 with that code", () => {

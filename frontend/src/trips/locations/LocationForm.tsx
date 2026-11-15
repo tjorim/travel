@@ -1,4 +1,6 @@
 import { AdvancedSection } from "../../forms/AdvancedSection";
+import { pickText, useContentLanguage } from "../../content-language";
+import { LocalizedField } from "../../forms/LocalizedField";
 import { areaName } from "../../records";
 import { Button } from "@/ui/button";
 
@@ -54,6 +56,7 @@ export function LocationForm({
   onChoose: (result: LocationInput) => void;
 }) {
   useLocale();
+  const language = useContentLanguage();
   // What this edit would change for the audiences that read the saved location today.
   const pending =
     editingId && selected && recipients.length ? pendingVisitorFields(selected, record.values) : [];
@@ -125,16 +128,13 @@ export function LocationForm({
           <TextField field={field} label={m.locations_own_name_label()} optional maxLength={500} />
         )}
       </record.form.Field>
-      <record.form.Field name="label">
-        {(field) => (
-          <TextField
-            field={field}
-            label={m.locations_public_name_label()}
-            optional
-            maxLength={120}
-          />
-        )}
-      </record.form.Field>
+      <LocalizedField
+        form={record.form}
+        name="label"
+        label={m.locations_public_name_label()}
+        optional
+        maxLength={120}
+      />
       <div className="field-row">
         <record.form.Field name="addressLine1">
           {(field) => (
@@ -212,7 +212,9 @@ export function LocationForm({
                       })
                     : m.locations_no_shareable_address_hint()}{" "}
                   {m.locations_country_code_detail()} {record.values.countryCode || "geen"}
-                  {m.locations_public_name_inline()} {record.values.label || "geen"}
+                  {m.locations_public_name_inline()}{" "}
+                  {pickText({ nl: record.values.labelNl, en: record.values.labelEn }, language)
+                    ?.text || "geen"}
                   {m.locations_names_separate_suffix()}
                 </p>
               </AdvancedSection>

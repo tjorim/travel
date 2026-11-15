@@ -99,11 +99,12 @@ export function RecordForm({
   );
 }
 
-export function useFieldErrors(field: AnyFieldApi) {
+export function useFieldErrors(field: AnyFieldApi, companion?: AnyFieldApi) {
   useLocale();
-  const server = useContext(ServerFieldErrors)[field.name];
+  const serverErrors = useContext(ServerFieldErrors);
+  const server = serverErrors[field.name] ?? (companion ? serverErrors[companion.name] : undefined);
   const errors = [
-    ...field.state.meta.errors.map((error: unknown) =>
+    ...[...field.state.meta.errors, ...(companion?.state.meta.errors ?? [])].map((error: unknown) =>
       typeof error === "function"
         ? error()
         : typeof error === "string"
@@ -131,10 +132,14 @@ export function TextField({
   field,
   label,
   optional,
+  companion,
   ...input
-}: Common & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onBlur" | "name">) {
+}: Common & {
+  /** The same text in the other language: its errors show here too, as only one language is on screen. */
+  companion?: AnyFieldApi;
+} & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "onBlur" | "name">) {
   useLocale();
-  const { message, invalid } = useFieldErrors(field);
+  const { message, invalid } = useFieldErrors(field, companion);
   const { required, ...rest } = input;
   return (
     <Field name={field.name} invalid={invalid}>

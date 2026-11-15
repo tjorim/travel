@@ -15,7 +15,6 @@ import { ownerRequest } from "../query/api";
 import { useOwner } from "../query/owner-queries";
 import { optionalNote, useFieldErrors } from "./fields";
 import { applyMarkdownSnippet, type MarkdownSnippet } from "./markdown-snippets";
-import { TranslationDraft } from "./TranslationDraft";
 
 /** How the server renders the field: long-form Markdown, an inline-only caption, or contact details. */
 export type MarkdownFormat = "markdown" | "inline" | "contact";
@@ -179,18 +178,21 @@ export function MarkdownField({
   label,
   optional,
   format = "markdown",
+  companion,
   ...input
 }: {
   field: AnyFieldApi;
   label: string;
   optional?: string | boolean;
   format?: MarkdownFormat;
+  /** The same text in the other language: its errors show here too, as only one language is on screen. */
+  companion?: AnyFieldApi;
 } & Omit<
   TextareaHTMLAttributes<HTMLTextAreaElement>,
   "value" | "onChange" | "onBlur" | "name" | "id"
 >) {
   useLocale();
-  const { message, invalid } = useFieldErrors(field);
+  const { message, invalid } = useFieldErrors(field, companion);
   const [previewing, setPreviewing] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const pendingSelection = useRef<[number, number] | null>(null);
@@ -294,15 +296,6 @@ export function MarkdownField({
         <FieldDescription className="text-xs text-travel-muted">{HINTS[format]}</FieldDescription>
         <FieldError>{message}</FieldError>
       </Field>
-      {format === "markdown" && (
-        <TranslationDraft
-          label={label}
-          value={value}
-          onAppend={(draft) =>
-            field.handleChange(value.trim() ? `${value.replace(/\s+$/, "")}\n\n${draft}` : draft)
-          }
-        />
-      )}
     </>
   );
 }

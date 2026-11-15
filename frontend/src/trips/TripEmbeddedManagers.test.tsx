@@ -3,7 +3,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { fakeApi, type FakeApi } from "../query/fake-api";
+import { fakeApi, resolveTexts, type FakeApi } from "../query/fake-api";
 import { useTripWithUpdates, useTripsQuery } from "../query/owner-queries";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
 import type { TravelUpdate, Trip } from "../api-types";
@@ -45,7 +45,7 @@ let api: FakeApi;
 function embed(
   key: "travel_updates",
   path: string,
-  shape: (item: Record<string, unknown>) => Record<string, unknown> = (item) => item,
+  shape: (item: Record<string, unknown>) => Record<string, unknown> = (item) => resolveTexts(item),
 ) {
   const list = () => state.trip[key] as { id: string }[];
   const set = (items: unknown[]) => {

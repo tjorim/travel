@@ -15,6 +15,8 @@ import {
 it("loads an area into editor values and back to blanks", () => {
   const values = fromArea({
     label: "Taipei",
+    label_nl: "Taipei",
+    label_en: null,
     country_code: "TW",
     region: null,
     latitude: 25.03,
@@ -22,14 +24,15 @@ it("loads an area into editor values and back to blanks", () => {
     timezone: "Asia/Taipei",
   } as Area);
   expect(values).toEqual({
-    label: "Taipei",
+    labelNl: "Taipei",
+    labelEn: "",
     countryCode: "TW",
     region: "",
     latitude: "25.03",
     longitude: "121.56",
     timezone: "Asia/Taipei",
   });
-  expect(blank().label).toBe("");
+  expect(blank().labelNl).toBe("");
 });
 
 it("summarises an area by region, country and time zone", () => {

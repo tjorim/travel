@@ -11,16 +11,19 @@ export function ChoiceGroup<T extends string>({
   value,
   choices,
   onChange,
+  hideLabel = false,
 }: {
   label: string;
   value: T;
   choices: readonly Choice<T>[];
   onChange: (value: T) => void;
+  /** Keep the label for assistive technology only, where the choices explain themselves. */
+  hideLabel?: boolean;
 }) {
   const labelId = useId();
   return (
     <div className="min-w-0 max-w-full space-y-1">
-      <span id={labelId} className="block text-sm font-medium">
+      <span id={labelId} className={hideLabel ? "sr-only" : "block text-sm font-medium"}>
         {label}
       </span>
       <RadioGroup

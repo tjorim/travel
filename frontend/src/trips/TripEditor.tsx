@@ -5,28 +5,50 @@ import { Button } from "@/ui/button";
 import { useState } from "react";
 
 import { DateField } from "../forms/DateTimeFields";
-import { RecordForm, requiredText, TextField } from "../forms/fields";
-import { MarkdownField } from "../forms/MarkdownField";
+import { RecordForm } from "../forms/fields";
+import { LocalizedField } from "../forms/LocalizedField";
 import { useRecordForm } from "../forms/useRecordForm";
 import { ownerKeys } from "../query/keys";
 
 import { useOwnerMutation, useRefreshTrip } from "../query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
+import { interfaceLanguage } from "../content-language";
 import { TripExport } from "./TripExport";
+import { TripLanguage } from "./TripLanguage";
 import type { Trip } from "../api-types";
 
-type Values = { title: string; summary: string; startsOn: string; endsOn: string };
+type Values = {
+  titleNl: string;
+  titleEn: string;
+  summaryNl: string;
+  summaryEn: string;
+  startsOn: string;
+  endsOn: string;
+};
 
-const blank = (): Values => ({ title: "", summary: "", startsOn: "", endsOn: "" });
+const blank = (): Values => ({
+  titleNl: "",
+  titleEn: "",
+  summaryNl: "",
+  summaryEn: "",
+  startsOn: "",
+  endsOn: "",
+});
 const fromTrip = (trip: Trip): Values => ({
-  title: trip.title,
-  summary: trip.summary ?? "",
+  titleNl: trip.title_nl ?? "",
+  titleEn: trip.title_en ?? "",
+  summaryNl: trip.summary_nl ?? "",
+  summaryEn: trip.summary_en ?? "",
   startsOn: trip.starts_on ?? "",
   endsOn: trip.ends_on ?? "",
 });
 const serverFields = {
-  title: "title",
-  summary: "summary",
+  title: "titleNl",
+  title_nl: "titleNl",
+  title_en: "titleEn",
+  summary: "summaryNl",
+  summary_nl: "summaryNl",
+  summary_en: "summaryEn",
   starts_on: "startsOn",
   ends_on: "endsOn",
 };
@@ -58,14 +80,21 @@ export function TripEditor({
     fallback: m.trips_the_trip_could_not_be_saved,
     request: (values) => {
       const details = {
-        title: values.title.trim(),
-        summary: values.summary.trim() || null,
+        title_nl: values.titleNl.trim() || null,
+        title_en: values.titleEn.trim() || null,
+        summary_nl: values.summaryNl.trim() || null,
+        summary_en: values.summaryEn.trim() || null,
         starts_on: values.startsOn || null,
         ends_on: values.endsOn || null,
       };
       return trip
         ? { path: `/api/trips/${encodeURIComponent(trip.id)}`, method: "PATCH", body: details }
-        : { path: "/api/trips", method: "POST", body: details };
+        : {
+            path: "/api/trips",
+            method: "POST",
+            // A new trip is written in the language the owner is using the app in.
+            body: { ...details, content_language: interfaceLanguage() },
+          };
     },
     invalidate: (subject) => [ownerKeys.trips(subject)],
   });
@@ -90,6 +119,7 @@ export function TripEditor({
     },
   });
   const { form } = record;
+  const language = trip?.content_language ?? interfaceLanguage();
   function close() {
     setConfirmDelete(false);
     setDeleteError(null);
@@ -137,28 +167,25 @@ export function TripEditor({
             )
           }
         >
-          <form.Field
+          <LocalizedField
+            form={form}
             name="title"
-            validators={{
-              onChange: requiredText(m.trips_give_the_trip_a_title),
-              onSubmit: requiredText(m.trips_give_the_trip_a_title),
-            }}
-          >
-            {(field) => (
-              <TextField field={field} label={m.common_title()} required maxLength={160} />
-            )}
-          </form.Field>
-          <form.Field name="summary">
-            {(field) => (
-              <MarkdownField
-                field={field}
-                label={m.common_summary()}
-                optional
-                maxLength={4000}
-                rows={4}
-              />
-            )}
-          </form.Field>
+            label={m.common_title()}
+            language={language}
+            required
+            requiredMessage={m.trips_give_the_trip_a_title}
+            maxLength={160}
+          />
+          <LocalizedField
+            form={form}
+            name="summary"
+            kind="markdown"
+            label={m.common_summary()}
+            language={language}
+            optional
+            maxLength={4000}
+            rows={4}
+          />
           <div className="field-row">
             <form.Field name="startsOn">
               {(field) => <DateField field={field} label={m.trips_first_travel_day()} optional />}
@@ -181,6 +208,17 @@ export function TripEditor({
             </form.Field>
           </div>
         </RecordForm>
+      )}
+      {open && trip && (
+        <TripLanguage
+          trip={trip}
+          dirty={record.dirty}
+          onChanged={(saved) => {
+            record.load(fromTrip(saved));
+            onSaved(saved, false);
+            onNotice(textNotice(() => m.trips_content_language_changed()));
+          }}
+        />
       )}
       {open && trip && <TripExport tripId={trip.id} onNotice={onNotice} />}
       {open && confirmDelete && trip && (

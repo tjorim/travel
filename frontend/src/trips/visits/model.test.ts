@@ -52,8 +52,10 @@ it("loads a visit into editor values", () => {
       location: null,
       status: "idea",
       title: "Dinner",
+      title_nl: "Dinner",
+      title_en: null,
       start_time: "19:00:00",
       share_time: true,
     } as Visit),
-  ).toMatchObject({ status: "idea", title: "Dinner", startTime: "19:00", shareTime: true });
+  ).toMatchObject({ status: "idea", titleNl: "Dinner", startTime: "19:00", shareTime: true });
 });

@@ -11,6 +11,36 @@ type Collection = {
 };
 type Handler = (body: unknown, match: RegExpExecArray) => unknown;
 
+/**
+ * What the server does with authored text a client sent in both languages: the plain field name reads as the
+ * content language's text, else the other language's (`app.content_language.resolve`).
+ */
+export function resolveTexts<T extends object>(row: T, language: "nl" | "en" = "nl"): T {
+  const values = row as Record<string, unknown>;
+  const resolved = { ...values };
+  for (const key of Object.keys(values)) {
+    if (!key.endsWith("_nl")) continue;
+    const field = key.slice(0, -3);
+    if (!(`${field}_en` in values)) continue;
+    const texts = { nl: values[key] || null, en: values[`${field}_en`] || null };
+    resolved[field] = texts[language] ?? texts[language === "nl" ? "en" : "nl"] ?? null;
+  }
+  return resolved as T;
+}
+
+/**
+ * A test record written with plain texts (`title: "Night market"`) as the API sends it: each plain text with no
+ * language of its own is that language's Dutch text, so a fixture needs only the plain name.
+ */
+export function localized<T extends object>(record: T): T {
+  const values = { ...(record as Record<string, unknown>) };
+  for (const field of ["title", "summary", "body", "label", "caption", "alt_text"]) {
+    if (typeof values[field] === "string" && !values[`${field}_nl`] && !values[`${field}_en`])
+      values[`${field}_nl`] = values[field];
+  }
+  return values as T;
+}
+
 const json = (value: unknown, status = 200) => HttpResponse.json(value as never, { status });
 
 /**
@@ -113,8 +143,8 @@ export class FakeApi {
       if (method === "GET") return json(own.rows);
       if (method === "POST") {
         const created = own.create
-          ? own.create(body as Body, own.rows.length)
-          : { id: `new-${own.rows.length}`, ...(body as Body) };
+          ? resolveTexts(localized(own.create(body as Body, own.rows.length)))
+          : resolveTexts({ id: `new-${own.rows.length}`, ...(body as Body) });
         own.rows = [...own.rows, created];
         return json(created, 201);
       }
@@ -126,9 +156,13 @@ export class FakeApi {
       const current = parent.rows.find((row) => row.id === id);
       if (current && method === "GET") return json(current);
       if (current && method === "PATCH") {
-        const updated = parent.update
-          ? parent.update(current, body as Body)
-          : { ...current, ...(body as Body) };
+        const updated = resolveTexts(
+          localized(
+            parent.update
+              ? parent.update(current, body as Body)
+              : { ...current, ...(body as Body) },
+          ),
+        );
         parent.rows = parent.rows.map((row) => (row.id === id ? updated : row));
         return json(updated);
       }

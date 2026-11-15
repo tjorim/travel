@@ -112,7 +112,8 @@ export function RouteEditor({
         payload: {
           mode: values.mode,
           status: values.status,
-          label: values.label.trim() || null,
+          label_nl: values.labelNl.trim() || null,
+          label_en: values.labelEn.trim() || null,
           departs_on: values.departsAt ? values.departsAt.slice(0, 10) : values.departsOn || null,
           // Local wall-clock times; the server resolves them in each end's zone.
           departs_at: values.departsAt ? `${values.departsAt}:00` : null,

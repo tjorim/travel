@@ -51,18 +51,21 @@ export type CollectionAction = {
   reason: string | null;
 };
 
+/** What a collection is called, and the title visitors read in each language. */
+type CollectionTexts = { label: string; title_nl: string | null; title_en: string | null };
+
 /** The owner API calls behind collection links. */
 export function useCollectionMutations() {
   const refresh = (subject: string) => [ownerKeys.collections(subject)];
   const save = m.sharing_collection_save_error;
   const act = m.sharing_collection_action_error;
 
-  const create = useOwnerMutation<{ label: string; title: string | null }, Collection>({
+  const create = useOwnerMutation<CollectionTexts & { content_language: "nl" | "en" }, Collection>({
     fallback: save,
     request: (body) => ({ path: collectionsPath, method: "POST", body }),
     invalidate: refresh,
   });
-  const update = useOwnerMutation<{ id: string; label: string; title: string | null }, Collection>({
+  const update = useOwnerMutation<{ id: string } & CollectionTexts, Collection>({
     fallback: save,
     request: ({ id, ...body }) => ({ path: `${collectionsPath}/${id}`, method: "PATCH", body }),
     invalidate: refresh,
