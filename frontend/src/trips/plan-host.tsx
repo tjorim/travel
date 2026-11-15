@@ -2,20 +2,15 @@ import type { DialogFocusAction, DialogFocusRequest } from "../forms/useRecordDi
 import { useFeedback, type ReportNotice } from "../query/feedback";
 import type { Trip } from "../api-types";
 import type { AgendaRecordKind } from "./agenda-items";
-import {
-  useCreateRequest,
-  type CreateKind,
-  type CreateRequest,
-  type CreateRequestProps,
-} from "./create-request";
+import { type CreateRequest } from "./create-request";
 import { focusFor, useFocusRequest, type RecordFocus } from "./record-focus";
 import { RouteEditor } from "./routes/RouteEditor";
 import { StayEditor } from "./stays/StayEditor";
 import { VisitEditor } from "./visits/VisitEditor";
 
 /**
- * What the plan tab shares between the agenda and the three type blocks while both exist: the one dialog per kind of
- * record, how to open it (a record, or a new one) and the one status line the three dialogs report to.
+ * What the plan tab shares between the agenda and the three record dialogs: the one dialog per kind of record, how to
+ * open it (a record, or a new one) and the one status line the three dialogs report to.
  */
 export type PlanHost = {
   /** The status line of the agenda block: what the last save, delete or other row action reported. */
@@ -28,15 +23,16 @@ export type PlanHost = {
     action?: DialogFocusAction,
     returnTo?: HTMLElement | null,
   ) => void;
-  /** Starts a new record from a control that stays on screen: focus returns to it. */
-  start: (kind: CreateKind, from: HTMLElement | null) => void;
   focus: Record<AgendaRecordKind, DialogFocusRequest | null>;
-  create: Record<CreateKind, CreateRequestProps & { onCreateHandled: () => void }>;
+  /** The workspace's pending request to start a record (the map, the overview, a day's Add menu, the New menu). */
+  createRequest: CreateRequest | null;
+  onCreateHandled: () => void;
 };
 
 /**
- * The requests that reach the plan's editors: the workspace's (the map, the overview, a day's Add menu) and the
- * agenda's own (a row, a block's New button). A request is handled by the one editor of its kind.
+ * The requests that reach the plan's editors: opening a record (an agenda row, the map) and starting one (the map, the
+ * overview, a day's Add menu, the block's
+ * New menu. A request is handled by the one editor of its kind.
  */
 export function usePlanHost(
   recordFocus: RecordFocus | null,
@@ -55,18 +51,13 @@ export function usePlanHost(
     stay: useFocusRequest(focusFor(recordFocus, "stay")),
     route: useFocusRequest(focusFor(recordFocus, "route")),
   };
-  const create = {
-    visit: useCreateRequest("visit", createRequest, onCreateHandled),
-    stay: useCreateRequest("stay", createRequest, onCreateHandled),
-    route: useCreateRequest("route", createRequest, onCreateHandled),
-  };
   return {
     message,
     report,
     open: (kind, id, action, returnTo) => focus[kind].open(id, action, returnTo),
-    start: (kind, from) => create[kind].start(from),
     focus: { visit: focus.visit.focusId, stay: focus.stay.focusId, route: focus.route.focusId },
-    create,
+    createRequest,
+    onCreateHandled,
   };
 }
 
@@ -77,22 +68,22 @@ export function PlanEditors({ trip, host }: { trip: Trip; host: PlanHost }) {
       <VisitEditor
         trip={trip}
         focusId={host.focus.visit}
-        createRequest={host.create.visit.createRequest}
-        onCreateHandled={host.create.visit.onCreateHandled}
+        createRequest={host.createRequest}
+        onCreateHandled={host.onCreateHandled}
         onNotice={host.report}
       />
       <StayEditor
         trip={trip}
         focusId={host.focus.stay}
-        createRequest={host.create.stay.createRequest}
-        onCreateHandled={host.create.stay.onCreateHandled}
+        createRequest={host.createRequest}
+        onCreateHandled={host.onCreateHandled}
         onNotice={host.report}
       />
       <RouteEditor
         trip={trip}
         focusId={host.focus.route}
-        createRequest={host.create.route.createRequest}
-        onCreateHandled={host.create.route.onCreateHandled}
+        createRequest={host.createRequest}
+        onCreateHandled={host.onCreateHandled}
         onNotice={host.report}
       />
     </>

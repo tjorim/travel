@@ -1,3 +1,5 @@
+import type { ComponentProps } from "react";
+
 import { useLocale } from "../locale";
 import type { Trip } from "../api-types";
 import { AlternativesArea } from "./alternatives/AlternativesArea";
@@ -17,9 +19,11 @@ export function AgendaManager({
   host,
   onShowOnMap,
   onCreateRecord,
+  kindRequest,
 }: {
   trip: Trip;
   host: PlanHost;
+  kindRequest?: ComponentProps<typeof AgendaView>["kindRequest"];
   onShowOnMap?: (pointId: string) => void;
   onCreateRecord?: (
     kind: CreateKind,
@@ -45,6 +49,7 @@ export function AgendaManager({
       onCreateRecord={onCreateRecord}
       actions={actions}
       notice={host.message}
+      kindRequest={kindRequest}
       alternatives={
         <AlternativesArea tripId={trip.id} onOpen={(kind, id) => host.open(kind, id)} />
       }

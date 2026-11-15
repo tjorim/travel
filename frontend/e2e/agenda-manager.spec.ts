@@ -232,6 +232,46 @@ for (const locale of locales) {
         await agenda.getByRole("button", { name: message(locale, "agenda_filter_clear") }).click();
         await expect(title(agenda, /Harbour walk/)).toBeVisible();
       });
+
+      test(`the old #visits, #stays and #routes links and the jump search land on the agenda with that kind ${setup}`, async ({
+        page,
+      }) => {
+        const { agenda } = await openPlan(page, locale, theme, width);
+        const kinds = agenda.getByRole("group", { name: message(locale, "agenda_filter_kind") });
+        const seen = {
+          visits: [/Harbour walk/, [/Hotel Aurora/, /Train to Tainan/], "common_visits"],
+          stays: [/Hotel Aurora/, [/Harbour walk/, /Train to Tainan/], "common_stays"],
+          routes: [/Train to Tainan/, [/Harbour walk/, /Hotel Aurora/], "common_routes"],
+        } as const;
+        for (const [hash, [shown, hidden, label]] of Object.entries(seen)) {
+          await page.goto(`/admin/trips/${ownerTrip.id}/overview`);
+          await page.goto(`/admin/trips/${ownerTrip.id}/plan#${hash}`);
+          await expect(title(agenda, shown)).toBeVisible();
+          for (const other of hidden) await expect(title(agenda, other)).toHaveCount(0);
+          // Every status is shown, as the old block listed all of them.
+          await expect(
+            kinds.getByRole("button", { name: message(locale, label), exact: true }),
+          ).toHaveAttribute("aria-pressed", "true");
+          expect(new URL(page.url()).hash).toBe(`#${hash}`);
+          // No block of its own is left behind.
+          await expect(page.locator(`#${hash}`)).toHaveCount(0);
+        }
+        expect((await new AxeBuilder({ page }).include("#agenda").analyze()).violations).toEqual(
+          [],
+        );
+
+        // The jump search keeps its entries for the three kinds, now on the same alias.
+        await page.goto(`/admin/trips/${ownerTrip.id}/overview`);
+        const search = page.getByRole("combobox", { name: message(locale, "workspace_jump_to") });
+        await search.fill(message(locale, "common_stays"));
+        await page
+          .getByRole("option", {
+            name: `${message(locale, "workspace_plan")} › ${message(locale, "common_stays")}`,
+          })
+          .click();
+        await expect(title(agenda, /Hotel Aurora/)).toBeVisible();
+        await expect(title(agenda, /Harbour walk/)).toHaveCount(0);
+      });
     }
   }
 }

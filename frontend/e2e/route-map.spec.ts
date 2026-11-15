@@ -15,14 +15,9 @@ for (const locale of locales) {
       await signInOwner(page);
       await choosePreferences(page, locale, theme);
       await page.goto(`/admin/trips/${ownerTrip.id}/plan`);
-      const opener = page.getByRole("button", {
-        name: message(locale, "routes_new_route"),
-        exact: true,
-      });
-      await page
-        .getByRole("button", { name: `${message(locale, "common_routes")} 0`, exact: true })
-        .click();
+      const opener = page.getByRole("button", { name: message(locale, "agenda_new"), exact: true });
       await opener.click();
+      await page.getByRole("menuitem", { name: message(locale, "routes_new_route") }).click();
       const dialog = page.getByRole("dialog");
       const map = dialog.getByRole("region", {
         name: message(locale, "routes_map_editor_for_route"),

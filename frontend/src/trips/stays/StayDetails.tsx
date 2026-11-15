@@ -61,13 +61,16 @@ export function StayDetails({
       {selected.status === "idea" ? (
         <IdeaNote kind="stay" />
       ) : (
-        <VisibilityControl
-          tripId={tripId}
-          kind="stay"
-          id={selected.id}
-          value={selected.visibility}
-          name={stayLabel(selected)}
-        />
+        <>
+          <VisibilityControl
+            tripId={tripId}
+            kind="stay"
+            id={selected.id}
+            value={selected.visibility}
+            name={stayLabel(selected)}
+          />
+          <p className="help">{m.stays_visibility_hint()}</p>
+        </>
       )}
       {alternatives.length > 0 && (
         <div>

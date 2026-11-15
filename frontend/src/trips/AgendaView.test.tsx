@@ -293,3 +293,92 @@ it("offers no way to start a record unless the workspace can open one", async ()
   await screen.findByText(/Bezoek: Nachtmarkt/);
   expect(screen.queryByRole("button", { name: /^Toevoegen aan / })).toBeNull();
 });
+
+const planStay = (id: string, fields: Partial<Stay> = {}) =>
+  ({
+    id,
+    status: "planned",
+    property_name: `Hotel ${id}`,
+    check_in_date: "2054-11-16",
+    check_out_date: "2054-11-18",
+    check_in_time: null,
+    check_out_time: null,
+    location: null,
+    area: linkou,
+    visibility: "private",
+    ...fields,
+  }) as unknown as Stay;
+const noMenu = {
+  onAct: () => {},
+  isPinned: () => false,
+  onToggleOffline: () => {},
+  onAdjustNights: () => {},
+  adjustingNights: false,
+};
+
+it("moves the check-out by a night for a stay still being planned, not for a booked one", async () => {
+  seed(
+    [
+      planStay("a"),
+      planStay("b", {
+        status: "confirmed",
+        check_in_date: "2054-12-01",
+        check_out_date: "2054-12-03",
+      }),
+      planStay("c", { status: "idea", check_in_date: "2054-12-10", check_out_date: "2054-12-11" }),
+    ],
+    [],
+    [],
+  );
+  const adjust = vi.fn();
+  renderWithOwner(<AgendaView trip={trip} actions={{ ...noMenu, onAdjustNights: adjust }} />);
+  await screen.findByText(/Verblijf: Hotel a/);
+  // Only the planned and the idea stay have a stepper.
+  expect(screen.getAllByRole("group", { name: /^Nachten bij / })).toHaveLength(2);
+  fireEvent.click(screen.getByRole("button", { name: "Eén nacht meer bij Hotel a" }));
+  fireEvent.click(screen.getByRole("button", { name: "Eén nacht minder bij Hotel a" }));
+  expect(adjust.mock.calls.map(([item, delta]) => [item.id, delta])).toEqual([
+    ["a", 1],
+    ["a", -1],
+  ]);
+  // A one-night stay cannot lose its only night.
+  expect(
+    (screen.getByRole("button", { name: "Eén nacht minder bij Hotel c" }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(true);
+});
+
+it("keeps a stay that visitors can see out of the quick stepper", async () => {
+  seed(
+    [planStay("a", { visibility: "everyone" }), planStay("b", { visibility: "custom" })],
+    [],
+    [],
+  );
+  renderWithOwner(<AgendaView trip={trip} actions={noMenu} />);
+  await screen.findByText(/Verblijf: Hotel a/);
+  expect(screen.queryAllByRole("group", { name: /^Nachten bij / })).toHaveLength(0);
+});
+
+it("offers no stepper without row actions", async () => {
+  seed([planStay("a")], [], []);
+  renderWithOwner(<AgendaView trip={trip} />);
+  await screen.findByText(/Verblijf: Hotel a/);
+  expect(screen.queryAllByRole("group", { name: /^Nachten bij / })).toHaveLength(0);
+});
+
+it("disables the stepper while a night change is being saved", async () => {
+  seed([planStay("a")], [], []);
+  renderWithOwner(<AgendaView trip={trip} actions={{ ...noMenu, adjustingNights: true }} />);
+  await screen.findByText(/Verblijf: Hotel a/);
+  expect(
+    (screen.getByRole("button", { name: "Eén nacht meer bij Hotel a" }) as HTMLButtonElement)
+      .disabled,
+  ).toBe(true);
+});
+
+it("shows a stay without an accommodation by its area, with no placeholder name", async () => {
+  seed([planStay("a", { property_name: null })], [], []);
+  renderWithOwner(<AgendaView trip={trip} />);
+  const row = await screen.findByRole("button", { name: /Nog te kiezen in Linkou/ });
+  expect(row.textContent).toContain("Verblijf: Nog te kiezen in Linkou");
+});

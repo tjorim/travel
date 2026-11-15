@@ -66,7 +66,9 @@ for (const locale of ["nl", "en"] as const) {
         });
         await page.goto(`/admin/trips/${ownerTrip.id}/plan#stays`);
 
-        await page.locator("button.document-select", { hasText: "Hotel Sample Riverside" }).click();
+        await page
+          .locator("[data-agenda-record^='stay:']", { hasText: "Hotel Sample Riverside" })
+          .click();
         const dialog = page.getByRole("dialog");
         await expect(dialog.getByText(message(locale, "documents_linked_documents"))).toBeVisible();
         await expect(dialog.getByText(confirmation.title)).toBeVisible();

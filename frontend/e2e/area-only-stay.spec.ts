@@ -62,7 +62,7 @@ for (const locale of ["nl", "en"] as const) {
           "{area}",
           "Alishan",
         );
-        const row = page.locator("button.document-select", { hasText: stillToChoose });
+        const row = page.locator("[data-agenda-record^='stay:']", { hasText: stillToChoose });
         await expect(row).toBeVisible();
         await row.click();
         await expect(
@@ -76,7 +76,10 @@ for (const locale of ["nl", "en"] as const) {
         expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
         await page.keyboard.press("Escape");
-        await page.getByRole("button", { name: message(locale, "stays_new_stay") }).click();
+        await page
+          .getByRole("button", { name: message(locale, "agenda_new"), exact: true })
+          .click();
+        await page.getByRole("menuitem", { name: message(locale, "stays_new_stay") }).click();
         const dialog = page.getByRole("dialog");
         const areaChoice = dialog.getByRole("combobox", { name: message(locale, "common_area") });
         await expect(areaChoice).toBeVisible();

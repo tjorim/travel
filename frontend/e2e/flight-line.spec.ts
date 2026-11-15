@@ -43,9 +43,9 @@ for (const locale of locales)
       );
       await page.goto(`/admin/trips/${ownerTrip.id}/plan`);
       await page
-        .getByRole("button", { name: `${message(locale, "common_routes")} 1`, exact: true })
+        .locator("[data-agenda-record^='route:']")
+        .filter({ hasText: "Example flight" })
         .click();
-      await page.locator("button.document-select").filter({ hasText: "Example flight" }).click();
       await page.getByRole("button", { name: message(locale, "common_edit"), exact: true }).click();
       const dialog = page.getByRole("dialog");
       const suggest = dialog.getByRole("button", {

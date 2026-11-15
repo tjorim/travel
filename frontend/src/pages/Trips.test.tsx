@@ -37,13 +37,6 @@ const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 // The managers and map have their own tests; this file covers trip selection and the trip editor.
 vi.mock("../documents/DocumentManager", () => ({ DocumentManager: () => null }));
-vi.mock("../trips/VisitManager", () => ({
-  VisitManager: ({ onShowOnMap }: { onShowOnMap?: (id: string) => void }) => (
-    <button type="button" onClick={() => onShowOnMap?.("p1")}>
-      Toon op kaart
-    </button>
-  ),
-}));
 vi.mock("../trips/AreaManager", () => ({ AreaManager: () => null }));
 vi.mock("../trips/LocationManager", () => ({ LocationManager: () => null }));
 vi.mock("../trips/TravelUpdateManager", () => ({ TravelUpdateManager: () => null }));
@@ -56,18 +49,26 @@ vi.mock("../trips/OwnerTripMap", () => ({
 vi.mock("../trips/PackingManager", () => ({ PackingManager: () => null }));
 vi.mock("../trips/PublicationManager", () => ({ PublicationManager: () => null }));
 vi.mock("../trips/RouteStageManager", () => ({ RouteStageManager: () => null }));
-vi.mock("../trips/StayManager", () => ({ StayManager: () => null }));
-vi.mock("../trips/RouteManager", () => ({ RouteManager: () => null }));
 // The agenda hosts the one dialog per kind of record: its rows ask the plan's host, which the editors listen to.
 vi.mock("../trips/AgendaManager", () => ({
   AgendaManager: ({
     host,
+    onShowOnMap,
+    kindRequest,
   }: {
     host: { open: (kind: "stay" | "route" | "visit", id: string) => void };
+    onShowOnMap?: (id: string) => void;
+    kindRequest?: { kinds: readonly string[] } | null;
   }) => (
-    <button type="button" onClick={() => host.open("stay", "s1")}>
-      Agendaregel openen
-    </button>
+    <>
+      <button type="button" onClick={() => host.open("stay", "s1")}>
+        Agendaregel openen
+      </button>
+      <button type="button" onClick={() => onShowOnMap?.("p1")}>
+        Toon op kaart
+      </button>
+      <p>Agendafilter {kindRequest?.kinds.join(",") ?? "geen"}</p>
+    </>
   ),
 }));
 vi.mock("../trips/plan-host", async (importOriginal) => ({
@@ -290,7 +291,6 @@ it("rejects an end date before the start date without calling the server", async
 
 it("shows a step on the map by opening the overview, whose map focuses that point", async () => {
   renderTrips("/trips/t1/plan");
-  fireEvent.click(await screen.findByRole("button", { name: /^Bezoeken/ }));
   fireEvent.click(await screen.findByRole("button", { name: "Toon op kaart" }));
   await screen.findByText("Kaartfocus p1");
 });
@@ -340,16 +340,31 @@ it("opens only the first block of the plan tab, and each block can be expanded",
   renderTrips("/trips/t1/plan");
   await screen.findByText("Verblijffocus geen");
   expect(bar(/^Agenda$/).getAttribute("aria-expanded")).toBe("true");
-  expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("false");
-  fireEvent.click(bar(/Verblijven/));
-  expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("true");
+  expect(bar(/Gebieden en locaties/).getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(bar(/Gebieden en locaties/));
+  expect(bar(/Gebieden en locaties/).getAttribute("aria-expanded")).toBe("true");
+  // Visits, stays and routes have no block of their own: the agenda manages them.
+  expect(screen.queryByRole("button", { name: /^(Bezoeken|Verblijven|Routes)\b/ })).toBeNull();
 });
 
 it("expands the block a link names with #id on arrival", async () => {
-  renderTrips("/trips/t1/plan#routes");
-  await screen.findByText("Routefocus geen");
-  await waitFor(() => expect(bar(/Routes/).getAttribute("aria-expanded")).toBe("true"));
-  expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("false");
+  renderTrips("/trips/t1/plan#areas");
+  await screen.findByText("Verblijffocus geen");
+  await waitFor(() =>
+    expect(bar(/Gebieden en locaties/).getAttribute("aria-expanded")).toBe("true"),
+  );
+  expect(screen.getByText("Agendafilter geen")).toBeTruthy();
+});
+
+it.each([
+  ["visits", "visit"],
+  ["stays", "stay"],
+  ["routes", "route"],
+])("opens the agenda with %s as its kind when an old #%s link arrives", async (hash, kind) => {
+  renderTrips(`/trips/t1/plan#${hash}`);
+  await screen.findByText(`Agendafilter ${kind}`);
+  expect(bar(/^Agenda$/).getAttribute("aria-expanded")).toBe("true");
+  expect(bar(/Gebieden en locaties/).getAttribute("aria-expanded")).toBe("false");
 });
 
 it("expands the block that hosts a record whose dialog is asked to open", async () => {
@@ -366,18 +381,34 @@ it("expands the block that hosts a record whose dialog is asked to open", async 
   });
   expect(await screen.findByText("Verblijffocus s1")).toBeTruthy();
   await waitFor(() => expect(bar(/^Agenda$/).getAttribute("aria-expanded")).toBe("true"));
-  expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("false");
+  expect(bar(/Gebieden en locaties/).getAttribute("aria-expanded")).toBe("false");
 });
 
 it("jumps to a block from the search, even one that was collapsed again", async () => {
   renderTrips("/trips/t1/plan");
   await screen.findByRole("combobox", { name: "Ga naar" });
+  await choose("Plan › Gebieden en locaties");
+  await waitFor(() =>
+    expect(bar(/Gebieden en locaties/).getAttribute("aria-expanded")).toBe("true"),
+  );
+  fireEvent.click(bar(/Gebieden en locaties/));
+  expect(bar(/Gebieden en locaties/).getAttribute("aria-expanded")).toBe("false");
+  await choose("Plan › Gebieden en locaties");
+  await waitFor(() =>
+    expect(bar(/Gebieden en locaties/).getAttribute("aria-expanded")).toBe("true"),
+  );
+});
+
+it("jumps from the search to the agenda with the kind a retired block listed, even from a collapsed agenda", async () => {
+  renderTrips("/trips/t1/plan");
+  await screen.findByText("Agendafilter geen");
+  fireEvent.click(bar(/^Agenda$/));
+  expect(bar(/^Agenda$/).getAttribute("aria-expanded")).toBe("false");
   await choose("Plan › Verblijven");
-  await waitFor(() => expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("true"));
-  fireEvent.click(bar(/Verblijven/));
-  expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("false");
-  await choose("Plan › Verblijven");
-  await waitFor(() => expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("true"));
+  await screen.findByText("Agendafilter stay");
+  await waitFor(() => expect(bar(/^Agenda$/).getAttribute("aria-expanded")).toBe("true"));
+  await choose("Plan › Routes");
+  await screen.findByText("Agendafilter route");
 });
 
 it("says so when a workspace trip does not exist for this account", async () => {

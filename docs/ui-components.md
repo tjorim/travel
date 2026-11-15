@@ -199,7 +199,7 @@ useRecordForm consumers (including publication settings) register with the same
 router blocker.
 
 Audited consumers: TripEditor, CaptureDialog, AreaManager, LocationManager,
-StayManager, RouteManager, VisitManager, TripTaskManager, TravelUpdateManager,
+StayEditor, RouteEditor, VisitEditor, TripTaskManager, TravelUpdateManager,
 DocumentManager (one for a trip's documents and the owner's library), EmergencyInfoManager, MediaManager
 (derivative/presentation forms), and PublicationManager (public/link forms).
 All shared RecordForm consumers previously disabled only Submit and could lose
@@ -355,15 +355,15 @@ space. There is still one `TripMap`; narrower screens keep the old order.
 Two small additions for planning on a laptop, both built from existing controls:
 
 - **Nights stepper.** A stay that is still an idea or planned shows "− N nights +"
-  in the Plan list. It moves only the check-out date by one night (never below
+  on its check-in row in the Plan agenda. It moves only the check-out date by one night (never below
   one night, disabled while a save is pending) and says so in the section's status
   line ("Stay now runs 1 Mar → 4 Mar."). A confirmed or cancelled stay is edited in
   its dialog, so a booking's dates never change from a quick tap. A stay set to "everyone" or "custom" is edited there too: a change to it reaches visitors as it is saved, so it should not happen from a tap. Both buttons are
   44 px square with whole-sentence accessible names. Visits are ordered by date and
   have no manual order (#367), so no drag-and-drop is added either.
 - **First steps.** A trip with no area, visit, stay or route shows "Start with where
-  you are going" on its overview with three links into the Plan blocks (places, a
-  stay, a route). It appears only after all three lists have loaded, so a loading
+  you are going" on its overview with three links into the Plan (the places
+  block, and the agenda with its kind filter set to stays or to routes). It appears only after all three lists have loaded, so a loading
   trip never flashes it, and it disappears with the first record.
 
 ## Narrow owner Sharing and Capture (#112)
@@ -651,7 +651,23 @@ filters, "New" menu and alternatives. Nothing custom was built for it:
 - **Empty days**: every day of the trip's date range is listed, with its Add menu; on a phone the "Nothing planned
   yet." text is screen-reader-only to keep the row to one line.
 
-The three type blocks stay until step 4; hosted in the plan tab they only ask the agenda's dialogs to open.
+### The type blocks are gone (#374, steps 4 and 5)
+
+The Plan tab now has two blocks, the agenda and "Areas and locations". `VisitManager`, `StayManager`,
+`RouteManager` and their lists (`VisitList`, `StayList`, `RouteList`) are deleted; the plan's host
+(`trips/plan-host.tsx`) renders the three editors once, without a visible block, and the agenda rows open them.
+No component was added or replaced. What the lists had that the agenda does not repeat:
+
+- **Retired addresses** are `aliases` on the `agenda` part (`workspace-sections.tsx`): `#visits`, `#stays` and
+  `#routes` open the agenda block and set its kind filter (every status). `useOpenSections` reports the alias and
+  `PlanSection` hands the kind to the agenda as a `kindRequest`; the jump search lists the aliases as destinations.
+- **What a shared route reveals** was the Routes block's intro text. It now sits under the audience control of the
+  route dialog (`routes_visitor_fields_hint`), and a stay's dialog says what a shared stay shows
+  (`stays_visibility_hint`), so the sentence appears where the owner decides.
+- **Visit order**: visits are ordered by date (#367), so there are no move buttons or drag handles to replace.
+
+The row's "no exact location yet" line (`stayLine`) is not on the agenda row: rows stay at two lines on a phone and
+show only idea, cancelled and shared besides the title, day range and area.
 
 ## Sharing preset picker and review dialog (#241, step 3)
 

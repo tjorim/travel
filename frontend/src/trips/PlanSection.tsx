@@ -1,21 +1,23 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useLocale } from "../locale";
-import { useTripResource } from "../query/owner-queries";
+import type { AgendaRecordKind } from "./agenda-items";
 import { AgendaManager } from "./AgendaManager";
 import { AreaManager } from "./AreaManager";
 import { focusFor } from "./record-focus";
 import { PlanEditors, usePlanHost } from "./plan-host";
-import { RouteManager } from "./RouteManager";
 import { SectionAccordion } from "./SectionAccordion";
-import { StayManager } from "./StayManager";
 import { useOpenSections } from "./use-open-sections";
-import { VisitManager } from "./VisitManager";
 import { partsOf, type SectionProps } from "./workspace-sections";
 
 const PARTS = partsOf("plan");
 
-/** The workspace's planning tab: its editors load together, on first opening it, each in a collapsible block. */
+type KindRequest = { kinds: readonly AgendaRecordKind[]; token: number };
+
+/**
+ * The workspace's planning tab: its editors load together, on first opening it. The agenda manages visits, stays and
+ * routes (#374); areas and locations, which have no day, are the other block.
+ */
 export default function PlanSection({
   trip,
   areas,
@@ -26,8 +28,13 @@ export default function PlanSection({
   onCreateHandled,
 }: SectionProps) {
   useLocale();
-  const { isOpen, setOpen } = useOpenSections(PARTS, recordFocus);
-  // The agenda hosts the one dialog per kind of record; the type blocks below only ask it to open.
+  // An address of a retired block (`#stays`) opens the agenda with that kind as its filter.
+  const [kindRequest, setKindRequest] = useState<KindRequest | null>(null);
+  const { isOpen, setOpen } = useOpenSections(PARTS, recordFocus, (alias) => {
+    if (alias.kinds)
+      setKindRequest((current) => ({ kinds: alias.kinds!, token: (current?.token ?? 0) + 1 }));
+  });
+  // The agenda hosts the one dialog per kind of record and the status line they report to.
   const host = usePlanHost(recordFocus, createRequest, onCreateHandled, () =>
     setOpen("agenda", true),
   );
@@ -36,22 +43,13 @@ export default function PlanSection({
   useEffect(() => {
     if (createToken) setOpen("agenda", true);
   }, [createToken]);
-  const visits = useTripResource(trip.id, "visits").data;
-  const stays = useTripResource(trip.id, "stays").data;
-  const routes = useTripResource(trip.id, "routes").data;
-  const counts: Record<string, number | undefined> = {
-    areas: areas.length,
-    visits: visits?.length,
-    stays: stays?.length,
-    routes: routes?.length,
-  };
-  const block = (id: string, children: React.ReactNode) => {
+  const block = (id: string, children: React.ReactNode, count?: number) => {
     const part = PARTS.find((candidate) => candidate.id === id)!;
     return (
       <SectionAccordion
         id={id}
         title={part.label()}
-        count={counts[id]}
+        count={count}
         open={isOpen(id)}
         onOpenChange={(value) => setOpen(id, value)}
       >
@@ -67,6 +65,7 @@ export default function PlanSection({
           <AgendaManager
             trip={trip}
             host={host}
+            kindRequest={kindRequest}
             onShowOnMap={onShowOnMap}
             onCreateRecord={onCreateRecord}
           />
@@ -80,10 +79,8 @@ export default function PlanSection({
           focusId={focusFor(recordFocus, "area")}
           locationFocusId={focusFor(recordFocus, "location")}
         />,
+        areas.length,
       )}
-      {block("visits", <VisitManager trip={trip} onShowOnMap={onShowOnMap} host={host} />)}
-      {block("stays", <StayManager trip={trip} areas={areas} host={host} />)}
-      {block("routes", <RouteManager trip={trip} host={host} />)}
     </>
   );
 }

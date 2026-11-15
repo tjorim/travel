@@ -5,6 +5,8 @@ import { RECORD_KINDS } from "./record-focus";
 import {
   DEFAULT_SECTION,
   isWorkspaceSection,
+  partsOf,
+  resolvePart,
   resolveSection,
   sectionForRecord,
   sectionPath,
@@ -64,6 +66,41 @@ describe("workspace sections", () => {
     for (const section of WORKSPACE_SECTIONS)
       for (const alias of (section as { aliases?: readonly string[] }).aliases ?? [])
         expect(ids).not.toContain(alias);
+  });
+
+  it("resolves the retired Visits, Stays and Routes blocks to the agenda with their kind", () => {
+    const parts = partsOf("plan");
+    expect(resolvePart(parts, "agenda")).toMatchObject({ part: { id: "agenda" } });
+    expect(resolvePart(parts, "areas")?.alias).toBeUndefined();
+    for (const [id, kind] of [
+      ["visits", "visit"],
+      ["stays", "stay"],
+      ["routes", "route"],
+    ] as const) {
+      const found = resolvePart(parts, id);
+      expect(found?.part.id, id).toBe("agenda");
+      expect(found?.alias?.kinds).toEqual([kind]);
+      expect(found?.alias?.label().length).toBeGreaterThan(0);
+    }
+    expect(resolvePart(parts, "details")).toBeNull();
+    expect(resolvePart(parts, undefined)).toBeNull();
+  });
+
+  it("never lets a block alias shadow a block or a tab", () => {
+    const blocks = WORKSPACE_SECTIONS.flatMap((section) =>
+      ("parts" in section ? section.parts : []).map((part) => part.id as string),
+    );
+    const tabs: string[] = WORKSPACE_SECTIONS.map((section) => section.id);
+    const aliases = WORKSPACE_SECTIONS.flatMap((section) =>
+      ("parts" in section ? section.parts : []).flatMap((part) =>
+        ((part as { aliases?: readonly { id: string }[] }).aliases ?? []).map((alias) => alias.id),
+      ),
+    );
+    expect(new Set(aliases).size).toBe(aliases.length);
+    for (const alias of aliases) {
+      expect(blocks).not.toContain(alias);
+      expect(tabs).not.toContain(alias);
+    }
   });
 
   it("links the overview to the trip itself and every other section below it", () => {

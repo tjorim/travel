@@ -9,7 +9,7 @@ import {
 } from "@/ui/dropdown-menu";
 import { ToggleGroup, ToggleGroupItem } from "@/ui/toggle-group";
 import { EllipsisVerticalIcon, PlusIcon } from "lucide-react";
-import { useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 
 import {
   agendaRowAttribute,
@@ -254,6 +254,7 @@ export function AgendaView({
   actions,
   notice,
   alternatives,
+  kindRequest,
 }: {
   trip: Trip;
   onOpenRecord?: (kind: AgendaRecordKind, id: string) => void;
@@ -267,12 +268,21 @@ export function AgendaView({
   notice?: string | null;
   /** The alternatives of every kind, shown above the timeline. */
   alternatives?: ReactNode;
+  /**
+   * Asks for the kinds an address names (`#stays`): they replace the filter, every status included, as the block
+   * the address used to open listed all of them. Each request has its own token, so asking twice applies twice.
+   */
+  kindRequest?: { kinds: readonly AgendaRecordKind[]; token: number } | null;
 }) {
   const locale = useLocale();
   const staysQuery = useTripResource(trip.id, "stays");
   const routesQuery = useTripResource(trip.id, "routes");
   const visitsQuery = useTripResource(trip.id, "visits");
   const { filter, setFilter } = useAgendaFilter(trip.id);
+  const requestToken = kindRequest?.token;
+  useEffect(() => {
+    if (kindRequest) setFilter({ kinds: [...kindRequest.kinds], statuses: [] });
+  }, [requestToken]);
 
   const items = useMemo(
     () => buildAgendaItems(staysQuery.data ?? [], routesQuery.data ?? [], visitsQuery.data ?? []),
