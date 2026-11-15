@@ -43,6 +43,7 @@ from ..visitor_changes import (
     widened_record_details,
     widened_records,
 )
+from .localized import trip_language, write_texts
 from .placement import location_from_input, selected_area
 from .trips import owned_trip
 from .visibility import make_private
@@ -70,7 +71,9 @@ def list_locations(
     if q or limit is not None or offset:
         statement = statement.order_by(Location.id)
     if q:
-        statement = statement.where(contains(Location.label, q) | contains(Location.display_name, q))
+        statement = statement.where(
+            contains(Location.label_nl, q) | contains(Location.label_en, q) | contains(Location.display_name, q)
+        )
     if limit is not None:
         statement = statement.limit(limit)
     return list(session.scalars(statement.offset(offset)))
@@ -214,8 +217,7 @@ def update_location(
                 )
             )
         )
-    if "label" in changes:
-        location.label = payload.label
+    write_texts(location, ("label",), payload, trip_language(session, trip_id))
     if "area_id" in changes:
         if payload.area_id is None:
             raise Refusal("Every location needs an area", code="every_location_needs_an_area")

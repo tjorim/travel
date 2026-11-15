@@ -261,6 +261,52 @@ every other record kind, are read from their own list endpoint (`/api/trips/{id}
 `list_travel_updates`), so the size of a trip response and the number of queries behind it do not depend on what
 the trip holds (asserted in `backend/tests/test_query_budget.py`).
 
+### Text in Dutch and English (#376)
+
+The text a visitor can receive exists in two languages. Each of these fields is two nullable columns,
+`<field>_nl` and `<field>_en`, and neither language is the original:
+
+| Record | Fields |
+|---|---|
+| Trip | `title`, `summary` |
+| Travel update | `title`, `body` |
+| Visit | `title`, `summary` |
+| Route, area, location | `label` |
+| Photo copy (media derivative) | `caption`, `alt_text` |
+| Collection | `title` |
+
+Everything else stays single-language: notes, private notes, stay property and contact details, tasks, packing,
+documents and emergency information. A field that is ever shared joins the table in the same change.
+
+- A trip (and a collection, which belongs to no trip) has `content_language` (`nl` or `en`, default `nl`; the web
+  app sends the owner's interface language when it creates one). It is the language a write to the plain field name
+  lands in, and the one a read prefers. A trip's records read it from their trip.
+- `app.content_language.resolve` is the one rule: the requested language, otherwise the other, otherwise nothing;
+  an empty string counts as nothing. The owner API, MCP, the visitor document, the PDF, the Atom feed, the owner's
+  search and the sharing checks all apply it.
+- A trip's and a travel update's `title` needs text in at least one language (a check constraint). Everything else
+  may be empty in both.
+- The owner API reads `title_nl`, `title_en` and `title` (the content language's text, else the other's, so the Home
+  Assistant integration and `python-travel`, which read `title`, keep working). It writes any of them. The plain
+  `title` alone is a write to the content language. Next to `title_nl` or `title_en` it is the resolved text read
+  back, so a client may send a record it read unchanged; only a plain value that differs from the content
+  language's own non-empty field in the same request is refused (`localized_text_conflict`). `null` or `""` clears one
+  language; clearing the last language of a required field is refused (`text_required_in_a_language`).
+- `PATCH /api/trips/{id}` with `content_language` changes the language a plain write lands in. With `move_texts`
+  it also moves every text of the trip from the old content language to the new one in one statement (for a trip
+  entered in the wrong language); it is refused (`trip_text_in_both_languages`) while any field already has text in
+  both, so it never overwrites.
+- The visitor document is requested with `?lang=nl|en` (the visitor's interface language; nothing or an unknown
+  value means the trip's own). Each text is delivered resolved, as one string, so the document keeps its shape.
+  When the delivered text is not in the requested language the item carries `<field>_lang` (`title_lang`,
+  `body_lang`, `label_lang`, ...), and the page sets `lang` on that element. A text in the requested language
+  carries no marker. A visit that has no title of its own goes by its location's or area's name, with that name's
+  marker.
+- Nothing is translated automatically. The machine draft ([translation drafts](translation-drafts.md)) only helps
+  the owner fill the empty language; a draft is never stored until the owner saves the record.
+- Not yet: marking a translation as possibly out of date after the other language changed. It needs a timestamp per
+  language per field.
+
 ### Names
 
 | Name | Means | Used by |
@@ -356,7 +402,7 @@ declaring it is refused, and the models are what the OpenAPI schema publishes
 
 | Record | Shared as | Never shared |
 |---|---|---|
-| Area | label, region, country, generalized point | time zone |
+| Area | label (in the visitor's language, else the other), region, country, generalized point | time zone |
 | Location | its public name, city, country, point, and directions; its address only if the owner also chooses that | address (unless chosen), postal code, notes, provider ids, display name |
 | Reisupdate | title, the text written for visitors, the date at its precision (never finer than the audience allows), its area | private notes, location, attached originals, exact time |
 | Stay | its area and its nights, at the date precision chosen for it and its audience | property, location, booking, contact, notes, documents |

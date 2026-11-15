@@ -5,6 +5,24 @@ The owner can ask for a machine-translated draft of a long-form Markdown field
 is an explicit action; it never translates on save, publishes, or replaces
 authored text. Interface translations are separate (`interface-translations.md`).
 
+## Dutch and English texts (#376)
+
+Authored text a visitor can receive is stored in both languages, as `<field>_nl` and `<field>_en`, and the visitor
+document delivers the one in the visitor's language, else the other (see [the domain model](domain-model.md)). The
+draft feature is how the owner fills a language that is still empty; the stateless `POST /api/translation/drafts`
+endpoint is unchanged and stores nothing.
+
+- A draft is never stored by the API, the MCP tools or the backend: the owner reviews it and saves the record, and
+  the saved text is an ordinary `<field>_<language>` write. Nothing is translated on save or on delivery, and a
+  language the owner did not write is delivered as the other one, marked with `<field>_lang`.
+- The editor (a later phase of #376) fills the empty language of the field being edited instead of appending to the
+  field, keeps it marked as an unreviewed machine draft until the record is saved, and offers it only on the fields
+  a visitor can receive. **Add below the text** and the buttons on owner-only fields (stay, route, location and
+  visit notes, private notes) are removed there; their text is single-language and is never shared.
+- Until that editor change, the flow below is what the web app still does.
+- Not stored: whether a text was machine-translated, and whether the other language changed since. Marking a
+  translation as possibly out of date needs a timestamp per language per field and is not part of this change.
+
 ## Flow
 
 1. The Markdown editor offers **Translate to English** and **Translate to Dutch**

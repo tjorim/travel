@@ -70,7 +70,11 @@ class FieldChange:
 def location_visitor_view(location: Location) -> dict[str, str | None]:
     """The text fields of a location as visitors would read them now; an unshared address is absent."""
     fields = ALWAYS_VISIBLE + (ADDRESS_FIELDS if location.share_address else ())
-    return {name: getattr(location, name) for name in fields}
+    view = {name: getattr(location, name) for name in fields}
+    # The public name is read in either language, so a change to the one the owner does not read first counts too:
+    # both texts are the value (just the text while only one exists).
+    view["label"] = " / ".join(text for text in (location.label_nl, location.label_en) if text) or None
+    return view
 
 
 def text_changes(

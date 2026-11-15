@@ -1,0 +1,126 @@
+"""Writing authored text that exists in Dutch and English (#376; see ``app.content_language``).
+
+A payload names a text field three ways: ``title_nl``, ``title_en`` and the plain ``title``. Alone, the plain name
+is a write to the record's content language, so a client that knows one language (the Home Assistant integration, an
+older script) keeps working. Next to the content language's own field, that field decides and only a plain value
+that contradicts it is refused; next to the other language's field the plain name is still that write, except that
+the text already read as the plain name (a record sent back as it was read) is left alone. An omitted field keeps
+its text; ``null`` or an empty string clears one language."""
+
+from collections.abc import Iterable
+from typing import Any
+
+from sqlalchemy import func, select, update
+from sqlalchemy.orm import Session
+
+from ..content_language import DEFAULT_LANGUAGE, LANGUAGE_VALUES, ContentLanguage, resolve
+from ..errors import Refusal
+from ..models import Area, Location, MediaDerivative, Route, TravelUpdate, Trip, Visit
+
+
+def _cleared(value: str | None) -> str | None:
+    return value or None
+
+
+def write_text(
+    record: Any, field: str, payload: Any, language: str, *, required: bool = False, label: str | None = None
+) -> bool:
+    """Apply the payload's ``field``, ``field_nl`` and ``field_en`` to the record; true when a text changed.
+
+    ``language`` is the record's content language. ``required`` refuses a write that leaves neither language
+    with text. A plain value that disagrees with the content language's own column is refused rather than
+    resolved by guessing which one the caller meant."""
+    given = payload.model_fields_set
+    texts = {code: getattr(record, f"{field}_{code}") for code in LANGUAGE_VALUES}
+    before = dict(texts)
+    for code in LANGUAGE_VALUES:
+        if f"{field}_{code}" in given:
+            texts[code] = _cleared(getattr(payload, f"{field}_{code}"))
+    if field in given:
+        plain = _cleared(getattr(payload, field))
+        own = f"{field}_{language}"
+        explicit = any(f"{field}_{code}" in given for code in LANGUAGE_VALUES)
+        if own in given:
+            if plain is not None and texts[language] not in (None, plain):
+                # The plain name next to the same language's own field with other text: refuse, never guess.
+                raise Refusal(
+                    f"{field} and {own} are the same language and differ; send one of them",
+                    code="localized_text_conflict",
+                    params={"language": language},
+                    field=field,
+                )
+            # Otherwise the own field decides and the plain name is the resolved text read back.
+        elif not explicit or plain != resolve(*before.values(), language):
+            # Alone, or next to the other language only: a write to the content language, unless it is the text
+            # that is already read there (a record sent back as it was read, whose plain name fell back).
+            texts[language] = plain
+    if required and not any(texts.values()):
+        raise Refusal(
+            f"{label or field} needs text in Dutch or English", code="text_required_in_a_language", field=field
+        )
+    for code, value in texts.items():
+        if value != before[code]:
+            setattr(record, f"{field}_{code}", value)
+    return texts != before
+
+
+def trip_language(session: Session, trip_id: str) -> str:
+    """The content language of a trip (its row is normally already loaded in the session)."""
+    trip = session.get(Trip, trip_id)
+    return trip.content_language if trip is not None else DEFAULT_LANGUAGE.value
+
+
+def text_keys(*fields: str) -> set[str]:
+    """Every payload key that names one of the text fields: the plain name and both languages."""
+    return {key for field in fields for key in (field, *(f"{field}_{code}" for code in LANGUAGE_VALUES))}
+
+
+def write_texts(
+    record: Any, fields: Iterable[str], payload: Any, language: str, *, required: Iterable[str] = ()
+) -> bool:
+    """``write_text`` for several fields; true when any changed."""
+    needed = set(required)
+    changed = False
+    for field in fields:  # every field is written: no short-circuit
+        changed = write_text(record, field, payload, language, required=field in needed) or changed
+    return changed
+
+
+# The text a trip's records hold, by table: moved as a whole when the trip changes its content language.
+TRIP_TEXTS: tuple[tuple[Any, tuple[str, ...]], ...] = (
+    (Trip, ("title", "summary")),
+    (Area, ("label",)),
+    (Location, ("label",)),
+    (Visit, ("title", "summary")),
+    (Route, ("label",)),
+    (TravelUpdate, ("title", "body")),
+    (MediaDerivative, ("caption", "alt_text")),
+)
+
+
+def move_texts(session: Session, trip_id: str, source: ContentLanguage, target: ContentLanguage) -> None:
+    """Move every text a trip's records hold in ``source`` into ``target`` (the owner wrote it in the other language).
+
+    Only text that has no counterpart in ``target`` moves; if any field already has both languages the move is
+    refused as a whole, so no text is overwritten and the trip never ends up half moved."""
+    for model, fields in TRIP_TEXTS:
+        scope = model.id == trip_id if model is Trip else model.trip_id == trip_id
+        for field in fields:
+            source_column, target_column = (getattr(model, f"{field}_{code}") for code in (source.value, target.value))
+            if session.scalar(
+                select(model.id).where(scope, source_column.is_not(None), target_column.is_not(None)).limit(1)
+            ):
+                raise Refusal(
+                    f"A {field} already has text in both languages; clear one before moving the trip's texts",
+                    code="trip_text_in_both_languages",
+                    params={"field": field},
+                )
+    for model, fields in TRIP_TEXTS:
+        scope = model.id == trip_id if model is Trip else model.trip_id == trip_id
+        values = {}
+        for field in fields:
+            values[f"{field}_{target.value}"] = func.coalesce(
+                getattr(model, f"{field}_{source.value}"), getattr(model, f"{field}_{target.value}")
+            )
+            values[f"{field}_{source.value}"] = None
+        session.execute(update(model).where(scope).values(**values).execution_options(synchronize_session="fetch"))

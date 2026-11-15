@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from ..audience import MemberAudience
 from ..audit import record_collection_event, scope_fingerprint
+from ..content_language import DEFAULT_LANGUAGE
 from ..errors import Conflict
 from ..models import Collection, CollectionAuditEvent, CollectionAuditKind, CollectionMember, LinkState, Trip
 from ..schemas import (
@@ -35,6 +36,7 @@ from ..schemas import (
 from ..sharing_presets import apply_preset
 from . import audiences
 from .audiences import owned_collection, require_collection_editable
+from .localized import write_texts
 from .sharing import collection_index, member_response, mint_capability, settle_expired, trips_by_id
 from .trips import owned_trip
 
@@ -46,7 +48,10 @@ def collection_response(session: Session, collection: Collection) -> CollectionR
     return CollectionResponse(
         id=collection.id,
         label=collection.label,
+        content_language=collection.content_language,
         title=collection.title,
+        title_nl=collection.title_nl,
+        title_en=collection.title_en,
         state=collection.state,
         token=collection.token,
         expires_at=collection.expires_at,
@@ -62,7 +67,11 @@ def collection_response(session: Session, collection: Collection) -> CollectionR
 
 
 def create_collection(session: Session, subject: str, payload: CollectionCreate) -> CollectionResponse:
-    collection = Collection(owner_subject=subject, label=payload.label, title=payload.title, state=LinkState.DRAFT)
+    language = payload.content_language or DEFAULT_LANGUAGE
+    collection = Collection(
+        owner_subject=subject, label=payload.label, content_language=language.value, state=LinkState.DRAFT
+    )
+    write_texts(collection, ("title",), payload, language.value)
     session.add(collection)
     session.flush()
     record_collection_event(
@@ -108,8 +117,9 @@ def update_collection(
     fields = payload.model_fields_set
     if "label" in fields and payload.label is not None:
         collection.label = payload.label
-    if "title" in fields:
-        collection.title = payload.title
+    if payload.content_language is not None:
+        collection.content_language = payload.content_language.value
+    write_texts(collection, ("title",), payload, collection.content_language)
     record_collection_event(
         session,
         owner_subject=subject,

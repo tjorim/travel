@@ -14,12 +14,17 @@ vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 const trip: Trip = {
   owner_subject: "owner-1",
+  content_language: "nl",
   cover_derivative_id: null,
   cover_url: null,
   summary_html: null,
   id: "trip",
   title: "Exampleland",
+  title_nl: "Exampleland",
+  title_en: null,
   summary: null,
+  summary_nl: null,
+  summary_en: null,
   starts_on: null,
   ends_on: null,
   travel_updates: [],

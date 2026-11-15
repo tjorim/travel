@@ -4,9 +4,16 @@ from datetime import UTC, datetime
 from xml.etree.ElementTree import Element, SubElement, tostring
 
 ATOM = "http://www.w3.org/2005/Atom"
+XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 
 
-def atom_document(document: dict, identity: str) -> bytes:
+def marked(element: Element, language: str | None) -> None:
+    """Say what language a text is in when it is not the feed's: the visitor's requested one was empty."""
+    if language:
+        element.set(XML_LANG, language)
+
+
+def atom_document(document: dict, identity: str, language: str | None = None) -> bytes:
     # Atom requires an exact updated instant. This is representation retrieval time,
     # not a claimed story date; coarse dates appear only as literal text in content.
     retrieved = datetime.now(UTC).isoformat()
@@ -22,19 +29,23 @@ def atom_document(document: dict, identity: str) -> bytes:
         return child
 
     root = Element(f"{{{ATOM}}}feed")
+    if language:
+        root.set(XML_LANG, language)
     add(root, "id", identity)
-    add(root, "title", document.get("title") or "Travel")
+    marked(add(root, "title", document.get("title") or "Travel"), document.get("title_lang"))
     add(root, "updated", retrieved)
     author = SubElement(root, f"{{{ATOM}}}author")
     add(author, "name", "Travel")
     for update in document["updates"]:
         entry = SubElement(root, f"{{{ATOM}}}entry")
         add(entry, "id", f"{identity}:{update['id']}")
-        add(entry, "title", update["title"] or "Travel")
+        marked(add(entry, "title", update["title"] or "Travel"), update.get("title_lang"))
         add(entry, "updated", retrieved)
         place = update.get("place") or {}
         text = "\n\n".join(
             str(value) for value in (update.get("story_date"), place.get("label"), update.get("body")) if value
         )
-        add(entry, "content", text).set("type", "text")
+        content = add(entry, "content", text)
+        content.set("type", "text")
+        marked(content, update.get("body_lang"))
     return tostring(root, encoding="utf-8", xml_declaration=True)

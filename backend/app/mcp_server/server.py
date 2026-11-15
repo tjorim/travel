@@ -241,7 +241,14 @@ MCP_INSTRUCTIONS = (
     "links. Give hotels and transport that are only being compared the status idea: ideas may overlap, cover no "
     "night or journey and are never shared; use planned for the intended stay or route. Group ideas that compete for "
     "the same nights, days or journey with create_alternative_group (suggest_alternative_groups proposes them) and "
-    "settle a group with choose_alternative, which plans the chosen one and cancels or removes the rest."
+    "settle a group with choose_alternative, which plans the chosen one and cancels or removes the rest. Text a "
+    "visitor can read (a trip's title and summary, a reisupdate's title and body, a visit's title and summary, the "
+    "label of an area, location or route, a photo's caption and alt_text, a collection's title) can be written in "
+    "Dutch and English: send title_nl and title_en (likewise summary, body, label, caption, alt_text). Neither "
+    "language is the original. The plain name (title) is the text in the trip's content_language and writing it "
+    "alone sets only that language; where one language is empty the other is shown, per record and per field. "
+    "Clear a language with null or an empty string; a trip's and an update's title needs at least one language. "
+    "Nothing is translated automatically: write each language yourself or leave it empty."
 )
 
 

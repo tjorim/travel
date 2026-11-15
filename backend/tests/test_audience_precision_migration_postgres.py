@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 
 from alembic import command
 from app.config import settings
-from app.models import Area, Location, PublicSurface, ShareLink, Trip, Visit
+from app.models import PublicSurface, ShareLink, Visit
+from tests import legacy_rows
 
 
 @pytest.fixture
@@ -45,15 +46,9 @@ def database(monkeypatch):
 def _seed(engine) -> dict[str, str]:
     """A trip at the previous revision: every record has an explicit precision, as every live record does."""
     with Session(engine) as session:
-        trip = Trip(owner_subject="owner-1", title="Exampleland 2054")
-        session.add(trip)
-        session.flush()
-        area = Area(trip_id=trip.id, label="Taipei")
-        session.add(area)
-        session.flush()
-        location = Location(trip_id=trip.id, area_id=area.id, label="Taipei")
-        session.add(location)
-        session.flush()
+        trip = legacy_rows.trip(session, "Exampleland 2054", "owner-1")
+        area = legacy_rows.area(session, trip.id, "Taipei")
+        location = legacy_rows.location(session, trip.id, area.id, label="Taipei")
         # Raw SQL: the Visit model describes the head schema, which has no position.
         records = {"visit_month": ("month", 0), "visit_day": ("day", 1)}
         visit_ids = {key: uuid4().hex for key in records}

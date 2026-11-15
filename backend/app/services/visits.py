@@ -7,6 +7,7 @@ from ..errors import RecordNotFound, Refusal, service_error
 from ..models import VISIT_ORDER, Location, PlanningStatus, Trip, Visibility, Visit
 from ..route_overlap import overlapping_routes, route_title
 from ..schemas import Identifier, VisitCreate, VisitRouteCheck, VisitUpdate, require_visit_times
+from .localized import text_keys, write_texts
 from .placement import resolve_place, selected_area
 from .routes import trip_routes
 from .trips import owned_trip
@@ -67,8 +68,9 @@ def create_visit(session: Session, subject: str, trip_id: Identifier, payload: V
         trip_id=trip.id,
         area=area,
         location=location,
-        **payload.model_dump(exclude={"area_id", "location"}),
+        **payload.model_dump(exclude={"area_id", "location"} | text_keys("title", "summary")),
     )
+    write_texts(visit, ("title", "summary"), payload, trip.content_language)
     session.add(visit)
     session.flush()
     flag_route_overlaps(session, trip, visit)
@@ -89,12 +91,10 @@ def check_visit_against_routes(
         area_id = selected_area(session, trip.id, payload.area_id).id
     else:
         raise Refusal("Say where: an area or a location", code="say_where_an_area_or_a_location")
-    draft = Visit(
-        area_id=area_id,
-        title=payload.title,
-        summary=payload.summary,
-        starts_on=payload.starts_on,
-        ends_on=payload.ends_on,
+    draft = Visit(area_id=area_id, starts_on=payload.starts_on, ends_on=payload.ends_on)
+    draft.title_nl, draft.title_en = (payload.title, None) if trip.content_language == "nl" else (None, payload.title)
+    draft.summary_nl, draft.summary_en = (
+        (payload.summary, None) if trip.content_language == "nl" else (None, payload.summary)
     )
     return [
         {"id": route.id, "title": route_title(route)} for route in overlapping_routes(draft, trip_routes(session, trip))
@@ -126,7 +126,8 @@ def update_visit(
     trip = owned_trip(session, trip_id, subject)
     visit = owned_visit(session, trip, visit_id)
     _update_place(session, trip, visit, payload)
-    values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location"})
+    values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location"} | text_keys("title", "summary"))
+    write_texts(visit, ("title", "summary"), payload, trip.content_language)
     for required in ("status", "share_time"):
         if required in values and values[required] is None:
             raise Refusal(f"{required} is required", code="missing", field=required)

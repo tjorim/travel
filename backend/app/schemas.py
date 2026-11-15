@@ -19,6 +19,7 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
+from .content_language import ContentLanguage
 from .markdown import markdown_text, render_contact, render_inline, render_markdown
 from .models import (
     INTEGER_MAX,
@@ -61,6 +62,19 @@ CONTACT = (
     "Plain text, not Markdown: line breaks are kept, and phone numbers starting with + or 0 (tel), email "
     "addresses (mailto) and http(s) addresses become links."
 )
+
+
+CONTENT_LANGUAGE = (
+    "The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one "
+    "read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where "
+    "one is missing, the other is shown."
+)
+PLAIN_TEXT = (
+    "The text in the record's content language, else the other language's. A write to it sets the content language's "
+    "text; null or an empty string clears it."
+)
+DUTCH_TEXT = "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+ENGLISH_TEXT = "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
 
 
 def _html(source: str | None) -> str | None:
@@ -171,7 +185,9 @@ class LocationFields(InputModel):
     notes: str | None = Field(default=None, max_length=2000, description=MARKDOWN)
     # The name a shared location goes by. Owner-only until the place is shared,
     # and required for that: the display name usually contains the address.
-    label: str | None = Field(default=None, min_length=1, max_length=120)
+    label: str | None = Field(default=None, max_length=120, description=PLAIN_TEXT)
+    label_nl: str | None = Field(default=None, max_length=120, description=DUTCH_TEXT)
+    label_en: str | None = Field(default=None, max_length=120, description=ENGLISH_TEXT)
     # The area the location belongs to. Left out, it is derived from the location's city.
     area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     # Show the address too when the location is shared. Off unless the owner chooses it.
@@ -239,7 +255,9 @@ class LocationUpdate(InputModel):
 
     non_nullable_fields = frozenset(["share_address", "acknowledge_visitor_changes"])
 
-    label: str | None = Field(default=None, min_length=1, max_length=120)
+    label: str | None = Field(default=None, max_length=120, description=PLAIN_TEXT)
+    label_nl: str | None = Field(default=None, max_length=120, description=DUTCH_TEXT)
+    label_en: str | None = Field(default=None, max_length=120, description=ENGLISH_TEXT)
     area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     share_address: bool | None = None
     display_name: str | None = Field(default=None, max_length=500)
@@ -538,7 +556,9 @@ class AreaInput(InputModel):
     """A deliberately authored area: label, country/region and an
     optional approved generalized point. Shareable, unlike a location."""
 
-    label: str | None = Field(default=None, min_length=1, max_length=120, description="Null leaves the area unnamed.")
+    label: str | None = Field(default=None, max_length=120, description=PLAIN_TEXT)
+    label_nl: str | None = Field(default=None, max_length=120, description=DUTCH_TEXT)
+    label_en: str | None = Field(default=None, max_length=120, description=ENGLISH_TEXT)
     country_code: str | None = COUNTRY_CODE_FIELD
     region: str | None = Field(default=None, max_length=120)
     latitude: float | None = Field(default=None, ge=-90, le=90)
@@ -554,9 +574,9 @@ class AreaInput(InputModel):
 
 
 class AreaUpdate(InputModel):
-    non_nullable_fields = frozenset(["label"])
-
-    label: str | None = Field(default=None, min_length=1, max_length=120)
+    label: str | None = Field(default=None, max_length=120, description=PLAIN_TEXT)
+    label_nl: str | None = Field(default=None, max_length=120, description=DUTCH_TEXT)
+    label_en: str | None = Field(default=None, max_length=120, description=ENGLISH_TEXT)
     country_code: str | None = COUNTRY_CODE_FIELD
     region: str | None = Field(default=None, max_length=120)
     latitude: float | None = Field(default=None, ge=-90, le=90)
@@ -587,8 +607,16 @@ class AreaResponse(AreaInput):
 
 
 class TripCreate(InputModel):
-    title: str = Field(min_length=1, max_length=160)
-    summary: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
+    content_language: ContentLanguage | None = Field(
+        default=None,
+        description=CONTENT_LANGUAGE + " Left out, it is Dutch (the web app sends the interface language).",
+    )
+    title: str | None = Field(default=None, max_length=160, description=PLAIN_TEXT)
+    title_nl: str | None = Field(default=None, max_length=160, description=DUTCH_TEXT)
+    title_en: str | None = Field(default=None, max_length=160, description=ENGLISH_TEXT)
+    summary: str | None = Field(default=None, max_length=4000, description=MARKDOWN + " " + PLAIN_TEXT)
+    summary_nl: str | None = Field(default=None, max_length=4000, description=MARKDOWN + " " + DUTCH_TEXT)
+    summary_en: str | None = Field(default=None, max_length=4000, description=MARKDOWN + " " + ENGLISH_TEXT)
     starts_on: date | None = None
     ends_on: date | None = None
 
@@ -599,10 +627,21 @@ class TripCreate(InputModel):
 
 
 class TripUpdate(InputModel):
-    non_nullable_fields = frozenset(["title"])
+    non_nullable_fields = frozenset(["content_language", "move_texts"])
 
-    title: str | None = Field(default=None, min_length=1, max_length=160)
-    summary: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
+    content_language: ContentLanguage | None = Field(default=None, description=CONTENT_LANGUAGE)
+    move_texts: bool = Field(
+        default=False,
+        description="With a changed `content_language`: also move every text of the trip from the old content "
+        "language to the new one (for a trip that was entered in the wrong language). Refused while any field has "
+        "text in both languages. Not stored.",
+    )
+    title: str | None = Field(default=None, max_length=160, description=PLAIN_TEXT)
+    title_nl: str | None = Field(default=None, max_length=160, description=DUTCH_TEXT)
+    title_en: str | None = Field(default=None, max_length=160, description=ENGLISH_TEXT)
+    summary: str | None = Field(default=None, max_length=4000, description=MARKDOWN + " " + PLAIN_TEXT)
+    summary_nl: str | None = Field(default=None, max_length=4000, description=MARKDOWN + " " + DUTCH_TEXT)
+    summary_en: str | None = Field(default=None, max_length=4000, description=MARKDOWN + " " + ENGLISH_TEXT)
     starts_on: date | None = None
     ends_on: date | None = None
     cover_derivative_id: Identifier | None = Field(
@@ -651,8 +690,12 @@ class TravelUpdateCreate(InputModel):
         "the update's zone: its area's, else the trip's nearest stay or visit, else UTC."
     )
     share_date_precision: DatePrecision = DatePrecision.DAY
-    title: str = Field(min_length=1, max_length=160)
-    body: str = Field(default="", max_length=10000, description=MARKDOWN)
+    title: str | None = Field(default=None, max_length=160, description=PLAIN_TEXT)
+    title_nl: str | None = Field(default=None, max_length=160, description=DUTCH_TEXT)
+    title_en: str | None = Field(default=None, max_length=160, description=ENGLISH_TEXT)
+    body: str | None = Field(default=None, max_length=10000, description=MARKDOWN + " " + PLAIN_TEXT)
+    body_nl: str | None = Field(default=None, max_length=10000, description=MARKDOWN + " " + DUTCH_TEXT)
+    body_en: str | None = Field(default=None, max_length=10000, description=MARKDOWN + " " + ENGLISH_TEXT)
     private_notes: str | None = Field(default=None, max_length=10000, description=MARKDOWN)
     area_id: Identifier | None = None
     location: LocationInput | None = None
@@ -664,15 +707,19 @@ class TravelUpdateCreate(InputModel):
 
 
 class TravelUpdatePatch(InputModel):
-    non_nullable_fields = frozenset(["occurred_at", "title", "body", "visibility", "media_asset_ids"])
+    non_nullable_fields = frozenset(["occurred_at", "visibility", "media_asset_ids"])
 
     occurred_at: datetime | None = Field(
         default=None,
         description="An instant with an offset, or a wall-clock time without one, read in the update's zone.",
     )
     share_date_precision: DatePrecision | None = None
-    title: str | None = Field(default=None, min_length=1, max_length=160)
-    body: str | None = Field(default=None, max_length=10000, description=MARKDOWN)
+    title: str | None = Field(default=None, max_length=160, description=PLAIN_TEXT)
+    title_nl: str | None = Field(default=None, max_length=160, description=DUTCH_TEXT)
+    title_en: str | None = Field(default=None, max_length=160, description=ENGLISH_TEXT)
+    body: str | None = Field(default=None, max_length=10000, description=MARKDOWN + " " + PLAIN_TEXT)
+    body_nl: str | None = Field(default=None, max_length=10000, description=MARKDOWN + " " + DUTCH_TEXT)
+    body_en: str | None = Field(default=None, max_length=10000, description=MARKDOWN + " " + ENGLISH_TEXT)
     private_notes: str | None = Field(default=None, max_length=10000, description=MARKDOWN)
     area_id: Identifier | None = None
     location: LocationInput | None = None
@@ -693,7 +740,11 @@ class TravelUpdateResponse(ResponseModel):
     local_date: date = Field(description="The calendar day of `occurred_at` in `timezone`, shown to every audience.")
     share_date_precision: DatePrecision
     title: str
+    title_nl: str | None
+    title_en: str | None
     body: str
+    body_nl: str | None
+    body_en: str | None
     private_notes: str | None
     area_id: str | None
     area: AreaResponse | None
@@ -893,7 +944,9 @@ class VisitCreate(InputModel):
 
     area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     location: LocationInput | None = None
-    title: str | None = Field(default=None, min_length=1, max_length=160)
+    title: str | None = Field(default=None, max_length=160, description=PLAIN_TEXT)
+    title_nl: str | None = Field(default=None, max_length=160, description=DUTCH_TEXT)
+    title_en: str | None = Field(default=None, max_length=160, description=ENGLISH_TEXT)
     kind: VisitKind | None = None
     status: PlanningStatus = PlanningStatus.PLANNED
     starts_on: date | None = None
@@ -901,7 +954,9 @@ class VisitCreate(InputModel):
     start_time: LocalTime | None = None
     end_time: LocalTime | None = None
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
-    summary: str | None = Field(default=None, max_length=2000, description=MARKDOWN)
+    summary: str | None = Field(default=None, max_length=2000, description=MARKDOWN + " " + PLAIN_TEXT)
+    summary_nl: str | None = Field(default=None, max_length=2000, description=MARKDOWN + " " + DUTCH_TEXT)
+    summary_en: str | None = Field(default=None, max_length=2000, description=MARKDOWN + " " + ENGLISH_TEXT)
     share_time: bool = False
     share_date_precision: DatePrecision | None = Field(default=None, description=PRECISION_OWN)
 
@@ -918,7 +973,9 @@ class VisitUpdate(InputModel):
 
     area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     location: LocationInput | None = None
-    title: str | None = Field(default=None, min_length=1, max_length=160)
+    title: str | None = Field(default=None, max_length=160, description=PLAIN_TEXT)
+    title_nl: str | None = Field(default=None, max_length=160, description=DUTCH_TEXT)
+    title_en: str | None = Field(default=None, max_length=160, description=ENGLISH_TEXT)
     kind: VisitKind | None = None
     status: PlanningStatus | None = None
     starts_on: date | None = None
@@ -926,7 +983,9 @@ class VisitUpdate(InputModel):
     start_time: LocalTime | None = None
     end_time: LocalTime | None = None
     notes: str | None = Field(default=None, max_length=4000, description=MARKDOWN)
-    summary: str | None = Field(default=None, max_length=2000, description=MARKDOWN)
+    summary: str | None = Field(default=None, max_length=2000, description=MARKDOWN + " " + PLAIN_TEXT)
+    summary_nl: str | None = Field(default=None, max_length=2000, description=MARKDOWN + " " + DUTCH_TEXT)
+    summary_en: str | None = Field(default=None, max_length=2000, description=MARKDOWN + " " + ENGLISH_TEXT)
     share_time: bool | None = None
     share_date_precision: DatePrecision | None = Field(
         default=None, description=PRECISION_OWN + " Send null to follow the audience; omit to keep the value."
@@ -954,6 +1013,8 @@ class VisitResponse(ResponseModel):
     area: AreaResponse
     location: LocationResponse | None
     title: str | None
+    title_nl: str | None
+    title_en: str | None
     kind: VisitKind | None
     status: PlanningStatus
     starts_on: date | None
@@ -962,6 +1023,8 @@ class VisitResponse(ResponseModel):
     end_time: time | None
     notes: str | None
     summary: str | None
+    summary_nl: str | None
+    summary_en: str | None
     visibility: Visibility
     share_time: bool
     share_date_precision: DatePrecision | None = Field(description=PRECISION_OWN)
@@ -1263,7 +1326,9 @@ class RouteCreate(InputModel):
 
     mode: RouteMode
     status: PlanningStatus = Field(default=PlanningStatus.PLANNED, description=ROUTE_STATUS)
-    label: str | None = Field(default=None, min_length=1, max_length=160)
+    label: str | None = Field(default=None, max_length=160, description=PLAIN_TEXT)
+    label_nl: str | None = Field(default=None, max_length=160, description=DUTCH_TEXT)
+    label_en: str | None = Field(default=None, max_length=160, description=ENGLISH_TEXT)
     departure_area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     arrival_area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     departure_location: LocationInput | None = None
@@ -1306,7 +1371,9 @@ class RouteUpdate(InputModel):
 
     mode: RouteMode | None = None
     status: PlanningStatus | None = Field(default=None, description=ROUTE_STATUS)
-    label: str | None = Field(default=None, min_length=1, max_length=160)
+    label: str | None = Field(default=None, max_length=160, description=PLAIN_TEXT)
+    label_nl: str | None = Field(default=None, max_length=160, description=DUTCH_TEXT)
+    label_en: str | None = Field(default=None, max_length=160, description=ENGLISH_TEXT)
     departure_area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     arrival_area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     departure_location: LocationInput | None = None
@@ -1337,6 +1404,8 @@ class RouteResponse(ResponseModel):
     mode: RouteMode
     status: PlanningStatus
     label: str | None
+    label_nl: str | None
+    label_en: str | None
     departure_area: AreaResponse
     arrival_area: AreaResponse
     departure_location: LocationResponse | None
@@ -1372,8 +1441,13 @@ class RouteResponse(ResponseModel):
 class TripBase(ResponseModel):
     id: str
     owner_subject: str
+    content_language: ContentLanguage = Field(description=CONTENT_LANGUAGE)
     title: str
+    title_nl: str | None
+    title_en: str | None
     summary: str | None
+    summary_nl: str | None
+    summary_en: str | None
     starts_on: date | None
     ends_on: date | None
     cover_derivative_id: str | None = None
@@ -1973,6 +2047,13 @@ class LiveTrackPage(ResponseModel):
     next: str | None = Field(description="Pass as `after` for the next page; null on the last one.")
 
 
+TextLanguage = Literal["nl", "en"]
+LANGUAGE_MARKER = (
+    "Present only when this text is in the other language because the one the visitor asked for is empty: "
+    "`nl` or `en`, so the page can set `lang` on the element."
+)
+
+
 class ProjectionRecord(BaseModel):
     """A record a visitor receives. Its fields *are* the allowlist: the renderers in ``app.projection`` build these
     models and nothing else, so a field only reaches a visitor once it is declared here. Unknown keys are refused.
@@ -2000,6 +2081,7 @@ class ProjectionArea(ProjectionRecord):
     """An area embedded in a record: its label, region, country and a point rounded to two decimals."""
 
     label: str | None
+    label_lang: TextLanguage | None = Field(default=None, description=LANGUAGE_MARKER)
     country_code: str | None
     region: str | None
     latitude: float | None
@@ -2021,6 +2103,7 @@ class ProjectionPlace(ProjectionRecord):
 
     id: str
     label: str | None
+    label_lang: TextLanguage | None = Field(default=None, description=LANGUAGE_MARKER)
     country_code: str | None
     region: str | None
     latitude: float | None
@@ -2033,7 +2116,9 @@ class ProjectionPlace(ProjectionRecord):
 class ProjectionVisit(ProjectionRecord):
     id: str
     title: str | None
+    title_lang: TextLanguage | None = Field(default=None, description=LANGUAGE_MARKER)
     summary: str | None = Field(description=MARKDOWN)
+    summary_lang: TextLanguage | None = Field(default=None, description=LANGUAGE_MARKER)
     summary_html: str | None = Field(description=_html_of("summary"))
     place: ProjectionArea | None
     date_precision: DatePrecision
@@ -2050,6 +2135,7 @@ class ProjectionVisit(ProjectionRecord):
 class ProjectionStay(ProjectionRecord):
     id: str
     title: str | None
+    title_lang: TextLanguage | None = Field(default=None, description=LANGUAGE_MARKER)
     place: ProjectionArea | None
     date_precision: DatePrecision
     starts_on: str | None
@@ -2060,7 +2146,9 @@ class ProjectionStay(ProjectionRecord):
 class ProjectionUpdate(ProjectionRecord):
     id: str
     title: str
+    title_lang: TextLanguage | None = Field(default=None, description=LANGUAGE_MARKER)
     body: str = Field(description=MARKDOWN)
+    body_lang: TextLanguage | None = Field(default=None, description=LANGUAGE_MARKER)
     body_html: str | None = Field(description=_html_of("body"))
     date_precision: DatePrecision
     story_date: str | None
@@ -2081,8 +2169,10 @@ class ProjectionMedia(ProjectionRecord):
     duration_seconds: float | None = Field(default=None, description="Only a video.")
     image: ProjectionFile | None = Field(default=None, description="Only a photo.")
     caption: str | None = Field(description=INLINE_MARKDOWN)
+    caption_lang: TextLanguage | None = Field(default=None, description=LANGUAGE_MARKER)
     caption_html: str | None = Field(description=_html_of("caption"))
     alt_text: str | None
+    alt_text_lang: TextLanguage | None = Field(default=None, description=LANGUAGE_MARKER)
     width: int | None
     height: int | None
     focal_x: int | None
@@ -2103,6 +2193,7 @@ class ProjectionRoutePoint(ProjectionRecord):
     """One end of a route on the map, delivered only when that location is itself shared."""
 
     label: str
+    label_lang: TextLanguage | None = Field(default=None, description=LANGUAGE_MARKER)
     country_code: str | None
     latitude: float
     longitude: float
@@ -2119,6 +2210,7 @@ class ProjectionRoute(ProjectionRecord):
     mode: RouteMode
     status: PlanningStatus
     label: str | None
+    label_lang: TextLanguage | None = Field(default=None, description=LANGUAGE_MARKER)
     departure: ProjectionArea | None
     arrival: ProjectionArea | None
     carrier: str | None
@@ -2150,7 +2242,13 @@ class ProjectionDocument(BaseModel):
     )
     schema_version: str
     title: str | None
+    title_lang: TextLanguage | None = Field(
+        default=None, exclude_if=lambda value: value is None, description=LANGUAGE_MARKER
+    )
     summary: str | None = Field(description=MARKDOWN)
+    summary_lang: TextLanguage | None = Field(
+        default=None, exclude_if=lambda value: value is None, description=LANGUAGE_MARKER
+    )
     summary_html: str | None = Field(default=None, description=_html_of("summary") + " Links are nofollow.")
     summary_text: str | None = Field(default=None, description="The summary as one line of plain text, for previews.")
     dates: ProjectionDates | None
@@ -2173,6 +2271,9 @@ class PublicTripCover(BaseModel):
     width: int | None
     height: int | None
     alt_text: str | None
+    alt_text_lang: TextLanguage | None = Field(
+        default=None, exclude_if=lambda value: value is None, description=LANGUAGE_MARKER
+    )
     focal_x: float | None
     focal_y: float | None
 
@@ -2181,7 +2282,13 @@ class PublicTripCard(BaseModel):
     cover: PublicTripCover | None = None
     slug: str
     title: str | None
+    title_lang: TextLanguage | None = Field(
+        default=None, exclude_if=lambda value: value is None, description=LANGUAGE_MARKER
+    )
     summary: str | None = Field(description=MARKDOWN)
+    summary_lang: TextLanguage | None = Field(
+        default=None, exclude_if=lambda value: value is None, description=LANGUAGE_MARKER
+    )
     dates: ProjectionDates | None
 
     @computed_field(description="The summary as one line of plain text: a card shows it instead of rendering it.")
@@ -2354,16 +2461,24 @@ class McpShareLinkResponse(BaseModel):
 
 
 class CollectionCreate(InputModel):
+    content_language: ContentLanguage | None = Field(
+        default=None, description=CONTENT_LANGUAGE + " Left out, it is Dutch."
+    )
     label: str = Field(min_length=1, max_length=120)
     # Optional text written for visitors; without it the visitor page uses a generic heading.
-    title: SafeText | None = Field(default=None, min_length=1, max_length=160)
+    title: str | None = Field(default=None, max_length=160, description=PLAIN_TEXT)
+    title_nl: str | None = Field(default=None, max_length=160, description=DUTCH_TEXT)
+    title_en: str | None = Field(default=None, max_length=160, description=ENGLISH_TEXT)
 
 
 class CollectionUpdate(InputModel):
-    non_nullable_fields = frozenset(["label"])
+    non_nullable_fields = frozenset(["label", "content_language"])
 
+    content_language: ContentLanguage | None = Field(default=None, description=CONTENT_LANGUAGE)
     label: str | None = Field(default=None, min_length=1, max_length=120)
-    title: SafeText | None = Field(default=None, min_length=1, max_length=160)
+    title: str | None = Field(default=None, max_length=160, description=PLAIN_TEXT)
+    title_nl: str | None = Field(default=None, max_length=160, description=DUTCH_TEXT)
+    title_en: str | None = Field(default=None, max_length=160, description=ENGLISH_TEXT)
 
 
 class CollectionMemberCreate(InputModel):
@@ -2399,7 +2514,10 @@ class CollectionMemberResponse(ResponseModel):
 class CollectionResponse(ResponseModel):
     id: str
     label: str
+    content_language: ContentLanguage
     title: str | None
+    title_nl: str | None
+    title_en: str | None
     state: LinkState
     token: str | None
     expires_at: datetime | None
@@ -2435,7 +2553,10 @@ class MemberPresetApplyResult(SharingPresetApplyResult):
 class McpCollectionResponse(BaseModel):
     id: str
     label: str
+    content_language: ContentLanguage
     title: str | None
+    title_nl: str | None
+    title_en: str | None
     state: LinkState
     expires_at: datetime | None
     rotations: int
@@ -2471,7 +2592,13 @@ class CollectionIndexEntry(BaseModel):
 
     id: str = Field(description="A collection-local opaque id for the trip page path, never the trip's own id.")
     title: str | None
+    title_lang: TextLanguage | None = Field(
+        default=None, exclude_if=lambda value: value is None, description=LANGUAGE_MARKER
+    )
     summary_text: str | None
+    summary_lang: TextLanguage | None = Field(
+        default=None, exclude_if=lambda value: value is None, description=LANGUAGE_MARKER
+    )
     dates: ProjectionDates | None
     cover: str | None = Field(
         description="The id of the photo the member shows as the trip's cover, served by the member's file route."
@@ -2481,6 +2608,9 @@ class CollectionIndexEntry(BaseModel):
 class CollectionIndexDocument(BaseModel):
     schema_version: Literal["travel/collection@1"] = "travel/collection@1"
     title: str | None
+    title_lang: TextLanguage | None = Field(
+        default=None, exclude_if=lambda value: value is None, description=LANGUAGE_MARKER
+    )
     trips: list[CollectionIndexEntry]
 
 
@@ -2712,7 +2842,11 @@ class MediaDerivativeResponse(ResponseModel):
     height: int | None
     travel_update_id: str | None
     caption: str | None
+    caption_nl: str | None
+    caption_en: str | None
     alt_text: str | None
+    alt_text_nl: str | None
+    alt_text_en: str | None
     focal_x: int | None
     focal_y: int | None
     visibility: Visibility
@@ -2735,8 +2869,12 @@ class MediaDerivativeCreate(InputModel):
 
 class MediaDerivativePresentationUpdate(InputModel):
     travel_update_id: Identifier | None = None
-    caption: str | None = Field(default=None, max_length=500, description=INLINE_MARKDOWN)
-    alt_text: str | None = Field(default=None, max_length=300)
+    caption: str | None = Field(default=None, max_length=500, description=INLINE_MARKDOWN + " " + PLAIN_TEXT)
+    caption_nl: str | None = Field(default=None, max_length=500, description=INLINE_MARKDOWN + " " + DUTCH_TEXT)
+    caption_en: str | None = Field(default=None, max_length=500, description=INLINE_MARKDOWN + " " + ENGLISH_TEXT)
+    alt_text: str | None = Field(default=None, max_length=300, description=PLAIN_TEXT)
+    alt_text_nl: str | None = Field(default=None, max_length=300, description=DUTCH_TEXT)
+    alt_text_en: str | None = Field(default=None, max_length=300, description=ENGLISH_TEXT)
     focal_x: int | None = Field(default=None, ge=0, le=100)
     focal_y: int | None = Field(default=None, ge=0, le=100)
 

@@ -24,6 +24,7 @@ from ..audience import (
 )
 from ..audit import SYSTEM_ACTOR, record_audit_event, record_collection_event
 from ..capability import generate_token, verifier_for
+from ..content_language import ContentLanguage, pick
 from ..exclusion_review import scope_exclusions
 from ..models import (
     AuditEventKind,
@@ -216,7 +217,9 @@ def active_collection(session: Session, token: str) -> Collection | None:
     return collection
 
 
-def collection_index(session: Session, collection: Collection) -> CollectionIndexDocument:
+def collection_index(
+    session: Session, collection: Collection, language: ContentLanguage | str | None = None
+) -> CollectionIndexDocument:
     """The members as the audience sees them: each entry is built from its own projection, so it
     can show nothing the member's trip page would not."""
     trips = trips_by_id(session, collection)
@@ -225,14 +228,17 @@ def collection_index(session: Session, collection: Collection) -> CollectionInde
         trip = trips.get(member.trip_id)
         if trip is None:
             continue
-        projection = render_projection(trip, member.scope, "travel/unlisted-trip@1")
+        projection = render_projection(trip, member.scope, "travel/unlisted-trip@1", language)
         entries.append(
             CollectionIndexEntry(
                 id=member.id,
-                title=projection["title"],
+                **{key: projection[key] for key in ("title", "title_lang", "summary_lang") if key in projection},
                 summary_text=projection["summary_text"],
                 dates=projection["dates"],
                 cover=projection["cover"],
             )
         )
-    return CollectionIndexDocument(title=collection.title, trips=entries)
+    requested = language or collection.content_language
+    title, found = pick(collection.title_nl, collection.title_en, requested)
+    other = None if found is None or found == requested else ("nl" if found == ContentLanguage.NL else "en")
+    return CollectionIndexDocument(title=title, title_lang=other, trips=entries)

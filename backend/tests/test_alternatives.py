@@ -434,7 +434,7 @@ def test_export_lists_groups_explicitly_and_round_trips_membership() -> None:
     visits = trip.group("visit", [visit_a, visit_b])
     owner.post(f"{trip.path}/alternative-groups/{stays['id']}/choose", json={"member_id": a})
     document = json.loads(owner.get(f"{trip.path}/export").text)
-    assert document["schema_version"] == "travel/trip-export@2"
+    assert document["schema_version"] == "travel/trip-export@3"
     exported = {item["id"]: item for item in document["alternative_groups"]}
     assert set(exported) == {stays["id"], visits["id"]}
     assert exported[stays["id"]]["kind"] == "stay" and exported[stays["id"]]["label"] == "Where to sleep"

@@ -19,7 +19,8 @@ from sqlalchemy.orm import Session
 
 from alembic import command
 from app.config import settings
-from app.models import Area, Location, PublicSurface, Route, Trip, Visibility
+from app.models import PublicSurface, Visibility
+from tests import legacy_rows
 
 
 @pytest.fixture
@@ -129,21 +130,16 @@ CASES: dict[str, tuple[dict, str | None, bool]] = {
 def _seed(engine) -> dict:
     """A trip at the previous revision. Stays are inserted as SQL: the Stay model describes the head schema."""
     with Session(engine) as session:
-        trip = Trip(owner_subject="owner-1", title="Exampleland 2054")
-        session.add(trip)
-        session.flush()
-        area = Area(trip_id=trip.id, label="Taipei", country_code="TW", latitude=25.03, longitude=121.56)
-        other = Area(trip_id=trip.id, label="Tainan", country_code="TW")
-        chiayi = Area(trip_id=trip.id, label="Chiayi City", country_code="TW")
-        session.add_all([area, other, chiayi])
+        trip = legacy_rows.trip(session, "Exampleland 2054", "owner-1")
+        area = legacy_rows.area(session, trip.id, "Taipei", country_code="TW", latitude=25.03, longitude=121.56)
+        other = legacy_rows.area(session, trip.id, "Tainan", country_code="TW")
+        chiayi = legacy_rows.area(session, trip.id, "Chiayi City", country_code="TW")
         session.flush()
         stays: dict[str, str] = {}
         locations: dict[str, str] = {}
         scope_items: list[dict] = []
         for index, (name, (fields, use, _)) in enumerate(CASES.items()):
-            location = Location(trip_id=trip.id, area_id=area.id, **fields)
-            session.add(location)
-            session.flush()
+            location = legacy_rows.location(session, trip.id, area.id, **fields)
             locations[name] = location.id
             if use == "visit":
                 # Raw SQL: the Visit model describes the head schema, which has no position.
@@ -155,14 +151,7 @@ def _seed(engine) -> dict:
                     {"id": uuid4().hex, "trip": trip.id, "position": index, "area": area.id, "location": location.id},
                 )
             elif use == "route":
-                session.add(
-                    Route(
-                        trip_id=trip.id,
-                        departure_area_id=area.id,
-                        arrival_area_id=other.id,
-                        departure_location_id=location.id,
-                    )
-                )
+                legacy_rows.route(session, trip.id, area.id, other.id, departure_location_id=location.id)
             elif use == "update":
                 # Raw SQL: the TravelUpdate model describes the head schema, whose column is share_date_precision.
                 session.execute(
@@ -182,8 +171,7 @@ def _seed(engine) -> dict:
             elif use == "scope":
                 scope_items.append({"kind": "location", "id": location.id})
         # A placeholder two stays share, a placeholder nothing uses, and one in another area.
-        orphan = Location(trip_id=trip.id, area_id=other.id, locality="Tainan", country_code="TW")
-        session.add(orphan)
+        orphan = legacy_rows.location(session, trip.id, other.id, locality="Tainan", country_code="TW")
         # A Core insert names only the columns given: the model also has columns that later revisions add.
         session.execute(insert(PublicSurface).values(trip_id=trip.id, scope={"items": scope_items}))
         session.flush()

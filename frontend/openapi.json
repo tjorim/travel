@@ -850,7 +850,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Schema travel/trip-export@2",
+            "description": "Schema travel/trip-export@3",
             "content": {
               "application/json": {}
             }
@@ -5249,17 +5249,48 @@
         ],
         "summary": "List Public Trips",
         "operationId": "list_public_trips_api_public_trips_get",
+        "parameters": [
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 16
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language.",
+              "title": "Lang"
+            },
+            "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/PublicTripCard"
                   },
-                  "type": "array",
                   "title": "Response List Public Trips Api Public Trips Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -5283,6 +5314,25 @@
               "type": "string",
               "title": "Slug"
             }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 16
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language.",
+              "title": "Lang"
+            },
+            "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language."
           }
         ],
         "responses": {
@@ -5423,6 +5473,25 @@
               "type": "string",
               "title": "Token"
             }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 16
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language.",
+              "title": "Lang"
+            },
+            "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language."
           }
         ],
         "responses": {
@@ -5571,6 +5640,25 @@
               "type": "string",
               "title": "Slug"
             }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 16
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language.",
+              "title": "Lang"
+            },
+            "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language."
           }
         ],
         "responses": {
@@ -5611,6 +5699,25 @@
               "type": "string",
               "title": "Token"
             }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 16
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language.",
+              "title": "Lang"
+            },
+            "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language."
           }
         ],
         "responses": {
@@ -5660,6 +5767,25 @@
               "type": "string",
               "title": "Member Id"
             }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 16
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language.",
+              "title": "Lang"
+            },
+            "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language."
           }
         ],
         "responses": {
@@ -12459,15 +12585,40 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 120,
-                "minLength": 1
+                "maxLength": 120
               },
               {
                 "type": "null"
               }
             ],
             "title": "Label",
-            "description": "Null leaves the area unnamed."
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "label_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "label_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "country_code": {
             "anyOf": [
@@ -12664,15 +12815,40 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 120,
-                "minLength": 1
+                "maxLength": 120
               },
               {
                 "type": "null"
               }
             ],
             "title": "Label",
-            "description": "Null leaves the area unnamed."
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "label_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "label_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "country_code": {
             "anyOf": [
@@ -12749,6 +12925,8 @@
         "type": "object",
         "required": [
           "label",
+          "label_nl",
+          "label_en",
           "country_code",
           "region",
           "latitude",
@@ -12824,14 +13002,40 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 120,
-                "minLength": 1
+                "maxLength": 120
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Label"
+            "title": "Label",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "label_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "label_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "country_code": {
             "anyOf": [
@@ -13461,6 +13665,17 @@
       },
       "CollectionCreate": {
         "properties": {
+          "content_language": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContentLanguage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown. Left out, it is Dutch."
+          },
           "label": {
             "type": "string",
             "maxLength": 120,
@@ -13471,14 +13686,40 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 160,
-                "minLength": 1
+                "maxLength": 160
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Title"
+            "title": "Title",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "title_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           }
         },
         "additionalProperties": false,
@@ -13506,6 +13747,22 @@
               }
             ],
             "title": "Title"
+          },
+          "title_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
           },
           "trips": {
             "items": {
@@ -13540,6 +13797,22 @@
             ],
             "title": "Title"
           },
+          "title_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
+          },
           "summary_text": {
             "anyOf": [
               {
@@ -13550,6 +13823,22 @@
               }
             ],
             "title": "Summary Text"
+          },
+          "summary_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
           },
           "dates": {
             "anyOf": [
@@ -13762,6 +14051,9 @@
             "type": "string",
             "title": "Label"
           },
+          "content_language": {
+            "$ref": "#/components/schemas/ContentLanguage"
+          },
           "title": {
             "anyOf": [
               {
@@ -13772,6 +14064,28 @@
               }
             ],
             "title": "Title"
+          },
+          "title_nl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Nl"
+          },
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En"
           },
           "state": {
             "$ref": "#/components/schemas/LinkState"
@@ -13849,7 +14163,10 @@
         "required": [
           "id",
           "label",
+          "content_language",
           "title",
+          "title_nl",
+          "title_en",
           "state",
           "token",
           "expires_at",
@@ -13864,6 +14181,17 @@
       },
       "CollectionUpdate": {
         "properties": {
+          "content_language": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContentLanguage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown."
+          },
           "label": {
             "anyOf": [
               {
@@ -13881,19 +14209,53 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 160,
-                "minLength": 1
+                "maxLength": 160
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Title"
+            "title": "Title",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "title_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "CollectionUpdate"
+      },
+      "ContentLanguage": {
+        "type": "string",
+        "enum": [
+          "nl",
+          "en"
+        ],
+        "title": "ContentLanguage"
       },
       "CurrentLocation": {
         "properties": {
@@ -15346,14 +15708,40 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 120,
-                "minLength": 1
+                "maxLength": 120
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Label"
+            "title": "Label",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "label_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "label_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "area_id": {
             "anyOf": [
@@ -15762,14 +16150,40 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 120,
-                "minLength": 1
+                "maxLength": 120
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Label"
+            "title": "Label",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "label_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "label_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "area_id": {
             "type": "string",
@@ -15833,6 +16247,8 @@
           "navigation_provider_place_id",
           "notes",
           "label",
+          "label_nl",
+          "label_en",
           "area_id",
           "share_address",
           "id",
@@ -15848,14 +16264,40 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 120,
-                "minLength": 1
+                "maxLength": 120
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Label"
+            "title": "Label",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "label_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "label_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "area_id": {
             "anyOf": [
@@ -16470,7 +16912,33 @@
               }
             ],
             "title": "Caption",
-            "description": "Inline Markdown only: bold, italic and links (http, https, mailto). Headings, lists, other blocks, raw HTML and images are not rendered."
+            "description": "Inline Markdown only: bold, italic and links (http, https, mailto). Headings, lists, other blocks, raw HTML and images are not rendered. The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "caption_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Caption Nl",
+            "description": "Inline Markdown only: bold, italic and links (http, https, mailto). Headings, lists, other blocks, raw HTML and images are not rendered. The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "caption_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Caption En",
+            "description": "Inline Markdown only: bold, italic and links (http, https, mailto). Headings, lists, other blocks, raw HTML and images are not rendered. The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "alt_text": {
             "anyOf": [
@@ -16482,7 +16950,34 @@
                 "type": "null"
               }
             ],
-            "title": "Alt Text"
+            "title": "Alt Text",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "alt_text_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt Text Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "alt_text_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt Text En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "focal_x": {
             "anyOf": [
@@ -16645,6 +17140,28 @@
             ],
             "title": "Caption"
           },
+          "caption_nl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Caption Nl"
+          },
+          "caption_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Caption En"
+          },
           "alt_text": {
             "anyOf": [
               {
@@ -16655,6 +17172,28 @@
               }
             ],
             "title": "Alt Text"
+          },
+          "alt_text_nl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt Text Nl"
+          },
+          "alt_text_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt Text En"
           },
           "focal_x": {
             "anyOf": [
@@ -16727,7 +17266,11 @@
           "height",
           "travel_update_id",
           "caption",
+          "caption_nl",
+          "caption_en",
           "alt_text",
+          "alt_text_nl",
+          "alt_text_en",
           "focal_x",
           "focal_y",
           "visibility",
@@ -19237,6 +19780,22 @@
             ],
             "title": "Label"
           },
+          "label_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
+          },
           "country_code": {
             "anyOf": [
               {
@@ -19386,6 +19945,22 @@
             ],
             "title": "Title"
           },
+          "title_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
+          },
           "summary": {
             "anyOf": [
               {
@@ -19397,6 +19972,22 @@
             ],
             "title": "Summary",
             "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks."
+          },
+          "summary_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
           },
           "summary_html": {
             "anyOf": [
@@ -19588,6 +20179,22 @@
             "title": "Caption",
             "description": "Inline Markdown only: bold, italic and links (http, https, mailto). Headings, lists, other blocks, raw HTML and images are not rendered."
           },
+          "caption_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Caption Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
+          },
           "caption_html": {
             "anyOf": [
               {
@@ -19610,6 +20217,22 @@
               }
             ],
             "title": "Alt Text"
+          },
+          "alt_text_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt Text Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
           },
           "width": {
             "anyOf": [
@@ -19714,6 +20337,22 @@
             ],
             "title": "Label"
           },
+          "label_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
+          },
           "country_code": {
             "anyOf": [
               {
@@ -19805,6 +20444,22 @@
               }
             ],
             "title": "Label"
+          },
+          "label_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
           },
           "departure": {
             "anyOf": [
@@ -20022,6 +20677,22 @@
             "type": "string",
             "title": "Label"
           },
+          "label_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
+          },
           "country_code": {
             "anyOf": [
               {
@@ -20078,6 +20749,22 @@
               }
             ],
             "title": "Title"
+          },
+          "title_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
           },
           "place": {
             "anyOf": [
@@ -20148,10 +20835,42 @@
             "type": "string",
             "title": "Title"
           },
+          "title_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
+          },
           "body": {
             "type": "string",
             "title": "Body",
             "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks."
+          },
+          "body_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
           },
           "body_html": {
             "anyOf": [
@@ -20231,6 +20950,22 @@
             ],
             "title": "Title"
           },
+          "title_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
+          },
           "summary": {
             "anyOf": [
               {
@@ -20242,6 +20977,22 @@
             ],
             "title": "Summary",
             "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks."
+          },
+          "summary_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
           },
           "summary_html": {
             "anyOf": [
@@ -20504,6 +21255,22 @@
             ],
             "title": "Title"
           },
+          "title_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
+          },
           "summary": {
             "anyOf": [
               {
@@ -20515,6 +21282,22 @@
             ],
             "title": "Summary",
             "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks."
+          },
+          "summary_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
           },
           "dates": {
             "anyOf": [
@@ -20589,6 +21372,22 @@
             ],
             "title": "Alt Text"
           },
+          "alt_text_lang": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt Text Lang",
+            "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
+          },
           "focal_x": {
             "anyOf": [
               {
@@ -20637,14 +21436,40 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 160,
-                "minLength": 1
+                "maxLength": 160
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Label"
+            "title": "Label",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "label_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "label_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "departure_area_id": {
             "anyOf": [
@@ -20899,6 +21724,28 @@
             ],
             "title": "Label"
           },
+          "label_nl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Nl"
+          },
+          "label_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label En"
+          },
           "departure_area": {
             "$ref": "#/components/schemas/AreaResponse"
           },
@@ -21078,6 +21925,8 @@
           "mode",
           "status",
           "label",
+          "label_nl",
+          "label_en",
           "departure_area",
           "arrival_area",
           "departure_location",
@@ -21126,14 +21975,40 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 160,
-                "minLength": 1
+                "maxLength": 160
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Label"
+            "title": "Label",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "label_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "label_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "departure_area_id": {
             "anyOf": [
@@ -23084,17 +23959,82 @@
             "default": "day"
           },
           "title": {
-            "type": "string",
-            "maxLength": 160,
-            "minLength": 1,
-            "title": "Title"
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "title_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "body": {
-            "type": "string",
-            "maxLength": 10000,
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Body",
-            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.",
-            "default": ""
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "body_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Nl",
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "body_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body En",
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "private_notes": {
             "anyOf": [
@@ -23150,8 +24090,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "occurred_at",
-          "title"
+          "occurred_at"
         ],
         "title": "TravelUpdateCreate",
         "description": "A reisupdate: what happened, with a private part and a shared part.\n\nPrivate: ``private_notes``, the exact ``location`` and the attached\n``media_asset_ids``. Shared once ``visibility`` allows it: ``title``,\n``body`` (empty until written for visitors), the date at ``share_date_precision``\nand the ``area_id`` (an area). The retired key ``date_precision`` is read as ``share_date_precision`` for one\nrelease."
@@ -23185,14 +24124,40 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 160,
-                "minLength": 1
+                "maxLength": 160
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Title"
+            "title": "Title",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "title_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "body": {
             "anyOf": [
@@ -23205,7 +24170,33 @@
               }
             ],
             "title": "Body",
-            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks."
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "body_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Nl",
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "body_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body En",
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "private_notes": {
             "anyOf": [
@@ -23304,9 +24295,53 @@
             "type": "string",
             "title": "Title"
           },
+          "title_nl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Nl"
+          },
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En"
+          },
           "body": {
             "type": "string",
             "title": "Body"
+          },
+          "body_nl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Nl"
+          },
+          "body_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body En"
           },
           "private_notes": {
             "anyOf": [
@@ -23395,7 +24430,11 @@
           "local_date",
           "share_date_precision",
           "title",
+          "title_nl",
+          "title_en",
           "body",
+          "body_nl",
+          "body_en",
           "private_notes",
           "area_id",
           "area",
@@ -23409,11 +24448,55 @@
       },
       "TripCreate": {
         "properties": {
+          "content_language": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContentLanguage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown. Left out, it is Dutch (the web app sends the interface language)."
+          },
           "title": {
-            "type": "string",
-            "maxLength": 160,
-            "minLength": 1,
-            "title": "Title"
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "title_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "summary": {
             "anyOf": [
@@ -23426,7 +24509,33 @@
               }
             ],
             "title": "Summary",
-            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks."
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "summary_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Nl",
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "summary_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary En",
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "starts_on": {
             "anyOf": [
@@ -23455,9 +24564,6 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "title"
-        ],
         "title": "TripCreate"
       },
       "TripOverviewResponse": {
@@ -23550,9 +24656,35 @@
             "type": "string",
             "title": "Owner Subject"
           },
+          "content_language": {
+            "$ref": "#/components/schemas/ContentLanguage",
+            "description": "The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown."
+          },
           "title": {
             "type": "string",
             "title": "Title"
+          },
+          "title_nl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Nl"
+          },
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En"
           },
           "summary": {
             "anyOf": [
@@ -23564,6 +24696,28 @@
               }
             ],
             "title": "Summary"
+          },
+          "summary_nl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Nl"
+          },
+          "summary_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary En"
           },
           "starts_on": {
             "anyOf": [
@@ -23630,8 +24784,13 @@
         "required": [
           "id",
           "owner_subject",
+          "content_language",
           "title",
+          "title_nl",
+          "title_en",
           "summary",
+          "summary_nl",
+          "summary_en",
           "starts_on",
           "ends_on",
           "cover_derivative_id",
@@ -23651,9 +24810,35 @@
             "type": "string",
             "title": "Owner Subject"
           },
+          "content_language": {
+            "$ref": "#/components/schemas/ContentLanguage",
+            "description": "The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown."
+          },
           "title": {
             "type": "string",
             "title": "Title"
+          },
+          "title_nl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Nl"
+          },
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En"
           },
           "summary": {
             "anyOf": [
@@ -23665,6 +24850,28 @@
               }
             ],
             "title": "Summary"
+          },
+          "summary_nl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Nl"
+          },
+          "summary_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary En"
           },
           "starts_on": {
             "anyOf": [
@@ -23749,8 +24956,13 @@
         "required": [
           "id",
           "owner_subject",
+          "content_language",
           "title",
+          "title_nl",
+          "title_en",
           "summary",
+          "summary_nl",
+          "summary_en",
           "starts_on",
           "ends_on",
           "cover_derivative_id",
@@ -24100,18 +25312,61 @@
       },
       "TripUpdate": {
         "properties": {
-          "title": {
+          "content_language": {
             "anyOf": [
               {
-                "type": "string",
-                "maxLength": 160,
-                "minLength": 1
+                "$ref": "#/components/schemas/ContentLanguage"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Title"
+            "description": "The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown."
+          },
+          "move_texts": {
+            "type": "boolean",
+            "title": "Move Texts",
+            "description": "With a changed `content_language`: also move every text of the trip from the old content language to the new one (for a trip that was entered in the wrong language). Refused while any field has text in both languages. Not stored.",
+            "default": false
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "title_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "summary": {
             "anyOf": [
@@ -24124,7 +25379,33 @@
               }
             ],
             "title": "Summary",
-            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks."
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "summary_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Nl",
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "summary_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary En",
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "starts_on": {
             "anyOf": [
@@ -24262,14 +25543,40 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 160,
-                "minLength": 1
+                "maxLength": 160
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Title"
+            "title": "Title",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "title_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "kind": {
             "anyOf": [
@@ -24357,7 +25664,33 @@
               }
             ],
             "title": "Summary",
-            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks."
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "summary_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Nl",
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "summary_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary En",
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "share_time": {
             "type": "boolean",
@@ -24419,6 +25752,28 @@
               }
             ],
             "title": "Title"
+          },
+          "title_nl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Nl"
+          },
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En"
           },
           "kind": {
             "anyOf": [
@@ -24503,6 +25858,28 @@
             ],
             "title": "Summary"
           },
+          "summary_nl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Nl"
+          },
+          "summary_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary En"
+          },
           "visibility": {
             "$ref": "#/components/schemas/Visibility"
           },
@@ -24562,6 +25939,8 @@
           "area",
           "location",
           "title",
+          "title_nl",
+          "title_en",
           "kind",
           "status",
           "starts_on",
@@ -24570,6 +25949,8 @@
           "end_time",
           "notes",
           "summary",
+          "summary_nl",
+          "summary_en",
           "visibility",
           "share_time",
           "share_date_precision",
@@ -24690,14 +26071,40 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 160,
-                "minLength": 1
+                "maxLength": 160
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Title"
+            "title": "Title",
+            "description": "The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "title_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Nl",
+            "description": "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "title_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title En",
+            "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "kind": {
             "anyOf": [
@@ -24791,7 +26198,33 @@
               }
             ],
             "title": "Summary",
-            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks."
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it."
+          },
+          "summary_nl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Nl",
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
+          },
+          "summary_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary En",
+            "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
           "share_time": {
             "anyOf": [

@@ -15,11 +15,13 @@ from ..auth import current_subject
 from ..database import get_session
 from ..errors import ApiException
 from ..http_delivery import (
+    LanguageQuery,
     file_response,
     persist_lazy_expiry,
     preview_navigation,
     reject_malformed_token,
     validate_public_path,
+    visitor_language,
 )
 from ..models import CollectionAuditEvent, CollectionMember, Trip
 from ..projection import scoped_navigation_url
@@ -302,7 +304,7 @@ def _member_of_active_collection(
     dependencies=[Depends(shared_delivery_limit)],
 )
 def get_shared_collection_trip(
-    request: Request, token: str, member_id: str, session: SessionDep, response: Response
+    request: Request, token: str, member_id: str, session: SessionDep, response: Response, lang: LanguageQuery = None
 ) -> dict:
     not_found = ApiException(
         status_code=status.HTTP_404_NOT_FOUND, detail="Link not found", headers=UNLISTED_HEADERS, code="not_found"
@@ -311,7 +313,7 @@ def get_shared_collection_trip(
     trip, member = _member_of_active_collection(session, token, member_id, not_found)
     for header, value in UNLISTED_HEADERS.items():
         response.headers[header] = value
-    return render_document(session, MemberAudience(member), trip, member.scope)
+    return render_document(session, MemberAudience(member), trip, member.scope, visitor_language(lang))
 
 
 @delivery_router.get(

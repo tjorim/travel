@@ -312,7 +312,7 @@ def test_export_contains_every_canonical_record_kind_with_relationships() -> Non
     assert response.headers["cache-control"] == "private, no-store"
     document = json.loads(response.text)
 
-    assert document["schema_version"] == EXPORT_SCHEMA_VERSION == "travel/trip-export@2"
+    assert document["schema_version"] == EXPORT_SCHEMA_VERSION == "travel/trip-export@3"
     assert datetime.fromisoformat(document["exported_at"]).tzinfo is not None
     assert document["trip"]["id"] == ids["trip"]
     assert "owner_subject" not in document["trip"]
@@ -320,6 +320,22 @@ def test_export_contains_every_canonical_record_kind_with_relationships() -> Non
     assert document["locations"][0]["id"] == ids["location"]
     assert document["locations"][0]["area_id"] == ids["area"]
     assert document["locations"][0]["address_line1"] == "1 Synthetic Street"
+    # Authored text is exported in both languages, neither marked as the original, with the trip's content language.
+    assert (document["trip"]["content_language"], document["trip"]["title_nl"], document["trip"]["title_en"]) == (
+        "nl",
+        "Exampleland 2054",
+        None,
+    )
+    assert (document["trip"]["summary_nl"], document["trip"]["summary_en"]) == ("Private plan", None)
+    assert (document["visits"][0]["title_nl"], document["visits"][0]["title_en"]) == ("Museum", None)
+    assert (document["areas"][0]["label_nl"], document["areas"][0]["label_en"]) == ("Example City", None)
+    assert document["travel_updates"][0]["title_nl"] == "Arrived" and document["travel_updates"][0]["body_en"] is None
+    assert (document["media_derivatives"][0]["caption_nl"], document["media_derivatives"][0]["alt_text_en"]) == (
+        "A caption",
+        None,
+    )
+    for single in ("title", "summary", "label", "body", "caption", "alt_text"):
+        assert single not in document["trip"] | document["areas"][0] | document["travel_updates"][0]
     assert document["visits"][0]["notes"] == "private visit note"
     assert document["stays"][0]["location_id"] == ids["location"]
     assert document["stays"][0]["area_id"] == ids["area"]

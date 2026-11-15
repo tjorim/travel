@@ -2838,9 +2838,19 @@ export interface components {
         AreaInput: {
             /**
              * Label
-             * @description Null leaves the area unnamed.
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
              */
             label?: string | null;
+            /**
+             * Label Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            label_nl?: string | null;
+            /**
+             * Label En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            label_en?: string | null;
             /** Country Code */
             country_code?: string | null;
             /** Region */
@@ -2901,9 +2911,19 @@ export interface components {
         AreaResponse: {
             /**
              * Label
-             * @description Null leaves the area unnamed.
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
              */
             label: string | null;
+            /**
+             * Label Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            label_nl: string | null;
+            /**
+             * Label En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            label_en: string | null;
             /** Country Code */
             country_code: string | null;
             /** Region */
@@ -2935,8 +2955,21 @@ export interface components {
         };
         /** AreaUpdate */
         AreaUpdate: {
-            /** Label */
+            /**
+             * Label
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
             label?: string | null;
+            /**
+             * Label Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            label_nl?: string | null;
+            /**
+             * Label En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            label_en?: string | null;
             /** Country Code */
             country_code?: string | null;
             /** Region */
@@ -3132,10 +3165,25 @@ export interface components {
         };
         /** CollectionCreate */
         CollectionCreate: {
+            /** @description The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown. Left out, it is Dutch. */
+            content_language?: components["schemas"]["ContentLanguage"] | null;
             /** Label */
             label: string;
-            /** Title */
+            /**
+             * Title
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
             title?: string | null;
+            /**
+             * Title Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            title_nl?: string | null;
+            /**
+             * Title En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            title_en?: string | null;
         };
         /** CollectionIndexDocument */
         CollectionIndexDocument: {
@@ -3147,6 +3195,11 @@ export interface components {
             schema_version?: "travel/collection@1";
             /** Title */
             title: string | null;
+            /**
+             * Title Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            title_lang?: ("nl" | "en") | null;
             /** Trips */
             trips: components["schemas"]["CollectionIndexEntry"][];
         };
@@ -3162,8 +3215,18 @@ export interface components {
             id: string;
             /** Title */
             title: string | null;
+            /**
+             * Title Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            title_lang?: ("nl" | "en") | null;
             /** Summary Text */
             summary_text: string | null;
+            /**
+             * Summary Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            summary_lang?: ("nl" | "en") | null;
             dates: components["schemas"]["ProjectionDates"] | null;
             /**
              * Cover
@@ -3234,8 +3297,13 @@ export interface components {
             id: string;
             /** Label */
             label: string;
+            content_language: components["schemas"]["ContentLanguage"];
             /** Title */
             title: string | null;
+            /** Title Nl */
+            title_nl: string | null;
+            /** Title En */
+            title_en: string | null;
             state: components["schemas"]["LinkState"];
             /** Token */
             token: string | null;
@@ -3262,11 +3330,31 @@ export interface components {
         };
         /** CollectionUpdate */
         CollectionUpdate: {
+            /** @description The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown. */
+            content_language?: components["schemas"]["ContentLanguage"] | null;
             /** Label */
             label?: string | null;
-            /** Title */
+            /**
+             * Title
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
             title?: string | null;
+            /**
+             * Title Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            title_nl?: string | null;
+            /**
+             * Title En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            title_en?: string | null;
         };
+        /**
+         * ContentLanguage
+         * @enum {string}
+         */
+        ContentLanguage: "nl" | "en";
         /** CurrentLocation */
         CurrentLocation: {
             /** Delay Seconds */
@@ -3836,8 +3924,21 @@ export interface components {
              * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.
              */
             notes?: string | null;
-            /** Label */
+            /**
+             * Label
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
             label?: string | null;
+            /**
+             * Label Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            label_nl?: string | null;
+            /**
+             * Label En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            label_en?: string | null;
             /** Area Id */
             area_id?: string | null;
             /**
@@ -3935,8 +4036,21 @@ export interface components {
              * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.
              */
             notes: string | null;
-            /** Label */
+            /**
+             * Label
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
             label: string | null;
+            /**
+             * Label Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            label_nl: string | null;
+            /**
+             * Label En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            label_en: string | null;
             /** Area Id */
             area_id: string;
             /**
@@ -3963,8 +4077,21 @@ export interface components {
          *     stay, visit, route end and travel update.
          */
         LocationUpdate: {
-            /** Label */
+            /**
+             * Label
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
             label?: string | null;
+            /**
+             * Label Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            label_nl?: string | null;
+            /**
+             * Label En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            label_en?: string | null;
             /** Area Id */
             area_id?: string | null;
             /** Share Address */
@@ -4149,11 +4276,34 @@ export interface components {
             travel_update_id?: string | null;
             /**
              * Caption
-             * @description Inline Markdown only: bold, italic and links (http, https, mailto). Headings, lists, other blocks, raw HTML and images are not rendered.
+             * @description Inline Markdown only: bold, italic and links (http, https, mailto). Headings, lists, other blocks, raw HTML and images are not rendered. The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
              */
             caption?: string | null;
-            /** Alt Text */
+            /**
+             * Caption Nl
+             * @description Inline Markdown only: bold, italic and links (http, https, mailto). Headings, lists, other blocks, raw HTML and images are not rendered. The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            caption_nl?: string | null;
+            /**
+             * Caption En
+             * @description Inline Markdown only: bold, italic and links (http, https, mailto). Headings, lists, other blocks, raw HTML and images are not rendered. The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            caption_en?: string | null;
+            /**
+             * Alt Text
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
             alt_text?: string | null;
+            /**
+             * Alt Text Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            alt_text_nl?: string | null;
+            /**
+             * Alt Text En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            alt_text_en?: string | null;
             /** Focal X */
             focal_x?: number | null;
             /** Focal Y */
@@ -4197,8 +4347,16 @@ export interface components {
             travel_update_id: string | null;
             /** Caption */
             caption: string | null;
+            /** Caption Nl */
+            caption_nl: string | null;
+            /** Caption En */
+            caption_en: string | null;
             /** Alt Text */
             alt_text: string | null;
+            /** Alt Text Nl */
+            alt_text_nl: string | null;
+            /** Alt Text En */
+            alt_text_en: string | null;
             /** Focal X */
             focal_x: number | null;
             /** Focal Y */
@@ -5176,6 +5334,11 @@ export interface components {
         ProjectionArea: {
             /** Label */
             label: string | null;
+            /**
+             * Label Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            label_lang?: ("nl" | "en") | null;
             /** Country Code */
             country_code: string | null;
             /** Region */
@@ -5212,10 +5375,20 @@ export interface components {
             /** Title */
             title: string | null;
             /**
+             * Title Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            title_lang?: ("nl" | "en") | null;
+            /**
              * Summary
              * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.
              */
             summary: string | null;
+            /**
+             * Summary Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            summary_lang?: ("nl" | "en") | null;
             /**
              * Summary Html
              * @description Sanitized HTML rendered from the Markdown `summary`; null without text. Read-only. Links are nofollow.
@@ -5276,12 +5449,22 @@ export interface components {
              */
             caption: string | null;
             /**
+             * Caption Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            caption_lang?: ("nl" | "en") | null;
+            /**
              * Caption Html
              * @description Sanitized HTML rendered from the Markdown `caption`; null without text. Read-only.
              */
             caption_html: string | null;
             /** Alt Text */
             alt_text: string | null;
+            /**
+             * Alt Text Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            alt_text_lang?: ("nl" | "en") | null;
             /** Width */
             width: number | null;
             /** Height */
@@ -5313,6 +5496,11 @@ export interface components {
             id: string;
             /** Label */
             label: string | null;
+            /**
+             * Label Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            label_lang?: ("nl" | "en") | null;
             /** Country Code */
             country_code: string | null;
             /** Region */
@@ -5332,6 +5520,11 @@ export interface components {
             status: components["schemas"]["PlanningStatus"];
             /** Label */
             label: string | null;
+            /**
+             * Label Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            label_lang?: ("nl" | "en") | null;
             departure: components["schemas"]["ProjectionArea"] | null;
             arrival: components["schemas"]["ProjectionArea"] | null;
             /** Carrier */
@@ -5395,6 +5588,11 @@ export interface components {
         ProjectionRoutePoint: {
             /** Label */
             label: string;
+            /**
+             * Label Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            label_lang?: ("nl" | "en") | null;
             /** Country Code */
             country_code: string | null;
             /** Latitude */
@@ -5413,6 +5611,11 @@ export interface components {
             id: string;
             /** Title */
             title: string | null;
+            /**
+             * Title Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            title_lang?: ("nl" | "en") | null;
             place: components["schemas"]["ProjectionArea"] | null;
             date_precision: components["schemas"]["DatePrecision"];
             /** Starts On */
@@ -5429,10 +5632,20 @@ export interface components {
             /** Title */
             title: string;
             /**
+             * Title Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            title_lang?: ("nl" | "en") | null;
+            /**
              * Body
              * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.
              */
             body: string;
+            /**
+             * Body Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            body_lang?: ("nl" | "en") | null;
             /**
              * Body Html
              * @description Sanitized HTML rendered from the Markdown `body`; null without text. Read-only.
@@ -5452,10 +5665,20 @@ export interface components {
             /** Title */
             title: string | null;
             /**
+             * Title Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            title_lang?: ("nl" | "en") | null;
+            /**
              * Summary
              * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.
              */
             summary: string | null;
+            /**
+             * Summary Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            summary_lang?: ("nl" | "en") | null;
             /**
              * Summary Html
              * @description Sanitized HTML rendered from the Markdown `summary`; null without text. Read-only.
@@ -5539,10 +5762,20 @@ export interface components {
             /** Title */
             title: string | null;
             /**
+             * Title Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            title_lang?: ("nl" | "en") | null;
+            /**
              * Summary
              * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.
              */
             summary: string | null;
+            /**
+             * Summary Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            summary_lang?: ("nl" | "en") | null;
             dates: components["schemas"]["ProjectionDates"] | null;
             /**
              * Summary Text
@@ -5560,6 +5793,11 @@ export interface components {
             height: number | null;
             /** Alt Text */
             alt_text: string | null;
+            /**
+             * Alt Text Lang
+             * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
+             */
+            alt_text_lang?: ("nl" | "en") | null;
             /** Focal X */
             focal_x: number | null;
             /** Focal Y */
@@ -5578,8 +5816,21 @@ export interface components {
              * @default planned
              */
             status?: components["schemas"]["PlanningStatus"];
-            /** Label */
+            /**
+             * Label
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
             label?: string | null;
+            /**
+             * Label Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            label_nl?: string | null;
+            /**
+             * Label En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            label_en?: string | null;
             /** Departure Area Id */
             departure_area_id?: string | null;
             /** Arrival Area Id */
@@ -5637,6 +5888,10 @@ export interface components {
             status: components["schemas"]["PlanningStatus"];
             /** Label */
             label: string | null;
+            /** Label Nl */
+            label_nl: string | null;
+            /** Label En */
+            label_en: string | null;
             departure_area: components["schemas"]["AreaResponse"];
             arrival_area: components["schemas"]["AreaResponse"];
             departure_location: components["schemas"]["LocationResponse"] | null;
@@ -5676,8 +5931,21 @@ export interface components {
             mode?: components["schemas"]["RouteMode"] | null;
             /** @description idea: a candidate being compared (two flights, a train or a bus) that covers no journey and cannot be shared; planned: the intended route; confirmed: reserved or confirmed; cancelled. */
             status?: components["schemas"]["PlanningStatus"] | null;
-            /** Label */
+            /**
+             * Label
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
             label?: string | null;
+            /**
+             * Label Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            label_nl?: string | null;
+            /**
+             * Label En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            label_en?: string | null;
             /** Departure Area Id */
             departure_area_id?: string | null;
             /** Arrival Area Id */
@@ -6371,14 +6639,36 @@ export interface components {
             occurred_at: string;
             /** @default day */
             share_date_precision?: components["schemas"]["DatePrecision"];
-            /** Title */
-            title: string;
+            /**
+             * Title
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
+            title?: string | null;
+            /**
+             * Title Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            title_nl?: string | null;
+            /**
+             * Title En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            title_en?: string | null;
             /**
              * Body
-             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.
-             * @default
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
              */
-            body?: string;
+            body?: string | null;
+            /**
+             * Body Nl
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            body_nl?: string | null;
+            /**
+             * Body En
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            body_en?: string | null;
             /**
              * Private Notes
              * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.
@@ -6400,13 +6690,36 @@ export interface components {
              */
             occurred_at?: string | null;
             share_date_precision?: components["schemas"]["DatePrecision"] | null;
-            /** Title */
+            /**
+             * Title
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
             title?: string | null;
             /**
+             * Title Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            title_nl?: string | null;
+            /**
+             * Title En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            title_en?: string | null;
+            /**
              * Body
-             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
              */
             body?: string | null;
+            /**
+             * Body Nl
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            body_nl?: string | null;
+            /**
+             * Body En
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            body_en?: string | null;
             /**
              * Private Notes
              * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.
@@ -6442,8 +6755,16 @@ export interface components {
             share_date_precision: components["schemas"]["DatePrecision"];
             /** Title */
             title: string;
+            /** Title Nl */
+            title_nl: string | null;
+            /** Title En */
+            title_en: string | null;
             /** Body */
             body: string;
+            /** Body Nl */
+            body_nl: string | null;
+            /** Body En */
+            body_en: string | null;
             /** Private Notes */
             private_notes: string | null;
             /** Area Id */
@@ -6466,13 +6787,38 @@ export interface components {
         };
         /** TripCreate */
         TripCreate: {
-            /** Title */
-            title: string;
+            /** @description The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown. Left out, it is Dutch (the web app sends the interface language). */
+            content_language?: components["schemas"]["ContentLanguage"] | null;
+            /**
+             * Title
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
+            title?: string | null;
+            /**
+             * Title Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            title_nl?: string | null;
+            /**
+             * Title En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            title_en?: string | null;
             /**
              * Summary
-             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
              */
             summary?: string | null;
+            /**
+             * Summary Nl
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            summary_nl?: string | null;
+            /**
+             * Summary En
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            summary_en?: string | null;
             /** Starts On */
             starts_on?: string | null;
             /** Ends On */
@@ -6515,10 +6861,20 @@ export interface components {
             id: string;
             /** Owner Subject */
             owner_subject: string;
+            /** @description The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown. */
+            content_language: components["schemas"]["ContentLanguage"];
             /** Title */
             title: string;
+            /** Title Nl */
+            title_nl: string | null;
+            /** Title En */
+            title_en: string | null;
             /** Summary */
             summary: string | null;
+            /** Summary Nl */
+            summary_nl: string | null;
+            /** Summary En */
+            summary_en: string | null;
             /** Starts On */
             starts_on: string | null;
             /** Ends On */
@@ -6545,10 +6901,20 @@ export interface components {
             id: string;
             /** Owner Subject */
             owner_subject: string;
+            /** @description The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown. */
+            content_language: components["schemas"]["ContentLanguage"];
             /** Title */
             title: string;
+            /** Title Nl */
+            title_nl: string | null;
+            /** Title En */
+            title_en: string | null;
             /** Summary */
             summary: string | null;
+            /** Summary Nl */
+            summary_nl: string | null;
+            /** Summary En */
+            summary_en: string | null;
             /** Starts On */
             starts_on: string | null;
             /** Ends On */
@@ -6669,13 +7035,44 @@ export interface components {
         };
         /** TripUpdate */
         TripUpdate: {
-            /** Title */
+            /** @description The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown. */
+            content_language?: components["schemas"]["ContentLanguage"] | null;
+            /**
+             * Move Texts
+             * @description With a changed `content_language`: also move every text of the trip from the old content language to the new one (for a trip that was entered in the wrong language). Refused while any field has text in both languages. Not stored.
+             * @default false
+             */
+            move_texts?: boolean;
+            /**
+             * Title
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
             title?: string | null;
             /**
+             * Title Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            title_nl?: string | null;
+            /**
+             * Title En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            title_en?: string | null;
+            /**
              * Summary
-             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
              */
             summary?: string | null;
+            /**
+             * Summary Nl
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            summary_nl?: string | null;
+            /**
+             * Summary En
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            summary_en?: string | null;
             /** Starts On */
             starts_on?: string | null;
             /** Ends On */
@@ -6723,8 +7120,21 @@ export interface components {
             /** Area Id */
             area_id?: string | null;
             location?: components["schemas"]["LocationInput"] | null;
-            /** Title */
+            /**
+             * Title
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
             title?: string | null;
+            /**
+             * Title Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            title_nl?: string | null;
+            /**
+             * Title En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            title_en?: string | null;
             kind?: components["schemas"]["VisitKind"] | null;
             /** @default planned */
             status?: components["schemas"]["PlanningStatus"];
@@ -6743,9 +7153,19 @@ export interface components {
             notes?: string | null;
             /**
              * Summary
-             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
              */
             summary?: string | null;
+            /**
+             * Summary Nl
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            summary_nl?: string | null;
+            /**
+             * Summary En
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            summary_en?: string | null;
             /**
              * Share Time
              * @default false
@@ -6768,6 +7188,10 @@ export interface components {
             location: components["schemas"]["LocationResponse"] | null;
             /** Title */
             title: string | null;
+            /** Title Nl */
+            title_nl: string | null;
+            /** Title En */
+            title_en: string | null;
             kind: components["schemas"]["VisitKind"] | null;
             status: components["schemas"]["PlanningStatus"];
             /** Starts On */
@@ -6782,6 +7206,10 @@ export interface components {
             notes: string | null;
             /** Summary */
             summary: string | null;
+            /** Summary Nl */
+            summary_nl: string | null;
+            /** Summary En */
+            summary_en: string | null;
             visibility: components["schemas"]["Visibility"];
             /** Share Time */
             share_time: boolean;
@@ -6826,8 +7254,21 @@ export interface components {
             /** Area Id */
             area_id?: string | null;
             location?: components["schemas"]["LocationInput"] | null;
-            /** Title */
+            /**
+             * Title
+             * @description The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
+             */
             title?: string | null;
+            /**
+             * Title Nl
+             * @description The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            title_nl?: string | null;
+            /**
+             * Title En
+             * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            title_en?: string | null;
             kind?: components["schemas"]["VisitKind"] | null;
             status?: components["schemas"]["PlanningStatus"] | null;
             /** Starts On */
@@ -6845,9 +7286,19 @@ export interface components {
             notes?: string | null;
             /**
              * Summary
-             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks.
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it.
              */
             summary?: string | null;
+            /**
+             * Summary Nl
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one.
+             */
+            summary_nl?: string | null;
+            /**
+             * Summary En
+             * @description Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one.
+             */
+            summary_en?: string | null;
             /** Share Time */
             share_time?: boolean | null;
             /** @description How precisely a visitor may read this record's dates: day, month or year. null (the default) follows the audience: each public view and hidden link sets its own date precision in its share scope (defaults.date_precision). The coarser of the two always applies, so a visitor never gets a finer date than either allows; with neither set the date reads by month. Send null to follow the audience; omit to keep the value. */
@@ -6899,6 +7350,7 @@ export type CollectionMemberResponse = components['schemas']['CollectionMemberRe
 export type CollectionMembershipResponse = components['schemas']['CollectionMembershipResponse'];
 export type CollectionResponse = components['schemas']['CollectionResponse'];
 export type CollectionUpdate = components['schemas']['CollectionUpdate'];
+export type ContentLanguage = components['schemas']['ContentLanguage'];
 export type CurrentLocation = components['schemas']['CurrentLocation'];
 export type DatePrecision = components['schemas']['DatePrecision'];
 export type DerivativePurpose = components['schemas']['DerivativePurpose'];
@@ -7547,7 +7999,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Schema travel/trip-export@2 */
+            /** @description Schema travel/trip-export@3 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -9894,7 +10346,10 @@ export interface operations {
     };
     list_public_trips_api_public_trips_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language. */
+                lang?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -9910,11 +10365,23 @@ export interface operations {
                     "application/json": components["schemas"]["PublicTripCard"][];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_public_trip_api_public_trips__slug__get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language. */
+                lang?: string | null;
+            };
             header?: never;
             path: {
                 slug: string;
@@ -10009,7 +10476,10 @@ export interface operations {
     };
     get_shared_trip_api_shared__token__get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language. */
+                lang?: string | null;
+            };
             header?: never;
             path: {
                 token: string;
@@ -10104,7 +10574,10 @@ export interface operations {
     };
     public_feed_api_public_trips__slug__feed_atom_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language. */
+                lang?: string | null;
+            };
             header?: never;
             path: {
                 slug: string;
@@ -10135,7 +10608,10 @@ export interface operations {
     };
     link_feed_api_shared__token__feed_atom_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language. */
+                lang?: string | null;
+            };
             header?: never;
             path: {
                 token: string;
@@ -10166,7 +10642,10 @@ export interface operations {
     };
     get_shared_collection_trip_api_shared__token__trips__member_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language. */
+                lang?: string | null;
+            };
             header?: never;
             path: {
                 token: string;

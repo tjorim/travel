@@ -1,10 +1,11 @@
 """Ownership of a trip: every owner operation starts here."""
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from ..access import set_cover
 from ..audit import scrub_trip_audit_text
+from ..content_language import DEFAULT_LANGUAGE, ContentLanguage
 from ..errors import RecordNotFound, Refusal, ServiceError, service_error
 from ..models import (
     DocumentAsset,
@@ -20,6 +21,7 @@ from ..models import (
 )
 from ..overview import trip_overview
 from ..schemas import Identifier, TripCreate, TripResponse, TripSummaryResponse, TripUpdate
+from .localized import move_texts, write_texts
 
 DEFAULT_TRIP_PAGE = 100
 
@@ -88,8 +90,13 @@ def _trip_fields(trip: Trip, cover: MediaDerivative | None) -> dict:
     return {
         "id": trip.id,
         "owner_subject": trip.owner_subject,
+        "content_language": trip.content_language,
         "title": trip.title,
+        "title_nl": trip.title_nl,
+        "title_en": trip.title_en,
         "summary": trip.summary,
+        "summary_nl": trip.summary_nl,
+        "summary_en": trip.summary_en,
         "starts_on": trip.starts_on,
         "ends_on": trip.ends_on,
         "cover_derivative_id": cover.id if cover else None,
@@ -108,7 +115,7 @@ def list_trips(
     """The owner's trips, newest first, without any embedded record."""
     statement = select(Trip).where(Trip.owner_subject == subject).order_by(Trip.created_at.desc(), Trip.id)
     if q:
-        statement = statement.where(Trip.title.ilike(f"%{q}%"))
+        statement = statement.where(or_(Trip.title_nl.ilike(f"%{q}%"), Trip.title_en.ilike(f"%{q}%")))
     found = list(session.scalars(statement.limit(limit).offset(offset)))
     ids = [trip.id for trip in found]
     covers = _covers(session, ids)
@@ -134,7 +141,11 @@ def list_trips(
 
 
 def create_trip(session: Session, subject: str, payload: TripCreate) -> TripResponse:
-    trip = Trip(owner_subject=subject, **payload.model_dump())
+    language = payload.content_language or DEFAULT_LANGUAGE
+    trip = Trip(
+        owner_subject=subject, content_language=language.value, starts_on=payload.starts_on, ends_on=payload.ends_on
+    )
+    write_texts(trip, ("title", "summary"), payload, language.value, required=("title",))
     session.add(trip)
     session.flush()
     return trip_response(session, trip)
@@ -151,12 +162,37 @@ def get_trip_overview(session: Session, subject: str, trip_id: Identifier) -> di
 
 def update_trip(session: Session, subject: str, trip_id: Identifier, payload: TripUpdate) -> TripResponse:
     trip = owned_trip(session, trip_id, subject)
-    changes = payload.model_dump(exclude_unset=True)
+    changes = payload.model_dump(
+        exclude_unset=True,
+        exclude={
+            "title",
+            "title_nl",
+            "title_en",
+            "summary",
+            "summary_nl",
+            "summary_en",
+            "move_texts",
+            "content_language",
+        },
+    )
     if "cover_derivative_id" in changes:
         try:
             set_cover(trip, changes.pop("cover_derivative_id"))
         except ServiceError as error:
             raise service_error(error) from error
+    if payload.content_language is not None and payload.content_language.value != trip.content_language:
+        previous = ContentLanguage(trip.content_language)
+        if payload.move_texts:
+            move_texts(session, trip.id, previous, payload.content_language)
+            session.refresh(trip)
+        trip.content_language = payload.content_language.value
+    elif payload.move_texts:
+        raise Refusal(
+            "Choose a different content language to move the trip's texts to",
+            code="move_texts_needs_a_new_content_language",
+            field="move_texts",
+        )
+    write_texts(trip, ("title", "summary"), payload, trip.content_language, required=("title",))
     for field, value in changes.items():
         setattr(trip, field, value)
     if trip.starts_on is not None and trip.ends_on is not None and trip.ends_on < trip.starts_on:
