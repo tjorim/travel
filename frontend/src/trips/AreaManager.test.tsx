@@ -173,7 +173,8 @@ it("shows an edited area at once and adds a new one to the list", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Gebied opslaan" }));
   await screen.findByRole("button", { name: "Gebied Tainan bekijken" });
   expect(api.lastBody("POST /api/trips/trip/areas")).toMatchObject({
-    label: "Tainan",
+    label_nl: "Tainan",
+    label_en: null,
     country_code: "TW",
     latitude: null,
     longitude: null,

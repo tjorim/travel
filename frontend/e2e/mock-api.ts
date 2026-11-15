@@ -2,8 +2,13 @@ import type { Page, Route } from "@playwright/test";
 
 export const ownerTrip = {
   id: "trip-1",
+  content_language: "nl",
   title: "Exampleland 2054",
+  title_nl: "Exampleland 2054",
+  title_en: null,
   summary: "Three weeks around the island.",
+  summary_nl: "Three weeks around the island.",
+  summary_en: null,
   summary_html: "<p>Three weeks around the island.</p>",
   starts_on: "2054-11-01",
   ends_on: "2054-11-21",

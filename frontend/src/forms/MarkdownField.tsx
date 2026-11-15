@@ -15,7 +15,6 @@ import { ownerRequest } from "../query/api";
 import { useOwner } from "../query/owner-queries";
 import { optionalNote, useFieldErrors } from "./fields";
 import { applyMarkdownSnippet, type MarkdownSnippet } from "./markdown-snippets";
-import { TranslationDraft } from "./TranslationDraft";
 
 /** How the server renders the field: long-form Markdown, an inline-only caption, or contact details. */
 export type MarkdownFormat = "markdown" | "inline" | "contact";
@@ -116,7 +115,15 @@ type RenderResult = { html: string | null; text: string | null };
  * The server's rendering of the current text: the same renderer as the stored field, so the preview
  * and what visitors see never drift apart.
  */
-function MarkdownPreview({ source, format }: { source: string; format: MarkdownFormat }) {
+function MarkdownPreview({
+  source,
+  format,
+  lang,
+}: {
+  source: string;
+  format: MarkdownFormat;
+  lang?: string;
+}) {
   useLocale();
   const owner = useOwner();
   const [state, setState] = useState<
@@ -167,7 +174,7 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
       </Alert>
     );
   if (!state.result.html) return <p className="help">{m.markdown_nothing_to_show_yet()}</p>;
-  return <Markdown html={state.result.html} text={source} />;
+  return <Markdown html={state.result.html} text={source} lang={lang} />;
 }
 
 /**
@@ -179,18 +186,21 @@ export function MarkdownField({
   label,
   optional,
   format = "markdown",
+  companion,
   ...input
 }: {
   field: AnyFieldApi;
   label: string;
   optional?: string | boolean;
   format?: MarkdownFormat;
+  /** The same text in the other language: its errors show here too, as only one language is on screen. */
+  companion?: AnyFieldApi;
 } & Omit<
   TextareaHTMLAttributes<HTMLTextAreaElement>,
   "value" | "onChange" | "onBlur" | "name" | "id"
 >) {
   useLocale();
-  const { message, invalid } = useFieldErrors(field);
+  const { message, invalid } = useFieldErrors(field, companion);
   const [previewing, setPreviewing] = useState(false);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const pendingSelection = useRef<[number, number] | null>(null);
@@ -288,21 +298,12 @@ export function MarkdownField({
             className="min-h-22.5 rounded-lg border border-dashed border-travel-control-border bg-travel-surface px-3 py-2.75"
             aria-live="polite"
           >
-            <MarkdownPreview source={value} format={format} />
+            <MarkdownPreview source={value} format={format} lang={rest.lang} />
           </div>
         )}
         <FieldDescription className="text-xs text-travel-muted">{HINTS[format]}</FieldDescription>
         <FieldError>{message}</FieldError>
       </Field>
-      {format === "markdown" && (
-        <TranslationDraft
-          label={label}
-          value={value}
-          onAppend={(draft) =>
-            field.handleChange(value.trim() ? `${value.replace(/\s+$/, "")}\n\n${draft}` : draft)
-          }
-        />
-      )}
     </>
   );
 }

@@ -11,6 +11,7 @@ import {
   TimeZoneField,
 } from "../../forms/fields";
 import { DocumentLinksField } from "../../forms/DocumentLinksField";
+import { LocalizedField } from "../../forms/LocalizedField";
 import { MarkdownField } from "../../forms/MarkdownField";
 import type { useRecordForm } from "../../forms/useRecordForm";
 import { useLocale } from "../../locale";
@@ -85,17 +86,14 @@ export function RouteForm({
       <record.form.Subscribe selector={(state) => state.values.status}>
         {(status) => status === "idea" && <IdeaNote kind="route" />}
       </record.form.Subscribe>
-      <record.form.Field name="label">
-        {(input) => (
-          <TextField
-            field={input}
-            label={m.common_name()}
-            optional
-            maxLength={160}
-            placeholder={m.routes_without_a_name_the_route_is_called_departure_arrival()}
-          />
-        )}
-      </record.form.Field>
+      <LocalizedField
+        form={record.form}
+        name="label"
+        label={m.common_name()}
+        optional
+        maxLength={160}
+        placeholder={m.routes_without_a_name_the_route_is_called_departure_arrival()}
+      />
       <record.form.Field name="departure" validators={{ onSubmit: departureChosen }}>
         {(input) => (
           <PlacePicker

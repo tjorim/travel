@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import type { OwnerSession } from "../auth";
 import { ProjectionView, isProjection, type Audience, type Projection } from "../ProjectionView";
+import type { ContentLanguage } from "../content-language";
 import type { ShareScope } from "../api-types";
 import { ownerFile, ownerRequest } from "../query/api";
 
@@ -17,6 +18,7 @@ export function RenderedPreview({
   session,
   previewBase,
   focusId,
+  language,
 }: {
   projection: Projection;
   audience: Audience;
@@ -29,6 +31,8 @@ export function RenderedPreview({
   previewBase?: string;
   /** A delivered item, such as one update, to bring into view once the preview shows. */
   focusId?: string;
+  /** The language the preview's unmarked texts are in, when it is known; marks them for screen readers. */
+  language?: ContentLanguage;
 }) {
   useLocale();
   const [images, setImages] = useState<Record<string, string>>({});
@@ -140,6 +144,7 @@ export function RenderedPreview({
       {error && <p role="alert">{error}</p>}
       <ProjectionView
         projection={projection}
+        language={language}
         audience={audience}
         identifier=""
         focusId={focusId}

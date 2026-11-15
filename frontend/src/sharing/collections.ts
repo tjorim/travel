@@ -51,18 +51,21 @@ export type CollectionAction = {
   reason: string | null;
 };
 
+/** What a collection is called, and the title visitors read in each language. */
+type CollectionTexts = { label: string; title_nl: string | null; title_en: string | null };
+
 /** The owner API calls behind collection links. */
 export function useCollectionMutations() {
   const refresh = (subject: string) => [ownerKeys.collections(subject)];
   const save = m.sharing_collection_save_error;
   const act = m.sharing_collection_action_error;
 
-  const create = useOwnerMutation<{ label: string; title: string | null }, Collection>({
+  const create = useOwnerMutation<CollectionTexts & { content_language: "nl" | "en" }, Collection>({
     fallback: save,
     request: (body) => ({ path: collectionsPath, method: "POST", body }),
     invalidate: refresh,
   });
-  const update = useOwnerMutation<{ id: string; label: string; title: string | null }, Collection>({
+  const update = useOwnerMutation<{ id: string } & CollectionTexts, Collection>({
     fallback: save,
     request: ({ id, ...body }) => ({ path: `${collectionsPath}/${id}`, method: "PATCH", body }),
     invalidate: refresh,
@@ -112,13 +115,13 @@ export function useCollectionMutations() {
     invalidate: refresh,
   });
   const previewMember = useOwnerMutation<
-    { collectionId: string; memberId: string; scope: ShareScope },
+    { collectionId: string; memberId: string; scope: ShareScope; language?: "nl" | "en" },
     ProjectionDocument
   >({
     fallback: m.sharing_the_link_preview_could_not_be_loaded,
-    // The unsaved candidate scope is rendered and never stored.
-    request: ({ collectionId, memberId, scope }) => ({
-      path: `${collectionsPath}/${collectionId}/members/${memberId}/preview`,
+    // The unsaved candidate scope is rendered and never stored, in the language asked for (the trip's own by default).
+    request: ({ collectionId, memberId, scope, language }) => ({
+      path: `${collectionsPath}/${collectionId}/members/${memberId}/preview${language ? `?lang=${language}` : ""}`,
       method: "POST",
       body: scope,
     }),

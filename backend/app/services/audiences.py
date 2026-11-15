@@ -204,10 +204,16 @@ def render_document(
 
 
 def preview_document(
-    session: Session, subject: str, audience: Audience, candidate: ShareScopeInput | None = None
+    session: Session,
+    subject: str,
+    audience: Audience,
+    candidate: ShareScopeInput | None = None,
+    language: ContentLanguage | str | None = None,
 ) -> dict:
+    """The preview in the language a visitor would ask for (the trip's own when none), so the owner can read the
+    other language's version as that visitor does."""
     trip, scope = preview_scope(session, subject, audience, candidate)
-    return render_document(session, audience, trip, scope)
+    return render_document(session, audience, trip, scope, language)
 
 
 def review_future(

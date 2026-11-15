@@ -3,7 +3,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { fakeApi, type FakeApi } from "../query/fake-api";
+import { fakeApi, resolveTexts, type FakeApi } from "../query/fake-api";
 import { useTripWithUpdates, useTripsQuery } from "../query/owner-queries";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
 import type { TravelUpdate, Trip } from "../api-types";
@@ -45,7 +45,7 @@ let api: FakeApi;
 function embed(
   key: "travel_updates",
   path: string,
-  shape: (item: Record<string, unknown>) => Record<string, unknown> = (item) => item,
+  shape: (item: Record<string, unknown>) => Record<string, unknown> = (item) => resolveTexts(item),
 ) {
   const list = () => state.trip[key] as { id: string }[];
   const set = (items: unknown[]) => {
@@ -213,6 +213,18 @@ it("saves who may see an update with the update itself, private by default", asy
     "Iedereen",
   );
   expect(screen.getByRole("button", { name: /^Aankomst\b/ }).textContent).toContain("Privé");
+});
+
+it("checks the text for visitors again when who may see the update changes", async () => {
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe update" }));
+  const message = "Schrijf eerst de tekst voor bezoekers, of kies “Privé”.";
+  // Nothing is shared, so nothing needs text.
+  expect(screen.queryByText(message)).toBeNull();
+  chooseOption("Zichtbaarheid", "Iedereen — alle bezoekers");
+  expect(await screen.findByText(message)).toBeTruthy();
+  chooseOption("Zichtbaarheid", "Privé — alleen ik");
+  await waitFor(() => expect(screen.queryByText(message)).toBeNull());
 });
 
 const timeInput = () =>

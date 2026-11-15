@@ -47,7 +47,7 @@ async function openOwner(page: Page, locale: (typeof locales)[number], theme: "l
       const body = JSON.parse(route.request().postData() ?? "{}") as Record<string, unknown>;
       const visit = {
         id: `visit-${created.length + 1}`,
-        title: null,
+        title: (body.title_nl as string | undefined) ?? null,
         kind: null,
         status: "planned",
         starts_on: null,
@@ -143,7 +143,7 @@ for (const locale of locales) {
           .click();
         await expect(dialog).toHaveCount(0);
         expect(created).toHaveLength(1);
-        expect(created[0]).toMatchObject({ starts_on: "2054-11-12", title: "Harbour walk" });
+        expect(created[0]).toMatchObject({ starts_on: "2054-11-12", title_nl: "Harbour walk" });
         // The new visit's agenda row takes the focus.
         await expect(
           agenda.locator("[data-agenda-record]", { hasText: "Harbour walk" }),

@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import type { OwnerSession } from "../../auth";
-import { MarkdownField } from "../../forms/MarkdownField";
+import { LocalizedField } from "../../forms/LocalizedField";
 import { AsyncSearchSelect, TextField } from "../../forms/fields";
 import type { useRecordForm } from "../../forms/useRecordForm";
 import { useLocale } from "../../locale";
@@ -30,22 +30,28 @@ export const dimensionInRange = ({ value }: { value: string }) => {
 
 export type PresentationValues = {
   travelUpdateId: string;
-  caption: string;
-  altText: string;
+  captionNl: string;
+  captionEn: string;
+  altTextNl: string;
+  altTextEn: string;
   focalX: string;
   focalY: string;
 };
 export const blankPresentation = (): PresentationValues => ({
   travelUpdateId: "",
-  caption: "",
-  altText: "",
+  captionNl: "",
+  captionEn: "",
+  altTextNl: "",
+  altTextEn: "",
   focalX: "",
   focalY: "",
 });
 export const fromDerivative = (derivative: MediaDerivative): PresentationValues => ({
   travelUpdateId: derivative.travel_update_id ?? "",
-  caption: derivative.caption ?? "",
-  altText: derivative.alt_text ?? "",
+  captionNl: derivative.caption_nl ?? "",
+  captionEn: derivative.caption_en ?? "",
+  altTextNl: derivative.alt_text_nl ?? "",
+  altTextEn: derivative.alt_text_en ?? "",
   focalX: derivative.focal_x?.toString() ?? "",
   focalY: derivative.focal_y?.toString() ?? "",
 });
@@ -131,20 +137,21 @@ export function PresentationFields({
           </Field>
         )}
       </record.form.Field>
-      <record.form.Field name="caption">
-        {(field) => (
-          <MarkdownField
-            field={field}
-            format="inline"
-            label={m.media_caption()}
-            maxLength={500}
-            rows={2}
-          />
-        )}
-      </record.form.Field>
-      <record.form.Field name="altText">
-        {(field) => <TextField field={field} label={m.media_alternative_text()} maxLength={300} />}
-      </record.form.Field>
+      <LocalizedField
+        form={record.form}
+        name="caption"
+        kind="markdown"
+        format="inline"
+        label={m.media_caption()}
+        maxLength={500}
+        rows={2}
+      />
+      <LocalizedField
+        form={record.form}
+        name="altText"
+        label={m.media_alternative_text()}
+        maxLength={300}
+      />
       <div className="field-row">
         <record.form.Field
           name="focalX"

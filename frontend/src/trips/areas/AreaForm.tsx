@@ -1,4 +1,6 @@
-import { RecordForm, requiredText, TextField, TimeZoneField } from "../../forms/fields";
+import { RecordForm, TextField, TimeZoneField } from "../../forms/fields";
+import { LocalizedField } from "../../forms/LocalizedField";
+import { useContentLanguage } from "../../content-language";
 import type { useRecordForm } from "../../forms/useRecordForm";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
@@ -22,9 +24,11 @@ export function AreaForm({
   record: ReturnType<typeof useRecordForm<Values, Area>>;
 }) {
   useLocale();
+  const language = useContentLanguage();
   function fillFromSearch(result: LocationInput) {
+    // The provider's name is in one language only: it goes into the trip's, and the owner can add the other.
     record.form.setFieldValue(
-      "label",
+      language === "en" ? "labelEn" : "labelNl",
       result.locality ?? result.admin_area ?? result.display_name ?? "",
     );
     record.form.setFieldValue("countryCode", result.country_code ?? "");
@@ -51,15 +55,14 @@ export function AreaForm({
         onSelect={fillFromSearch}
       />
       <div className="field-row">
-        <record.form.Field
+        <LocalizedField
+          form={record.form}
           name="label"
-          validators={{
-            onChange: requiredText(m.areas_give_the_area_a_name),
-            onSubmit: requiredText(m.areas_give_the_area_a_name),
-          }}
-        >
-          {(field) => <TextField field={field} label={m.common_name()} required maxLength={120} />}
-        </record.form.Field>
+          label={m.common_name()}
+          required
+          requiredMessage={m.areas_give_the_area_a_name}
+          maxLength={120}
+        />
         <record.form.Field name="countryCode">
           {(field) => (
             <TextField field={field} label={m.locations_country_code()} optional maxLength={2} />

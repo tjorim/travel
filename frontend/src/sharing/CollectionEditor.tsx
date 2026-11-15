@@ -4,7 +4,9 @@ import { Field, FieldLabel } from "@/ui/field";
 import { Input } from "@/ui/input";
 import { useState } from "react";
 
+import { interfaceLanguage } from "../content-language";
 import { SearchSelect } from "../forms/fields";
+import { LocalizedFieldView, plainField } from "../forms/LocalizedField";
 import { useConfirmation } from "../forms/useConfirmation";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
@@ -44,7 +46,12 @@ export function CollectionEditor({
   const id = collectionId ?? createdId;
   const collection = collections.data?.find((item) => item.id === id) ?? null;
   const [label, setLabel] = useState(collection?.label ?? "");
-  const [title, setTitle] = useState(collection?.title ?? "");
+  const [titles, setTitles] = useState({
+    nl: collection?.title_nl ?? "",
+    en: collection?.title_en ?? "",
+  });
+  // A new collection is written in the language the owner opened the editor in.
+  const [creationLanguage] = useState(interfaceLanguage);
   const [addTripId, setAddTripId] = useState("");
   const [editingMember, setEditingMember] = useState<CollectionMember | null>(null);
   const [revealed, setRevealed] = useState<{ label: string; url: string } | null>(null);
@@ -60,13 +67,20 @@ export function CollectionEditor({
     setNotice(errorNotice(error, fallback));
 
   function saveDetails() {
-    const values = { label: label.trim(), title: title.trim() || null };
+    const values = {
+      label: label.trim(),
+      title_nl: titles.nl.trim() || null,
+      title_en: titles.en.trim() || null,
+    };
     if (!values.label) return;
     if (!collection) {
-      mutations.create.mutateAsync(values).then((created) => {
-        setCreatedId(created.id);
-        setNotice(textNotice(() => m.sharing_collection_created()));
-      }, fail(m.sharing_collection_save_error));
+      // A new collection is written in the language the owner is using the app in.
+      mutations.create
+        .mutateAsync({ ...values, content_language: creationLanguage })
+        .then((created) => {
+          setCreatedId(created.id);
+          setNotice(textNotice(() => m.sharing_collection_created()));
+        }, fail(m.sharing_collection_save_error));
     } else {
       mutations.update.mutateAsync({ id: collection.id, ...values }).then(() => {
         setNotice(textNotice(() => m.sharing_collection_saved()));
@@ -158,15 +172,20 @@ export function CollectionEditor({
             </FieldLabel>
           </Field>
           <Field>
-            <FieldLabel>
-              {m.sharing_collection_title()}
-              <Input
-                maxLength={160}
-                value={title}
-                disabled={locked}
-                onChange={(event) => setTitle(event.target.value)}
-              />
-            </FieldLabel>
+            <LocalizedFieldView
+              label={m.sharing_collection_title()}
+              language={collection?.content_language ?? creationLanguage}
+              maxLength={160}
+              disabled={locked}
+              fields={{
+                nl: plainField("titleNl", titles.nl, collection?.title_nl ?? "", (text) =>
+                  setTitles((current) => ({ ...current, nl: text })),
+                ),
+                en: plainField("titleEn", titles.en, collection?.title_en ?? "", (text) =>
+                  setTitles((current) => ({ ...current, en: text })),
+                ),
+              }}
+            />
             <p className="help">{m.sharing_collection_title_help()}</p>
           </Field>
           <div className="button-row">

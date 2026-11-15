@@ -310,7 +310,15 @@ documents and emergency information. A field that is ever shared joins the table
   When the delivered text is not in the requested language the item carries `<field>_lang` (`title_lang`,
   `body_lang`, `label_lang`, ...), and the page sets `lang` on that element. A text in the requested language
   carries no marker. A visit that has no title of its own goes by its location's or area's name, with that name's
-  marker.
+  marker. The answer carries `Content-Language` (the language asked for, else the trip's or collection's own), so a
+  page that asked for none knows which language its unmarked texts are in; the document itself never names it. The
+  owner's previews (the public view, a hidden link, a collection member and its index) take the same `?lang=`.
+- The web editor shows one version of such a field at a time behind a Dutch | English switch (the trip's content
+  language first, the empty version marked), takes the version the owner leaves empty as a machine draft on request
+  (see [translation drafts](translation-drafts.md)), and sends `<field>_nl` and `<field>_en` on every save. The
+  trip's content language is changed on its own (`PATCH` with `content_language`, and `move_texts` after a warning),
+  not with the trip's other details. A new trip or collection is created with the owner's interface language as
+  `content_language`.
 - Nothing is translated automatically. The machine draft ([translation drafts](translation-drafts.md)) only helps
   the owner fill the empty language; a draft is never stored until the owner saves the record.
 - Not yet: marking a translation as possibly out of date after the other language changed. It needs a timestamp per

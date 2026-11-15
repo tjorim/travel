@@ -1,7 +1,8 @@
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { type ContentLanguage } from "../content-language";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import type { TranslationDraftResponse } from "../api-types";
@@ -14,69 +15,57 @@ import {
   type MessageNotice,
 } from "../query/feedback";
 import { useOwner } from "../query/owner-queries";
-import { Field, FieldLabel } from "@/ui/field";
-import { TravelTextarea } from "@/ui/TravelTextarea";
 
-type Language = "nl" | "en";
-type Direction = { source: Language; target: Language };
-type Run = Direction & { id: number };
+type State = { kind: "working" } | { kind: "error"; notice: ErrorNotice | MessageNotice };
 
-const DIRECTIONS: Direction[] = [
-  { source: "nl", target: "en" },
-  { source: "en", target: "nl" },
-];
-
-type State =
-  | { kind: "working" }
-  | { kind: "error"; notice: ErrorNotice | MessageNotice }
-  | { kind: "draft"; text: string };
+/** "Draft from Dutch" / "Draft from English": the one action a field offers, for the language still empty. */
+export const draftActionLabel = (source: ContentLanguage) =>
+  source === "nl" ? m.translations_draft_from_dutch() : m.translations_draft_from_english();
 
 /**
- * Explicit, owner-requested machine translation of one field. The result is an editable draft that
- * is only ever appended to the text on request: it never replaces or auto-saves authored text.
+ * Explicit, owner-requested machine translation of one field into its empty language. The result goes
+ * straight into that language's field, where the owner reviews and edits it; it is never stored until the
+ * record is saved, and nothing is ever replaced (the target is empty, which is what offers the action).
  */
 export function TranslationDraft({
-  label,
-  value,
-  onAppend,
+  source,
+  target,
+  text,
+  onDraft,
 }: {
-  label: string;
-  value: string;
-  /** Adds the reviewed draft below the authored text. */
-  onAppend: (draft: string) => void;
+  /** The language the text is in. */
+  source: ContentLanguage;
+  /** The empty language the draft fills. */
+  target: ContentLanguage;
+  /** The text to translate: the other language's version of the same field. */
+  text: string;
+  /** Receives the draft; the caller puts it in the field and marks it as unreviewed. */
+  onDraft: (draft: string) => void;
 }) {
   useLocale();
-  const [run, setRun] = useState<Run | null>(null);
-  const start = (direction: Direction) =>
-    setRun((previous) => ({ ...direction, id: (previous?.id ?? 0) + 1 }));
-
+  const [run, setRun] = useState<number | null>(null);
   return (
     <div className="grid gap-2">
-      <div className="flex flex-wrap gap-1">
-        {DIRECTIONS.map((direction) => (
-          <Button
-            key={direction.target}
-            type="button"
-            className="compact secondary"
-            disabled={!value.trim()}
-            onClick={() => start(direction)}
-          >
-            {direction.target === "en"
-              ? m.translations_translate_to_english()
-              : m.translations_translate_to_dutch()}
-          </Button>
-        ))}
+      <div>
+        <Button
+          type="button"
+          className="compact secondary"
+          disabled={!text.trim() || run !== null}
+          onClick={() => setRun((previous) => (previous ?? 0) + 1)}
+        >
+          {draftActionLabel(source)}
+        </Button>
       </div>
-      {run && (
+      {run !== null && (
         <TranslationRun
-          key={run.id}
-          label={label}
-          text={value}
-          direction={run}
-          retry={() => start(run)}
+          key={run}
+          text={text}
+          source={source}
+          target={target}
+          retry={() => setRun((previous) => (previous ?? 0) + 1)}
           close={() => setRun(null)}
-          onAppend={(draft) => {
-            onAppend(draft);
+          onDraft={(draft) => {
+            onDraft(draft);
             setRun(null);
           }}
         />
@@ -87,23 +76,25 @@ export function TranslationDraft({
 
 /** One translation request. Closing or restarting unmounts it, which aborts the request in flight. */
 function TranslationRun({
-  label,
   text,
-  direction: { source, target },
+  source,
+  target,
   retry,
   close,
-  onAppend,
+  onDraft,
 }: {
-  label: string;
   text: string;
-  direction: Direction;
+  source: ContentLanguage;
+  target: ContentLanguage;
   retry: () => void;
   close: () => void;
-  onAppend: (draft: string) => void;
+  onDraft: (draft: string) => void;
 }) {
   useLocale();
   const owner = useOwner();
   const [state, setState] = useState<State>({ kind: "working" });
+  const deliver = useRef(onDraft);
+  deliver.current = onDraft;
 
   // The source text is captured when the request starts; later edits do not restart it.
   useEffect(() => {
@@ -118,13 +109,12 @@ function TranslationRun({
       m.translations_error,
       { method: "POST", body: { text, source, target }, signal: controller.signal },
     )
-      .then((result) => setState({ kind: "draft", text: result.text }))
+      .then((result) => {
+        if (!controller.signal.aborted) deliver.current(result.text);
+      })
       .catch((error: unknown) => {
         if (!controller.signal.aborted)
-          setState({
-            kind: "error",
-            notice: errorNotice(error, m.translations_error),
-          });
+          setState({ kind: "error", notice: errorNotice(error, m.translations_error) });
       });
     return () => controller.abort();
   }, []);
@@ -138,47 +128,17 @@ function TranslationRun({
         </Button>
       </div>
     );
-  if (state.kind === "error")
-    return (
-      <div className="flex flex-wrap items-center gap-2">
-        <Alert variant="error" role="alert">
-          {noticeMessage(state.notice)}
-        </Alert>
-        <Button type="button" className="compact secondary" onClick={retry}>
-          {m.retry()}
-        </Button>
-        <Button type="button" className="compact secondary" onClick={close}>
-          {m.cancel()}
-        </Button>
-      </div>
-    );
   return (
-    <section className="grid gap-2 rounded-lg border border-dashed border-travel-control-border p-3">
-      <h4 className="m-0 text-sm font-bold">{m.translations_machine_translated_draft()}</h4>
-      <p className="help m-0">{m.translations_check_hint()}</p>
-      <Field>
-        <FieldLabel>
-          <span>{m.translations_translation_draft_for({ label: label })}</span>
-        </FieldLabel>
-        <TravelTextarea
-          lang={target}
-          value={state.text}
-          onChange={(event) => setState({ kind: "draft", text: event.target.value })}
-        />
-      </Field>
-      <div className="flex flex-wrap gap-1">
-        <Button
-          type="button"
-          className="compact"
-          disabled={!state.text.trim()}
-          onClick={() => onAppend(state.text)}
-        >
-          {m.translations_add_below_the_text()}
-        </Button>
-        <Button type="button" className="compact secondary" onClick={close}>
-          {m.translations_discard_draft()}
-        </Button>
-      </div>
-    </section>
+    <div className="flex flex-wrap items-center gap-2">
+      <Alert variant="error" role="alert">
+        {noticeMessage(state.notice)}
+      </Alert>
+      <Button type="button" className="compact secondary" onClick={retry}>
+        {m.retry()}
+      </Button>
+      <Button type="button" className="compact secondary" onClick={close}>
+        {m.cancel()}
+      </Button>
+    </div>
   );
 }

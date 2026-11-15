@@ -3,6 +3,7 @@ import { Collapsible } from "@/ui/collapsible";
 import { useStore } from "@tanstack/react-form";
 import { ChevronDownIcon, LockIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { authoredLanguage, type ContentLanguage } from "../content-language";
 import { flushSync } from "react-dom";
 
 import { decodeSubject } from "../auth";
@@ -107,6 +108,10 @@ function OwnerCaptureDialog({
 
   const { saveUpdate, deleteUpdate } = useCaptureMutations();
 
+  // The language a saved update's title is written in; set once the trip's updates are known.
+  const savedTitleLanguage = useRef<(updateId: string | null) => ContentLanguage | undefined>(
+    () => undefined,
+  );
   const record = useRecordForm<UpdateDraft, TravelUpdate>({
     defaultValues: emptyDraft(lockedTripId ?? candidate?.tripId ?? ""),
     fallback: SAVE_FALLBACK,
@@ -115,6 +120,11 @@ function OwnerCaptureDialog({
         throw new FeedbackError(() => m.capture_choose_a_trip_and_sign_in_first_to_save());
       if (!connection) throw new FeedbackError(() => m.capture_offline_draft_notice());
       if (uploadState.current.failed) throw new FeedbackError(() => m.capture_photo_blocks_save());
+      // A saved update's title is written back in the language it was written in, which is known once the trip's
+      // updates are: sending the plain `title` for it would put an English-only title into the trip's Dutch one.
+      const titleLanguage = savedTitleLanguage.current(values.updateId);
+      if (values.updateId && !titleLanguage)
+        throw new FeedbackError(() => m.capture_saved_update_not_loaded_error());
       submittedDraft.current = {
         ...values,
         [DRAFT_FENCE]: values[DRAFT_FENCE] ? { ...values[DRAFT_FENCE] } : undefined,
@@ -127,7 +137,10 @@ function OwnerCaptureDialog({
         updateId: values.updateId,
         payload: {
           occurred_at: occurredAtToSend(values),
-          title: values.title.trim(),
+          // A new update is written in the trip's language; a saved one keeps the language it was written in.
+          ...(titleLanguage
+            ? { [`title_${titleLanguage}`]: values.title.trim() }
+            : { title: values.title.trim() }),
           private_notes: values.notes.trim() || null,
           ...(keepsLocation ? {} : { location: values.location }),
           media_asset_ids: values.mediaAssetIds,
@@ -167,6 +180,12 @@ function OwnerCaptureDialog({
     [lockedTripId, trips],
   );
   const savedUpdates = useTripUpdates(selectedTrip?.id ?? null).data;
+  savedTitleLanguage.current = (updateId) => {
+    const saved = updateId ? savedUpdates?.find((item) => item.id === updateId) : undefined;
+    return saved && selectedTrip
+      ? authoredLanguage(saved, "title", selectedTrip.content_language)
+      : undefined;
+  };
   // The zone a saved update's time is read in; a new update's depends on the place chosen, known once saved.
   const editedZone = draft.updateId
     ? savedUpdates?.find((item) => item.id === draft.updateId)?.timezone
@@ -483,6 +502,10 @@ function OwnerCaptureDialog({
                   label={m.common_title()}
                   required
                   maxLength={160}
+                  lang={
+                    (draft.updateId ? savedTitleLanguage.current(draft.updateId) : undefined) ??
+                    selectedTrip?.content_language
+                  }
                   enterKeyHint="done"
                   placeholder={m.capture_for_example_first_evening()}
                 />

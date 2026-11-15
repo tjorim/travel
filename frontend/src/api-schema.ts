@@ -890,7 +890,7 @@ export interface paths {
         };
         /**
          * Preview Collection Index
-         * @description The index exactly as a visitor of this collection would receive it.
+         * @description The index exactly as a visitor of this collection would receive it, in the language asked for.
          */
         get: operations["preview_collection_index_api_collections__collection_id__preview_get"];
         put?: never;
@@ -8591,7 +8591,10 @@ export interface operations {
     };
     preview_public_projection_api_trips__trip_id__public_projection_preview_post: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language. */
+                lang?: string | null;
+            };
             header?: never;
             path: {
                 trip_id: string;
@@ -9110,7 +9113,10 @@ export interface operations {
     };
     preview_share_link_api_trips__trip_id__share_links__link_id__preview_post: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language. */
+                lang?: string | null;
+            };
             header?: never;
             path: {
                 trip_id: string;
@@ -9716,7 +9722,10 @@ export interface operations {
     };
     preview_collection_member_api_collections__collection_id__members__member_id__preview_post: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language. */
+                lang?: string | null;
+            };
             header?: never;
             path: {
                 collection_id: string;
@@ -9928,7 +9937,10 @@ export interface operations {
     };
     preview_collection_index_api_collections__collection_id__preview_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language. */
+                lang?: string | null;
+            };
             header?: never;
             path: {
                 collection_id: string;

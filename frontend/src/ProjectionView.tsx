@@ -35,6 +35,8 @@ import {
 import { cn } from "cn";
 import { dayjs } from "./dayjs";
 import { Markdown } from "./Markdown";
+import { Authored, DocumentLanguageProvider, useTextLang } from "./visitor-language";
+import type { ContentLanguage } from "./content-language";
 import { TripMap, type MapLine, type MapPhoto, type MapPoint } from "./TripMap";
 import { TripHeader, type TripCover } from "./TripHeader";
 import { groupStoryContext, type UpdateContext } from "./visitor-context";
@@ -183,6 +185,22 @@ function transportPlace(area: ProjectionArea | null | undefined): string | null 
   return names.some(Boolean)
     ? [...names, country(area)].filter(Boolean).join(" · ")
     : country(area);
+}
+
+/** An area's line: its authored name in the language it is written in, then the region and the country's name. */
+function PlaceText({ area, transport = false }: { area: ProjectionArea; transport?: boolean }) {
+  const lang = useTextLang();
+  const label = text(area.label);
+  const rest = [text(area.region), country(area)].filter(Boolean).join(" · ");
+  // A transport end without a name or region is just the country.
+  if (transport && !label && !text(area.region)) return <>{country(area)}</>;
+  return (
+    <>
+      {label && <span lang={lang(area.label_lang)}>{label}</span>}
+      {label && rest && " · "}
+      {rest}
+    </>
+  );
 }
 
 function transportTime(item: ProjectionRoute, endpoint: "departure" | "arrival"): string | null {
@@ -335,6 +353,27 @@ function routeHeading(item: ProjectionRoute): string {
   );
 }
 
+/** A route's name where the owner wrote one, else what it is: carrier, service or kind of transport. */
+function RouteHeading({
+  item,
+  as,
+  className,
+}: {
+  item: ProjectionRoute;
+  as: "h3" | "span";
+  className?: string;
+}) {
+  return (
+    <Authored
+      as={as}
+      className={className}
+      of={text(item.label)}
+      marker={item.label_lang}
+      fallback={routeHeading(item)}
+    />
+  );
+}
+
 function RouteSummary({ item }: { item: ProjectionRoute }) {
   useLocale();
   const departure = transportPlace(item.departure);
@@ -347,10 +386,20 @@ function RouteSummary({ item }: { item: ProjectionRoute }) {
   const carrier = [text(item.carrier), text(item.service_reference)].filter(Boolean).join(" · ");
   return (
     <article>
-      <h3>{routeHeading(item)}</h3>
+      <RouteHeading item={item} as="h3" />
       {(departure || arrival) && (
         <p>
-          {departure ?? m.visitor_departure_unknown()} → {arrival ?? m.visitor_arrival_unknown()}
+          {item.departure && departure ? (
+            <PlaceText area={item.departure} transport />
+          ) : (
+            m.visitor_departure_unknown()
+          )}{" "}
+          →{" "}
+          {item.arrival && arrival ? (
+            <PlaceText area={item.arrival} transport />
+          ) : (
+            m.visitor_arrival_unknown()
+          )}
         </p>
       )}
       <p>
@@ -376,13 +425,28 @@ function RouteSummary({ item }: { item: ProjectionRoute }) {
 
 function VisitCard({ item }: { item: ProjectionVisit }) {
   useLocale();
+  const lang = useTextLang();
   return (
     <article>
-      <h3>{text(item.title) ?? m.visitor_visit()}</h3>
+      <Authored
+        as="h3"
+        of={text(item.title)}
+        marker={item.title_lang}
+        fallback={m.visitor_visit()}
+      />
       {tripDates(item) && <p>{tripDates(item)}</p>}
       {visitTimes(item) && <p>{visitTimes(item)}</p>}
-      <Markdown under={3} html={text(item.summary_html)} text={text(item.summary)} />
-      {place(item.place) && <p>{place(item.place)}</p>}
+      <Markdown
+        under={3}
+        lang={lang(item.summary_lang)}
+        html={text(item.summary_html)}
+        text={text(item.summary)}
+      />
+      {item.place && place(item.place) && (
+        <p>
+          <PlaceText area={item.place} />
+        </p>
+      )}
     </article>
   );
 }
@@ -397,9 +461,18 @@ function StayCard({
   useLocale();
   return (
     <article>
-      <h3>{text(item.title) ?? m.visitor_stay()}</h3>
+      <Authored
+        as="h3"
+        of={text(item.title)}
+        marker={item.title_lang}
+        fallback={m.visitor_stay()}
+      />
       {tripDates(item) ? <p>{tripDates(item)}</p> : precision(item) && <p>{precision(item)}</p>}
-      {place(item.place) && <p>{place(item.place)}</p>}
+      {item.place && place(item.place) && (
+        <p>
+          <PlaceText area={item.place} />
+        </p>
+      )}
       {navigationLink(item)}
     </article>
   );
@@ -446,13 +519,23 @@ function RouteEntry({
   const later = arrivalDay && arrivalDay !== date ? arrivalDay : null;
   return (
     <>
-      <span className="block font-bold">{routeHeading(item)}</span>
+      <RouteHeading item={item} as="span" className="block font-bold" />
       <span className="block text-travel-muted">
         {[m.visitor_route(), mode, carrier || null, status].filter(Boolean).join(" · ")}
       </span>
       {(departure || arrival) && (
         <span className="block">
-          {departure ?? m.visitor_departure_unknown()} → {arrival ?? m.visitor_arrival_unknown()}
+          {item.departure && departure ? (
+            <PlaceText area={item.departure} transport />
+          ) : (
+            m.visitor_departure_unknown()
+          )}{" "}
+          →{" "}
+          {item.arrival && arrival ? (
+            <PlaceText area={item.arrival} transport />
+          ) : (
+            m.visitor_arrival_unknown()
+          )}
         </span>
       )}
       {(departsAt || arrivesAt) && (
@@ -477,6 +560,7 @@ function DayEntryRow({
   withYear: boolean;
   navigationLink: (item: ProjectionItem) => ReactNode;
 }) {
+  const lang = useTextLang();
   const { item } = entry;
   // The anchors the map and the update context link to; a stay's later days carry none.
   const anchor =
@@ -497,9 +581,21 @@ function DayEntryRow({
     >
       {entry.type === "visit" && (
         <>
-          <span className="block font-bold">{text(entry.item.title) ?? m.visitor_visit()}</span>
+          <Authored
+            as="span"
+            className="block font-bold"
+            of={text(entry.item.title)}
+            marker={entry.item.title_lang}
+            fallback={m.visitor_visit()}
+          />
           <span className="block text-travel-muted">
-            {[m.visitor_visit(), place(entry.item.place)].filter(Boolean).join(" · ")}
+            {m.visitor_visit()}
+            {entry.item.place && place(entry.item.place) && (
+              <>
+                {" · "}
+                <PlaceText area={entry.item.place} />
+              </>
+            )}
           </span>
           {entry.until && (
             <span className="block">
@@ -509,6 +605,7 @@ function DayEntryRow({
           {visitTimes(entry.item) && <span className="block">{visitTimes(entry.item)}</span>}
           <Markdown
             under={3}
+            lang={lang(entry.item.summary_lang)}
             html={text(entry.item.summary_html)}
             text={text(entry.item.summary)}
           />
@@ -518,8 +615,10 @@ function DayEntryRow({
       {entry.type === "stay" && entry.phase === "check-in" && (
         <>
           <span className="block font-bold">{m.visitor_day_stay({ place: area })}</span>
-          {place(entry.item.place) && (
-            <span className="block text-travel-muted">{place(entry.item.place)}</span>
+          {entry.item.place && place(entry.item.place) && (
+            <span className="block text-travel-muted">
+              <PlaceText area={entry.item.place} />
+            </span>
           )}
           {navigationLink(entry.item)}
         </>
@@ -795,6 +894,7 @@ function SharedImage({
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const alt = photoAlt(item);
+  const lang = useTextLang();
   const open = m.visitor_open_image({ title: alt });
   const button = (
     <Button
@@ -818,6 +918,7 @@ function SharedImage({
         )}
         src={url}
         alt={alt}
+        lang={text(item.alt_text) ? lang(item.alt_text_lang) : undefined}
         width={positiveSize(item, "width")}
         height={positiveSize(item, "height")}
         style={{ objectPosition: `${focus(item, "focal_x")}% ${focus(item, "focal_y")}%` }}
@@ -870,6 +971,7 @@ function SharedImage({
 
 /** The enlarged photo of the lightbox, its caption over the bottom; a failed load offers a retry for this photo only. */
 function LightboxImage({ item, url }: { item: ProjectionMedia; url: string }) {
+  const lang = useTextLang();
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   return (
@@ -879,6 +981,7 @@ function LightboxImage({ item, url }: { item: ProjectionMedia; url: string }) {
         className="max-h-full max-w-full object-contain select-none"
         src={url}
         alt={photoAlt(item)}
+        lang={text(item.alt_text) ? lang(item.alt_text_lang) : undefined}
         width={positiveSize(item, "width")}
         height={positiveSize(item, "height")}
         loading="eager"
@@ -906,6 +1009,7 @@ function LightboxImage({ item, url }: { item: ProjectionMedia; url: string }) {
       <Markdown
         as="figcaption"
         className="pointer-events-auto absolute inset-x-0 bottom-0 max-h-2/5 overflow-y-auto bg-linear-to-t from-travel-lightbox/90 via-travel-lightbox/75 to-transparent px-5 pt-12 pb-travel-safe-bottom text-center leading-normal text-travel-lightbox-ink min-[680px]:px-travel-lightbox-caption"
+        lang={lang(item.caption_lang)}
         html={text(item.caption_html)}
         text={text(item.caption)}
       />
@@ -1058,6 +1162,7 @@ function SharedVideo({
   url: string;
   poster?: string;
 }) {
+  const lang = useTextLang();
   useLocale();
   const [failed, setFailed] = useState(false);
   return (
@@ -1069,6 +1174,7 @@ function SharedVideo({
         playsInline
         poster={poster}
         aria-label={text(item.alt_text) ?? m.visitor_shared_video()}
+        lang={text(item.alt_text) ? lang(item.alt_text_lang) : undefined}
         width={positiveSize(item, "width")}
         height={positiveSize(item, "height")}
         onError={() => setFailed(true)}
@@ -1116,6 +1222,7 @@ function Gallery({
   /** Lead with the photos: one wide frame, or a mosaic with a larger first photo. */
   lead?: boolean;
 }) {
+  const lang = useTextLang();
   useLocale();
   const triggers = useRef(new Map<string, HTMLButtonElement>());
   const [open, setOpen] = useState<number | null>(null);
@@ -1229,6 +1336,7 @@ function Gallery({
                 <Markdown
                   as="figcaption"
                   className="mt-1.75 wrap-anywhere leading-normal text-travel-muted"
+                  lang={lang(item.caption_lang)}
                   html={text(item.caption_html)}
                   text={text(item.caption)}
                 />
@@ -1394,6 +1502,7 @@ function Updates({
   besideMap?: boolean;
   onActive?: (id: string | null) => void;
 }) {
+  const lang = useTextLang();
   useLocale();
   const timeline = useRef<HTMLOListElement>(null);
   useActiveUpdate(timeline, besideMap && !!onActive, (id) => onActive?.(id));
@@ -1419,6 +1528,7 @@ function Updates({
                     <a
                       className="text-sm font-bold text-travel-forest underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
                       href={`#${item.id}`}
+                      lang={text(item.title) ? lang(item.title_lang) : undefined}
                     >
                       {text(item.title) ??
                         storyDate(item.story_date, item.date_precision) ??
@@ -1441,6 +1551,7 @@ function Updates({
                   <a
                     className="text-sm font-bold text-travel-forest underline-offset-3 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-travel-focus"
                     href={`#${item.id}`}
+                    lang={text(item.title) ? lang(item.title_lang) : undefined}
                   >
                     {text(item.title) ??
                       storyDate(item.story_date, item.date_precision) ??
@@ -1468,9 +1579,13 @@ function Updates({
                 </p>
               )}
               <article className="grid gap-3">
-                <h3 className="m-0 text-travel-card-title leading-tight font-extrabold tracking-tight">
-                  {text(item.title) ?? m.visitor_update()}
-                </h3>
+                <Authored
+                  as="h3"
+                  className="m-0 text-travel-card-title leading-tight font-extrabold tracking-tight"
+                  of={text(item.title)}
+                  marker={item.title_lang}
+                  fallback={m.visitor_update()}
+                />
                 <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-sm text-travel-muted">
                   {storyDate(item.story_date, item.date_precision) ? (
                     <time dateTime={text(item.story_date) ?? undefined}>
@@ -1479,7 +1594,11 @@ function Updates({
                   ) : precision(item) ? (
                     <span>{precision(item)}</span>
                   ) : null}
-                  {place(item.place) && <span>{place(item.place)}</span>}
+                  {item.place && place(item.place) && (
+                    <span>
+                      <PlaceText area={item.place} />
+                    </span>
+                  )}
                 </div>
                 <Gallery
                   items={media.filter((image) => image.update === item.id)}
@@ -1494,6 +1613,7 @@ function Updates({
                 <Markdown
                   under={3}
                   className="max-w-travel-reading leading-relaxed"
+                  lang={lang(item.body_lang)}
                   html={text(item.body_html)}
                   text={text(item.body)}
                 />
@@ -1530,14 +1650,7 @@ function tripDestinations(projection: Projection): string[] {
     : labels;
 }
 
-export function ProjectionView({
-  projection,
-  audience,
-  identifier,
-  apiBase,
-  previewResources,
-  focusId,
-}: {
+type ProjectionViewProps = {
   projection: Projection;
   audience: Audience;
   identifier: string;
@@ -1546,8 +1659,31 @@ export function ProjectionView({
   previewResources?: PreviewResources;
   /** An update of this document to bring into view and focus on first show, as the owner's preview does. */
   focusId?: string;
-}) {
+  /**
+   * The language the document's unmarked authored texts are in (the language it was requested in, else the trip's
+   * own, as the server says), so each is marked with it for screen readers. The page translates nothing itself.
+   */
+  language?: ContentLanguage | null;
+};
+
+export function ProjectionView({ language, ...props }: ProjectionViewProps) {
+  return (
+    <DocumentLanguageProvider language={language}>
+      <ProjectionBody {...props} />
+    </DocumentLanguageProvider>
+  );
+}
+
+function ProjectionBody({
+  projection,
+  audience,
+  identifier,
+  apiBase,
+  previewResources,
+  focusId,
+}: Omit<ProjectionViewProps, "language">) {
   const locale = useLocale();
+  const lang = useTextLang();
   const deliveryBase =
     apiBase ??
     `${audience === "public" ? "/api/public/trips" : "/api/shared"}/${encodeURIComponent(identifier)}`;
@@ -1688,7 +1824,12 @@ export function ProjectionView({
     ? {
         url: fileUrl(coverItem),
         alt: text(coverItem.alt_text) ?? "",
-        caption: { html: text(coverItem.caption_html), text: text(coverItem.caption) },
+        altLang: text(coverItem.alt_text) ? lang(coverItem.alt_text_lang) : undefined,
+        caption: {
+          html: text(coverItem.caption_html),
+          text: text(coverItem.caption),
+          lang: lang(coverItem.caption_lang),
+        },
         focalX: focus(coverItem, "focal_x"),
         focalY: focus(coverItem, "focal_y"),
         width: positiveSize(coverItem, "width"),
@@ -1768,6 +1909,7 @@ export function ProjectionView({
     <>
       <TripHeader
         title={projection.title ?? m.shared_trip()}
+        titleLang={projection.title ? lang(projection.title_lang) : undefined}
         eyebrow={previewResources ? m.publication_travel_preview() : "Travel"}
         level={previewResources ? "h2" : "h1"}
         dates={dates}
@@ -1799,6 +1941,7 @@ export function ProjectionView({
       <Markdown
         under={2}
         className="max-w-travel-reading leading-relaxed"
+        lang={lang(projection.summary_lang)}
         html={projection.summary_html}
         text={projection.summary}
       />
@@ -1812,7 +1955,12 @@ export function ProjectionView({
       items={projection.places}
       render={(item) => (
         <article>
-          <h3>{text(item.label) ?? m.visitor_location()}</h3>
+          <Authored
+            as="h3"
+            of={text(item.label)}
+            marker={item.label_lang}
+            fallback={m.visitor_location()}
+          />
           {[text(item.region), country(item)].filter(Boolean).length > 0 && (
             <p>{[text(item.region), country(item)].filter(Boolean).join(" · ")}</p>
           )}

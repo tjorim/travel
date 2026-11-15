@@ -82,7 +82,8 @@ export function VisitEditor({
       const saved = await save.mutateAsync({
         id,
         payload: {
-          title: values.title.trim() || null,
+          title_nl: values.titleNl.trim() || null,
+          title_en: values.titleEn.trim() || null,
           kind: values.kind || null,
           status: values.status,
           starts_on: values.startsOn || null,
@@ -90,7 +91,8 @@ export function VisitEditor({
           start_time: values.startTime || null,
           end_time: values.endTime || null,
           notes: values.notes.trim() || null,
-          summary: values.summary.trim() || null,
+          summary_nl: values.summaryNl.trim() || null,
+          summary_en: values.summaryEn.trim() || null,
           share_time: values.shareTime,
           share_date_precision: values.shareDatePrecision || null,
           ...(!id || !samePlace(values.place, baseline.current.place)

@@ -4,7 +4,9 @@ import { useFeedback, textNotice, errorNotice } from "../query/feedback";
 import { Button } from "@/ui/button";
 
 import { DateTimeField } from "../forms/DateTimeFields";
-import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
+import { RecordForm, requiredText, SelectField } from "../forms/fields";
+import { AuthoredText, authoredLanguage } from "../content-language";
+import { LocalizedField } from "../forms/LocalizedField";
 import { MarkdownField } from "../forms/MarkdownField";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
 import { useRecordForm } from "../forms/useRecordForm";
@@ -29,8 +31,10 @@ import { VISIBILITY_LABELS, VisibilityControl } from "./visibility";
 import { PlaceSearchField } from "./PlaceSearchField";
 
 type Values = {
-  title: string;
-  body: string;
+  titleNl: string;
+  titleEn: string;
+  bodyNl: string;
+  bodyEn: string;
   privateNotes: string;
   occurredAt: string;
   datePrecision: TravelUpdate["share_date_precision"];
@@ -39,8 +43,10 @@ type Values = {
   visibility: Visibility;
 };
 const blank = (): Values => ({
-  title: "",
-  body: "",
+  titleNl: "",
+  titleEn: "",
+  bodyNl: "",
+  bodyEn: "",
   privateNotes: "",
   occurredAt: localDateTime(),
   datePrecision: "day",
@@ -49,8 +55,10 @@ const blank = (): Values => ({
   visibility: "private",
 });
 const fromUpdate = (update: TravelUpdate): Values => ({
-  title: update.title,
-  body: update.body,
+  titleNl: update.title_nl ?? "",
+  titleEn: update.title_en ?? "",
+  bodyNl: update.body_nl ?? "",
+  bodyEn: update.body_en ?? "",
   privateNotes: update.private_notes ?? "",
   occurredAt: updateWallClock(update),
   datePrecision: update.share_date_precision,
@@ -59,8 +67,12 @@ const fromUpdate = (update: TravelUpdate): Values => ({
   visibility: update.visibility,
 });
 const serverFields = {
-  title: "title",
-  body: "body",
+  title: "titleNl",
+  title_nl: "titleNl",
+  title_en: "titleEn",
+  body: "bodyNl",
+  body_nl: "bodyNl",
+  body_en: "bodyEn",
   private_notes: "privateNotes",
   occurred_at: "occurredAt",
   share_date_precision: "datePrecision",
@@ -84,15 +96,15 @@ function hintZone(
   return null;
 }
 
-/** Something shared has to have text written for visitors; the private notes are never that text. */
+/** Something shared has to have text written for visitors, in either language; the private notes are never that text. */
 const bodyToShare = ({
-  value,
   fieldApi,
 }: {
-  value: string;
   fieldApi: { form: { getFieldValue: (name: never) => unknown } };
 }) =>
-  fieldApi.form.getFieldValue("visibility" as never) !== "private" && !value.trim()
+  fieldApi.form.getFieldValue("visibility" as never) !== "private" &&
+  !String(fieldApi.form.getFieldValue("bodyNl" as never) ?? "").trim() &&
+  !String(fieldApi.form.getFieldValue("bodyEn" as never) ?? "").trim()
     ? m.updates_write_the_text_for_visitors_first_or_choose_private()
     : undefined;
 
@@ -154,8 +166,10 @@ export function TravelUpdateManager({
           share_date_precision: values.datePrecision,
           area_id: values.location ? null : values.areaId || null,
           location: values.location,
-          title: values.title.trim(),
-          body: values.body.trim(),
+          title_nl: values.titleNl.trim() || null,
+          title_en: values.titleEn.trim() || null,
+          body_nl: values.bodyNl.trim() || null,
+          body_en: values.bodyEn.trim() || null,
           private_notes: values.privateNotes.trim() || null,
           visibility: values.visibility,
         },
@@ -243,9 +257,15 @@ export function TravelUpdateManager({
         {!editing && selected && (
           <div className="stack-form">
             <div>
-              <h3>{selected.title}</h3>
+              <AuthoredText as="h3" record={selected} field="title">
+                {selected.title}
+              </AuthoredText>
               {selected.body ? (
-                <Markdown html={selected.body_html} text={selected.body} />
+                <Markdown
+                  html={selected.body_html}
+                  text={selected.body}
+                  lang={authoredLanguage(selected, "body", trip.content_language)}
+                />
               ) : (
                 <p className="help">{m.updates_no_text_for_visitors_yet()}</p>
               )}
@@ -309,35 +329,25 @@ export function TravelUpdateManager({
             }
             pendingLabel={m.common_saving()}
           >
-            <record.form.Field
+            <LocalizedField
+              form={record.form}
               name="title"
-              validators={{
-                onChange: requiredText(m.updates_give_the_travel_update_a_title),
-                onSubmit: requiredText(m.updates_give_the_travel_update_a_title),
-              }}
-            >
-              {(field) => (
-                <TextField field={field} label={m.common_title()} required maxLength={160} />
-              )}
-            </record.form.Field>
-            <record.form.Field
+              label={m.common_title()}
+              required
+              requiredMessage={m.updates_give_the_travel_update_a_title}
+              maxLength={160}
+            />
+            <LocalizedField
+              form={record.form}
               name="body"
-              validators={{
-                onChangeListenTo: ["visibility"],
-                onChange: bodyToShare,
-                onSubmit: bodyToShare,
-              }}
-            >
-              {(field) => (
-                <MarkdownField
-                  field={field}
-                  label={m.common_text_for_visitors()}
-                  optional={m.updates_empty_until_shared()}
-                  maxLength={10000}
-                  rows={5}
-                />
-              )}
-            </record.form.Field>
+              kind="markdown"
+              label={m.common_text_for_visitors()}
+              optional={m.updates_empty_until_shared()}
+              maxLength={10000}
+              rows={5}
+              validate={bodyToShare}
+              listenTo={["visibility"]}
+            />
             <div className="field-row">
               <record.form.Field
                 name="occurredAt"

@@ -3,7 +3,7 @@ import "fake-indexeddb/auto";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { fakeApi, type FakeApi } from "../../query/fake-api";
+import { fakeApi, localized, resolveTexts, type FakeApi } from "../../query/fake-api";
 import {
   chooseOption,
   openAdvanced,
@@ -73,31 +73,32 @@ const trip: Trip = {
   ends_on: "2054-11-28",
   travel_updates: [],
 };
-const visit = (id: string, overrides: Partial<Visit> = {}): Visit => ({
-  id,
-  area: taipei,
-  location: null,
-  title: null,
-  title_nl: null,
-  title_en: null,
-  kind: null,
-  status: "planned",
-  starts_on: null,
-  ends_on: null,
-  start_time: null,
-  end_time: null,
-  notes: null,
-  summary: null,
-  summary_nl: null,
-  summary_en: null,
-  visibility: "private",
-  share_time: false,
-  share_date_precision: "month",
-  notes_html: null,
-  summary_html: null,
-  possible_route_duplicates: [],
-  ...overrides,
-});
+const visit = (id: string, overrides: Partial<Visit> = {}): Visit =>
+  localized({
+    id,
+    area: taipei,
+    location: null,
+    title: null,
+    title_nl: null,
+    title_en: null,
+    kind: null,
+    status: "planned",
+    starts_on: null,
+    ends_on: null,
+    start_time: null,
+    end_time: null,
+    notes: null,
+    summary: null,
+    summary_nl: null,
+    summary_en: null,
+    visibility: "private",
+    share_time: false,
+    share_date_precision: "month",
+    notes_html: null,
+    summary_html: null,
+    possible_route_duplicates: [],
+    ...overrides,
+  });
 const stay = {
   id: "s1",
   check_in_date: "2054-11-16",
@@ -114,7 +115,8 @@ function seed(visits: Visit[] = []) {
     .collection("/api/trips/trip/visits", visits, {
       create: (body, count) =>
         visit(`new-${count}`, {
-          title: (body.title as string | null) ?? null,
+          title: (body.title_nl as string | null) ?? null,
+          title_nl: (body.title_nl as string | null) ?? null,
           starts_on: (body.starts_on as string | null) ?? null,
           start_time: (body.start_time as string | null) ?? null,
           share_time: Boolean(body.share_time),
@@ -125,7 +127,7 @@ function seed(visits: Visit[] = []) {
               ? spring
               : null,
         }),
-      update: (row, body) => ({ ...row, ...body }),
+      update: (row, body) => resolveTexts({ ...row, ...body }),
     })
     .collection("/api/trips/trip/areas", [taipei, tainan])
     .collection("/api/trips/trip/locations", [spring])
@@ -200,7 +202,7 @@ it("takes a location from the nested list, a time on a day, and keeps the time p
   fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));
   await agendaRow("Bezoek: Warme bron");
   expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({
-    title: "Warme bron",
+    title_nl: "Warme bron",
     location: { existing_location_id: "spring" },
     starts_on: "2054-11-21",
     ends_on: null,
@@ -280,7 +282,9 @@ it("warns before saving when the draft visit restates a route, and never blocks 
 
   fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));
   await waitFor(() =>
-    expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({ title: "Vertrek EX101" }),
+    expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({
+      title_nl: "Vertrek EX101",
+    }),
   );
 });
 

@@ -1946,6 +1946,25 @@
               "maxLength": 32,
               "title": "Trip Id"
             }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 16
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language.",
+              "title": "Lang"
+            },
+            "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language."
           }
         ],
         "requestBody": {
@@ -2907,6 +2926,25 @@
               "maxLength": 32,
               "title": "Link Id"
             }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 16
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language.",
+              "title": "Lang"
+            },
+            "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language."
           }
         ],
         "requestBody": {
@@ -4046,6 +4084,25 @@
               "maxLength": 32,
               "title": "Member Id"
             }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 16
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language.",
+              "title": "Lang"
+            },
+            "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language."
           }
         ],
         "requestBody": {
@@ -4471,7 +4528,7 @@
           "collections"
         ],
         "summary": "Preview Collection Index",
-        "description": "The index exactly as a visitor of this collection would receive it.",
+        "description": "The index exactly as a visitor of this collection would receive it, in the language asked for.",
         "operationId": "preview_collection_index_api_collections__collection_id__preview_get",
         "security": [
           {
@@ -4489,6 +4546,25 @@
               "maxLength": 32,
               "title": "Collection Id"
             }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 16
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language.",
+              "title": "Lang"
+            },
+            "description": "The visitor's language, `nl` or `en`: each authored text is delivered in it, else in the other language, and an item whose text is in the other one carries `<field>_lang`. Anything else, or nothing, means the trip's own content language."
           }
         ],
         "responses": {

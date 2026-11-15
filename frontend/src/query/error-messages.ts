@@ -53,6 +53,14 @@ export function descriptorMessage(error: ErrorDescriptor): string | null {
       return m.api_a_media_asset_can_only_be_selected_once();
     case "route_coordinates_must_be_valid_longitude_latitude_pairs":
       return m.api_route_coordinates_must_be_valid_longitude_latitude_pairs();
+    case "localized_text_conflict":
+      return m.api_localized_text_conflict();
+    case "text_required_in_a_language":
+      return m.api_text_required_in_a_language();
+    case "trip_text_in_both_languages":
+      return m.api_trip_text_in_both_languages();
+    case "move_texts_needs_a_new_content_language":
+      return m.api_move_texts_needs_a_new_language();
     case "database_unavailable":
       return m.api_database_unavailable();
     case "scope_kind_invalid":

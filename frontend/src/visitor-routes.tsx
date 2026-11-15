@@ -1,7 +1,9 @@
 import { cn } from "cn";
 import { ApiError, apiFailure, errorMessage } from "./query/api";
 import { m } from "./paraglide/messages.js";
-import { useLocale } from "./locale";
+import { adoptLocale, chosenLocale, useLocale } from "./locale";
+import type { ContentLanguage } from "./content-language";
+import { deliveredLanguage, isContentLanguage, withLanguage } from "./visitor-language";
 import { VisitorTopBar } from "./VisitorTopBar";
 import { Button } from "@/ui/button";
 import { Collapsible } from "@/ui/collapsible";
@@ -60,13 +62,17 @@ function isCollectionIndex(value: unknown): value is CollectionIndex {
 
 type LoadState =
   | { kind: "loading" }
-  | { kind: "ready"; projection: Projection }
-  | { kind: "collection"; index: CollectionIndex }
+  | { kind: "ready"; projection: Projection; language: ContentLanguage | null }
+  | { kind: "collection"; index: CollectionIndex; language: ContentLanguage | null }
   | { kind: "unavailable" }
   | { kind: "error"; failure?: ApiError };
 
+/** The `lang` of a delivered text: its marker when it is in the other language, else the one that was asked for. */
+const textLanguage = (marker: unknown, asked: ContentLanguage) =>
+  isContentLanguage(marker) ? marker : asked;
+
 function PublicCard({ trip }: { trip: PublicTripCard }) {
-  useLocale();
+  const asked = useLocale();
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const cover = trip.cover && trip.cover.url !== failedUrl ? trip.cover : null;
   return (
@@ -80,6 +86,7 @@ function PublicCard({ trip }: { trip: PublicTripCard }) {
             className="block size-full object-cover"
             src={cover.url}
             alt={cover.alt_text ?? ""}
+            lang={cover.alt_text ? textLanguage(cover.alt_text_lang, asked) : undefined}
             width={cover.width ?? undefined}
             height={cover.height ?? undefined}
             style={{ objectPosition: `${cover.focal_x ?? 50}% ${cover.focal_y ?? 50}%` }}
@@ -93,9 +100,13 @@ function PublicCard({ trip }: { trip: PublicTripCard }) {
         <span className="mb-4 text-sm font-medium text-travel-muted">
           {tripDates(trip.dates) ?? m.public_trip()}
         </span>
-        <h2>{trip.title ?? m.published_trip()}</h2>
+        <h2 lang={trip.title ? textLanguage(trip.title_lang, asked) : undefined}>
+          {trip.title ?? m.published_trip()}
+        </h2>
         {(trip.summary_text ?? trip.summary) && (
-          <p className="line-clamp-4">{trip.summary_text ?? trip.summary}</p>
+          <p className="line-clamp-4" lang={textLanguage(trip.summary_lang, asked)}>
+            {trip.summary_text ?? trip.summary}
+          </p>
         )}
         <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
           {m.view_trip()} <span aria-hidden="true">→</span>
@@ -150,28 +161,40 @@ function OwnerLink() {
 }
 
 function TripIndex() {
-  useLocale();
+  // The index has no trip of its own to follow: it asks for the language the interface is in.
+  const locale = useLocale();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<IndexState>({ kind: "loading" });
   const [storageFailed, setStorageFailed] = useState(false);
   const [savedTrips, setSavedTrips] = useState<SavedSharedTrip[]>(() => readSavedSharedTrips());
 
   const [validatedTrips, setValidatedTrips] = useState<
-    Map<string, { trip: SavedSharedTrip; collection: boolean } | null>
+    Map<
+      string,
+      {
+        trip: SavedSharedTrip;
+        collection: boolean;
+        titleLang: ContentLanguage;
+        summaryLang: ContentLanguage;
+      } | null
+    >
   >(new Map());
 
   useEffect(() => {
     const controller = new AbortController();
     async function validate(trip: SavedSharedTrip) {
       try {
-        const response = await fetch(`/api/shared/${encodeURIComponent(trip.token)}`, {
-          headers: { Accept: "application/json" },
-          cache: "no-store",
-          credentials: "omit",
-          redirect: "error",
-          referrerPolicy: "no-referrer",
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          withLanguage(`/api/shared/${encodeURIComponent(trip.token)}`, locale),
+          {
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+            credentials: "omit",
+            redirect: "error",
+            referrerPolicy: "no-referrer",
+            signal: controller.signal,
+          },
+        );
         if (controller.signal.aborted) return;
         if (response.status === 404 || response.status === 403) {
           const forgotten = forgetSharedTrip(trip.token);
@@ -187,6 +210,8 @@ function TripIndex() {
               new Map(current).set(trip.token, {
                 trip: { ...trip, title: data.title, summary: data.summary_text ?? data.summary },
                 collection: false,
+                titleLang: textLanguage(data.title_lang, locale),
+                summaryLang: textLanguage(data.summary_lang, locale),
               }),
             );
           } else if (!controller.signal.aborted && isCollectionIndex(data)) {
@@ -194,6 +219,8 @@ function TripIndex() {
               new Map(current).set(trip.token, {
                 trip: { ...trip, title: data.title, summary: null },
                 collection: true,
+                titleLang: textLanguage(data.title_lang, locale),
+                summaryLang: locale,
               }),
             );
           }
@@ -204,7 +231,7 @@ function TripIndex() {
     }
     for (const trip of readSavedSharedTrips()) void validate(trip);
     return () => controller.abort();
-  }, []);
+  }, [locale]);
 
   function forgetAll() {
     const forgotten = forgetAllSharedTrips();
@@ -221,7 +248,7 @@ function TripIndex() {
     setState({ kind: "loading" });
     async function load() {
       try {
-        const response = await fetch("/api/public/trips", {
+        const response = await fetch(withLanguage("/api/public/trips", locale), {
           headers: { Accept: "application/json" },
           cache: "no-store",
           credentials: "omit",
@@ -240,7 +267,7 @@ function TripIndex() {
     }
     void load();
     return () => controller.abort();
-  }, [attempt]);
+  }, [attempt, locale]);
   return (
     <main className="travel-shell w-travel-visitor-shell! max-w-travel-listing pt-6! min-[960px]:w-travel-owner-shell! [&_section]:mt-travel-section">
       <VisitorTopBar />
@@ -326,11 +353,15 @@ function TripIndex() {
                         <span className="travel-eyebrow">
                           {validated?.collection ? m.unlisted_collection() : m.unlisted_trip()}
                         </span>
-                        <h2>
+                        <h2 lang={trip.title ? validated?.titleLang : undefined}>
                           {trip.title ??
                             (validated?.collection ? m.shared_trips() : m.shared_trip())}
                         </h2>
-                        {trip.summary && <p className="line-clamp-4">{trip.summary}</p>}
+                        {trip.summary && (
+                          <p className="line-clamp-4" lang={validated?.summaryLang}>
+                            {trip.summary}
+                          </p>
+                        )}
                         <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
                           {m.view_trip()} <span aria-hidden="true">→</span>
                         </span>
@@ -354,13 +385,25 @@ function TripIndex() {
   );
 }
 
-function CollectionIndexView({ index, token }: { index: CollectionIndex; token: string }) {
+function CollectionIndexView({
+  index,
+  token,
+  language,
+}: {
+  index: CollectionIndex;
+  token: string;
+  /** The language the index's unmarked texts are in. */
+  language: ContentLanguage | null;
+}) {
   useLocale();
+  const langOf = (marker: unknown) =>
+    isContentLanguage(marker) ? marker : (language ?? undefined);
   return (
     <>
       <header className="border-b border-travel-divider pb-8 min-[680px]:pb-12">
         <p className="travel-eyebrow">Travel</p>
         <h1
+          lang={index.title ? langOf(index.title_lang) : undefined}
           className={
             (index.title?.length ?? 0) > LONG_TITLE_LENGTH
               ? LONG_TITLE_CLASS
@@ -399,8 +442,14 @@ function CollectionIndexView({ index, token }: { index: CollectionIndex; token: 
                   <span className="mb-4 text-sm font-medium text-travel-muted">
                     {tripDates(entry.dates) ?? m.unlisted_trip()}
                   </span>
-                  <h2>{entry.title ?? m.shared_trip()}</h2>
-                  {entry.summary_text && <p className="line-clamp-4">{entry.summary_text}</p>}
+                  <h2 lang={entry.title ? langOf(entry.title_lang) : undefined}>
+                    {entry.title ?? m.shared_trip()}
+                  </h2>
+                  {entry.summary_text && (
+                    <p className="line-clamp-4" lang={langOf(entry.summary_lang)}>
+                      {entry.summary_text}
+                    </p>
+                  )}
                   <span className="mt-auto pt-6.25 font-extrabold text-travel-forest">
                     {m.view_trip()} <span aria-hidden="true">→</span>
                   </span>
@@ -424,7 +473,15 @@ function VisitorPage({
   /** A trip inside a collection link; `identifier` is then the collection's token. */
   memberId?: string;
 }) {
-  useLocale();
+  const locale = useLocale();
+  // The language this page took from the trip itself (see below), when the visitor had chosen none.
+  const [adopted, setAdopted] = useState<ContentLanguage | null>(null);
+  // What the visitor chose themselves, here or on an earlier visit. Without a choice the document comes in the
+  // trip's own language (the server says which) and the interface follows it; a later choice asks for the
+  // document again in that language. Back in the trip's own language there is nothing to ask for.
+  const requested = adopted !== null && locale !== adopted ? locale : chosenLocale();
+  // A new choice of language replaces the texts without blanking the page; another trip or a retry starts over.
+  const loadedFor = useRef("");
   const [attempt, setAttempt] = useState(0);
   const [storageFailed, setStorageFailed] = useState(false);
   const [saved, setSaved] = useState<"saved" | "forgotten" | null>(null);
@@ -437,9 +494,14 @@ function VisitorPage({
 
   useEffect(() => {
     const controller = new AbortController();
-    setState({ kind: "loading" });
-    setStorageFailed(false);
-    setSaved(null);
+    const key = `${audience}|${identifier}|${memberId ?? ""}|${attempt}`;
+    const restarted = loadedFor.current !== key;
+    if (restarted) {
+      loadedFor.current = key;
+      setState({ kind: "loading" });
+      setStorageFailed(false);
+      setSaved(null);
+    }
     const path =
       audience === "public"
         ? `/api/public/trips/${encodeURIComponent(identifier)}`
@@ -451,7 +513,7 @@ function VisitorPage({
       if (loading) return;
       loading = true;
       try {
-        const response = await fetch(path, {
+        const response = await fetch(withLanguage(path, requested), {
           method: "GET",
           headers: { Accept: "application/json" },
           cache: "no-store",
@@ -471,20 +533,25 @@ function VisitorPage({
         } else {
           const data: unknown = await response.json();
           if (!controller.signal.aborted) {
+            const language = requested ?? deliveredLanguage(response);
+            if (!requested && language) {
+              adoptLocale(language);
+              setAdopted(language);
+            }
             if (audience === "share" && !memberId && isCollectionIndex(data)) {
               if (!refresh) {
                 const remembered = rememberSharedTrip(identifier, { title: data.title });
                 setStorageFailed(!remembered);
                 setSaved(remembered ? "saved" : null);
               }
-              setState({ kind: "collection", index: data });
+              setState({ kind: "collection", index: data, language });
             } else if (isProjection(data, audience)) {
               if (!refresh && audience === "share" && !memberId) {
                 const remembered = rememberSharedTrip(identifier, data);
                 setStorageFailed(!remembered);
                 setSaved(remembered ? "saved" : null);
               }
-              setState({ kind: "ready", projection: data });
+              setState({ kind: "ready", projection: data, language });
             } else {
               setState({ kind: "error" });
             }
@@ -497,14 +564,14 @@ function VisitorPage({
         loading = false;
       }
     }
-    void load();
+    void load(!restarted);
     // Re-evaluate delayed cutoffs and scope revocation without new ingestion.
     const timer = window.setInterval(() => void load(true), 30000);
     return () => {
       controller.abort();
       window.clearInterval(timer);
     };
-  }, [audience, identifier, memberId, attempt]);
+  }, [audience, identifier, memberId, attempt, requested]);
 
   const retry = useCallback(() => setAttempt((current) => current + 1), []);
   const title = m.shared_trip();
@@ -603,11 +670,12 @@ function VisitorPage({
         </p>
       )}
       {state.kind === "collection" && (
-        <CollectionIndexView index={state.index} token={identifier} />
+        <CollectionIndexView index={state.index} token={identifier} language={state.language} />
       )}
       {state.kind === "ready" && (
         <ProjectionView
           projection={state.projection}
+          language={state.language}
           audience={audience}
           identifier={identifier}
           apiBase={

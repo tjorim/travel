@@ -112,7 +112,7 @@ beforeEach(() => {
   api = fakeApi()
     .collection("/api/trips/trip/media", [photo("p1", "kust.jpg"), photo("p2", "markt.jpg")])
     .collection("/api/trips/trip/media/p1/derivatives", [
-      derivative("x1", "pending", { caption: "Kust" }),
+      derivative("x1", "pending", { caption: "Kust", caption_nl: "Kust" }),
     ])
     .collection("/api/trips/trip/media/p2/derivatives", [])
     .collection("/api/trips/trip/visits", []);
@@ -269,7 +269,7 @@ it("opens the presentation form with the saved values, saves it and keeps the sa
   api.on("PATCH", /\/media\/p1\/derivatives\/x1\/presentation$/, (body) => {
     const rows = api.rows("/api/trips/trip/media/p1/derivatives");
     Object.assign(rows[0], {
-      caption: (body as { caption: string }).caption,
+      caption_nl: (body as { caption_nl: string }).caption_nl,
       focal_x: (body as { focal_x: number }).focal_x,
     });
     return rows[0];
@@ -292,7 +292,7 @@ it("opens the presentation form with the saved values, saves it and keeps the sa
     "Presentatie opgeslagen. Alleen geselecteerde velden in een deelscope worden zichtbaar.",
   );
   expect(api.lastBody("PATCH /api/trips/trip/media/p1/derivatives/x1/presentation")).toMatchObject({
-    caption: "Kust bij zonsopgang",
+    caption_nl: "Kust bij zonsopgang",
     focal_x: 40,
     travel_update_id: null,
   });

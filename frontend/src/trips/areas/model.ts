@@ -3,7 +3,8 @@ import type { Area } from "../../api-types";
 import type { FormContext } from "../../forms/form-context";
 
 export type Values = {
-  label: string;
+  labelNl: string;
+  labelEn: string;
   countryCode: string;
   region: string;
   latitude: string;
@@ -11,7 +12,8 @@ export type Values = {
   timezone: string;
 };
 export const blank = (): Values => ({
-  label: "",
+  labelNl: "",
+  labelEn: "",
   countryCode: "",
   region: "",
   latitude: "",
@@ -19,7 +21,8 @@ export const blank = (): Values => ({
   timezone: "",
 });
 export const fromArea = (area: Area): Values => ({
-  label: area.label ?? "",
+  labelNl: area.label_nl ?? "",
+  labelEn: area.label_en ?? "",
   countryCode: area.country_code ?? "",
   region: area.region ?? "",
   latitude: area.latitude?.toString() ?? "",
@@ -27,7 +30,9 @@ export const fromArea = (area: Area): Values => ({
   timezone: area.timezone ?? "",
 });
 export const serverFields = {
-  label: "label",
+  label: "labelNl",
+  label_nl: "labelNl",
+  label_en: "labelEn",
   country_code: "countryCode",
   region: "region",
   latitude: "latitude",

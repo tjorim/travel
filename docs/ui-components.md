@@ -723,3 +723,21 @@ controls already cover these interactions; no custom primitive or composition wa
 added. Source and precision edits use guarded dialogs; destructive track/source
 operations use Alert Dialog and retain focus return. Live current-position text is
 an ordinary semantic section with selected-locale number/date formatting.
+
+## Dutch | English fields (#376)
+
+`LocalizedField` (`forms/LocalizedField.tsx`) is an application composition, not a new primitive: it shows one of the
+two language versions of an authored field (`titleNl` / `titleEn` in the editor's values) and a switch between them.
+The switch is the existing `ChoiceGroup` (Base UI `RadioGroup`), because choosing which version is on screen is a
+required single selection, not a pressed toggle; the registry `toggle-group` would allow deselecting both. `ChoiceGroup`
+gained `hideLabel` so the group's name ("Language of Title") stays for assistive technology while the choices (the
+language names, with "main language" and "empty" in their accessible names) explain themselves visually. The field
+itself is the existing `TextField` or `MarkdownField` (Base UI Field and Input, `TravelTextarea`); both gained a
+`companion` prop so an error on the version that is not on screen (a required text empty in both languages, a server
+refusal) still shows on the one that is. The draft action is a Button and a status line; the unreviewed-draft notice
+is a dashed bordered block like the one the old translation draft used, with a Button to discard. No registry form
+component covers two linked values of one field, so the composition stays custom.
+
+`TripLanguage` (`trips/TripLanguage.tsx`) composes `ChoiceGroup`, Base UI Field with `TravelCheckbox` and the existing
+`DeleteConfirmation` Alert Dialog (through `useConfirmation`) for the move-all-texts warning. `LocalizedFieldView`
+takes field-shaped objects (`plainField`) so the collection editor, which is not a TanStack form, uses the same switch.

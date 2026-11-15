@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from ..audience import MemberAudience
 from ..audit import record_collection_event, scope_fingerprint
-from ..content_language import DEFAULT_LANGUAGE
+from ..content_language import DEFAULT_LANGUAGE, ContentLanguage
 from ..errors import Conflict
 from ..models import Collection, CollectionAuditEvent, CollectionAuditKind, CollectionMember, LinkState, Trip
 from ..schemas import (
@@ -254,9 +254,10 @@ def preview_collection_member(
     collection_id: Identifier,
     member_id: Identifier,
     candidate: ShareScopeInput | None = None,
+    language: ContentLanguage | None = None,
 ) -> dict:
     return audiences.preview_document(
-        session, subject, audiences.owned_member(session, subject, collection_id, member_id), candidate
+        session, subject, audiences.owned_member(session, subject, collection_id, member_id), candidate, language
     )
 
 
@@ -288,9 +289,11 @@ def member_preview_navigation(
     )
 
 
-def preview_collection_index(session: Session, subject: str, collection_id: Identifier) -> CollectionIndexDocument:
+def preview_collection_index(
+    session: Session, subject: str, collection_id: Identifier, language: ContentLanguage | None = None
+) -> CollectionIndexDocument:
     """The index exactly as a visitor of this collection would receive it."""
-    return collection_index(session, owned_collection(session, subject, collection_id))
+    return collection_index(session, owned_collection(session, subject, collection_id), language)
 
 
 def _member_fingerprint(collection: Collection) -> str:

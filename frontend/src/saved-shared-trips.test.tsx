@@ -85,8 +85,9 @@ it("shows only freshly selected fields after validation with private request opt
   index();
   await screen.findByRole("link", { name: /Current title/ });
   expect(document.body.textContent).not.toContain(projection.summary);
+  // A saved trip is checked in the language the interface is in.
   expect(fetcher).toHaveBeenCalledWith(
-    `/api/shared/${token}`,
+    `/api/shared/${token}?lang=nl`,
     expect.objectContaining({
       cache: "no-store",
       credentials: "omit",

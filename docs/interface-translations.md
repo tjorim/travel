@@ -19,9 +19,17 @@ packing names/categories or templates. The text a visitor can receive may be *wr
 owner (`<field>_nl`, `<field>_en`, stored as two texts; see [the domain model](domain-model.md)); the application
 still never translates it itself. A visitor gets the version in their interface language and, where the owner
 wrote only the other one, that text unchanged with a `<field>_lang` marker, so the page sets `lang` on the element
-and a screen reader uses the right voice. The visitor document is requested in the interface language
-(`?lang=nl|en`) and fetched again when it changes; the owner's own record text is never switched by the interface
-locale. App-created defaults and snippets use the
+and a screen reader uses the right voice. The page (`ProjectionView`) marks every authored text it shows with
+`lang`: the delivered `<field>_lang` where there is one, else the language the document is in (the language it
+asked for, else the `Content-Language` the server answered with for the trip's own). Sentences the interface builds
+around an authored name ("Stay: Hotel") stay in the interface language. A visitor with no language of their own
+saved reads a trip in the trip's own language, interface included, without that becoming their choice; their own
+choice (the language control) wins, is remembered, and makes the page ask for the document again with `?lang=`
+while keeping what it shows. Index pages ask for the interface language. The owner's own record text is never
+switched by the interface locale, and the owner's lists and details mark each authored text with its language the
+same way (`AuthoredText`, `lang` from the record's `<field>_nl`/`<field>_en` and the trip's content language).
+An owner editor shows the two versions of a field behind a Dutch | English switch (`LocalizedField`), and a new
+trip or collection is written in the interface language it was opened in. App-created defaults and snippets use the
 locale only at creation/insertion. Never recognize saved authored text by matching
 it to a default. Keep ISO input values, endpoint timezones, date precision, numeric
 payloads and integer grams unchanged. Display formatting uses `locale.tsx`/Day.js.

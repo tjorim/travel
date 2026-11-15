@@ -83,7 +83,8 @@ for (const fail of [false, true]) {
       await expect(input).toHaveValue("Synthetic submitted A");
       await expect(input).toBeDisabled();
     }
-    await expect.poll(() => submitted).toMatchObject({ title: "Synthetic submitted A" });
+    // The trip is Dutch, so the title on screen is its Dutch version.
+    await expect.poll(() => submitted).toMatchObject({ title_nl: "Synthetic submitted A" });
     await page.goBack();
     const prompt = page.getByRole("alertdialog");
     await expect(prompt).toContainText(message("en", "records_wait_for_save"));

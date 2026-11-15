@@ -1,8 +1,10 @@
 import { AdvancedSection } from "../../forms/AdvancedSection";
-import { CheckboxField, SelectField, RecordForm, TextField } from "../../forms/fields";
+import { CheckboxField, SelectField, RecordForm } from "../../forms/fields";
+import { LocalizedField } from "../../forms/LocalizedField";
 import { DateField, TimeField } from "../../forms/DateTimeFields";
 import { MarkdownField } from "../../forms/MarkdownField";
 import type { useRecordForm } from "../../forms/useRecordForm";
+import { pickText, useContentLanguage } from "../../content-language";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
 import { VISIT_KIND_LABELS, PLANNING_STATUS_LABELS } from "../labels";
@@ -22,6 +24,7 @@ export function VisitForm({
   editingId: string | null | undefined;
 }) {
   useLocale();
+  const language = useContentLanguage();
   return (
     <RecordForm
       record={record}
@@ -38,17 +41,14 @@ export function VisitForm({
           />
         )}
       </record.form.Field>
-      <record.form.Field name="title">
-        {(field) => (
-          <TextField
-            field={field}
-            label={m.common_title()}
-            optional
-            maxLength={160}
-            placeholder={m.visits_without_a_title_the_visit_uses_the_place_name()}
-          />
-        )}
-      </record.form.Field>
+      <LocalizedField
+        form={record.form}
+        name="title"
+        label={m.common_title()}
+        optional
+        maxLength={160}
+        placeholder={m.visits_without_a_title_the_visit_uses_the_place_name()}
+      />
       <div className="field-row">
         <record.form.Field name="startsOn">
           {(field) => <DateField field={field} label={m.visits_first_day()} optional />}
@@ -140,23 +140,24 @@ export function VisitForm({
           />
         )}
       </record.form.Field>
-      <record.form.Field name="summary">
-        {(field) => (
-          <MarkdownField
-            field={field}
-            label={m.common_text_for_visitors()}
-            optional
-            maxLength={2000}
-            rows={3}
-            placeholder={m.visits_what_may_visitors_read_about_this_visit()}
-          />
-        )}
-      </record.form.Field>
+      <LocalizedField
+        form={record.form}
+        name="summary"
+        kind="markdown"
+        label={m.common_text_for_visitors()}
+        optional
+        maxLength={2000}
+        rows={3}
+        placeholder={m.visits_what_may_visitors_read_about_this_visit()}
+      />
       <record.form.Subscribe
         selector={(state) => ({
           place: state.values.place,
-          title: state.values.title,
-          summary: state.values.summary,
+          title:
+            pickText({ nl: state.values.titleNl, en: state.values.titleEn }, language)?.text ?? "",
+          summary:
+            pickText({ nl: state.values.summaryNl, en: state.values.summaryEn }, language)?.text ??
+            "",
           startsOn: state.values.startsOn,
           endsOn: state.values.endsOn,
         })}

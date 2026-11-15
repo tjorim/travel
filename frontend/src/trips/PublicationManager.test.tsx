@@ -247,7 +247,7 @@ beforeEach(() => {
   });
   api.on(
     "POST",
-    /\/preview$/,
+    /\/preview(\?lang=\w+)?$/,
     () =>
       ({
         title: "Exampleland",
@@ -577,6 +577,80 @@ it("previews the unsaved public selection without saving it, keeping the draft",
       .getAttribute("aria-checked"),
   ).toBe("false");
   expect(screen.getByRole("button", { name: "Keuze bewaren" })).toBeTruthy();
+});
+
+it("shows the preview as a visitor of the other language receives it, from the same unsaved selection", async () => {
+  renderWithOwner(<PublicationManager trip={trip} />);
+  const editor = await screen.findByRole("group", { name: "Wat iedereen mag zien" });
+  fireEvent.click(within(editor).getByRole("checkbox", { name: "Samenvatting" }));
+  fireEvent.click(screen.getByRole("button", { name: "Bekijk als bezoeker" }));
+  const dialog = await screen.findByRole("dialog", { name: "Publieke preview" });
+  const languages = within(
+    within(dialog).getByRole("radiogroup", { name: "Taal van het voorbeeld" }),
+  );
+  // The preview opens in the trip's own language (Dutch here).
+  expect(languages.getByRole("radio", { name: "Nederlands" }).getAttribute("aria-checked")).toBe(
+    "true",
+  );
+  fireEvent.click(languages.getByRole("radio", { name: "Engels" }));
+  await waitFor(() =>
+    expect(api.count("POST /api/trips/trip/public-projection/preview?lang=en")).toBe(1),
+  );
+  expect(
+    api.lastBody<ShareScope>("POST /api/trips/trip/public-projection/preview?lang=en")?.trip
+      .summary,
+  ).toBe(false);
+  await waitFor(() =>
+    expect(languages.getByRole("radio", { name: "Engels" }).getAttribute("aria-checked")).toBe(
+      "true",
+    ),
+  );
+  expect(api.count("PUT /api/trips/trip/public-projection")).toBe(0);
+});
+
+it("ignores a language answer that arrives after a newer choice", async () => {
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  let englishRequests = 0;
+  server.use(
+    http.post("/api/trips/trip/public-projection/preview", async ({ request }) => {
+      const language = new URL(request.url).searchParams.get("lang");
+      // The first English answer is the slow one.
+      if (language === "en" && ++englishRequests === 1) await gate;
+      return HttpResponse.json({
+        title: language === "en" ? "Exampleland" : "Voorbeeldland",
+        summary: null,
+        dates: null,
+        visits: [],
+        places: [],
+        updates: [],
+        stays: [],
+        media: [],
+        routes: [],
+      });
+    }),
+  );
+  renderWithOwner(<PublicationManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Bekijk als bezoeker" }));
+  const dialog = await screen.findByRole("dialog", { name: "Publieke preview" });
+  const languages = within(
+    within(dialog).getByRole("radiogroup", { name: "Taal van het voorbeeld" }),
+  );
+  const checked = (name: string) =>
+    languages.getByRole("radio", { name }).getAttribute("aria-checked") === "true";
+  fireEvent.click(languages.getByRole("radio", { name: "Engels" }));
+  fireEvent.click(languages.getByRole("radio", { name: "Engels" }));
+  await waitFor(() => expect(checked("Engels")).toBe(true));
+  fireEvent.click(languages.getByRole("radio", { name: "Nederlands" }));
+  await waitFor(() => expect(checked("Nederlands")).toBe(true));
+  // The first English request resolves last, and must not put English back.
+  release();
+  await act(async () => {
+    await gate;
+  });
+  expect(checked("Nederlands")).toBe(true);
+  expect(checked("Engels")).toBe(false);
+  expect(within(dialog).getByText(/"title": "Voorbeeldland"/)).toBeTruthy();
 });
 
 it("reports a failed public preview and keeps the unsaved selection", async () => {

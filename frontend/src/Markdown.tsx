@@ -24,6 +24,7 @@ export function Markdown({
   className,
   as,
   under,
+  lang,
 }: {
   html?: string | null;
   text: string | null | undefined;
@@ -32,6 +33,8 @@ export function Markdown({
   as?: "figcaption";
   /** The level of the heading this text sits under; its own headings are fitted below it. */
   under?: number;
+  /** The language the text is written in, when it differs from the page's (#376). */
+  lang?: string;
 }) {
   if (!text?.trim()) return null;
   if (!html) {
@@ -39,11 +42,11 @@ export function Markdown({
       .filter(Boolean)
       .join(" ");
     return as === "figcaption" ? (
-      <figcaption className={classes} data-markdown-source="">
+      <figcaption className={classes} lang={lang} data-markdown-source="">
         {text}
       </figcaption>
     ) : (
-      <p className={classes} data-markdown-source="">
+      <p className={classes} lang={lang} data-markdown-source="">
         {text}
       </p>
     );
@@ -53,6 +56,7 @@ export function Markdown({
   return (
     <Element
       className={["markdown", className].filter(Boolean).join(" ")}
+      lang={lang}
       dangerouslySetInnerHTML={{ __html: under ? fitHeadings(html, under) : html }}
     />
   );

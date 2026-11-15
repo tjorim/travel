@@ -54,8 +54,43 @@ function updateDocument() {
   document.title = `Travel · ${window.location.pathname.startsWith("/admin") ? m.trips() : window.location.pathname.startsWith("/share/") ? m.shared_trip() : window.location.pathname.startsWith("/trips/") ? m.public_trip() : m.on_the_road()}`;
   document.querySelector('meta[name="description"]')?.setAttribute("content", m.description());
 }
+/**
+ * Where the visitor's own choice of language is kept. `travel-locale` cannot say it: the translation runtime writes
+ * the language it starts in back to it, so it also holds a browser default nobody chose.
+ */
+const CHOICE_KEY = "travel-locale-choice";
+/** A choice that could not be written to storage: it still counts, for as long as this page lives. */
+let unsavedChoice: Locale | null = null;
+/** The language the visitor chose themselves with the language control (here or on an earlier visit), else null. */
+export function chosenLocale(): Locale | null {
+  if (unsavedChoice) return unsavedChoice;
+  try {
+    const stored = localStorage.getItem(CHOICE_KEY);
+    return stored === "nl" || stored === "en" ? stored : null;
+  } catch {
+    return null;
+  }
+}
+/**
+ * Shows the interface in `next` without remembering it as a choice: a visitor with no stored preference reads a trip
+ * in the trip's own language, and the next trip they open is read in that one's.
+ */
+export function adoptLocale(next: Locale) {
+  if (next === current) return;
+  current = next;
+  updateDocument();
+  window.dispatchEvent(new Event("travel-locale-change"));
+  listeners.forEach((listener) => listener());
+}
 export function changeLocale(next: Locale) {
   setLocale(next, { reload: false });
+  // Remembering it is best effort; a failed write must not lose the choice that was just made.
+  try {
+    localStorage.setItem(CHOICE_KEY, next);
+    unsavedChoice = null;
+  } catch {
+    unsavedChoice = next;
+  }
   updateDocument();
   window.dispatchEvent(new Event("travel-locale-change"));
   listeners.forEach((listener) => listener());

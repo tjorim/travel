@@ -1,4 +1,5 @@
 import { useLocale } from "../../locale";
+import { AuthoredText } from "../../content-language";
 import { Markdown } from "../../Markdown";
 import { m } from "../../paraglide/messages.js";
 import { DeleteConfirmation } from "../../RecordDialog";
@@ -32,7 +33,9 @@ export function VisitDetails({
   return (
     <div className="stack-form">
       <div>
-        <h3>{visitTitle(selected)}</h3>
+        <AuthoredText as="h3" record={selected} field="title">
+          {visitTitle(selected)}
+        </AuthoredText>
         <p>{dayLine(selected)}</p>
         <p>{visitPlace(selected)}</p>
         {selected.summary && (

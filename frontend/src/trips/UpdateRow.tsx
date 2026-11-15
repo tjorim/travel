@@ -1,5 +1,6 @@
 import { Button } from "@/ui/button";
 
+import { AuthoredText } from "../content-language";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { updateDateLabel } from "../dates";
@@ -34,7 +35,9 @@ export function UpdateRow({
   return (
     <article className="excerpt-row">
       <Button className="document-select" type="button" onClick={onInspect}>
-        <strong>{item.title}</strong>
+        <AuthoredText as="strong" record={item} field="title">
+          {item.title}
+        </AuthoredText>
         <span>
           {updateDateLabel(item)} · {visibilityLabel(item.visibility)} ·{" "}
           {item.area?.label ?? m.updates_no_place()}

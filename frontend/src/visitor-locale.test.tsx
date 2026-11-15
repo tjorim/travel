@@ -73,8 +73,9 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
-  localStorage.clear();
   act(() => changeLocale("nl"));
+  // After the switch back: the visitor in these tests has made no choice of their own.
+  localStorage.clear();
 });
 
 it("switches projection chrome, dates and map alternatives while keeping authored content, URLs and anchors", () => {
@@ -219,7 +220,7 @@ it("retranslates retained image/video failures and retries only the selected ima
   expect(screen.queryByText("This image is unavailable.")).toBeNull();
 });
 
-it("reports denied saved-link storage without losing the trip or refetching on a locale switch", async () => {
+it("reports denied saved-link storage without losing the trip, and asks again in the language chosen", async () => {
   vi.stubGlobal("localStorage", {
     getItem: localStorage.getItem.bind(localStorage),
     setItem: () => {
@@ -227,16 +228,21 @@ it("reports denied saved-link storage without losing the trip or refetching on a
     },
   });
   const fetcher = vi.fn(
-    async (_input: RequestInfo | URL) => new Response(JSON.stringify(projection())),
+    async (_input: RequestInfo | URL) =>
+      new Response(JSON.stringify(projection()), { headers: { "Content-Language": "nl" } }),
   );
   serveApi(fetcher);
   render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
   await screen.findByRole("heading", { name: "Authored reis" });
   expect(screen.getByText(m.visitor_storage_failed())).toBeTruthy();
-  act(() => changeLocale("en"));
-  expect(screen.getByText(m.visitor_storage_failed())).toBeTruthy();
   expect(fetcher).toHaveBeenCalledTimes(1);
   expect(fetcher.mock.calls[0]?.[0]).toBe(`/api/shared/${token}`);
+  act(() => changeLocale("en"));
+  // The page stays up while the texts are asked for again in the language chosen.
+  expect(screen.getByText(m.visitor_storage_failed())).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Authored reis" })).toBeTruthy();
+  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+  expect(fetcher.mock.calls[1]?.[0]).toBe(`/api/shared/${token}?lang=en`);
 });
 
 it("sets a long authored trip title in a smaller, looser heading than a short one", async () => {
@@ -344,14 +350,17 @@ it.each(["invalid", "revoked", "expired"])(
 it("retries a visitor network failure in the current locale", async () => {
   const fetcher = vi.fn(async () => new Response(JSON.stringify(projection())));
   fetcher.mockRejectedValueOnce(new Error("private network diagnostic"));
+  fetcher.mockRejectedValueOnce(new Error("private network diagnostic"));
   serveApi(fetcher);
   render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
   await screen.findByRole("button", { name: m.retry() });
   act(() => changeLocale("en"));
+  // Choosing a language asks again; the failure stays on screen, in the new language.
+  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
   expect(document.body.textContent).not.toContain("private network diagnostic");
-  fireEvent.click(screen.getByRole("button", { name: m.retry() }));
+  fireEvent.click(await screen.findByRole("button", { name: m.retry() }));
   await screen.findByRole("heading", { name: "Authored reis" });
-  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(fetcher).toHaveBeenCalledTimes(3);
 });
 
 it("keeps a saved shortcut visible when forgetting is denied and translates its retained failure", async () => {

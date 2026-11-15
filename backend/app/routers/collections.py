@@ -16,6 +16,7 @@ from ..database import get_session
 from ..errors import ApiException
 from ..http_delivery import (
     LanguageQuery,
+    declare_language,
     file_response,
     persist_lazy_expiry,
     preview_navigation,
@@ -158,8 +159,11 @@ def preview_collection_member(
     subject: SubjectDep,
     response: Response,
     payload: ShareScopeInput | None = None,
+    lang: LanguageQuery = None,
 ) -> dict:
-    document = service.preview_collection_member(session, subject, collection_id, member_id, payload)
+    document = service.preview_collection_member(
+        session, subject, collection_id, member_id, payload, visitor_language(lang)
+    )
     persist_lazy_expiry(session)
     response.headers["Cache-Control"] = "no-store"
     return document
@@ -231,10 +235,14 @@ def preview_collection_member_saved_navigation(
 
 @router.get("/{collection_id}/preview", response_model=CollectionIndexDocument)
 def preview_collection_index(
-    collection_id: Identifier, session: SessionDep, subject: SubjectDep, response: Response
+    collection_id: Identifier,
+    session: SessionDep,
+    subject: SubjectDep,
+    response: Response,
+    lang: LanguageQuery = None,
 ) -> CollectionIndexDocument:
-    """The index exactly as a visitor of this collection would receive it."""
-    result = service.preview_collection_index(session, subject, collection_id)
+    """The index exactly as a visitor of this collection would receive it, in the language asked for."""
+    result = service.preview_collection_index(session, subject, collection_id, visitor_language(lang))
     persist_lazy_expiry(session)
     response.headers["Cache-Control"] = "no-store"
     return result
@@ -313,6 +321,7 @@ def get_shared_collection_trip(
     trip, member = _member_of_active_collection(session, token, member_id, not_found)
     for header, value in UNLISTED_HEADERS.items():
         response.headers[header] = value
+    declare_language(response, visitor_language(lang), trip.content_language)
     return render_document(session, MemberAudience(member), trip, member.scope, visitor_language(lang))
 
 

@@ -80,7 +80,7 @@ it("keeps a pending save and submitted authored values across switches", async (
   expect((screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement).value).toBe(
     "Eigen reis",
   );
-  expect((sent[0] as { title: string }).title).toBe("Eigen reis");
+  expect((sent[0] as { title_nl: string }).title_nl).toBe("Eigen reis");
   await act(async () =>
     finish(HttpResponse.json({ id: "new", title: "Eigen reis", travel_updates: [] })),
   );

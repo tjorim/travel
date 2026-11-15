@@ -29,7 +29,8 @@ export function dayShift(
 export type Values = {
   mode: RouteMode;
   status: Route["status"];
-  label: string;
+  labelNl: string;
+  labelEn: string;
   departure: PlaceValue;
   arrival: PlaceValue;
   departsOn: string;
@@ -85,7 +86,8 @@ export function blank(): Values {
   return {
     mode: "train",
     status: "planned",
-    label: "",
+    labelNl: "",
+    labelEn: "",
     departure: emptyPlace(),
     arrival: emptyPlace(),
     departsOn: "",
@@ -113,7 +115,8 @@ export const routeFromPrefill = (prefill: CreatePrefill): Values => ({
 export const fromRoute = (route: Route): Values => ({
   mode: route.mode,
   status: route.status,
-  label: route.label ?? "",
+  labelNl: route.label_nl ?? "",
+  labelEn: route.label_en ?? "",
   departure: placeOf(route.departure_area, route.departure_location),
   arrival: placeOf(route.arrival_area, route.arrival_location),
   departsOn: route.departs_on ?? "",
@@ -133,7 +136,9 @@ export const fromRoute = (route: Route): Values => ({
 export const serverFields = {
   mode: "mode",
   status: "status",
-  label: "label",
+  label: "labelNl",
+  label_nl: "labelNl",
+  label_en: "labelEn",
   departs_on: "departsOn",
   departs_at: "departsAt",
   arrives_at: "arrivesAt",

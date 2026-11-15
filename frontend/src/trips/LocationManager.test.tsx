@@ -403,7 +403,7 @@ it("previews which edited fields visitors read, then asks to acknowledge before 
   fireEvent.click(within(dialog).getByRole("button", { name: "Opslaan voor bezoekers" }));
   await waitFor(() => expect(api.count("PATCH /api/trips/trip/locations/e1")).toBe(2));
   expect(api.lastBody("PATCH /api/trips/trip/locations/e1")).toMatchObject({
-    label: "Hotel Elsewhere",
+    label_nl: "Hotel Elsewhere",
     acknowledge_visitor_changes: true,
   });
   await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());

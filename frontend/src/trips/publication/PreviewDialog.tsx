@@ -1,9 +1,15 @@
+import { Alert } from "@/ui/alert";
+import { ChoiceGroup } from "@/ui/ChoiceGroup";
 import { Collapsible } from "@/ui/collapsible";
+import { useRef, useState } from "react";
 
 import type { OwnerSession } from "../../auth";
 import type { Projection } from "../../ProjectionView";
+import { useContentLanguage, type ContentLanguage } from "../../content-language";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
+import { errorMessage } from "../../query/api";
+import { tripPath, useOwnerMutation } from "../../query/owner-queries";
 import { RecordDialog } from "../../RecordDialog";
 import type { ShareLink, ShareScope } from "../../api-types";
 import { RenderedPreview } from "../RenderedPreview";
@@ -40,6 +46,42 @@ export function PreviewDialog({
   onClose: () => void;
 }) {
   useLocale();
+  // The document arrives in the trip's own language; the owner can read it as a visitor of the other one would.
+  const own = useContentLanguage();
+  const [language, setLanguage] = useState<ContentLanguage>(own);
+  const [document, setDocument] = useState<Projection>(preview.document);
+  const [languageError, setLanguageError] = useState<unknown>(null);
+  const previewBase =
+    preview.audience === "public"
+      ? tripPath(tripId, "public-projection")
+      : tripPath(tripId, `share-links/${encodeURIComponent(preview.linkId ?? "")}`);
+  const reload = useOwnerMutation<ContentLanguage, Projection>({
+    fallback: m.publication_the_public_preview_could_not_be_loaded,
+    request: (next) => ({
+      path: `${previewBase}/preview?lang=${next}`,
+      method: "POST",
+      body: preview.scope,
+    }),
+    // A preview is shown once and not kept.
+    invalidate: () => [],
+  });
+  // Only the latest choice may answer: an earlier one that resolves late would put its language and document back.
+  const latest = useRef(0);
+  function chooseLanguage(next: ContentLanguage) {
+    const request = ++latest.current;
+    if (next === language) return;
+    setLanguageError(null);
+    reload.mutateAsync(next).then(
+      (result) => {
+        if (request !== latest.current) return;
+        setLanguage(next);
+        setDocument(result);
+      },
+      (failure: unknown) => {
+        if (request === latest.current) setLanguageError(failure);
+      },
+    );
+  }
   // The preview is the audience's real delivery; this says how it differs from the public page.
   const review = useExclusionReview(tripId, preview.scope);
   const left = preview.audience === "share" ? (review.data?.excluded.length ?? 0) : 0;
@@ -75,7 +117,22 @@ export function PreviewDialog({
               : m.publication_not_shared_yet()
             : LINK_STATE_LABELS[links.find((link) => link.id === preview.linkId)?.state ?? "draft"]}
         </p>
-        <p>{projectionSummary(preview.document)}</p>
+        <p>{projectionSummary(document)}</p>
+        <ChoiceGroup
+          label={m.publication_preview_language_label()}
+          value={language}
+          choices={[
+            { value: "nl", label: m.localized_dutch() },
+            { value: "en", label: m.localized_english() },
+          ]}
+          onChange={chooseLanguage}
+        />
+        <p className="help">{m.publication_preview_language_hint()}</p>
+        {languageError !== null && (
+          <Alert variant="error" role="alert">
+            {errorMessage(languageError, m.publication_the_public_preview_could_not_be_loaded)}
+          </Alert>
+        )}
         {left > 0 && (
           <p>
             {m.exclusions_preview_note({ count: left })}
@@ -86,7 +143,8 @@ export function PreviewDialog({
         <FutureDisclosureReview review={future} name={futureName} />
         <p className="help">{m.sharing_preview_unsaved_note()}</p>
         <RenderedPreview
-          projection={preview.document}
+          projection={document}
+          language={language}
           audience={preview.audience}
           tripId={tripId}
           linkId={preview.linkId}
@@ -99,7 +157,7 @@ export function PreviewDialog({
             {m.publication_inspect_delivered_fields()}
           </Collapsible.Trigger>
           <Collapsible.Panel keepMounted>
-            <pre>{JSON.stringify(preview.document, null, 2)}</pre>
+            <pre>{JSON.stringify(document, null, 2)}</pre>
           </Collapsible.Panel>
         </Collapsible.Root>
       </section>

@@ -38,7 +38,7 @@ for (const locale of ["nl", "en"] as const) {
       test(`listing ${locale} ${theme} ${width}`, async ({ page }, testInfo) => {
         await page.setViewportSize({ width, height: 1000 });
         await mockApi(page);
-        await page.route("**/api/public/trips", (route) => route.fulfill({ json: trips }));
+        await page.route("**/api/public/trips{,?*}", (route) => route.fulfill({ json: trips }));
         await choosePreferences(page, locale, theme);
         await page.goto(locale === "en" ? "/" : "/trips/");
         const links = page.locator(".travel-trip-card");
@@ -63,7 +63,7 @@ test("listing loading, empty and retry states", async ({ page }) => {
   await mockApi(page);
   await choosePreferences(page, "en", "light");
   let state = "loading";
-  await page.route("**/api/public/trips", async (route) => {
+  await page.route("**/api/public/trips{,?*}", async (route) => {
     if (state === "loading") return; // Keep the first request pending until navigation.
     if (state === "error") return route.fulfill({ status: 503, json: {} });
     return route.fulfill({ json: [] });
@@ -105,10 +105,10 @@ for (const locale of ["nl", "en"] as const) {
           ]),
         );
       });
-      await page.route("**/api/shared/synthetic-revoked-capability", (route) =>
+      await page.route("**/api/shared/synthetic-revoked-capability{,?*}", (route) =>
         route.fulfill({ status: 404 }),
       );
-      await page.route("**/api/shared/synthetic-active-capability", (route) =>
+      await page.route("**/api/shared/synthetic-active-capability{,?*}", (route) =>
         route.fulfill({
           json: {
             schema_version: "travel/unlisted-trip@1",
