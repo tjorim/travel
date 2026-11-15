@@ -2,7 +2,7 @@ import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import { textNotice, errorNotice, useFeedback } from "../query/feedback";
 import { Button } from "@/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { DateField } from "../forms/DateTimeFields";
 import { RecordForm } from "../forms/fields";
@@ -76,6 +76,12 @@ export function TripEditor({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useFeedback<string | null>(null);
   const refresh = useRefreshTrip();
+  // A new trip is written in the language the owner opened the dialog in; switching the interface language while
+  // typing does not move what was typed to another version of the field.
+  const [creationLanguage, setCreationLanguage] = useState(interfaceLanguage);
+  useEffect(() => {
+    if (open && !trip) setCreationLanguage(interfaceLanguage());
+  }, [open, trip]);
   const save = useOwnerMutation<Values, Trip>({
     fallback: m.trips_the_trip_could_not_be_saved,
     request: (values) => {
@@ -93,7 +99,7 @@ export function TripEditor({
             path: "/api/trips",
             method: "POST",
             // A new trip is written in the language the owner is using the app in.
-            body: { ...details, content_language: interfaceLanguage() },
+            body: { ...details, content_language: creationLanguage },
           };
     },
     invalidate: (subject) => [ownerKeys.trips(subject)],
@@ -119,7 +125,7 @@ export function TripEditor({
     },
   });
   const { form } = record;
-  const language = trip?.content_language ?? interfaceLanguage();
+  const language = trip?.content_language ?? creationLanguage;
   function close() {
     setConfirmDelete(false);
     setDeleteError(null);

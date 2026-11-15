@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { AuthoredText } from "../content-language";
 import { cn } from "cn";
 import type { ReactNode } from "react";
 
@@ -49,14 +50,17 @@ export function HomeTripCard({
   const text: ReactNode = (
     <div className="flex min-w-0 flex-1 flex-col gap-3">
       <TripStatePill state={state} />
-      <h3
+      <AuthoredText
+        as="h3"
+        record={trip}
+        field="title"
         className={cn(
           "m-0 line-clamp-3 leading-tight tracking-tight",
           featured ? "text-travel-section" : "text-xl",
         )}
       >
         {trip.title}
-      </h3>
+      </AuthoredText>
       <Dates trip={trip} />
       <p className="m-0 grid gap-0.75 rounded-travel-media bg-travel-tint px-3 py-2.75 text-sm leading-normal text-travel-positive">
         <strong className="text-travel-ink">{m.trips_next_step()}</strong>
@@ -111,7 +115,14 @@ export function ListTripCard({
       <TripCover trip={trip} />
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         <TripStatePill state={state} />
-        <h4 className="m-0 line-clamp-3 text-xl leading-tight tracking-tight">{trip.title}</h4>
+        <AuthoredText
+          as="h4"
+          record={trip}
+          field="title"
+          className="m-0 line-clamp-3 text-xl leading-tight tracking-tight"
+        >
+          {trip.title}
+        </AuthoredText>
         <p className="m-0 mt-auto text-sm leading-normal text-travel-muted">
           {[tripDateRange(trip), m.updates_count({ count: trip.travel_update_count })]
             .filter(Boolean)

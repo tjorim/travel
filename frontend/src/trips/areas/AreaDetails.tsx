@@ -1,4 +1,5 @@
 import { areaName } from "../../records";
+import { AuthoredText } from "../../content-language";
 import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
@@ -58,7 +59,9 @@ export function AreaDetails({
   return (
     <div className="stack-form">
       <div>
-        <h3>{selected.label}</h3>
+        <AuthoredText as="h3" record={selected} field="label">
+          {selected.label}
+        </AuthoredText>
         <p>{areaSummary(selected)}</p>
         {selected.latitude !== null && selected.longitude !== null && (
           <p>

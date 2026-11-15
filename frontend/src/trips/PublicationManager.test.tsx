@@ -247,7 +247,7 @@ beforeEach(() => {
   });
   api.on(
     "POST",
-    /\/preview$/,
+    /\/preview(\?lang=\w+)?$/,
     () =>
       ({
         title: "Exampleland",
@@ -577,6 +577,35 @@ it("previews the unsaved public selection without saving it, keeping the draft",
       .getAttribute("aria-checked"),
   ).toBe("false");
   expect(screen.getByRole("button", { name: "Keuze bewaren" })).toBeTruthy();
+});
+
+it("shows the preview as a visitor of the other language receives it, from the same unsaved selection", async () => {
+  renderWithOwner(<PublicationManager trip={trip} />);
+  const editor = await screen.findByRole("group", { name: "Wat iedereen mag zien" });
+  fireEvent.click(within(editor).getByRole("checkbox", { name: "Samenvatting" }));
+  fireEvent.click(screen.getByRole("button", { name: "Bekijk als bezoeker" }));
+  const dialog = await screen.findByRole("dialog", { name: "Publieke preview" });
+  const languages = within(
+    within(dialog).getByRole("radiogroup", { name: "Taal van het voorbeeld" }),
+  );
+  // The preview opens in the trip's own language (Dutch here).
+  expect(languages.getByRole("radio", { name: "Nederlands" }).getAttribute("aria-checked")).toBe(
+    "true",
+  );
+  fireEvent.click(languages.getByRole("radio", { name: "Engels" }));
+  await waitFor(() =>
+    expect(api.count("POST /api/trips/trip/public-projection/preview?lang=en")).toBe(1),
+  );
+  expect(
+    api.lastBody<ShareScope>("POST /api/trips/trip/public-projection/preview?lang=en")?.trip
+      .summary,
+  ).toBe(false);
+  await waitFor(() =>
+    expect(languages.getByRole("radio", { name: "Engels" }).getAttribute("aria-checked")).toBe(
+      "true",
+    ),
+  );
+  expect(api.count("PUT /api/trips/trip/public-projection")).toBe(0);
 });
 
 it("reports a failed public preview and keeps the unsaved selection", async () => {

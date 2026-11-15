@@ -1,4 +1,5 @@
 import { Button } from "@/ui/button";
+import { AuthoredText } from "../content-language";
 import { Link } from "@tanstack/react-router";
 import { cn } from "cn";
 
@@ -31,12 +32,14 @@ export function WorkspaceHeader({ trip, onEdit }: { trip: Trip; onEdit: () => vo
               <TripStatePill state={tripState(trip, today())} />
               <PublicationState tripId={trip.id} />
             </div>
-            <h1
+            <AuthoredText
+              as="h1"
+              record={trip}
+              field="title"
               className="m-0 max-w-travel-reading text-travel-context-title leading-tight trip-sidebar:text-travel-sidebar-title tracking-tight"
-              id="trip-detail-title"
             >
               {trip.title}
-            </h1>
+            </AuthoredText>
             <p className="m-0 leading-normal font-medium text-travel-muted">
               {[tripDateRange(trip), m.updates_count({ count: trip.travel_updates.length })]
                 .filter(Boolean)

@@ -306,7 +306,8 @@ it("lists only server supplied public cards and opens their stable slugs", async
   expect(screen.getByRole("link", { name: "Mijn reizen beheren" }).getAttribute("href")).toBe(
     "/admin/",
   );
-  expect(fetcher.mock.calls[0]?.[0]).toBe("/api/public/trips");
+  // The index has no trip to follow: it asks for the language the interface is in.
+  expect(fetcher.mock.calls[0]?.[0]).toBe("/api/public/trips?lang=nl");
   expect(sent.mock.calls[0]?.[1]).toMatchObject({ cache: "no-store", credentials: "omit" });
 });
 
@@ -322,8 +323,8 @@ it("shows an empty index and retries a failed listing without using archive rout
   screen.getByRole("button", { name: "Opnieuw proberen" }).click();
   await screen.findByRole("heading", { name: "Nog geen publieke reizen" });
   expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
-    "/api/public/trips",
-    "/api/public/trips",
+    "/api/public/trips?lang=nl",
+    "/api/public/trips?lang=nl",
   ]);
 });
 
@@ -579,7 +580,7 @@ it("automatically saves a successfully visited hidden trip on this browser's hom
   const data = projection("travel/unlisted-trip@1");
   data.title = "Family trip";
   const fetcher = vi.fn(async (url: RequestInfo | URL) => {
-    if (url === `/api/shared/${token}`) return new Response(JSON.stringify(data));
+    if (String(url).startsWith(`/api/shared/${token}`)) return new Response(JSON.stringify(data));
     return new Response("[]");
   });
   serveApi(fetcher);
@@ -821,7 +822,11 @@ it("shows a visit with its days, its place and a time only when it was shared", 
   // Day-precision visits are placed on their day, the first one with its shared end day.
   expect(screen.getByRole("heading", { name: "Per dag" })).toBeTruthy();
   expect(screen.getByText(/18:30–21:00 \(Taipei\)/)).toBeTruthy();
-  expect(screen.getByText("Bezoek · Taipei")).toBeTruthy();
+  expect(
+    screen.getByText(
+      (_, element) => element?.textContent === "Bezoek · Taipei" && element.children.length === 1,
+    ),
+  ).toBeTruthy();
   expect(screen.getByText(/^Tot 22 nov/)).toBeTruthy();
   expect(screen.queryByText(/Hidden/)).toBeNull();
   // Without a shared time nothing is invented.

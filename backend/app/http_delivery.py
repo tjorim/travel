@@ -36,6 +36,14 @@ def visitor_language(value: str | None) -> ContentLanguage | None:
     return ContentLanguage(value) if value in LANGUAGE_VALUES else None
 
 
+def declare_language(response: Response, requested: ContentLanguage | None, own: str) -> None:
+    """Say which language a delivered document's texts are in: ``Content-Language``.
+
+    A text in this language carries no ``<field>_lang`` marker, so a page that did not choose a language (it asked
+    for the trip's own) learns here which one that was, and sets ``lang`` on its unmarked texts from it."""
+    response.headers["Content-Language"] = (requested or ContentLanguage(own)).value
+
+
 def malformed_path(request: Request, names: set[str]) -> bool:
     return any(
         PATH_PATTERNS[name].fullmatch(value) is None for name, value in request.path_params.items() if name in names

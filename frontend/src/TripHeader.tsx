@@ -14,7 +14,9 @@ const LONG_TITLE_CLASS =
 export type TripCover = {
   url: string | null;
   alt: string;
-  caption: { html: string | null; text: string | null };
+  /** The language of the photo's alt text and caption, when known. */
+  altLang?: string;
+  caption: { html: string | null; text: string | null; lang?: string };
   focalX: number;
   focalY: number;
   width?: number;
@@ -29,6 +31,7 @@ export type TripCover = {
  */
 export function TripHeader({
   title,
+  titleLang,
   eyebrow,
   level,
   dates,
@@ -36,6 +39,8 @@ export function TripHeader({
   cover,
 }: {
   title: string;
+  /** The language the title is written in (#376), when it is an authored one. */
+  titleLang?: string;
   eyebrow: string;
   level: "h1" | "h2";
   dates: string | null;
@@ -52,6 +57,7 @@ export function TripHeader({
     <>
       <p className="sr-only">{eyebrow}</p>
       <Heading
+        lang={titleLang}
         className={cn(
           level === "h1" ? long && LONG_TITLE_CLASS : "tracking-tight",
           "m-0! max-w-none! leading-tight! wrap-anywhere",
@@ -103,6 +109,7 @@ export function TripHeader({
               className="absolute inset-0 block size-full object-cover"
               src={shown.url}
               alt={shown.alt}
+              lang={shown.altLang}
               width={shown.width}
               height={shown.height}
               style={{ objectPosition: `${shown.focalX}% ${shown.focalY}%` }}
@@ -118,6 +125,7 @@ export function TripHeader({
           className="mt-2 max-w-travel-reading text-sm leading-normal text-travel-muted"
           html={shown.caption.html}
           text={shown.caption.text}
+          lang={shown.caption.lang}
         />
       </figure>
     </header>

@@ -54,6 +54,26 @@ function updateDocument() {
   document.title = `Travel · ${window.location.pathname.startsWith("/admin") ? m.trips() : window.location.pathname.startsWith("/share/") ? m.shared_trip() : window.location.pathname.startsWith("/trips/") ? m.public_trip() : m.on_the_road()}`;
   document.querySelector('meta[name="description"]')?.setAttribute("content", m.description());
 }
+/** The language the visitor chose themselves (here or on an earlier visit), or null when they never did. */
+export function storedLocale(): Locale | null {
+  try {
+    const stored = localStorage.getItem("travel-locale");
+    return stored === "nl" || stored === "en" ? stored : null;
+  } catch {
+    return null;
+  }
+}
+/**
+ * Shows the interface in `next` without remembering it as a choice: a visitor with no stored preference reads a trip
+ * in the trip's own language, and the next trip they open is read in that one's.
+ */
+export function adoptLocale(next: Locale) {
+  if (next === current) return;
+  current = next;
+  updateDocument();
+  window.dispatchEvent(new Event("travel-locale-change"));
+  listeners.forEach((listener) => listener());
+}
 export function changeLocale(next: Locale) {
   setLocale(next, { reload: false });
   updateDocument();

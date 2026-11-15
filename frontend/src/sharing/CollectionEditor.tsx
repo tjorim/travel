@@ -50,6 +50,8 @@ export function CollectionEditor({
     nl: collection?.title_nl ?? "",
     en: collection?.title_en ?? "",
   });
+  // A new collection is written in the language the owner opened the editor in.
+  const [creationLanguage] = useState(interfaceLanguage);
   const [addTripId, setAddTripId] = useState("");
   const [editingMember, setEditingMember] = useState<CollectionMember | null>(null);
   const [revealed, setRevealed] = useState<{ label: string; url: string } | null>(null);
@@ -74,7 +76,7 @@ export function CollectionEditor({
     if (!collection) {
       // A new collection is written in the language the owner is using the app in.
       mutations.create
-        .mutateAsync({ ...values, content_language: interfaceLanguage() })
+        .mutateAsync({ ...values, content_language: creationLanguage })
         .then((created) => {
           setCreatedId(created.id);
           setNotice(textNotice(() => m.sharing_collection_created()));
@@ -172,7 +174,7 @@ export function CollectionEditor({
           <Field>
             <LocalizedFieldView
               label={m.sharing_collection_title()}
-              language={collection?.content_language ?? interfaceLanguage()}
+              language={collection?.content_language ?? creationLanguage}
               maxLength={160}
               disabled={locked}
               fields={{

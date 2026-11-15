@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from ..audience import LinkAudience, has_expired
 from ..audit import record_audit_event, scope_fingerprint
 from ..capability import generate_token, verifier_for
+from ..content_language import ContentLanguage
 from ..errors import Conflict, RecordNotFound, Refusal
 from ..exclusion_review import exclusion_review
 from ..models import (
@@ -87,9 +88,15 @@ def public_preview(
 
 
 def preview_public_projection(
-    session: Session, subject: str, trip_id: Identifier, candidate: ShareScopeInput | None = None
+    session: Session,
+    subject: str,
+    trip_id: Identifier,
+    candidate: ShareScopeInput | None = None,
+    language: ContentLanguage | None = None,
 ) -> dict:
-    return audiences.preview_document(session, subject, audiences.public_audience(session, trip_id), candidate)
+    return audiences.preview_document(
+        session, subject, audiences.public_audience(session, trip_id), candidate, language
+    )
 
 
 def review_public_future(
@@ -283,9 +290,10 @@ def preview_share_link(
     trip_id: Identifier,
     link_id: Identifier,
     candidate: ShareScopeInput | None = None,
+    language: ContentLanguage | None = None,
 ) -> dict:
     return audiences.preview_document(
-        session, subject, audiences.owned_link(session, subject, trip_id, link_id), candidate
+        session, subject, audiences.owned_link(session, subject, trip_id, link_id), candidate, language
     )
 
 

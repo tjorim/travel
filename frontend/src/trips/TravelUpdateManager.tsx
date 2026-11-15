@@ -5,6 +5,7 @@ import { Button } from "@/ui/button";
 
 import { DateTimeField } from "../forms/DateTimeFields";
 import { RecordForm, requiredText, SelectField } from "../forms/fields";
+import { AuthoredText, authoredLanguage } from "../content-language";
 import { LocalizedField } from "../forms/LocalizedField";
 import { MarkdownField } from "../forms/MarkdownField";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
@@ -256,9 +257,15 @@ export function TravelUpdateManager({
         {!editing && selected && (
           <div className="stack-form">
             <div>
-              <h3>{selected.title}</h3>
+              <AuthoredText as="h3" record={selected} field="title">
+                {selected.title}
+              </AuthoredText>
               {selected.body ? (
-                <Markdown html={selected.body_html} text={selected.body} />
+                <Markdown
+                  html={selected.body_html}
+                  text={selected.body}
+                  lang={authoredLanguage(selected, "body", trip.content_language)}
+                />
               ) : (
                 <p className="help">{m.updates_no_text_for_visitors_yet()}</p>
               )}

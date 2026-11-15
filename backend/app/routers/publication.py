@@ -20,6 +20,7 @@ from ..database import get_session
 from ..errors import ApiException
 from ..http_delivery import (
     LanguageQuery,
+    declare_language,
     file_response,
     malformed_path,
     persist_lazy_expiry,
@@ -116,8 +117,9 @@ def preview_public_projection(
     subject: SubjectDep,
     response: Response,
     payload: ShareScopeInput | None = None,
+    lang: LanguageQuery = None,
 ) -> dict:
-    document = service.preview_public_projection(session, subject, trip_id, payload)
+    document = service.preview_public_projection(session, subject, trip_id, payload, visitor_language(lang))
     response.headers["Cache-Control"] = "no-store"
     return document
 
@@ -294,8 +296,9 @@ def preview_share_link(
     subject: SubjectDep,
     response: Response,
     payload: ShareScopeInput | None = None,
+    lang: LanguageQuery = None,
 ) -> dict:
-    document = service.preview_share_link(session, subject, trip_id, link_id, payload)
+    document = service.preview_share_link(session, subject, trip_id, link_id, payload, visitor_language(lang))
     session.commit()
     response.headers["Cache-Control"] = "no-store"
     return document
@@ -484,6 +487,7 @@ def get_public_trip(
     # A public intermediary cache would otherwise keep serving a withdrawn
     # projection without asking the API again.
     response.headers["Cache-Control"] = "no-store"
+    declare_language(response, visitor_language(lang), trip.content_language)
 
     return render_document(session, PublicAudience(surface), trip, surface.scope, visitor_language(lang))
 
@@ -547,6 +551,7 @@ def get_shared_trip(
             raise not_found
         for header, value in UNLISTED_HEADERS.items():
             response.headers[header] = value
+        declare_language(response, visitor_language(lang), collection.content_language)
         return collection_index(session, collection, visitor_language(lang))
     if link.state != LinkState.ACTIVE:
         raise not_found
@@ -559,6 +564,7 @@ def get_shared_trip(
         raise not_found
     for header, value in UNLISTED_HEADERS.items():
         response.headers[header] = value
+    declare_language(response, visitor_language(lang), trip.content_language)
 
     return render_document(session, LinkAudience(link), trip, link.scope, visitor_language(lang))
 

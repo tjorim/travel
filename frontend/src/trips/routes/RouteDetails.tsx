@@ -1,5 +1,6 @@
 import { Button } from "@/ui/button";
 
+import { AuthoredText } from "../../content-language";
 import { useLocale } from "../../locale";
 import { Markdown } from "../../Markdown";
 import { m } from "../../paraglide/messages.js";
@@ -35,7 +36,9 @@ export function RouteDetails({
   return (
     <div className="stack-form">
       <div>
-        <h3>{routeTitle(selected)}</h3>
+        <AuthoredText as="h3" record={selected} field="label">
+          {routeTitle(selected)}
+        </AuthoredText>
         <p>
           {[
             ROUTE_MODE_LABELS[selected.mode],

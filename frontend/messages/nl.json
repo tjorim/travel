@@ -1761,6 +1761,8 @@
   "publication_open_public_page": "Open publieke pagina",
   "publication_photos_and_videos": "Foto’s en video’s",
   "publication_planning_word_warning": "{audience} toont “{text}”, met een planningswoord erin. Geef het een andere naam; de status hoort bij het onderdeel zelf.",
+  "publication_preview_language_hint": "Toont het voorbeeld zoals een bezoeker die deze taal leest het ontvangt. Een tekst die je er niet in hebt ingevuld, verschijnt in de andere taal.",
+  "publication_preview_language_label": "Taal van het voorbeeld",
   "publication_preview_load_error_short": "Voorbeeld laden lukte niet.",
   "publication_preview_of": "Preview van {name}",
   "publication_previous": [

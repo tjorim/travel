@@ -1761,6 +1761,8 @@
   "publication_open_public_page": "Open public page",
   "publication_photos_and_videos": "Photos and videos",
   "publication_planning_word_warning": "{audience} shows “{text}”, with a planning word in its name. Rename it; the status belongs to the item itself.",
+  "publication_preview_language_hint": "Shows the preview as a visitor who reads this language receives it. A text you have not entered in it appears in the other language.",
+  "publication_preview_language_label": "Preview language",
   "publication_preview_load_error_short": "The preview could not be loaded.",
   "publication_preview_of": "Preview of {name}",
   "publication_previous": [

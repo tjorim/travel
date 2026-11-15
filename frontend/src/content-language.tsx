@@ -65,10 +65,36 @@ export function authoredLanguage(
   )?.language;
 }
 
-/** Authored text in the language it is written in, so a screen reader uses the right voice for it. */
+/** The language an owner's record shows `field` in (its trip's content language first), for `lang`. */
 export function useAuthoredLang(record: object | null | undefined, field: string) {
   const preferred = useContentLanguage();
   const own = (record as { content_language?: ContentLanguage } | null | undefined)
     ?.content_language;
   return record ? authoredLanguage(record, field, own ?? preferred) : undefined;
+}
+
+/**
+ * An element that shows one authored text of an owner's record in the language it is written in, so a screen
+ * reader uses the right voice for it whatever the interface language is. A title the record lacks (a visit named
+ * after its place, a route named after its ends) is not that text, so it carries no `lang`.
+ */
+export function AuthoredText({
+  as: Element = "span",
+  record,
+  field,
+  className,
+  children,
+}: {
+  as?: "span" | "h1" | "h2" | "h3" | "h4" | "strong" | "p";
+  record: object;
+  field: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  const lang = useAuthoredLang(record, field);
+  return (
+    <Element className={className} lang={lang}>
+      {children}
+    </Element>
+  );
 }
