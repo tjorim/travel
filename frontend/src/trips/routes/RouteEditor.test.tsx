@@ -1,16 +1,23 @@
 // @vitest-environment happy-dom
-import { setDateTime, shownDateTime } from "../test-dates";
+import { setDateTime, shownDateTime } from "../../test-dates";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { fakeApi, type FakeApi } from "../query/fake-api";
-import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
-import type { Area, DocumentAsset, Location, Route, Trip } from "../api-types";
-import { changeLocale } from "../locale";
-import { RouteManager } from "./RouteManager";
+import { fakeApi, type FakeApi } from "../../query/fake-api";
+import { chooseOption, renderWithOwner, selectedOption, testToken } from "../../query/test-utils";
+import type { Area, DocumentAsset, Location, Route, Trip } from "../../api-types";
+import { changeLocale } from "../../locale";
+import {
+  agendaRow,
+  ensurePlanApi,
+  getAgendaRow,
+  queryAgendaRow,
+  PlanHarness,
+  startNew,
+} from "../plan-test-utils";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
-vi.mock("../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("../../auth-context", () => ({ useAuth: () => auth }));
 
 const area = (
   id: string,
@@ -131,6 +138,7 @@ function seed(routes: Route[] = [], locations: Location[] = [], areas: Area[] = 
     .collection("/api/documents?trip_id=trip", [ticket])
     .collection("/api/trips/trip/locations", locations);
   api.on("POST", /\/areas\/suggest$/, () => ({ existing_area_id: "taipei", area: taipei }));
+  ensurePlanApi(api);
 }
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
@@ -175,13 +183,13 @@ it("lists a stored group of route ideas as alternatives and keeps them off the s
       updated_at: "2054-01-01T00:00:00Z",
     },
   ]);
-  renderWithOwner(<RouteManager trip={trip} />);
+  renderWithOwner(<PlanHarness trip={trip} />);
   const group = await screen.findByRole("group", { name: "Alternatieven · 1 dec" });
   expect(within(group).getByRole("button", { name: /^HSR/ }).textContent).toContain("Idee");
   expect(within(group).getByRole("button", { name: /^Bus/ })).toBeTruthy();
   expect(within(group).queryByRole("button", { name: /Chosen train/ })).toBeNull();
   // Ideas are never grouped by their dates alone.
-  expect(screen.getAllByRole("group")).toHaveLength(1);
+  expect(screen.getAllByRole("group", { name: /^Alternatieven/ })).toHaveLength(1);
 
   fireEvent.click(within(group).getByRole("button", { name: /^HSR/ }));
   expect(screen.getByText(/Een idee is een kandidaat/)).toBeTruthy();
@@ -194,8 +202,8 @@ it("offers to cancel the rejected ideas once a route for the same journey is cho
     idea("i2", "Bus"),
     route("r1", "Chosen train", { departs_on: "2054-12-01" }),
   ]);
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Route Chosen train bekijken" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  fireEvent.click(await agendaRow("Route: Chosen train"));
   expect(screen.getByText("2 ideeën voor dezelfde reis.")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Annuleer 2 alternatieven" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -203,22 +211,22 @@ it("offers to cancel the rejected ideas once a route for the same journey is cho
   expect(api.lastBody("PATCH /api/trips/trip/routes/i2")).toEqual({ status: "cancelled" });
   expect(screen.getByText("Alternatieven geannuleerd.")).toBeTruthy();
   // An idea is not offered the cancel action for its own rivals.
-  fireEvent.click(screen.getByRole("button", { name: "Route Chosen train bekijken" }));
+  fireEvent.click(getAgendaRow("Route: Chosen train"));
   expect(screen.queryByRole("button", { name: /Annuleer/ })).toBeNull();
 });
 
 it("explains a route idea in the editor", async () => {
   seed();
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  await startNew("Nieuwe route");
   chooseOption("Status", "Idee");
   expect(await screen.findByText(/Een idee is een kandidaat/)).toBeTruthy();
 });
 
 it("needs only a mode and two areas", async () => {
   seed();
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  await startNew("Nieuwe route");
   expect(screen.getByRole("heading", { name: "Route toevoegen" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await screen.findByText("Kies waar de route begint: een gebied of een locatie.");
@@ -227,7 +235,7 @@ it("needs only a mode and two areas", async () => {
   chooseOption("Vervoer", "Fiets");
   pickAreas();
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
-  await screen.findByRole("button", { name: "Route Taipei → Tainan bekijken" });
+  await agendaRow("Route: Taipei → Tainan");
   expect(api.lastBody("POST /api/trips/trip/routes")).toMatchObject({
     mode: "bike",
     departure_area_id: "taipei",
@@ -247,8 +255,8 @@ it("needs only a mode and two areas", async () => {
 
 it("refuses a route that starts and ends at the same place", async () => {
   seed();
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  await startNew("Nieuwe route");
   pickAreas("Taipei (heel gebied)", "Taipei (heel gebied)");
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
   await screen.findByText("Kies twee verschillende plaatsen: vertrek en aankomst zijn hetzelfde.");
@@ -257,8 +265,8 @@ it("refuses a route that starts and ends at the same place", async () => {
 
 it("takes both times or neither", async () => {
   seed();
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  await startNew("Nieuwe route");
   pickAreas();
   setDateTime("Vertrektijd (lokaal)", "2054-11-16T10:40");
   fireEvent.click(screen.getByRole("button", { name: "Route toevoegen" }));
@@ -285,8 +293,8 @@ it("takes both times or neither", async () => {
 
 it("takes a day first, and times only on that day", async () => {
   seed();
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  await startNew("Nieuwe route");
   pickAreas();
   fireEvent.change(screen.getByLabelText("Dag van vertrek (optioneel)"), {
     target: { value: "2054-12-05" },
@@ -314,9 +322,9 @@ it("takes a day first, and times only on that day", async () => {
 
 it("shows a route's day while it has no times", async () => {
   seed([route("r-day", "Naar het noorden", { departs_on: "2054-12-05" })]);
-  renderWithOwner(<RouteManager trip={trip} />);
-  const row = await screen.findByRole("button", { name: "Route Naar het noorden bekijken" });
-  expect(row.textContent).toContain("5 dec");
+  renderWithOwner(<PlanHarness trip={trip} />);
+  const row = await agendaRow("Route: Naar het noorden");
+  expect(row.closest("article")?.textContent).toContain("5 dec");
   fireEvent.click(row);
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   expect((screen.getByLabelText("Dag van vertrek (optioneel)") as HTMLInputElement).value).toBe(
@@ -326,10 +334,8 @@ it("shows a route's day while it has no times", async () => {
 
 it("opens a route in detail before its editor, prefilled with its bookings and times", async () => {
   seed([flight], [flight.departure_location!], [flight.departure_area, flight.arrival_area]);
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Route Amsterdam → Taoyuan bekijken" }),
-  );
+  renderWithOwner(<PlanHarness trip={trip} />);
+  fireEvent.click(await agendaRow("Route: Amsterdam → Taoyuan"));
   expect(screen.getByText("Boekingsreferentie: REF")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   expect(screen.getByRole("heading", { name: "Route bewerken" })).toBeTruthy();
@@ -361,8 +367,8 @@ it("files a new location under the chosen area", async () => {
       },
     ],
   }));
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  await startNew("Nieuwe route");
   pickAreas("Nieuwe locatie…", "Tainan (heel gebied)");
   fireEvent.change(screen.getByLabelText("Zoek locatie (Vertrek)"), {
     target: { value: "Taipei Main Station" },
@@ -402,8 +408,8 @@ it("shows a nearby area suggestion before saving a new location", async () => {
       },
     ],
   }));
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  await startNew("Nieuwe route");
   pickAreas("Nieuwe locatie…", "Tainan (heel gebied)");
   fireEvent.change(screen.getByLabelText("Zoek locatie (Vertrek)"), {
     target: { value: "Taipei Main Station" },
@@ -424,8 +430,8 @@ it("shows a nearby area suggestion before saving a new location", async () => {
 
 it("reuses a saved location, which is already part of its area", async () => {
   seed([], [savedLocation]);
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  await startNew("Nieuwe route");
   // The location is listed under its area, so one choice says both.
   fireEvent.keyDown(screen.getByRole("combobox", { name: "Vertrek" }), { key: "ArrowDown" });
   const stationOption = screen.getByRole("option", { name: "Taipei Main Station" });
@@ -441,8 +447,8 @@ it("reuses a saved location, which is already part of its area", async () => {
 it("rewrites an end only when it changed, and moving to the whole area clears the location", async () => {
   const withStation = route("r1", null, { departure_location: savedLocation });
   seed([withStation], [savedLocation]);
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Route Taipei → Tainan bekijken" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  fireEvent.click(await agendaRow("Route: Taipei → Tainan"));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   expect(selectedOption("Vertrek")).toBe("Taipei Main Station");
   fireEvent.change(screen.getByLabelText("Vervoerder (optioneel)"), { target: { value: "THSR" } });
@@ -457,7 +463,7 @@ it("rewrites an end only when it changed, and moving to the whole area clears th
   ])
     expect(api.lastBody("PATCH /api/trips/trip/routes/r1")).not.toHaveProperty(untouched);
 
-  fireEvent.click(await screen.findByRole("button", { name: /Route Taipei → Tainan bekijken/ }));
+  fireEvent.click(await agendaRow("Route: Taipei → Tainan"));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   chooseOption("Vertrek", "Taipei (heel gebied)");
   fireEvent.click(screen.getByRole("button", { name: "Route opslaan" }));
@@ -470,8 +476,8 @@ it("rewrites an end only when it changed, and moving to the whole area clears th
 
 it("offers the areas' points to a drawn line, and shows a saved line in its editor", async () => {
   seed([line]);
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Route Oostkust bekijken" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  fireEvent.click(await agendaRow("Route: Oostkust"));
   expect(screen.getByRole("heading", { name: "Routevoorbeeld" })).toBeTruthy();
   expect(screen.getByText("2 algemene punten in deze route.")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
@@ -485,7 +491,7 @@ it("offers the areas' points to a drawn line, and shows a saved line in its edit
     target: { value: "Oostkust noord" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Route opslaan" }));
-  await screen.findByRole("button", { name: "Route Oostkust noord bekijken" });
+  await agendaRow("Route: Oostkust noord");
   expect(api.lastBody("PATCH /api/trips/trip/routes/r-line")).toMatchObject({
     label: "Oostkust noord",
     geometry: {
@@ -501,8 +507,8 @@ it("offers the areas' points to a drawn line, and shows a saved line in its edit
 
 it("sends a pasted line only when it has at least two valid points", async () => {
   seed();
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe route" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  await startNew("Nieuwe route");
   pickAreas();
   fireEvent.click(screen.getByText("Geavanceerd: coördinaten als JSON plakken"));
   fireEvent.change(screen.getByLabelText("Lijncoördinaten (JSON) (optioneel)"), {
@@ -538,10 +544,8 @@ it("sends a pasted line only when it has at least two valid points", async () =>
 
 it("links documents to a route and forgets a deleted one after the in-app confirmation", async () => {
   seed([flight, line], [], [flight.departure_area, flight.arrival_area, taipei, tainan]);
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Route Amsterdam → Taoyuan bekijken" }),
-  );
+  renderWithOwner(<PlanHarness trip={trip} />);
+  fireEvent.click(await agendaRow("Route: Amsterdam → Taoyuan"));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   fireEvent.click(await screen.findByRole("checkbox", { name: "Ticket" }));
   fireEvent.click(screen.getByRole("button", { name: "Route opslaan" }));
@@ -550,22 +554,23 @@ it("links documents to a route and forgets a deleted one after the in-app confir
     document_asset_ids: ["d1"],
   });
 
-  fireEvent.click(await screen.findByRole("button", { name: /Route Oostkust/ }));
+  fireEvent.click(await agendaRow("Route: Oostkust"));
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
   fireEvent.click(
     within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
   );
-  await waitFor(() => expect(screen.queryByRole("button", { name: /Oostkust/ })).toBeNull());
-  expect(await screen.findByRole("button", { name: /Amsterdam → Taoyuan/ })).toBeTruthy();
+  await waitFor(() => expect(queryAgendaRow("Route: Oostkust")).toBeNull());
+  expect(await agendaRow("Route: Amsterdam → Taoyuan")).toBeTruthy();
   expect(api.count("DELETE /api/trips/trip/routes/r-line")).toBe(1);
 });
 
 it("says which schedule fields a shared route reveals, in both languages", async () => {
-  seed();
-  renderWithOwner(<RouteManager trip={trip} />);
+  seed([route("r1", "Naar het zuiden", { status: "planned" })]);
+  renderWithOwner(<PlanHarness trip={trip} />);
+  fireEvent.click(await agendaRow("Route: Naar het zuiden"));
   for (const [locale, shared, never] of [
-    ["nl", /vervoerder, dienstnummer en planning/, /Boekingen, reisklasse, notities en documenten/],
-    ["en", /carrier, service number, schedule/, /Bookings, travel class, notes and documents/],
+    ["nl", /vervoerder, het dienstnummer, de planning/, /Nooit je boekingscode, klasse, notities/],
+    ["en", /carrier, service number, schedule/, /Never your booking code, class, notes/],
   ] as const) {
     act(() => changeLocale(locale));
     const text = (await screen.findAllByText(shared))[0]!.textContent ?? "";
@@ -584,8 +589,8 @@ it("reviews a local flight arc offline using area points, edits it, and saves on
     geometry: line.geometry,
   });
   seed([localFlight], [privateLocation]);
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Route Local flight bekijken" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  fireEvent.click(await agendaRow("Route: Local flight"));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   fireEvent.click(screen.getByText("Geavanceerd: coördinaten als JSON plakken"));
   const input = screen.getByLabelText("Lijncoördinaten (JSON) (optioneel)") as HTMLTextAreaElement;
@@ -620,8 +625,8 @@ it("reviews a local flight arc offline using area points, edits it, and saves on
 
 it("keeps a line on failed flight suggestion and discards a successful suggestion without saving", async () => {
   seed([route("local", "Local flight", { mode: "flight", geometry: line.geometry })]);
-  renderWithOwner(<RouteManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Route Local flight bekijken" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  fireEvent.click(await agendaRow("Route: Local flight"));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   fireEvent.click(screen.getByText("Geavanceerd: coördinaten als JSON plakken"));
   const input = screen.getByLabelText("Lijncoördinaten (JSON) (optioneel)") as HTMLTextAreaElement;
@@ -635,6 +640,6 @@ it("keeps a line on failed flight suggestion and discards a successful suggestio
   fireEvent.click(await screen.findByRole("button", { name: "Wijzigingen verwerpen" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(api.count("PATCH /api/trips/trip/routes/local")).toBe(0);
-  fireEvent.click(screen.getByRole("button", { name: "Route Local flight bekijken" }));
+  fireEvent.click(getAgendaRow("Route: Local flight"));
   expect(screen.getByText("2 algemene punten in deze route.")).toBeTruthy();
 });

@@ -41,6 +41,12 @@ export class FakeApi {
     return this;
   }
 
+  /** Registers an empty collection at each path no test has registered: a screen reads more than its test is about. */
+  ensure(...paths: string[]): this {
+    for (const path of paths) if (!this.collections.has(path)) this.collection(path, []);
+    return this;
+  }
+
   /** Registers a read-only value. */
   value(path: string, value: unknown): this {
     this.singles.set(path, value);

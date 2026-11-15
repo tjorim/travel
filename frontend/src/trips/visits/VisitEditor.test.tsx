@@ -3,7 +3,7 @@ import "fake-indexeddb/auto";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { fakeApi, type FakeApi } from "../query/fake-api";
+import { fakeApi, type FakeApi } from "../../query/fake-api";
 import {
   chooseOption,
   openAdvanced,
@@ -11,14 +11,21 @@ import {
   resetOfflineDb,
   selectedOption,
   testToken,
-} from "../query/test-utils";
-import type { Area, Location, Stay, Trip, Visit } from "../api-types";
-import { visitWhen } from "./labels";
-import { VisitManager } from "./VisitManager";
-import { overnights } from "./visits/model";
+} from "../../query/test-utils";
+import type { Area, Location, Stay, Trip, Visit } from "../../api-types";
+import { visitWhen } from "../labels";
+import {
+  agendaRow,
+  ensurePlanApi,
+  getAgendaRow,
+  PlanHarness,
+  queryAgendaRow,
+  startNew,
+} from "../plan-test-utils";
+import { overnights } from "./model";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
-vi.mock("../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("../../auth-context", () => ({ useAuth: () => auth }));
 
 const area = (
   id: string,
@@ -124,6 +131,7 @@ function seed(visits: Visit[] = []) {
     .collection("/api/trips/trip/locations", [spring])
     .collection("/api/trips/trip/stays", [stay])
     .on("POST", /\/api\/trips\/trip\/visits\/route-check$/, () => []);
+  ensurePlanApi(api);
 }
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
@@ -138,14 +146,14 @@ afterEach(async () => {
 
 /** Opens the form once the areas and locations it lists have arrived, leaving "Waar" open on them. */
 const openNew = async () => {
-  fireEvent.click(await screen.findByRole("button", { name: "Nieuw bezoek" }));
+  await startNew("Nieuw bezoek");
   fireEvent.keyDown(await screen.findByRole("combobox", { name: "Waar" }), { key: "ArrowDown" });
   await screen.findByRole("option", { name: "Tainan (heel gebied)" });
 };
 
 it("needs only a place, and says so when there is none", async () => {
   seed();
-  renderWithOwner(<VisitManager trip={trip} />);
+  renderWithOwner(<PlanHarness trip={trip} />);
   await openNew();
   fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));
   await screen.findByText("Kies waar het bezoek is: een gebied of een locatie.");
@@ -153,7 +161,7 @@ it("needs only a place, and says so when there is none", async () => {
 
   chooseOption("Waar", "Tainan (heel gebied)");
   fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));
-  await screen.findByRole("button", { name: "Bezoek Tainan bekijken" });
+  await agendaRow("Bezoek: Tainan");
   expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({
     area_id: "tainan",
     location: null,
@@ -165,7 +173,7 @@ it("needs only a place, and says so when there is none", async () => {
 
 it("takes a location from the nested list, a time on a day, and keeps the time private by default", async () => {
   seed();
-  renderWithOwner(<VisitManager trip={trip} />);
+  renderWithOwner(<PlanHarness trip={trip} />);
   await openNew();
   const stationOption = screen.getByRole("option", { name: "Beitou Hot Spring" });
   expect(stationOption.closest("[role=group]")?.textContent).toContain("Taipei");
@@ -190,7 +198,7 @@ it("takes a location from the nested list, a time on a day, and keeps the time p
       .getAttribute("aria-checked"),
   ).toBe("false");
   fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));
-  await screen.findByRole("button", { name: "Bezoek Warme bron bekijken" });
+  await agendaRow("Bezoek: Warme bron");
   expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({
     title: "Warme bron",
     location: { existing_location_id: "spring" },
@@ -206,7 +214,7 @@ it("takes a location from the nested list, a time on a day, and keeps the time p
 
 it("chooses to show the time to visitors", async () => {
   seed();
-  renderWithOwner(<VisitManager trip={trip} />);
+  renderWithOwner(<PlanHarness trip={trip} />);
   await openNew();
   chooseOption("Waar", "Taipei (heel gebied)");
   fireEvent.change(screen.getByLabelText("Eerste dag (optioneel)"), {
@@ -235,7 +243,7 @@ it("hints, without blocking, that a visit restates an existing route", async () 
     }),
     visit("v2", { title: "Lunch", starts_on: "2054-11-16" }),
   ]);
-  renderWithOwner(<VisitManager trip={trip} />);
+  renderWithOwner(<PlanHarness trip={trip} />);
   const notes = await screen.findAllByRole("note");
   expect(notes).toHaveLength(1);
   expect(notes[0].textContent).toContain("Schiphol → Taoyuan");
@@ -248,7 +256,7 @@ it("warns before saving when the draft visit restates a route, and never blocks 
       ? [{ id: "r1", title: "Schiphol → Taoyuan" }]
       : [],
   );
-  renderWithOwner(<VisitManager trip={trip} />);
+  renderWithOwner(<PlanHarness trip={trip} />);
   await openNew();
   chooseOption("Waar", "Taipei (heel gebied)");
   fireEvent.change(screen.getByLabelText("Eerste dag (optioneel)"), {
@@ -286,15 +294,13 @@ it("rewrites the place only when it changed, and shows where the nights are spen
       ends_on: "2054-11-24",
     }),
   ]);
-  renderWithOwner(<VisitManager trip={trip} />);
+  renderWithOwner(<PlanHarness trip={trip} />);
   expect(
     (await screen.findAllByText(/Overnachting: Hotel Royal · nog 5 nachten zonder verblijf/))
       .length,
   ).toBeGreaterThan(0);
-  expect(
-    screen.getByRole("button", { name: "Bezoek Werken in Linkou bekijken" }).textContent,
-  ).toContain("Idee · Werk");
-  fireEvent.click(screen.getByRole("button", { name: "Bezoek Werken in Linkou bekijken" }));
+  expect(getAgendaRow("Bezoek: Werken in Linkou").textContent).toContain("Idee");
+  fireEvent.click(getAgendaRow("Bezoek: Werken in Linkou"));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   fireEvent.keyDown(await screen.findByRole("combobox", { name: "Waar" }), { key: "ArrowDown" });
   await screen.findByRole("option", { name: "Tainan (heel gebied)" });
@@ -314,8 +320,8 @@ it("rewrites the place only when it changed, and shows where the nights are spen
 
 it("edits a visit's own date precision and lets it follow the audience again", async () => {
   seed([visit("v1", { title: "Night market", share_date_precision: "day" })]);
-  renderWithOwner(<VisitManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Bezoek Night market bekijken" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  fireEvent.click(await agendaRow("Bezoek: Night market"));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   await screen.findByRole("combobox", { name: "Waar" });
   expect(selectedOption("Datums voor bezoekers")).toBe("Volledige datums");
@@ -329,8 +335,8 @@ it("edits a visit's own date precision and lets it follow the audience again", a
 
 it("cancels a visit idea and keeps it off the share controls", async () => {
   seed([visit("v1", { title: "Hot springs", status: "idea" })]);
-  renderWithOwner(<VisitManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Bezoek Hot springs bekijken" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  fireEvent.click(await agendaRow("Bezoek: Hot springs"));
   expect(screen.queryByText(/Een geannuleerd bezoek wordt nooit gedeeld/)).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
   expect(selectedOption("Status")).toBe("Idee");
@@ -338,32 +344,26 @@ it("cancels a visit idea and keeps it off the share controls", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Bezoek opslaan" }));
   await screen.findByText("Bezoek opgeslagen.");
   expect(api.lastBody("PATCH /api/trips/trip/visits/v1")).toMatchObject({ status: "cancelled" });
-  expect(screen.getByRole("button", { name: "Bezoek Hot springs bekijken" }).textContent).toContain(
-    "Geannuleerd",
-  );
-  fireEvent.click(screen.getByRole("button", { name: "Bezoek Hot springs bekijken" }));
+  expect(getAgendaRow("Bezoek: Hot springs").textContent).toContain("Geannuleerd");
+  fireEvent.click(getAgendaRow("Bezoek: Hot springs"));
   expect(screen.getByText(/Een geannuleerd bezoek wordt nooit gedeeld/)).toBeTruthy();
 });
 
 it("lists visits as the server ordered them, offers no reordering and deletes after the in-app confirmation", async () => {
   seed([visit("v1", { title: "Eerste" }), visit("v2", { title: "Tweede" })]);
-  renderWithOwner(<VisitManager trip={trip} />);
-  await screen.findByRole("button", { name: "Bezoek Eerste bekijken" });
+  renderWithOwner(<PlanHarness trip={trip} />);
+  await agendaRow("Bezoek: Eerste");
   expect(
-    screen
-      .getAllByRole("button", { name: /^Bezoek .* bekijken$/ })
-      .map((button) => button.textContent),
+    screen.getAllByRole("button", { name: /^Bezoek: / }).map((button) => button.textContent),
   ).toEqual([expect.stringContaining("Eerste"), expect.stringContaining("Tweede")]);
   expect(screen.queryByRole("button", { name: /^(Omlaag|Omhoog)/ })).toBeNull();
 
-  fireEvent.click(screen.getByRole("button", { name: "Bezoek Tweede bekijken" }));
+  fireEvent.click(getAgendaRow("Bezoek: Tweede"));
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
   fireEvent.click(
     within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
   );
-  await waitFor(() =>
-    expect(screen.queryByRole("button", { name: "Bezoek Tweede bekijken" })).toBeNull(),
-  );
+  await waitFor(() => expect(queryAgendaRow("Bezoek: Tweede")).toBeNull());
   expect(api.count("DELETE /api/trips/trip/visits/v2")).toBe(1);
 });
 
@@ -375,8 +375,8 @@ it("shows visitor text and private notes in their own labelled sections", async 
       notes: "Review demo note — bring a light jacket",
     }),
   ]);
-  renderWithOwner(<VisitManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Bezoek Belém bekijken" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  fireEvent.click(await agendaRow("Bezoek: Belém"));
   await screen.findByText("Torre de Belém bezoeken");
   expect(screen.getByText("Voor bezoekers").tagName).toBe("P");
   expect(screen.getByText("Alleen voor jou").tagName).toBe("H4");
@@ -386,16 +386,16 @@ it("shows visitor text and private notes in their own labelled sections", async 
 
 it("skips the visitor heading when there is no visitor text", async () => {
   seed([visit("v1", { title: "Alleen privé", summary: null, notes: "Geheime aantekening" })]);
-  renderWithOwner(<VisitManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Bezoek Alleen privé bekijken" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  fireEvent.click(await agendaRow("Bezoek: Alleen privé"));
   await screen.findByText("Geheime aantekening");
   expect(screen.queryByText("Voor bezoekers")).toBeNull();
 });
 
 it("says so when there is no private note", async () => {
   seed([visit("v2", { title: "Alleen tekst", summary: "Voor bezoekers tekst", notes: null })]);
-  renderWithOwner(<VisitManager trip={trip} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Bezoek Alleen tekst bekijken" }));
+  renderWithOwner(<PlanHarness trip={trip} />);
+  fireEvent.click(await agendaRow("Bezoek: Alleen tekst"));
   await screen.findByText("Geen privénotitie.");
 });
 
@@ -424,30 +424,30 @@ it("opens a new visit on the day and in the place an in-place start names, handl
     prefill: { day: "2054-11-18", areaId: "tainan" },
     token: 1,
   } as const;
-  renderWithOwner(<VisitManager trip={trip} createRequest={request} onCreateHandled={handled} />);
+  renderWithOwner(<PlanHarness trip={trip} createRequest={request} onCreateHandled={handled} />);
   await screen.findByRole("dialog", { name: "Bezoek toevoegen" });
   await waitFor(() => expect(selectedOption("Waar")).toBe("Tainan (heel gebied)"));
   expect(handled).toHaveBeenCalledTimes(1);
 
   fireEvent.click(screen.getByRole("button", { name: "Bezoek toevoegen" }));
-  await screen.findByRole("button", { name: "Bezoek Tainan bekijken" });
+  await agendaRow("Bezoek: Tainan");
   expect(api.lastBody("POST /api/trips/trip/visits")).toMatchObject({
     area_id: "tainan",
     starts_on: "2054-11-18",
   });
 });
 
-it("leaves a request for another kind of record alone", async () => {
+it("leaves the visit dialog closed for a request for another kind of record", async () => {
   seed();
   const handled = vi.fn();
   renderWithOwner(
-    <VisitManager
+    <PlanHarness
       trip={trip}
       createRequest={{ kind: "stay", prefill: { day: "2054-11-18" }, token: 1 }}
       onCreateHandled={handled}
     />,
   );
-  await screen.findByRole("button", { name: "Nieuw bezoek" });
-  expect(screen.queryByRole("dialog")).toBeNull();
-  expect(handled).not.toHaveBeenCalled();
+  await screen.findByRole("dialog", { name: "Verblijf toevoegen" });
+  expect(screen.queryByRole("dialog", { name: "Bezoek toevoegen" })).toBeNull();
+  expect(handled).toHaveBeenCalledTimes(1);
 });

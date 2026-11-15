@@ -221,16 +221,37 @@ test.describe("deferred owner views", () => {
     await search.fill("routes");
     await page.getByRole("option", { name: /Plan › Routes/ }).click();
     await expect(page).toHaveURL(new RegExp(`/admin/trips/${ownerTrip.id}/plan#routes$`));
-    // The agenda's kind filter has buttons of the same names: the blocks' titles carry their count.
-    await expect(page.getByRole("button", { name: /^Routes \d+$/ })).toHaveAttribute(
+    // The Routes block is gone: its address and search entry open the agenda with that kind as its filter.
+    await expect(page.getByRole("button", { name: /^Agenda/ })).toHaveAttribute(
       "aria-expanded",
       "true",
     );
-    await expect(page.getByRole("button", { name: /^Stays \d+$/ })).toHaveAttribute(
-      "aria-expanded",
+    const kinds = page.getByRole("group", { name: message("en", "agenda_filter_kind") });
+    await expect(kinds.getByRole("button", { name: "Routes" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(kinds.getByRole("button", { name: "Stays" })).toHaveAttribute(
+      "aria-pressed",
       "false",
     );
+    await expect(page.getByRole("button", { name: /^(Visits|Stays|Routes) \d+$/ })).toHaveCount(0);
   });
+
+  for (const hash of ["visits", "stays", "routes"]) {
+    test(`an old #${hash} link opens the agenda with that kind`, async ({ page }) => {
+      await open(page, `/admin/trips/${ownerTrip.id}/plan#${hash}`, "en", "light", true);
+      await expect(page.getByRole("button", { name: /^Agenda/ })).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      );
+      const kinds = page.getByRole("group", { name: message("en", "agenda_filter_kind") });
+      await expect(kinds.getByRole("button", { pressed: true })).toHaveText(
+        { visits: "Visits", stays: "Stays", routes: "Routes" }[hash]!,
+      );
+      await expect(kinds.getByRole("button", { pressed: true })).toHaveCount(1);
+    });
+  }
 
   test("opens a deferred workspace tab directly from its link", async ({ page }) => {
     await open(page, `/admin/trips/${ownerTrip.id}/plan`, "en", "light", true);

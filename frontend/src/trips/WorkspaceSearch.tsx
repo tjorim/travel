@@ -12,19 +12,29 @@ import {
   locateRecord,
   sectionPath,
   WORKSPACE_SECTIONS,
+  type PartAlias,
   type TripWorkspaceSection,
 } from "./workspace-sections";
 
-/** Every place the search can jump to, as `tab` or `tab#block`, in the order the workspace shows them. */
+/**
+ * Every place the search can jump to, as `tab` or `tab#block`, in the order the workspace shows them. A block that
+ * was merged into another keeps its entry (`plan#stays`): it opens the block that took over, with the same filter.
+ */
 function destinations(): SearchSelectOption[] {
   return WORKSPACE_SECTIONS.flatMap((section) => [
     { value: section.id as string, label: section.label() },
     ...(
-      ("parts" in section ? section.parts : []) as readonly { id: string; label: () => string }[]
-    ).map((part) => ({
-      value: `${section.id}#${part.id}`,
-      label: `${section.label()} › ${part.label()}`,
-    })),
+      ("parts" in section ? section.parts : []) as readonly {
+        id: string;
+        label: () => string;
+        aliases?: readonly PartAlias[];
+      }[]
+    ).flatMap((part) =>
+      [part, ...(part.aliases ?? [])].map((entry) => ({
+        value: `${section.id}#${entry.id}`,
+        label: `${section.label()} › ${entry.label()}`,
+      })),
+    ),
   ]);
 }
 

@@ -36,9 +36,12 @@ Everything in a trip is one of these. The Dutch word is what the owner sees.
   a visit. A visit has no manual position: like stays and routes, visits are
   ordered by day, then time (an untimed visit after the timed ones of its day),
   then creation, with undated visits last in creation order. That one server
-  rule (`VISIT_ORDER`) orders the owner list, the agenda and the visitor plan.
-  The day-by-day agenda is a read-only view over stays, routes and
-  visits, not a record.
+  rule (`VISIT_ORDER`) orders the owner's agenda and the visitor plan.
+  The day-by-day agenda is a view over stays, routes and visits, not a
+  record, and it is where the owner manages them: a row opens the record's
+  own dialog and its menu edits, deletes and, for a visit, shows it on the
+  map or saves it offline, while filters give the "all stays" view
+  ([#374](https://github.com/tjorim/travel/issues/374)).
 - **Stay** (*verblijf*): the nights slept at one accommodation. Every stay has
   an area and, once an accommodation is chosen, a location in it. Until then
   (*accommodatie nog niet gekozen*) the stay is filed under its area alone: no

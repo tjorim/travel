@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { message } from "./messages";
 import { choosePreferences, mockApi, overdueTask, ownerTrip, signInOwner } from "./mock-api";
 
 for (const locale of ["nl", "en"] as const) {
@@ -29,9 +30,15 @@ for (const locale of ["nl", "en"] as const) {
         ).toBeVisible();
         expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
         await page.goto(`/admin/trips/${ownerTrip.id}/overview`);
-        for (const hash of ["routes", "stays"]) {
+        // A readiness badge leads to the agenda with the kind it counts as the filter.
+        for (const [hash, kind] of [
+          ["routes", message(locale, "common_routes")],
+          ["stays", message(locale, "common_stays")],
+        ] as const) {
           await page.locator(`a[href$="/plan#${hash}"]`).first().click();
-          await expect(page.locator(`#${hash}`)).toBeVisible();
+          await expect(page.locator("#agenda")).toBeVisible();
+          const kinds = page.getByRole("group", { name: message(locale, "agenda_filter_kind") });
+          await expect(kinds.getByRole("button", { pressed: true })).toHaveText(kind);
           await page.goto(`/admin/trips/${ownerTrip.id}/overview`);
         }
       });

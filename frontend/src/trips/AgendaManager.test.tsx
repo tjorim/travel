@@ -3,6 +3,7 @@ import "fake-indexeddb/auto";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
+import { useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { server } from "../mocks/server";
@@ -11,6 +12,7 @@ import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils"
 import type { Area, Route, Stay, Trip, Visit } from "../api-types";
 import { AgendaManager } from "./AgendaManager";
 import { agendaFilterKey } from "./agenda-filter";
+import type { AgendaRecordKind } from "./agenda-items";
 import { PlanEditors, usePlanHost } from "./plan-host";
 
 // Every offline call goes through unchanged, except where a test makes the removal of a saved copy fail.
@@ -186,9 +188,11 @@ function serve() {
 function Plan({
   onShowOnMap,
   datedTrip = false,
+  kindRequest,
 }: {
   onShowOnMap?: (pointId: string) => void;
   datedTrip?: boolean;
+  kindRequest?: { kinds: readonly AgendaRecordKind[]; token: number } | null;
 }) {
   const host = usePlanHost(null, null, () => undefined);
   const shown = datedTrip ? { ...trip, starts_on: "2054-11-16", ends_on: "2054-11-18" } : trip;
@@ -197,6 +201,7 @@ function Plan({
       <AgendaManager
         trip={shown}
         host={host}
+        kindRequest={kindRequest}
         onShowOnMap={onShowOnMap}
         onCreateRecord={() => undefined}
       />
@@ -280,6 +285,50 @@ it("filters by kind and by status, remembers it per trip and shows nothing outsi
   fireEvent.click(screen.getByRole("button", { name: "Alles tonen" }));
   await screen.findByRole("button", { name: /Bezoek: Nachtmarkt/ });
   expect(localStorage.getItem(agendaFilterKey("trip"))).toBeNull();
+});
+
+it("shows the kind an old #stays address names, in every status, and again for each new request", async () => {
+  visits = [visit("v1", "Nachtmarkt")];
+  stays = [stay("s1", "Hotel Royal"), stay("s2", "Gasthuis", { status: "cancelled" })];
+  routes = [route("r1", "Naar het noorden")];
+  // A filter left from earlier visits does not hide what the address asks for.
+  localStorage.setItem(
+    agendaFilterKey("trip"),
+    JSON.stringify({ kinds: ["route"], statuses: ["idea"] }),
+  );
+  const kinds = (name: string) =>
+    within(screen.getByRole("group", { name: "Filter op soort" })).getByRole("button", { name });
+  function Arrival() {
+    const [request, setRequest] = useState({ kinds: ["stay"] as AgendaRecordKind[], token: 1 });
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setRequest((current) => ({ kinds: ["route"], token: current.token + 1 }))}
+        >
+          Naar routes
+        </button>
+        <Plan kindRequest={request} />
+      </>
+    );
+  }
+  renderWithOwner(<Arrival />);
+  await screen.findAllByRole("button", { name: /Hotel Royal/ });
+  expect(screen.getAllByRole("button", { name: /Gasthuis/ }).length).toBeGreaterThan(0);
+  expect(screen.queryByRole("button", { name: /Bezoek:/ })).toBeNull();
+  expect(screen.queryByRole("button", { name: /Route:/ })).toBeNull();
+  expect(kinds("Verblijven").getAttribute("aria-pressed")).toBe("true");
+  expect(JSON.parse(localStorage.getItem(agendaFilterKey("trip")) ?? "null")).toEqual({
+    kinds: ["stay"],
+    statuses: [],
+  });
+
+  fireEvent.click(kinds("Bezoeken"));
+  await screen.findByRole("button", { name: /Bezoek: Nachtmarkt/ });
+  fireEvent.click(screen.getByRole("button", { name: "Naar routes" }));
+  await screen.findByRole("button", { name: /Route: Naar het noorden/ });
+  expect(screen.queryByRole("button", { name: /Bezoek:/ })).toBeNull();
+  expect(screen.queryByRole("button", { name: /Hotel Royal/ })).toBeNull();
 });
 
 it("says so when the filter leaves nothing, and ignores a stored filter it cannot read", async () => {

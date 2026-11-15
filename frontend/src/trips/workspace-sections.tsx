@@ -41,6 +41,16 @@ type Part = {
   label: () => string;
   /** The record kinds whose editor is in this block: opening one of their dialogs expands it. */
   records: readonly RecordKind[];
+  /** Earlier blocks merged into this one: their addresses open this block, with the kind each one listed. */
+  aliases?: readonly PartAlias[];
+};
+
+/** A block that no longer exists on its own. Its address and search entry open the block that took over its job. */
+export type PartAlias = {
+  id: string;
+  label: () => string;
+  /** The agenda's kind filter that reproduces what the old block listed. */
+  kinds?: readonly AgendaRecordKind[];
 };
 
 type Section = {
@@ -73,12 +83,19 @@ export const WORKSPACE_SECTIONS = [
     icon: CalendarDaysIcon,
     component: lazyView<SectionProps>(() => import("./PlanSection")),
     parts: [
-      // The agenda hosts the visit, stay and route dialogs, so opening one of them expands it.
-      { id: "agenda", label: () => m.agenda_agenda(), records: ["visit", "stay", "route"] },
+      // The agenda hosts the visit, stay and route dialogs, so opening one of them expands it. It took over the
+      // Visits, Stays and Routes blocks (#374): their addresses open it with that kind as the filter.
+      {
+        id: "agenda",
+        label: () => m.agenda_agenda(),
+        records: ["visit", "stay", "route"],
+        aliases: [
+          { id: "visits", label: () => m.common_visits(), kinds: ["visit"] },
+          { id: "stays", label: () => m.common_stays(), kinds: ["stay"] },
+          { id: "routes", label: () => m.common_routes(), kinds: ["route"] },
+        ],
+      },
       { id: "areas", label: () => m.areas_and_locations(), records: ["area", "location"] },
-      { id: "visits", label: () => m.common_visits(), records: [] },
-      { id: "stays", label: () => m.common_stays(), records: [] },
-      { id: "routes", label: () => m.common_routes(), records: [] },
     ],
   },
   {
@@ -134,6 +151,20 @@ export const sectionById = (id: TripWorkspaceSection): Section =>
   WORKSPACE_SECTIONS.find((section) => section.id === id)!;
 
 export const partsOf = (id: TripWorkspaceSection): readonly Part[] => sectionById(id).parts ?? [];
+
+/** The block an address names: its own id, or the id of an earlier block merged into it (then with that alias). */
+export function resolvePart<T extends { id: string; aliases?: readonly PartAlias[] }>(
+  parts: readonly T[],
+  target: string | undefined,
+): { part: T; alias?: PartAlias } | null {
+  if (!target) return null;
+  for (const part of parts) {
+    if (part.id === target) return { part };
+    const alias = part.aliases?.find((candidate) => candidate.id === target);
+    if (alias) return { part, alias };
+  }
+  return null;
+}
 
 /** The tab and block whose editor opens a record's dialog. */
 export const locateRecord = (kind: RecordKind) => {

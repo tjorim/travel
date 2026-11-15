@@ -39,7 +39,16 @@ it("offers every tab and every block inside a tab", async () => {
   fireEvent.keyDown(await screen.findByRole("combobox", { name: "Ga naar" }), {
     key: "ArrowDown",
   });
-  for (const name of ["Overzicht", "Plan › Verblijven", "Voorbereiden › Documenten", "Verhaal"])
+  // The Visits, Stays and Routes blocks are gone, and their entries now lead to the agenda with that kind.
+  for (const name of [
+    "Overzicht",
+    "Plan › Agenda",
+    "Plan › Bezoeken",
+    "Plan › Verblijven",
+    "Plan › Routes",
+    "Voorbereiden › Documenten",
+    "Verhaal",
+  ])
     expect(await screen.findByRole("option", { name })).toBeTruthy();
 });
 
