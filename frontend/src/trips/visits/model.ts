@@ -138,3 +138,7 @@ export const dayLine = (visit: Visit, { withStatus = true }: { withStatus?: bool
  */
 export const visitLine = (visit: Visit, { withStatus = false }: { withStatus?: boolean } = {}) =>
   [dayLine(visit, { withStatus }), visitPlace(visit)].join(" · ");
+
+/** The map point for a visit: its location when that has a point, else its area. */
+export const mapPointFor = (visit: Visit): string =>
+  visit.location?.latitude != null ? visit.location.id : visit.area.id;

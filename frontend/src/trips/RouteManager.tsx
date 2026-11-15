@@ -9,19 +9,25 @@ import { useTripResource } from "../query/owner-queries";
 import { AlternativesPanel } from "./alternatives/AlternativesPanel";
 import { type Trip } from "../api-types";
 import { useCreateRequest, type CreateRequestProps } from "./create-request";
+import type { PlanHost } from "./plan-host";
 import { useFocusRequest } from "./record-focus";
 import { RouteEditor } from "./routes/RouteEditor";
 import { RouteList } from "./routes/RouteList";
 
-/** The routes block: its list and alternatives, with the editor that opens a record or starts a new one. */
+/**
+ * The routes block: its list and alternatives, with the editor that opens a record or starts a new one. Inside the
+ * plan tab (`host`) the agenda owns the editor, the alternatives and the status line, and the block only asks it.
+ */
 export function RouteManager({
   trip,
   focusId,
   createRequest,
   onCreateHandled,
+  host,
 }: {
   trip: Trip;
   focusId?: DialogFocusRequest | null;
+  host?: PlanHost;
 } & CreateRequestProps) {
   useLocale();
   const routesQuery = useTripResource(trip.id, "routes");
@@ -45,7 +51,9 @@ export function RouteManager({
         <Button
           className="secondary compact"
           type="button"
-          onClick={(event) => create.start(event.currentTarget)}
+          onClick={(event) =>
+            host ? host.start("route", event.currentTarget) : create.start(event.currentTarget)
+          }
         >
           {m.routes_new_route()}
         </Button>
@@ -57,15 +65,21 @@ export function RouteManager({
             ? m.routes_loading_your_routes()
             : message}
       </p>
-      <AlternativesPanel tripId={trip.id} kind="route" records={routes} onOpen={focus.open} />
-      <RouteEditor
-        trip={trip}
-        focusId={focus.focusId}
-        createRequest={create.createRequest}
-        onCreateHandled={create.onCreateHandled}
-        onNotice={setMessage}
-      />
-      {routes.length > 0 && <RouteList routes={routes} onInspect={focus.open} />}
+      {!host && (
+        <>
+          <AlternativesPanel tripId={trip.id} kind="route" records={routes} onOpen={focus.open} />
+          <RouteEditor
+            trip={trip}
+            focusId={focus.focusId}
+            createRequest={create.createRequest}
+            onCreateHandled={create.onCreateHandled}
+            onNotice={setMessage}
+          />
+        </>
+      )}
+      {routes.length > 0 && (
+        <RouteList routes={routes} onInspect={host ? (id) => host.open("route", id) : focus.open} />
+      )}
     </section>
   );
 }

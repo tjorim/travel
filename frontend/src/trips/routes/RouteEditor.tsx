@@ -17,6 +17,7 @@ import { routeInPlan, routeTitle, sameJourney } from "../../records";
 import { type Route, type Trip } from "../../api-types";
 import { placeFields, samePlace } from "../PlacePicker";
 import { useInPlaceCreate, type CreateRequestProps } from "../create-request";
+import { useReturnTarget, useRowDelete } from "../use-row-delete";
 import {
   blank,
   fromRoute,
@@ -54,8 +55,16 @@ export function RouteEditor({
   const documents = useTripResource(trip.id, "documents").data ?? NONE;
   const groupsQuery = useTripResource(trip.id, "alternative-groups");
   const dialog = useRecordDialog(routes);
-  useDialogFocus(focusId, dialog.inspect);
-  const [deleteTarget, setDeleteTarget] = useState<Route | null>(null);
+  // A delete asked from a record's dialog, or from an agenda row's menu with no dialog behind it.
+  const del = useRowDelete<Route>();
+  const returnTarget = useReturnTarget();
+  useDialogFocus(focusId, (id, action, returnTo) => {
+    returnTarget.remember(returnTo);
+    const route = routes.find((candidate) => candidate.id === id);
+    if (action === "edit" && route) return edit(route);
+    if (action === "delete" && route) return del.askFromRow(route, returnTo ?? null);
+    dialog.inspect(id);
+  });
   // An end's location is only rewritten when one of its fields differs from what the editor opened with.
   const baseline = useRef<Values>(blank());
   const { save, remove } = useRouteMutations(trip.id);
@@ -152,12 +161,15 @@ export function RouteEditor({
     remove.mutateAsync(route).then(
       () => {
         close();
-        setDeleteTarget(null);
+        del.clear();
         onNotice(textNotice(() => m.routes_route_deleted()));
       },
       (error: unknown) => {
-        setDeleteTarget(null);
-        dialog.setError(errorNotice(error, m.routes_the_route_could_not_be_deleted));
+        del.clear();
+        const failure = errorNotice(error, m.routes_the_route_could_not_be_deleted);
+        // Asked from a row there is no dialog to show the failure in: the block's status line says it.
+        if (dialog.selected) dialog.setError(failure);
+        else onNotice(failure);
       },
     );
   }
@@ -179,7 +191,7 @@ export function RouteEditor({
         dirty={editing && record.dirty}
         error={dialog.error}
         onDismiss={close}
-        returnFocus={inPlace.returnFocus}
+        returnFocus={() => inPlace.returnFocus() ?? returnTarget.take()}
       >
         {!editing && selected && (
           <RouteDetails
@@ -189,7 +201,7 @@ export function RouteEditor({
             saving={save.isPending}
             onCancelAlternatives={cancelAlternatives}
             onEdit={edit}
-            onDelete={setDeleteTarget}
+            onDelete={del.ask}
           />
         )}
         {editing && (
@@ -205,11 +217,13 @@ export function RouteEditor({
           />
         )}
       </RecordDialog>
-      {deleteTarget && (
+      {del.target && (
         <DeleteConfirmation
-          title={m.routes_delete_route({ title: routeTitle(deleteTarget) })}
-          onCancel={() => setDeleteTarget(null)}
-          onConfirm={() => confirmDelete(deleteTarget)}
+          title={m.routes_delete_route({ title: routeTitle(del.target) })}
+          confirmDisabled={remove.isPending}
+          cancelDisabled={remove.isPending}
+          onCancel={del.clear}
+          onConfirm={() => confirmDelete(del.target!)}
         />
       )}
     </>

@@ -23,7 +23,7 @@ it("labels a match with its tab and block, in workspace order", () => {
   );
   expect(found.map((match) => match.label)).toEqual([
     "Plan › Gebieden en locaties › Taipei",
-    "Plan › Routes › Naar Taipei",
+    "Plan › Agenda › Naar Taipei",
     "Voorbereiden › Nog te regelen › Taipei visum",
   ]);
 });

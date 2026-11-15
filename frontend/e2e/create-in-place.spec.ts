@@ -86,11 +86,10 @@ for (const locale of locales) {
         const agenda = page.locator("#agenda");
         // The date fields draw the day in the interface language ("12 Nov 2054", "12 nov 2054").
         const day12 = /^12\b/;
-        const trigger = agenda.getByRole("button", {
-          name: new RegExp(`^${message(locale, "agenda_add_to_day").split("{day}")[0]}`),
+        // Every day of the trip is listed, also those with nothing planned: the stay's check-in day is the 12th.
+        const first = agenda.getByRole("button", {
+          name: new RegExp(`^${message(locale, "agenda_add_to_day").split("{day}")[0]}12\\b`),
         });
-        // The first listed day is the stay's check-in day, 12 November.
-        const first = trigger.first();
         await expect(first).toBeVisible();
         expect((await new AxeBuilder({ page }).include("#agenda").analyze()).violations).toEqual(
           [],
@@ -147,7 +146,7 @@ for (const locale of locales) {
         expect(created[0]).toMatchObject({ starts_on: "2054-11-12", title: "Harbour walk" });
         // The new visit's agenda row takes the focus.
         await expect(
-          agenda.getByRole("button", { name: new RegExp("Harbour walk") }),
+          agenda.locator("[data-agenda-record]", { hasText: "Harbour walk" }),
         ).toBeFocused();
       });
 

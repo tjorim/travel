@@ -38,19 +38,10 @@ vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 // The managers and map have their own tests; this file covers trip selection and the trip editor.
 vi.mock("../documents/DocumentManager", () => ({ DocumentManager: () => null }));
 vi.mock("../trips/VisitManager", () => ({
-  VisitManager: ({
-    onShowOnMap,
-    focusId,
-  }: {
-    onShowOnMap?: (id: string) => void;
-    focusId?: { id: string } | null;
-  }) => (
-    <>
-      <button type="button" onClick={() => onShowOnMap?.("p1")}>
-        Toon op kaart
-      </button>
-      <p>Bezoekfocus {focusId?.id ?? "geen"}</p>
-    </>
+  VisitManager: ({ onShowOnMap }: { onShowOnMap?: (id: string) => void }) => (
+    <button type="button" onClick={() => onShowOnMap?.("p1")}>
+      Toon op kaart
+    </button>
   ),
 }));
 vi.mock("../trips/AreaManager", () => ({ AreaManager: () => null }));
@@ -65,25 +56,32 @@ vi.mock("../trips/OwnerTripMap", () => ({
 vi.mock("../trips/PackingManager", () => ({ PackingManager: () => null }));
 vi.mock("../trips/PublicationManager", () => ({ PublicationManager: () => null }));
 vi.mock("../trips/RouteStageManager", () => ({ RouteStageManager: () => null }));
-vi.mock("../trips/StayManager", () => ({
-  StayManager: ({ focusId }: { focusId?: { id: string } | null }) => (
-    <p>Verblijffocus {focusId?.id ?? "geen"}</p>
-  ),
-}));
-vi.mock("../trips/RouteManager", () => ({
-  RouteManager: ({ focusId }: { focusId?: { id: string } | null }) => (
-    <p>Routefocus {focusId?.id ?? "geen"}</p>
-  ),
-}));
-vi.mock("../trips/AgendaView", () => ({
-  AgendaView: ({
-    onOpenRecord,
+vi.mock("../trips/StayManager", () => ({ StayManager: () => null }));
+vi.mock("../trips/RouteManager", () => ({ RouteManager: () => null }));
+// The agenda hosts the one dialog per kind of record: its rows ask the plan's host, which the editors listen to.
+vi.mock("../trips/AgendaManager", () => ({
+  AgendaManager: ({
+    host,
   }: {
-    onOpenRecord?: (kind: "stay" | "route" | "visit", id: string) => void;
+    host: { open: (kind: "stay" | "route" | "visit", id: string) => void };
   }) => (
-    <button type="button" onClick={() => onOpenRecord?.("stay", "s1")}>
+    <button type="button" onClick={() => host.open("stay", "s1")}>
       Agendaregel openen
     </button>
+  ),
+}));
+vi.mock("../trips/plan-host", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../trips/plan-host")>()),
+  PlanEditors: ({
+    host,
+  }: {
+    host: { focus: Record<"stay" | "route" | "visit", { id: string } | null> };
+  }) => (
+    <>
+      <p>Bezoekfocus {host.focus.visit?.id ?? "geen"}</p>
+      <p>Verblijffocus {host.focus.stay?.id ?? "geen"}</p>
+      <p>Routefocus {host.focus.route?.id ?? "geen"}</p>
+    </>
   ),
 }));
 vi.mock("../trips/TripTaskManager", () => ({
@@ -357,6 +355,9 @@ it("expands the block a link names with #id on arrival", async () => {
 it("expands the block that hosts a record whose dialog is asked to open", async () => {
   const { router } = renderTrips("/trips/t1/plan");
   await screen.findByText("Verblijffocus geen");
+  // The agenda hosts the dialogs of visits, stays and routes: collapsed, it opens again for one.
+  fireEvent.click(bar(/^Agenda$/));
+  expect(bar(/^Agenda$/).getAttribute("aria-expanded")).toBe("false");
   await act(async () => {
     await router.navigate({
       to: "/trips/t1/plan",
@@ -364,7 +365,8 @@ it("expands the block that hosts a record whose dialog is asked to open", async 
     });
   });
   expect(await screen.findByText("Verblijffocus s1")).toBeTruthy();
-  await waitFor(() => expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("true"));
+  await waitFor(() => expect(bar(/^Agenda$/).getAttribute("aria-expanded")).toBe("true"));
+  expect(bar(/Verblijven/).getAttribute("aria-expanded")).toBe("false");
 });
 
 it("jumps to a block from the search, even one that was collapsed again", async () => {

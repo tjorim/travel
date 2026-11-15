@@ -41,7 +41,7 @@ const ROW = "li, article, tr, [data-record-row]";
 const FOCUSABLE = "button:not([disabled]), a[href], input:not([disabled])";
 
 /** Remembers where a trigger sits in its list, to pick a surviving neighbour once a deletion removes it. */
-function rememberPosition(origin: HTMLElement | null) {
+export function rememberPosition(origin: HTMLElement | null) {
   const row = origin?.closest<HTMLElement>(ROW) ?? null;
   const list = row?.parentElement ?? null;
   return {
@@ -62,6 +62,44 @@ function survivingTarget(position: ReturnType<typeof rememberPosition>): HTMLEle
     }
   }
   return section?.isConnected ? section.querySelector<HTMLElement>(FOCUSABLE) : null;
+}
+
+/**
+ * The element on screen now for one that was seen earlier: itself, or, when a popup recreated it under the same id
+ * (a menu's button does), the element that has that id now.
+ */
+export function liveElement(element: HTMLElement | null): HTMLElement | null {
+  if (element?.isConnected) return element;
+  return element?.id ? document.getElementById(element.id) : null;
+}
+
+/** What `rememberPosition` records about the control a dialog was opened from. */
+export type TriggerPosition = ReturnType<typeof rememberPosition>;
+
+/**
+ * Where focus goes when something opened from `trigger` closes: the trigger itself, or, if a deletion then removes
+ * it, a neighbour in its list (the next record's control, else the previous one's, else the section's first control).
+ */
+export function focusReturnTarget(
+  trigger: HTMLElement | null,
+  where: TriggerPosition | null,
+): HTMLElement | null {
+  if (!where) return trigger;
+  const live = liveElement(trigger);
+  if (live) {
+    // A deletion may remove the trigger after the dialog closes; move focus to a neighbour then.
+    // The whole document is watched: a deletion can remove the trigger's list, or its day, and not only its row.
+    const observer = new MutationObserver(() => {
+      if (liveElement(live)) return;
+      observer.disconnect();
+      const active = document.activeElement;
+      if (!active || active === document.body) survivingTarget(where)?.focus();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.setTimeout(() => observer.disconnect(), 5000);
+    return live;
+  }
+  return survivingTarget(where) ?? trigger;
 }
 
 /** Shared owner editor with guarded dismissal and focus return. */
@@ -140,25 +178,7 @@ export function RecordDialog({
               finalFocus={() => {
                 const preferred = returnFocus?.();
                 if (preferred) return preferred;
-                const trigger = origin.current;
-                const where = position.current;
-                if (!where) return trigger;
-                if (trigger?.isConnected) {
-                  // A deletion may remove the trigger after the dialog closes; move focus to a neighbour then.
-                  const parent = where.list ?? trigger.parentElement;
-                  if (parent) {
-                    const observer = new MutationObserver(() => {
-                      if (trigger.isConnected) return;
-                      observer.disconnect();
-                      const active = document.activeElement;
-                      if (!active || active === document.body) survivingTarget(where)?.focus();
-                    });
-                    observer.observe(parent, { childList: true, subtree: true });
-                    window.setTimeout(() => observer.disconnect(), 5000);
-                  }
-                  return trigger;
-                }
-                return survivingTarget(where) ?? trigger;
+                return focusReturnTarget(origin.current, position.current);
               }}
               aria-label={title}
             >
@@ -242,6 +262,8 @@ type DeleteConfirmationProps = {
   onConfirm: () => void;
   cancelLabel?: string;
   confirmDisabled?: boolean;
+  /** Keeps the question open, and its cancel button off, while the action it asks about runs. */
+  cancelDisabled?: boolean;
   /** `danger` (the default) is for deleting or widening; `primary` for a reviewed change that narrows or only restates. */
   confirmTone?: "danger" | "primary";
   /** A wider sheet for a review with lists; the content scrolls inside it. */
@@ -260,6 +282,7 @@ export function DeleteConfirmation({
   onConfirm,
   cancelLabel = m.cancel(),
   confirmDisabled = false,
+  cancelDisabled = false,
   confirmTone = "danger",
   wide = false,
   returnFocus,
@@ -268,7 +291,7 @@ export function DeleteConfirmation({
   useLocale();
   const cancel = useRef<HTMLButtonElement>(null);
   return (
-    <AlertDialog.Root open onOpenChange={(nextOpen) => !nextOpen && onCancel()}>
+    <AlertDialog.Root open onOpenChange={(nextOpen) => !nextOpen && !cancelDisabled && onCancel()}>
       <AlertDialog.Portal>
         <AlertDialog.Backdrop className={backdrop} />
         <AlertDialog.Viewport className={viewport}>
@@ -289,7 +312,11 @@ export function DeleteConfirmation({
               >
                 {confirmLabel}
               </Button>
-              <AlertDialog.Close className={cn(compactButton, secondaryButton)} ref={cancel}>
+              <AlertDialog.Close
+                className={cn(compactButton, secondaryButton)}
+                ref={cancel}
+                disabled={cancelDisabled}
+              >
                 {cancelLabel}
               </AlertDialog.Close>
             </div>

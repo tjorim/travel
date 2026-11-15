@@ -114,9 +114,7 @@ it("finds a record by its title, whatever the accents, and labels it with its ta
   const { router } = render();
   await waitFor(() => expect(api!.count("GET /api/trips/t1/media")).toBe(1));
   await search("cafe hotel");
-  fireEvent.click(
-    await screen.findByRole("option", { name: "Plan › Verblijven › Café Hotel Taipei" }),
-  );
+  fireEvent.click(await screen.findByRole("option", { name: "Plan › Agenda › Café Hotel Taipei" }));
   await waitFor(() => expect(router.state.location.pathname).toBe("/trips/t1/plan"));
   expect(router.state.location.state.openRecord).toMatchObject({ kind: "stay", id: "s1" });
 });

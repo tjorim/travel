@@ -73,11 +73,12 @@ export const WORKSPACE_SECTIONS = [
     icon: CalendarDaysIcon,
     component: lazyView<SectionProps>(() => import("./PlanSection")),
     parts: [
-      { id: "agenda", label: () => m.agenda_agenda(), records: [] },
+      // The agenda hosts the visit, stay and route dialogs, so opening one of them expands it.
+      { id: "agenda", label: () => m.agenda_agenda(), records: ["visit", "stay", "route"] },
       { id: "areas", label: () => m.areas_and_locations(), records: ["area", "location"] },
-      { id: "visits", label: () => m.common_visits(), records: ["visit"] },
-      { id: "stays", label: () => m.common_stays(), records: ["stay"] },
-      { id: "routes", label: () => m.common_routes(), records: ["route"] },
+      { id: "visits", label: () => m.common_visits(), records: [] },
+      { id: "stays", label: () => m.common_stays(), records: [] },
+      { id: "routes", label: () => m.common_routes(), records: [] },
     ],
   },
   {

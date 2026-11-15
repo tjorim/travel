@@ -203,3 +203,10 @@ export const stayLine = (stay: Stay, { withStatus = false }: { withStatus?: bool
   ]
     .filter(Boolean)
     .join(" · ");
+
+/**
+ * Whether a stay's length can be changed with the one-night buttons: only a private stay that is still a plan or an
+ * idea. A shared stay reaches visitors as it is saved, so it is changed in its dialog, where the owner sees the sharing.
+ */
+export const canAdjustNights = (stay: Pick<Stay, "visibility" | "status">): boolean =>
+  stay.visibility === "private" && (stay.status === "idea" || stay.status === "planned");
