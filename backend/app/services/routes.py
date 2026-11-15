@@ -145,7 +145,7 @@ def get_route(session: Session, subject: str, trip_id: Identifier, route_id: Ide
 
 
 def create_route(session: Session, subject: str, trip_id: Identifier, payload: RouteCreate) -> Route:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     departs_at = arrives_at = None
     if payload.departs_at is not None and payload.arrives_at is not None:
         departs_at = endpoint_instant(payload.departs_at, payload.departure_timezone)
@@ -213,7 +213,7 @@ def _update_end(session: Session, trip: Trip, route: Route, payload: RouteUpdate
 def update_route(
     session: Session, subject: str, trip_id: Identifier, route_id: Identifier, payload: RouteUpdate
 ) -> Route:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     route = owned_route(session, trip, route_id)
     _update_end(session, trip, route, payload, "departure")
     _update_end(session, trip, route, payload, "arrival")

@@ -128,7 +128,7 @@ def list_travel_updates(
 def create_travel_update(
     session: Session, subject: str, trip_id: Identifier, payload: TravelUpdateCreate
 ) -> TravelUpdate:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     location = location_from_input(session, trip.id, payload.location) if payload.location else None
     if location is not None and payload.area_id is not None:
         raise Refusal(
@@ -180,7 +180,7 @@ def _choose_visibility(
 def update_travel_update(
     session: Session, subject: str, trip_id: Identifier, update_id: Identifier, payload: TravelUpdatePatch
 ) -> TravelUpdate:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     update = owned_update(session, trip, update_id)
     # A present null is intentional: the owner may remove a location or notes
     # while editing. Pydantic otherwise represents omitted and null alike.

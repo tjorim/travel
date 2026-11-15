@@ -363,6 +363,7 @@ def update_derivative_presentation(
     derivative_id: str,
     payload: MediaDerivativePresentationUpdate,
 ) -> MediaDerivativeResponse:
+    owned_trip(session, trip_id, subject, lock=True)
     derivative = owned_derivative(session, subject, trip_id, media_id, derivative_id)
     values = payload.model_dump(exclude_unset=True, exclude=text_keys("caption", "alt_text"))
     write_texts(derivative, ("caption", "alt_text"), payload, trip_language(session, trip_id))

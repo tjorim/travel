@@ -49,8 +49,10 @@ from .trips import owned_trip
 from .visibility import make_private
 
 
-def owned_location(session: Session, trip_id: Identifier, subject: str, location_id: Identifier) -> Location:
-    owned_trip(session, trip_id, subject)
+def owned_location(
+    session: Session, trip_id: Identifier, subject: str, location_id: Identifier, *, lock: bool = False
+) -> Location:
+    owned_trip(session, trip_id, subject, lock=lock)
     location = session.scalar(select(Location).where(Location.id == location_id, Location.trip_id == trip_id))
     if location is None:
         raise RecordNotFound("Location not found")
@@ -80,7 +82,7 @@ def list_locations(
 
 
 def save_location(session: Session, subject: str, trip_id: Identifier, payload: LocationInput) -> Location:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     return location_from_input(session, trip.id, payload)
 
 
@@ -201,7 +203,7 @@ def update_location(
     ``acknowledge_visitor_changes``; the refusal lists each field's before and
     after and the audiences. An acknowledged change is recorded in the audit trail.
     """
-    location = owned_location(session, trip_id, subject, location_id)
+    location = owned_location(session, trip_id, subject, location_id, lock=True)
     changes = payload.model_fields_set
     live = live_audiences(session, trip_id)
     before_view = location_visitor_view(location)

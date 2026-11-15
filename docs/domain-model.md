@@ -288,14 +288,20 @@ documents and emergency information. A field that is ever shared joins the table
   may be empty in both.
 - The owner API reads `title_nl`, `title_en` and `title` (the content language's text, else the other's, so the Home
   Assistant integration and `python-travel`, which read `title`, keep working). It writes any of them. The plain
-  `title` alone is a write to the content language. Next to `title_nl` or `title_en` it is the resolved text read
-  back, so a client may send a record it read unchanged; only a plain value that differs from the content
-  language's own non-empty field in the same request is refused (`localized_text_conflict`). `null` or `""` clears one
-  language; clearing the last language of a required field is refused (`text_required_in_a_language`).
+  `title` alone is a write to the content language. Next to `title_nl` or `title_en` it is still that write, except
+  that the text already read as `title` is left alone, so a client may send a record it read unchanged. A suggestion
+  the owner edits (an area name from the place search, which carries `label` only) is a plain write and saves. Only
+  a plain value that differs from the content language's own non-empty field in the same request is refused
+  (`localized_text_conflict`): an editor that changes `label` must change that language's field with it. `null` or
+  `""` clears one language; clearing the last language of a required field is refused
+  (`text_required_in_a_language`).
 - `PATCH /api/trips/{id}` with `content_language` changes the language a plain write lands in. With `move_texts`
   it also moves every text of the trip from the old content language to the new one in one statement (for a trip
   entered in the wrong language); it is refused (`trip_text_in_both_languages`) while any field already has text in
-  both, so it never overwrites.
+  both, so it never overwrites. Each row moves in one statement over its own current values, so a translation
+  committed by another transaction meanwhile is kept and the move is refused; the writers of localized text and the
+  move also take the trip row lock (`owned_trip(lock=True)`, `FOR NO KEY UPDATE`, in the query that reads the trip), so
+  they take turns.
 - The visitor document is requested with `?lang=nl|en` (the visitor's interface language; nothing or an unknown
   value means the trip's own). Each text is delivered resolved, as one string, so the document keeps its shape.
   When the delivered text is not in the requested language the item carries `<field>_lang` (`title_lang`,

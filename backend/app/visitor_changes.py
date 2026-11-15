@@ -71,9 +71,11 @@ def location_visitor_view(location: Location) -> dict[str, str | None]:
     """The text fields of a location as visitors would read them now; an unshared address is absent."""
     fields = ALWAYS_VISIBLE + (ADDRESS_FIELDS if location.share_address else ())
     view = {name: getattr(location, name) for name in fields}
-    # The public name is read in either language, so a change to the one the owner does not read first counts too:
-    # both texts are the value (just the text while only one exists).
+    # The public name is read in either language, so a change to the one the owner does not read first counts too.
+    # It is shown as both texts (just the text while only one exists) and compared per language, because the
+    # joined text of two different pairs can be the same.
     view["label"] = " / ".join(text for text in (location.label_nl, location.label_en) if text) or None
+    view["label_nl"], view["label_en"] = location.label_nl, location.label_en
     return view
 
 
@@ -83,10 +85,14 @@ def text_changes(
     """Fields whose visitor-readable value differs: sharing the address counts as adding its parts."""
     if not audiences:
         return []
+
+    def compared(view: dict[str, str | None], name: str) -> tuple[str | None, ...]:
+        return (view.get("label_nl"), view.get("label_en")) if name == "label" else (view.get(name),)
+
     return [
         FieldChange(name, before.get(name), after.get(name), audiences)
         for name in ALWAYS_VISIBLE + ADDRESS_FIELDS
-        if before.get(name) != after.get(name)
+        if compared(before, name) != compared(after, name)
     ]
 
 

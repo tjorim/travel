@@ -46,15 +46,24 @@ def trip_query():
     )
 
 
-def owned_trip(session: Session, trip_id: Identifier, subject: str, *, load_relations: bool = False) -> Trip:
+def owned_trip(
+    session: Session, trip_id: Identifier, subject: str, *, load_relations: bool = False, lock: bool = False
+) -> Trip:
     """The owner's trip, or 404.
 
     By default this reads only the trip row: the check that the subject owns it. A handler that walks the trip's
     records (a projection, the overview, a response that embeds them) passes ``load_relations=True``; everything
     else reads the records it needs with a query of its own, so a write costs the same in a trip of any size.
+
+    ``lock=True`` also takes the trip row lock until the transaction ends (``FOR NO KEY UPDATE``, as ``lock_trip``,
+    in the same query). The writers of localized text take it, so a move of the trip's texts to another content
+    language (``localized.move_texts``) never runs beside a write it would overwrite or be overwritten by.
     """
     statement = trip_query() if load_relations else select(Trip)
-    trip = session.scalar(statement.where(Trip.id == trip_id, Trip.owner_subject == subject))
+    statement = statement.where(Trip.id == trip_id, Trip.owner_subject == subject)
+    if lock:
+        statement = statement.with_for_update(key_share=True)
+    trip = session.scalar(statement)
     if trip is None:
         raise RecordNotFound("Trip not found")
     return trip
@@ -161,7 +170,7 @@ def get_trip_overview(session: Session, subject: str, trip_id: Identifier) -> di
 
 
 def update_trip(session: Session, subject: str, trip_id: Identifier, payload: TripUpdate) -> TripResponse:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     changes = payload.model_dump(
         exclude_unset=True,
         exclude={

@@ -419,6 +419,9 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
         if location := _embedded_location(item.location, context):
             values["location"] = location
         body = visitor_text(item, "body", language)
+        # An update without text in either language (which no audience is delivered, see ``sharing_blocker``) is
+        # still an empty text, never a missing one: the model requires a string.
+        body["body"] = body["body"] or ""
         record = ProjectionUpdate(
             id=identifier,
             **visitor_text(item, "title", language),

@@ -482,6 +482,118 @@ def test_a_photo_caption_and_alt_text_fall_back_in_the_projection() -> None:
     assert visitor_text(MediaDerivative(), "caption", "nl") == {"caption": None}
 
 
+def test_an_update_without_text_in_either_language_breaks_no_delivery(owner: TestClient) -> None:
+    """Such an update is never delivered (``sharing_blocker``), and rendering one is safe anyway."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import text
+
+    from app.models import DatePrecision, TravelUpdate
+    from app.projection import _render
+    from app.trip_pdf import PdfRequest, pdf_data
+
+    trip = new_trip(owner)
+    update = owner.post(
+        f"{base(trip)}/travel-updates",
+        json={"occurred_at": "2054-04-04T10:00:00Z", "title": "Dag", "body": "Tekst"},
+    ).json()
+    slug = published(owner, trip, ("travel_update", update))
+    scope = {
+        "schema_version": "travel/share-scope@1",
+        "trip": {"title": True, "summary": True},
+        "items": [{"kind": "travel_update", "id": update["id"]}],
+    }
+    link = owner.post(f"{base(trip)}/share-links", json={"label": "Family", "scope": scope}).json()
+    owner.post(f"{base(trip)}/share-links/{link['id']}/preview")
+    token = owner.post(f"{base(trip)}/share-links/{link['id']}/activate", json={"expires_in_days": 30}).json()["token"]
+    feed = owner.post(f"{base(trip)}/share-links/{link['id']}/feed/enable", json={"acknowledge_copies": True}).json()
+    collection = owner.post("/api/collections", json={"label": "Familie"}).json()
+    owner.post(f"/api/collections/{collection['id']}/members", json={"trip_id": trip["id"], "scope": scope})
+    shared = owner.post(f"/api/collections/{collection['id']}/activate", json={"expires_in_days": 30}).json()
+    index = TestClient(app).get(f"/api/shared/{shared['token']}").json()
+    member = owner.get(f"/api/collections/{collection['id']}").json()["members"][0]["id"]
+    assert index["trips"][0]["id"] == member
+
+    with TestingSessionLocal() as session:
+        session.execute(text("UPDATE travel_updates SET body_nl = NULL, body_en = NULL"))
+        session.commit()
+
+    client = TestClient(app)
+    for path in (
+        f"/api/public/trips/{slug}",
+        f"/api/shared/{token}",
+        f"/api/shared/{shared['token']}/trips/{member}",
+    ):
+        for lang in ("nl", "en"):
+            response = client.get(path, params={"lang": lang})
+            assert response.status_code == 200, (path, response.text)
+            assert response.json()["updates"] == []
+    for path in (f"/api/public/trips/{slug}/feed.atom", f"/api/shared/{feed['feed_token']}/feed.atom"):
+        assert client.get(path, params={"lang": "en"}).status_code == 200, path
+    with TestingSessionLocal() as session:
+        stored = session.get(Trip, trip["id"])
+        assert stored is not None
+        data, _ = pdf_data(session, stored, PdfRequest(content="both", view="audience", locale="en", audience="public"))
+        assert data["updates"] == []
+
+    # Rendering such an update directly still gives the (required) empty text, never a missing one.
+    item = TravelUpdate(
+        id="u",
+        share_id="s",
+        trip=Trip(owner_subject="o"),
+        title_nl="Dag",
+        occurred_at=datetime(2054, 4, 4, tzinfo=UTC),
+        share_date_precision=DatePrecision.DAY,
+        visibility=Visibility.EVERYONE,
+    )
+    context = {
+        "language": ContentLanguage.NL,
+        "date_precision": "month",
+        "zone_spans": (),
+        "areas": set(),
+        "locations": set(),
+        "updates": {},
+    }
+    rendered = _render("travel_update", item, "update-s", context)
+    assert (rendered["title"], rendered["body"]) == ("Dag", "")
+
+
+def test_an_owner_can_edit_a_suggested_area_name_on_an_english_trip(owner: TestClient) -> None:
+    from app.config import Settings
+    from app.places.search import CachedPlaceSearchService
+    from app.routers.places import get_place_search_service
+    from tests.test_places import FakePlaceSearchProvider
+
+    app.dependency_overrides[get_place_search_service] = lambda: CachedPlaceSearchService(
+        FakePlaceSearchProvider(), Settings()
+    )
+    trip = new_trip(owner, title="Round trip", content_language="en")
+    point = {"latitude": 25.033, "longitude": 121.565, "city": "Taipei"}
+    suggestion = owner.post(f"{base(trip)}/areas/suggest", json=point).json()["area"]
+    assert suggestion["label"] == "Taipei"
+
+    # The place picker edits only `label` of the suggestion it got back, and sends the rest unchanged.
+    edited = owner.post(f"{base(trip)}/areas", json={**suggestion, "label": "Taipei City"})
+    assert edited.status_code == 201, edited.text
+    assert (edited.json()["label"], edited.json()["label_nl"], edited.json()["label_en"]) == (
+        "Taipei City",
+        None,
+        "Taipei City",
+    )
+    # An unedited suggestion saves as it is, through a location's new area too.
+    created = owner.post(
+        f"{base(trip)}/locations",
+        json={"display_name": "Station", "locality": "Taipei", "new_area": {**suggestion, "label": "Taipei Main"}},
+    )
+    assert created.status_code == 201, created.text
+    labels = {area["label_en"] for area in owner.get(f"{base(trip)}/areas").json()}
+    assert labels == {"Taipei City", "Taipei Main"}
+    plain = owner.post(f"{base(trip)}/areas", json=suggestion)
+    assert plain.status_code == 201 and plain.json()["label_en"] == "Taipei"
+    # A client that sends two different texts for the same language is still refused.
+    assert owner.post(f"{base(trip)}/areas", json={"label": "A", "label_en": "B"}).status_code == 422
+
+
 def test_models_keep_the_plain_name_for_older_code() -> None:
     trip = Trip(owner_subject="o", content_language="en")
     trip.title = "Rondreis"  # lands in the language the trip is written in

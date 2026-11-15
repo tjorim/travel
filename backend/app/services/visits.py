@@ -62,7 +62,7 @@ def get_visit(session: Session, subject: str, trip_id: Identifier, visit_id: Ide
 
 
 def create_visit(session: Session, subject: str, trip_id: Identifier, payload: VisitCreate) -> Visit:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     area, location = resolve_place(session, trip.id, payload.area_id, payload.location)
     visit = Visit(
         trip_id=trip.id,
@@ -123,7 +123,7 @@ def _update_place(session: Session, trip: Trip, visit: Visit, payload: VisitUpda
 def update_visit(
     session: Session, subject: str, trip_id: Identifier, visit_id: Identifier, payload: VisitUpdate
 ) -> Visit:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     visit = owned_visit(session, trip, visit_id)
     _update_place(session, trip, visit, payload)
     values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location"} | text_keys("title", "summary"))

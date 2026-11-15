@@ -72,7 +72,6 @@ def suggest_area(
     return AreaSuggestion(
         area=AreaInput(
             label=label[:120] or None,
-            **{f"label_{trip.content_language}": label[:120] or None},
             country_code=place.country_code if place else None,
             region=place.admin_area if place else None,
             latitude=payload.latitude,
@@ -111,7 +110,7 @@ def list_areas(
 
 def save_area(session: Session, subject: str, trip_id: Identifier, payload: AreaInput) -> Area:
     """Create an owner-selected area without treating it as a visit."""
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     if (payload.latitude is None) != (payload.longitude is None):
         raise Refusal("Supply both coordinates or neither", code="supply_both_coordinates_or_neither")
     area = Area(trip_id=trip.id, **payload.model_dump(exclude=text_keys("label")))
@@ -123,7 +122,7 @@ def save_area(session: Session, subject: str, trip_id: Identifier, payload: Area
 
 def update_area(session: Session, subject: str, trip_id: Identifier, area_id: Identifier, payload: AreaUpdate) -> Area:
     """Edit an owner's area, for example to add its time zone."""
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     area = owned_area(session, trip.id, area_id)
     values = payload.model_dump(exclude_unset=True, exclude=text_keys("label"))
     named = area.label is not None
