@@ -346,6 +346,7 @@ export function TravelUpdateManager({
               maxLength={10000}
               rows={5}
               validate={bodyToShare}
+              listenTo={["visibility"]}
             />
             <div className="field-row">
               <record.form.Field

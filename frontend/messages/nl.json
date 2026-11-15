@@ -395,6 +395,7 @@
   "capture_save_changes": "Wijzigingen opslaan",
   "capture_saved_to_your_private_trip": "Opgeslagen in je private reis.",
   "capture_saved_travel_updates": "Opgeslagen reisupdates",
+  "capture_saved_update_not_loaded_error": "De opgeslagen reisupdate wordt nog geladen, dus de titel kan nog niet worden opgeslagen. Probeer het zo meteen opnieuw.",
   "capture_search_for_a_location": "Zoek locatie",
   "capture_search_this_candidate_place": "Zoek deze kandidaatplaats",
   "capture_selected_location_from_candidate": "Gekozen locatie uit kandidaat",

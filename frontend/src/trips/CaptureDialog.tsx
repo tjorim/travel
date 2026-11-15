@@ -120,6 +120,11 @@ function OwnerCaptureDialog({
         throw new FeedbackError(() => m.capture_choose_a_trip_and_sign_in_first_to_save());
       if (!connection) throw new FeedbackError(() => m.capture_offline_draft_notice());
       if (uploadState.current.failed) throw new FeedbackError(() => m.capture_photo_blocks_save());
+      // A saved update's title is written back in the language it was written in, which is known once the trip's
+      // updates are: sending the plain `title` for it would put an English-only title into the trip's Dutch one.
+      const titleLanguage = savedTitleLanguage.current(values.updateId);
+      if (values.updateId && !titleLanguage)
+        throw new FeedbackError(() => m.capture_saved_update_not_loaded_error());
       submittedDraft.current = {
         ...values,
         [DRAFT_FENCE]: values[DRAFT_FENCE] ? { ...values[DRAFT_FENCE] } : undefined,
@@ -127,7 +132,6 @@ function OwnerCaptureDialog({
       setSaveState(textNotice(() => m.common_saving()));
       // A place that already exists on the server is left as it is: sending it again would make a new one and lose its public name.
       const keepsLocation = Boolean((values.location as { id?: string } | null)?.id);
-      const titleLanguage = savedTitleLanguage.current(values.updateId);
       return saveUpdate.mutateAsync({
         tripId: values.tripId,
         updateId: values.updateId,
@@ -498,7 +502,10 @@ function OwnerCaptureDialog({
                   label={m.common_title()}
                   required
                   maxLength={160}
-                  lang={selectedTrip?.content_language}
+                  lang={
+                    (draft.updateId ? savedTitleLanguage.current(draft.updateId) : undefined) ??
+                    selectedTrip?.content_language
+                  }
                   enterKeyHint="done"
                   placeholder={m.capture_for_example_first_evening()}
                 />

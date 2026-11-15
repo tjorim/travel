@@ -1,7 +1,7 @@
 import { Alert } from "@/ui/alert";
 import { ChoiceGroup } from "@/ui/ChoiceGroup";
 import { Collapsible } from "@/ui/collapsible";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { OwnerSession } from "../../auth";
 import type { Projection } from "../../ProjectionView";
@@ -65,13 +65,22 @@ export function PreviewDialog({
     // A preview is shown once and not kept.
     invalidate: () => [],
   });
+  // Only the latest choice may answer: an earlier one that resolves late would put its language and document back.
+  const latest = useRef(0);
   function chooseLanguage(next: ContentLanguage) {
+    const request = ++latest.current;
     if (next === language) return;
     setLanguageError(null);
-    reload.mutateAsync(next).then((result) => {
-      setLanguage(next);
-      setDocument(result);
-    }, setLanguageError);
+    reload.mutateAsync(next).then(
+      (result) => {
+        if (request !== latest.current) return;
+        setLanguage(next);
+        setDocument(result);
+      },
+      (failure: unknown) => {
+        if (request === latest.current) setLanguageError(failure);
+      },
+    );
   }
   // The preview is the audience's real delivery; this says how it differs from the public page.
   const review = useExclusionReview(tripId, preview.scope);

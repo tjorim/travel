@@ -15,8 +15,10 @@ type Handler = (body: unknown, match: RegExpExecArray) => unknown;
  * What the server does with authored text a client sent in both languages: the plain field name reads as the
  * content language's text, else the other language's (`app.content_language.resolve`).
  */
-export function resolveTexts<T extends object>(row: T, language: "nl" | "en" = "nl"): T {
+export function resolveTexts<T extends object>(row: T, language?: "nl" | "en"): T {
   const values = row as Record<string, unknown>;
+  // A record that carries its own content language (a trip, a collection) is read in it.
+  language ??= values.content_language === "en" ? "en" : "nl";
   const resolved = { ...values };
   for (const key of Object.keys(values)) {
     if (!key.endsWith("_nl")) continue;
@@ -156,12 +158,11 @@ export class FakeApi {
       const current = parent.rows.find((row) => row.id === id);
       if (current && method === "GET") return json(current);
       if (current && method === "PATCH") {
+        // A texts sent as `null` are cleared: only a record a test wrote with plain texts is completed from them.
         const updated = resolveTexts(
-          localized(
-            parent.update
-              ? parent.update(current, body as Body)
-              : { ...current, ...(body as Body) },
-          ),
+          parent.update
+            ? localized(parent.update(current, body as Body))
+            : { ...current, ...(body as Body) },
         );
         parent.rows = parent.rows.map((row) => (row.id === id ? updated : row));
         return json(updated);

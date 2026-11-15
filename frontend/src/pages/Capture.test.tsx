@@ -2,7 +2,10 @@
 import { mockCaptureLocks } from "../capture-draft-test-utils";
 import { createRootRoute } from "@tanstack/react-router";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+
+import { server } from "../mocks/server";
 
 import { fakeApi, resolveTexts, type FakeApi } from "../query/fake-api";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
@@ -76,6 +79,7 @@ beforeEach(() => {
   api.on("GET", /^\/api\/trips$/, () => [
     {
       id: state.trip.id,
+      content_language: "nl",
       title: state.trip.title,
       summary: null,
       starts_on: null,
@@ -135,6 +139,53 @@ it("restores a local draft and keeps it up to date while typing", async () => {
   fireEvent.change(title, { target: { value: "Terug van eergisteren" } });
   await waitFor(() => expect(readDraft("trip")?.title).toBe("Terug van eergisteren"));
   expect(screen.getByText("Concept lokaal bewaard — nog niet naar je reis gestuurd.")).toBeTruthy();
+});
+
+it("edits a saved title in the language it was written in, and marks the input with it", async () => {
+  state.trip.travel_updates = [
+    { ...update("m3", "First evening"), title_nl: null, title_en: "First evening" },
+  ];
+  renderCapture();
+  fireEvent.click(await screen.findByRole("button", { name: /First evening/ }));
+  const title = screen.getByLabelText("Titel") as HTMLInputElement;
+  // The trip is Dutch, this title is English: the input says so, and a new title would say Dutch.
+  expect(title.lang).toBe("en");
+  fireEvent.change(title, { target: { value: "First evening in Taipei" } });
+  fireEvent.click(screen.getByRole("button", { name: "Wijzigingen opslaan" }));
+  await waitFor(() => expect(savedUpdates().getByText("First evening in Taipei")).toBeTruthy());
+  const sent = api.lastBody("PATCH /api/trips/trip/travel-updates/m3");
+  expect(sent).toMatchObject({ title_en: "First evening in Taipei" });
+  expect(sent).not.toHaveProperty("title");
+  expect(sent).not.toHaveProperty("title_nl");
+});
+
+it("does not save a restored edit of a saved update before it knows what language its title is in", async () => {
+  let release: () => void = () => undefined;
+  const hold = new Promise<void>((resolve) => (release = resolve));
+  state.trip.travel_updates = [
+    { ...update("m3", "First evening"), title_nl: null, title_en: "First evening" },
+  ];
+  server.use(
+    http.get("/api/trips/trip/travel-updates", async () => {
+      await hold;
+      return HttpResponse.json(state.trip.travel_updates);
+    }),
+  );
+  await saveDraft({ ...emptyDraft("trip"), updateId: "m3", title: "First evening, edited" });
+  renderCapture();
+  const title = (await screen.findByLabelText("Titel")) as HTMLInputElement;
+  expect(title.value).toBe("First evening, edited");
+  fireEvent.click(screen.getByRole("button", { name: "Wijzigingen opslaan" }));
+  expect(await screen.findByText(/opgeslagen reisupdate wordt nog geladen/)).toBeTruthy();
+  // Nothing was sent: the plain title would have gone into the trip's Dutch title.
+  expect(api.count("PATCH /api/trips/trip/travel-updates/m3")).toBe(0);
+  release();
+  await waitFor(() => expect(title.lang).toBe("en"));
+  fireEvent.click(screen.getByRole("button", { name: "Wijzigingen opslaan" }));
+  await waitFor(() => expect(api.count("PATCH /api/trips/trip/travel-updates/m3")).toBe(1));
+  expect(api.lastBody("PATCH /api/trips/trip/travel-updates/m3")).toMatchObject({
+    title_en: "First evening, edited",
+  });
 });
 
 it("asks for a title, but not for notes, before anything is sent", async () => {

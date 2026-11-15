@@ -115,7 +115,15 @@ type RenderResult = { html: string | null; text: string | null };
  * The server's rendering of the current text: the same renderer as the stored field, so the preview
  * and what visitors see never drift apart.
  */
-function MarkdownPreview({ source, format }: { source: string; format: MarkdownFormat }) {
+function MarkdownPreview({
+  source,
+  format,
+  lang,
+}: {
+  source: string;
+  format: MarkdownFormat;
+  lang?: string;
+}) {
   useLocale();
   const owner = useOwner();
   const [state, setState] = useState<
@@ -166,7 +174,7 @@ function MarkdownPreview({ source, format }: { source: string; format: MarkdownF
       </Alert>
     );
   if (!state.result.html) return <p className="help">{m.markdown_nothing_to_show_yet()}</p>;
-  return <Markdown html={state.result.html} text={source} />;
+  return <Markdown html={state.result.html} text={source} lang={lang} />;
 }
 
 /**
@@ -290,7 +298,7 @@ export function MarkdownField({
             className="min-h-22.5 rounded-lg border border-dashed border-travel-control-border bg-travel-surface px-3 py-2.75"
             aria-live="polite"
           >
-            <MarkdownPreview source={value} format={format} />
+            <MarkdownPreview source={value} format={format} lang={rest.lang} />
           </div>
         )}
         <FieldDescription className="text-xs text-travel-muted">{HINTS[format]}</FieldDescription>

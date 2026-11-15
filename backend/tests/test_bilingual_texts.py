@@ -500,6 +500,37 @@ def test_a_collection_index_gets_its_title_and_its_trips_in_the_requested_langua
     assert TestClient(app).get(f"/api/shared/{token}", params={"lang": "en"}).json()["title"] == "Our trips"
 
 
+def test_a_collection_index_reads_every_member_in_the_collections_language_and_marks_what_differs(
+    owner: TestClient,
+) -> None:
+    """A member trip written in the other language must not leave an unmarked text in a language the index does
+    not declare: without ``lang`` the whole index is in the collection's own language."""
+    scope = {"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}
+    english_only = new_trip(owner, title_en="Round trip", content_language="en")
+    both = new_trip(owner, title_nl="Rondreis", title_en="Tour", content_language="en")
+    collection = owner.post(
+        "/api/collections", json={"label": "Familie", "title_nl": "Onze reizen", "content_language": "nl"}
+    ).json()
+    for trip in (english_only, both):
+        added = owner.post(f"/api/collections/{collection['id']}/members", json={"trip_id": trip["id"], "scope": scope})
+        assert added.status_code in (200, 201), added.text
+    token = owner.post(f"/api/collections/{collection['id']}/activate", json={"expires_in_days": 30}).json()["token"]
+
+    response = TestClient(app).get(f"/api/shared/{token}")
+    assert response.headers["Content-Language"] == "nl"
+    document = response.json()
+    assert "title_lang" not in document
+    first, second = document["trips"]
+    # No Dutch text exists: the English one is delivered and says so, instead of passing for Dutch.
+    assert (first["title"], first["title_lang"]) == ("Round trip", "en")
+    # An English-language trip with a Dutch version is read in Dutch, unmarked.
+    assert (second["title"], "title_lang" in second) == ("Rondreis", False)
+    english = TestClient(app).get(f"/api/shared/{token}", params={"lang": "en"}).json()
+    assert (english["trips"][0]["title"], "title_lang" in english["trips"][0]) == ("Round trip", False)
+    assert (english["trips"][1]["title"], "title_lang" in english["trips"][1]) == ("Tour", False)
+    assert (english["title"], english["title_lang"]) == ("Onze reizen", "nl")
+
+
 def test_a_photo_caption_and_alt_text_fall_back_in_the_projection() -> None:
     from app.projection import visitor_text
 

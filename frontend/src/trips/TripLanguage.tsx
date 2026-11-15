@@ -27,10 +27,13 @@ const languageName = (language: ContentLanguage) =>
 export function TripLanguage({
   trip,
   dirty,
+  onPending,
   onChanged,
 }: {
   trip: Trip;
   dirty: boolean;
+  /** Called with whether the change is being saved. */
+  onPending: (pending: boolean) => void;
   onChanged: (saved: Trip) => void;
 }) {
   useLocale();
@@ -46,16 +49,25 @@ export function TripLanguage({
       method: "PATCH",
       body: { content_language: language, ...(moveTexts ? { move_texts: true } : {}) },
     }),
-    invalidate: (subject) => [ownerKeys.trips(subject)],
+    // A move rewrites the texts of every record of the trip, so every cached copy of one is stale.
+    invalidate: (subject) => [ownerKeys.trips(subject), ownerKeys.anyTrip(subject)],
   });
   const changed = chosen !== current;
 
   function submit() {
     setError(null);
-    save.mutateAsync({ language: chosen, move: move && changed }).then((saved) => {
-      setMove(false);
-      onChanged(saved);
-    }, setError);
+    onPending(true);
+    save.mutateAsync({ language: chosen, move: move && changed }).then(
+      (saved) => {
+        onPending(false);
+        setMove(false);
+        onChanged(saved);
+      },
+      (failure: unknown) => {
+        onPending(false);
+        setError(failure);
+      },
+    );
   }
   function apply() {
     if (!changed) return;

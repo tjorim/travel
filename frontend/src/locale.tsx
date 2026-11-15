@@ -59,8 +59,11 @@ function updateDocument() {
  * the language it starts in back to it, so it also holds a browser default nobody chose.
  */
 const CHOICE_KEY = "travel-locale-choice";
+/** A choice that could not be written to storage: it still counts, for as long as this page lives. */
+let unsavedChoice: Locale | null = null;
 /** The language the visitor chose themselves with the language control (here or on an earlier visit), else null. */
 export function chosenLocale(): Locale | null {
+  if (unsavedChoice) return unsavedChoice;
   try {
     const stored = localStorage.getItem(CHOICE_KEY);
     return stored === "nl" || stored === "en" ? stored : null;
@@ -81,10 +84,12 @@ export function adoptLocale(next: Locale) {
 }
 export function changeLocale(next: Locale) {
   setLocale(next, { reload: false });
+  // Remembering it is best effort; a failed write must not lose the choice that was just made.
   try {
     localStorage.setItem(CHOICE_KEY, next);
+    unsavedChoice = null;
   } catch {
-    /* Keep the in-memory choice. */
+    unsavedChoice = next;
   }
   updateDocument();
   window.dispatchEvent(new Event("travel-locale-change"));

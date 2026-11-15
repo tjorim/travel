@@ -193,3 +193,51 @@ it("explains a refused move, and holds the language change while the details are
   ).toBe(true);
   expect(screen.getByText("Sla je wijzigingen aan de reis eerst op of verwerp ze.")).toBeTruthy();
 });
+
+it("refreshes every cached record of the trip after the texts moved, not only the trip list", async () => {
+  server.use(
+    http.get("/api/trips", () => HttpResponse.json([])),
+    http.patch("/api/trips/trip", () => HttpResponse.json(trip({ content_language: "en" }))),
+  );
+  const { client } = renderWithOwner(
+    <TripEditor
+      trip={trip()}
+      open
+      onClose={() => undefined}
+      onSaved={() => undefined}
+      onDeleted={() => undefined}
+      onNotice={() => undefined}
+    />,
+  );
+  const refreshed = vi.spyOn(client, "invalidateQueries");
+  const language = within(screen.getByRole("radiogroup", { name: "Taal van de reis" }));
+  fireEvent.click(language.getByRole("radio", { name: "Engels" }));
+  fireEvent.click(screen.getByRole("button", { name: "Taal wijzigen" }));
+  await waitFor(() =>
+    expect(refreshed).toHaveBeenCalledWith({ queryKey: ["owner", "owner-1", "trip"] }),
+  );
+  expect(refreshed).toHaveBeenCalledWith({ queryKey: ["owner", "owner-1", "trips"] });
+});
+
+it("holds the trip's details while the language change saves, so nothing typed meanwhile is lost", async () => {
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.get("/api/trips", () => HttpResponse.json([])),
+    http.patch("/api/trips/trip", async () => {
+      await gate;
+      return HttpResponse.json(trip({ content_language: "en" }));
+    }),
+  );
+  renderEditor(trip());
+  const language = within(screen.getByRole("radiogroup", { name: "Taal van de reis" }));
+  fireEvent.click(language.getByRole("radio", { name: "Engels" }));
+  fireEvent.click(screen.getByRole("button", { name: "Taal wijzigen" }));
+  await waitFor(() =>
+    expect((screen.getByLabelText("Titel") as HTMLInputElement).disabled).toBe(true),
+  );
+  release();
+  await waitFor(() =>
+    expect((screen.getByLabelText("Titel") as HTMLInputElement).disabled).toBe(false),
+  );
+});

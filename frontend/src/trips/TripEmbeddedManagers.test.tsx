@@ -215,6 +215,18 @@ it("saves who may see an update with the update itself, private by default", asy
   expect(screen.getByRole("button", { name: /^Aankomst\b/ }).textContent).toContain("Privé");
 });
 
+it("checks the text for visitors again when who may see the update changes", async () => {
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe update" }));
+  const message = "Schrijf eerst de tekst voor bezoekers, of kies “Privé”.";
+  // Nothing is shared, so nothing needs text.
+  expect(screen.queryByText(message)).toBeNull();
+  chooseOption("Zichtbaarheid", "Iedereen — alle bezoekers");
+  expect(await screen.findByText(message)).toBeTruthy();
+  chooseOption("Zichtbaarheid", "Privé — alleen ik");
+  await waitFor(() => expect(screen.queryByText(message)).toBeNull());
+});
+
 const timeInput = () =>
   within(screen.getByRole("group", { name: /Datum en tijd/ })).getAllByRole(
     "textbox",

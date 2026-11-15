@@ -14,11 +14,19 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
-function Editor({ initial = "", format }: { initial?: string; format?: MarkdownFormat }) {
+function Editor({
+  initial = "",
+  format,
+  lang,
+}: {
+  initial?: string;
+  format?: MarkdownFormat;
+  lang?: string;
+}) {
   const form = useForm({ defaultValues: { notes: initial } });
   return (
     <form.Field name="notes">
-      {(field) => <MarkdownField field={field} label="Notities" format={format} />}
+      {(field) => <MarkdownField field={field} label="Notities" format={format} lang={lang} />}
     </form.Field>
   );
 }
@@ -88,4 +96,16 @@ it("says so when the preview cannot be rendered", async () => {
   expect((await screen.findByRole("alert")).textContent).toBe(
     "Het voorbeeld kon niet worden geladen.",
   );
+});
+
+it("renders the preview in the language the field is written in", async () => {
+  server.use(
+    http.post("/api/markdown/render", () =>
+      HttpResponse.json({ html: "<p>It <strong>rained</strong></p>", text: "It rained" }),
+    ),
+  );
+  const view = withOwner(<Editor initial="It **rained**" lang="en" />);
+  fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
+  await waitFor(() => expect(view.container.querySelector(".markdown")).toBeTruthy());
+  expect(view.container.querySelector(".markdown")?.getAttribute("lang")).toBe("en");
 });

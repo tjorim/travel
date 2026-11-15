@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
@@ -280,6 +280,53 @@ it("previews the member in the other language from the same candidate scope", as
   expect(api.lastBody<ShareScope>("POST /api/collections/c1/members/m1/preview?lang=en")).toEqual(
     member.scope,
   );
+});
+
+it("ignores a member preview that arrives after a newer one", async () => {
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const asked: (string | null)[] = [];
+  server.use(
+    http.post("/api/collections/c1/members/m1/preview", async ({ request }) => {
+      const language = new URL(request.url).searchParams.get("lang");
+      asked.push(language);
+      // The first English answer is the slow one.
+      if (language === "en" && asked.filter((item) => item === "en").length === 1) await gate;
+      return HttpResponse.json({ schema_version: "travel/unlisted-trip@1", title: "Exampleland" });
+    }),
+  );
+  api.on("POST", /\/api\/collections\/c1\/members\/m1\/future-disclosure$/, () => ({
+    transport: 0,
+    day_dates: 0,
+  }));
+  renderWithOwner(
+    <MemberScopeDialog
+      collection={collection("active")}
+      member={member}
+      trip={{ ...trip, content_language: "nl" } as TripSummary}
+      onClose={() => undefined}
+    />,
+  );
+  await screen.findByRole("region", { name: "Weggelaten voor dit publiek" });
+  fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
+  const languages = within(
+    await screen.findByRole("radiogroup", { name: "Taal van het voorbeeld" }),
+  );
+  const checked = (name: string) =>
+    languages.getByRole("radio", { name }).getAttribute("aria-checked") === "true";
+  // English is asked for and is slow; it is asked for again, and then Dutch, and those answer first.
+  fireEvent.click(languages.getByRole("radio", { name: "Engels" }));
+  fireEvent.click(languages.getByRole("radio", { name: "Engels" }));
+  await waitFor(() => expect(checked("Engels")).toBe(true));
+  fireEvent.click(languages.getByRole("radio", { name: "Nederlands" }));
+  await waitFor(() => expect(asked).toEqual([null, "en", "en", "nl"]));
+  await waitFor(() => expect(checked("Nederlands")).toBe(true));
+  release();
+  await act(async () => {
+    await gate;
+  });
+  expect(checked("Nederlands")).toBe(true);
+  expect(checked("Engels")).toBe(false);
 });
 
 it("shows no review when the previewed member scope shows nothing of the future", async () => {

@@ -395,6 +395,7 @@
   "capture_save_changes": "Save changes",
   "capture_saved_to_your_private_trip": "Saved to your private trip.",
   "capture_saved_travel_updates": "Saved travel updates",
+  "capture_saved_update_not_loaded_error": "The saved travel update is still loading, so its title cannot be saved yet. Try again in a moment.",
   "capture_search_for_a_location": "Search for a location",
   "capture_search_this_candidate_place": "Search this candidate place",
   "capture_selected_location_from_candidate": "Selected location from candidate",

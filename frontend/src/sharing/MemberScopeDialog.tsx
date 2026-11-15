@@ -1,7 +1,7 @@
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { ChoiceGroup } from "@/ui/ChoiceGroup";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { useAuth } from "../auth-context";
 import type { ContentLanguage } from "../content-language";
@@ -92,7 +92,10 @@ export function MemberScopeDialog({
   const [widening, setWidening] = useState<ExclusionWidening | null>(null);
 
   /** The preview of the candidate scope: in the trip's own language, or in `language` once the owner asks for one. */
+  // Only the latest request may answer: an earlier one that resolves late would put its language back.
+  const latestPreview = useRef(0);
   async function showPreview(language?: ContentLanguage) {
+    const request = ++latestPreview.current;
     // Reading it in the other language shows the same candidate, not whatever the editor holds by now.
     const candidate = language && preview ? preview.scope : cloneScope(scope);
     try {
@@ -102,6 +105,7 @@ export function MemberScopeDialog({
         scope: candidate,
         language,
       });
+      if (request !== latestPreview.current) return;
       setPreview({
         document: document as Projection,
         scope: candidate,
@@ -110,7 +114,8 @@ export function MemberScopeDialog({
       // The review counts the same server state as this preview, also when the scope did not change since the last one.
       void refreshFutureDisclosure();
     } catch (error) {
-      setNotice(errorNotice(error, m.sharing_the_link_preview_could_not_be_loaded));
+      if (request === latestPreview.current)
+        setNotice(errorNotice(error, m.sharing_the_link_preview_could_not_be_loaded));
     }
   }
 

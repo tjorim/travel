@@ -221,14 +221,19 @@ def collection_index(
     session: Session, collection: Collection, language: ContentLanguage | str | None = None
 ) -> CollectionIndexDocument:
     """The members as the audience sees them: each entry is built from its own projection, so it
-    can show nothing the member's trip page would not."""
+    can show nothing the member's trip page would not.
+
+    Every text is delivered in one language, the one asked for, else the collection's own: a member trip written in
+    the other language is read in this one where it has that version, and marked when it has not (a trip's own
+    language would otherwise leave its unmarked texts in a language the document does not declare)."""
+    requested = language or ContentLanguage(collection.content_language)
     trips = trips_by_id(session, collection)
     entries = []
     for member in collection.members:
         trip = trips.get(member.trip_id)
         if trip is None:
             continue
-        projection = render_projection(trip, member.scope, "travel/unlisted-trip@1", language)
+        projection = render_projection(trip, member.scope, "travel/unlisted-trip@1", requested)
         entries.append(
             CollectionIndexEntry(
                 id=member.id,
@@ -238,7 +243,6 @@ def collection_index(
                 cover=projection["cover"],
             )
         )
-    requested = language or collection.content_language
     title, found = pick(collection.title_nl, collection.title_en, requested)
     other = None if found is None or found == requested else ("nl" if found == ContentLanguage.NL else "en")
     return CollectionIndexDocument(title=title, title_lang=other, trips=entries)

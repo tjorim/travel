@@ -76,6 +76,8 @@ export function TripEditor({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useFeedback<string | null>(null);
   const refresh = useRefreshTrip();
+  // The details are held while the language change saves: it reloads them, which would drop what was typed meanwhile.
+  const [changingLanguage, setChangingLanguage] = useState(false);
   // A new trip is written in the language the owner opened the dialog in; switching the interface language while
   // typing does not move what was typed to another version of the field.
   const [creationLanguage, setCreationLanguage] = useState(interfaceLanguage);
@@ -158,7 +160,7 @@ export function TripEditor({
     >
       {open && (
         <RecordForm
-          record={record}
+          record={{ ...record, pending: record.pending || changingLanguage }}
           submitLabel={trip ? m.trips_save_trip() : m.trips_create_trip()}
           pendingLabel={trip ? m.trips_saving_trip() : m.trips_creating_trip()}
           actions={
@@ -219,6 +221,7 @@ export function TripEditor({
         <TripLanguage
           trip={trip}
           dirty={record.dirty}
+          onPending={setChangingLanguage}
           onChanged={(saved) => {
             record.load(fromTrip(saved));
             onSaved(saved, false);
