@@ -38,7 +38,7 @@ export function StayManager({
   const [message, setMessage] = useFeedback<string>(textNotice(() => m.stays_visibility_hint()));
   const focus = useFocusRequest(focusId);
   const create = useCreateRequest("stay", createRequest, onCreateHandled);
-  const nights = useStayNights(trip.id, host?.report ?? setMessage);
+  const nights = useStayNights(trip.id, setMessage);
   const open = host ? (id: string) => host.open("stay", id) : focus.open;
 
   const readError = staysQuery.error ?? documentsQuery.error;

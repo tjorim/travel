@@ -45,7 +45,7 @@ export function VisitManager({
   const focus = useFocusRequest(focusId);
   const create = useCreateRequest("visit", createRequest, onCreateHandled);
 
-  const offline = useVisitOffline(trip.id, host?.report ?? setMessage);
+  const offline = useVisitOffline(trip.id, setMessage);
   const open = host ? (id: string) => host.open("visit", id) : focus.open;
 
   const readError = visitsQuery.error ?? staysQuery.error;

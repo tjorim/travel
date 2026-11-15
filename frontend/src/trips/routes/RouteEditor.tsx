@@ -220,6 +220,8 @@ export function RouteEditor({
       {del.target && (
         <DeleteConfirmation
           title={m.routes_delete_route({ title: routeTitle(del.target) })}
+          confirmDisabled={remove.isPending}
+          cancelDisabled={remove.isPending}
           onCancel={del.clear}
           onConfirm={() => confirmDelete(del.target!)}
         />

@@ -42,8 +42,14 @@ export function usePlanHost(
   recordFocus: RecordFocus | null,
   createRequest: CreateRequest | null,
   onCreateHandled: () => void,
+  /** Called whenever a dialog reports, so the status line that shows it can be put in view. */
+  onReported?: () => void,
 ): PlanHost {
-  const [message, report] = useFeedback<string | null>(null);
+  const [message, setMessage] = useFeedback<string | null>(null);
+  const report: ReportNotice = (notice) => {
+    setMessage(notice);
+    onReported?.();
+  };
   const focus = {
     visit: useFocusRequest(focusFor(recordFocus, "visit")),
     stay: useFocusRequest(focusFor(recordFocus, "stay")),

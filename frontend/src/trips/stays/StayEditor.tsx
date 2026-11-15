@@ -219,6 +219,8 @@ export function StayEditor({
       {del.target && (
         <DeleteConfirmation
           title={m.common_delete_confirm_title({ name: stayLabel(del.target) })}
+          confirmDisabled={deleteStay.isPending}
+          cancelDisabled={deleteStay.isPending}
           onCancel={del.clear}
           onConfirm={confirmDelete}
         />

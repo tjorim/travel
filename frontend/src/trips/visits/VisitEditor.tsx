@@ -123,7 +123,9 @@ export function VisitEditor({
   function erase(visit: Visit, fromRow = false) {
     remove.mutateAsync(visit).then(
       async () => {
-        await offline.removeByResource("visit", visit.id);
+        // The visit is gone from the server: a copy on this device that cannot be removed must not keep the
+        // question open; it stays in the offline list, where it can be removed.
+        await offline.removeByResource("visit", visit.id).catch(() => undefined);
         close();
         rowDelete.clear();
         onNotice(textNotice(() => m.visits_visit_deleted()));
@@ -167,6 +169,8 @@ export function VisitEditor({
       {rowDelete.target && (
         <DeleteConfirmation
           title={m.visits_delete_visit({ title: visitTitle(rowDelete.target) })}
+          confirmDisabled={remove.isPending}
+          cancelDisabled={remove.isPending}
           onCancel={rowDelete.clear}
           onConfirm={() => erase(rowDelete.target!, true)}
         />

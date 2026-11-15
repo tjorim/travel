@@ -136,10 +136,8 @@ for (const locale of locales) {
         await expect(agenda.getByRole("status").first()).toHaveText(
           message(locale, "visits_visit_deleted"),
         );
-        // The row is gone: focus is on a row that is still there, not lost to the page.
-        await expect
-          .poll(() => page.evaluate(() => document.activeElement?.closest("#agenda") !== null))
-          .toBe(true);
+        // The row is gone: focus is on the row before it (the stay on the same day), not lost to the page or a filter.
+        await expect(title(agenda, /Hotel Aurora/)).toBeFocused();
       });
 
       test(`create, and change who sees a record, from the agenda ${setup}`, async ({ page }) => {

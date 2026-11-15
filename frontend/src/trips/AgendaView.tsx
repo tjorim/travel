@@ -409,9 +409,9 @@ export function AgendaView({
         {status}
       </p>
       {alternatives}
-      {items.length === 0 ? (
+      {days.length === 0 && items.length === 0 ? (
         <p>{m.agenda_empty()}</p>
-      ) : shown.length === 0 ? (
+      ) : days.length === 0 && shown.length === 0 ? (
         <p>{m.agenda_filter_no_match()}</p>
       ) : (
         <div className="saved-records mt-0.5">

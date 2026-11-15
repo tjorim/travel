@@ -6,11 +6,18 @@ import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { server } from "../mocks/server";
+import * as offlineStore from "../offline/offline-store";
 import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils";
 import type { Area, Route, Stay, Trip, Visit } from "../api-types";
 import { AgendaManager } from "./AgendaManager";
 import { agendaFilterKey } from "./agenda-filter";
 import { PlanEditors, usePlanHost } from "./plan-host";
+
+// Every offline call goes through unchanged, except where a test makes the removal of a saved copy fail.
+vi.mock("../offline/offline-store", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../offline/offline-store")>();
+  return { ...original, removeOfflineCopy: vi.fn(original.removeOfflineCopy) };
+});
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
@@ -105,6 +112,8 @@ const route = (id: string, label: string, overrides: Partial<Route> = {}): Route
 let visits: Visit[];
 let stays: Stay[];
 let routes: Route[];
+/** Holds the answer to a route's delete until a test releases it. */
+let routeDeleteGate: Promise<void> | undefined;
 let sent: { method: string; path: string; body?: unknown }[];
 
 function serve() {
@@ -159,21 +168,39 @@ function serve() {
       );
       return HttpResponse.json(stays.find((candidate) => candidate.id === params.id) as never);
     }),
-    http.delete("/api/trips/trip/routes/:id", ({ params, request }) => {
+    http.delete("/api/trips/trip/routes/:id", async ({ params, request }) => {
       sent.push({ method: "DELETE", path: new URL(request.url).pathname });
+      await routeDeleteGate;
       routes = routes.filter((candidate) => candidate.id !== params.id);
+      return new HttpResponse(null, { status: 204 });
+    }),
+    http.delete("/api/trips/trip/stays/:id", ({ params, request }) => {
+      sent.push({ method: "DELETE", path: new URL(request.url).pathname });
+      stays = stays.filter((candidate) => candidate.id !== params.id);
       return new HttpResponse(null, { status: 204 });
     }),
   );
 }
 
 /** The agenda with the plan's dialogs behind it, as the plan tab wires them. */
-function Plan({ onShowOnMap }: { onShowOnMap?: (pointId: string) => void }) {
+function Plan({
+  onShowOnMap,
+  datedTrip = false,
+}: {
+  onShowOnMap?: (pointId: string) => void;
+  datedTrip?: boolean;
+}) {
   const host = usePlanHost(null, null, () => undefined);
+  const shown = datedTrip ? { ...trip, starts_on: "2054-11-16", ends_on: "2054-11-18" } : trip;
   return (
     <>
-      <AgendaManager trip={trip} host={host} onShowOnMap={onShowOnMap} />
-      <PlanEditors trip={trip} host={host} />
+      <AgendaManager
+        trip={shown}
+        host={host}
+        onShowOnMap={onShowOnMap}
+        onCreateRecord={() => undefined}
+      />
+      <PlanEditors trip={shown} host={host} />
     </>
   );
 }
@@ -184,6 +211,7 @@ beforeEach(() => {
   stays = [];
   routes = [];
   sent = [];
+  routeDeleteGate = undefined;
   localStorage.clear();
   serve();
 });
@@ -366,6 +394,73 @@ it("deletes a stay and a route from their rows through the same path", async () 
   );
   await waitFor(() => expect(sent).toHaveLength(1));
   expect(sent[0]).toEqual({ method: "DELETE", path: "/api/trips/trip/routes/r1" });
+  await waitFor(() => expect(screen.queryByRole("button", { name: /Route: Naar/ })).toBeNull());
+
+  openMenu(await rowOf(/Verblijf: Hotel Royal/));
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Verwijderen" }));
+  fireEvent.click(
+    within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
+  );
+  await waitFor(() => expect(sent).toHaveLength(2));
+  expect(sent[1]).toEqual({ method: "DELETE", path: "/api/trips/trip/stays/s1" });
+  await waitFor(() => expect(screen.queryByRole("button", { name: /Hotel Royal/ })).toBeNull());
+});
+
+it("keeps the question open while the delete runs, so it cannot finish into another editor", async () => {
+  routes = [route("r1", "Naar het noorden"), route("r2", "Terug", { departs_on: "2054-11-23" })];
+  let release!: () => void;
+  routeDeleteGate = new Promise((resolve) => {
+    release = resolve;
+  });
+  renderWithOwner(<Plan />);
+  openMenu(await rowOf(/Route: Naar het noorden/));
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Verwijderen" }));
+  const question = await screen.findByRole("alertdialog");
+  fireEvent.click(within(question).getByRole("button", { name: "Verwijderen" }));
+  await waitFor(() => expect(sent).toHaveLength(1));
+
+  // Neither the buttons nor Escape can leave the question while the request is out.
+  await waitFor(() =>
+    expect(
+      (within(question).getByRole("button", { name: "Annuleren" }) as HTMLButtonElement).disabled,
+    ).toBe(true),
+  );
+  expect(
+    (within(question).getByRole("button", { name: "Verwijderen" }) as HTMLButtonElement).disabled,
+  ).toBe(true);
+  fireEvent.keyDown(question, { key: "Escape" });
+  expect(screen.getByRole("alertdialog")).toBeTruthy();
+
+  release();
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  await waitFor(() => expect(screen.queryByRole("button", { name: /Route: Naar/ })).toBeNull());
+  expect(screen.getByRole("status").textContent).toBe("Route verwijderd.");
+});
+
+it("closes the question and reports the delete even when the saved offline copy cannot be removed", async () => {
+  visits = [visit("v1", "Nachtmarkt")];
+  renderWithOwner(<Plan />);
+  openMenu(await rowOf(/Bezoek: Nachtmarkt/));
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Offline bewaren" }));
+  await waitFor(() => expect(screen.getByRole("status").textContent).toContain("offline bewaard"));
+
+  vi.mocked(offlineStore.removeOfflineCopy).mockRejectedValueOnce(new Error("storage failed"));
+  openMenu(await rowOf(/Bezoek: Nachtmarkt/));
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Verwijderen" }));
+  fireEvent.click(
+    within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
+  );
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  await waitFor(() => expect(screen.queryByRole("button", { name: /Nachtmarkt/ })).toBeNull());
+  expect(sent).toEqual([{ method: "DELETE", path: "/api/trips/trip/visits/v1" }]);
+  expect(screen.getByRole("status").textContent).toBe("Bezoek verwijderd.");
+});
+
+it("lists the days of a dated trip with their Add menus even when nothing is planned yet", async () => {
+  renderWithOwner(<Plan datedTrip />);
+  const adds = await screen.findAllByRole("button", { name: /^Toevoegen aan / });
+  expect(adds).toHaveLength(3);
+  expect(screen.queryByText(/Nog niets in de agenda/)).toBeNull();
 });
 
 it("changes a stay's nights from its check-in row, only while it is private and still a plan", async () => {

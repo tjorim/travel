@@ -28,7 +28,9 @@ export default function PlanSection({
   useLocale();
   const { isOpen, setOpen } = useOpenSections(PARTS, recordFocus);
   // The agenda hosts the one dialog per kind of record; the type blocks below only ask it to open.
-  const host = usePlanHost(recordFocus, createRequest, onCreateHandled);
+  const host = usePlanHost(recordFocus, createRequest, onCreateHandled, () =>
+    setOpen("agenda", true),
+  );
   // A new record from elsewhere ends up in the agenda: keep that block open so focus can land on it.
   const createToken = createRequest?.token;
   useEffect(() => {
