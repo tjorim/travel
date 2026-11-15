@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
 import type { Area, Stay } from "../api-types";
-import { buildAgendaItems } from "./AgendaView";
+import { buildAgendaItems } from "./agenda-items";
 
 const area = { id: "linkou", label: "Linkou", timezone: "Asia/Taipei" } as Area;
 const stay = (id: string, checkIn: string, checkOut: string, extra: Partial<Stay> = {}): Stay =>

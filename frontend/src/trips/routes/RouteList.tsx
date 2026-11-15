@@ -2,11 +2,10 @@ import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
-import { ROUTE_MODE_LABELS, routeTitle } from "../../records";
+import { routeTitle } from "../../records";
 import { type Route } from "../../api-types";
-import { PLANNING_STATUS_LABELS } from "../labels";
 import { visibilityLabel } from "../visibility";
-import { routeShift, routeTimes } from "./model";
+import { routeLine } from "./model";
 
 /** The saved routes. Alternatives the owner confirmed are compared in the alternatives panel above. */
 export function RouteList({
@@ -29,14 +28,7 @@ export function RouteList({
           >
             <strong>{routeTitle(route)}</strong>
             <span>
-              {[
-                ROUTE_MODE_LABELS[route.mode],
-                [routeTimes(route), routeShift(route)].filter(Boolean).join(""),
-                PLANNING_STATUS_LABELS[route.status],
-                route.carrier,
-                route.geometry ? m.routes_with_line() : null,
-                visibilityLabel(route.visibility),
-              ]
+              {[routeLine(route, { withStatus: true }), visibilityLabel(route.visibility)]
                 .filter(Boolean)
                 .join(" · ")}
             </span>

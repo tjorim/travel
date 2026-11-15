@@ -11,7 +11,7 @@ import { useFeedback } from "../query/feedback";
 import { useTripResource, useTripWithUpdates } from "../query/owner-queries";
 import type { TravelUpdateCandidateIntent } from "../capture-draft";
 import { EmptyState } from "@/ui/EmptyState";
-import type { AgendaRecordKind } from "../trips/AgendaView";
+import type { AgendaRecordKind } from "../trips/agenda-items";
 import type { CreateKind, CreatePrefill, CreateRequest } from "../trips/create-request";
 import type { MapRecordKind, RecordFocus } from "../trips/record-focus";
 import { tripsStatusMessage } from "../trips/trips-status";
