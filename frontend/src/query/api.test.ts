@@ -88,7 +88,7 @@ it("sends an upload as multipart without forcing a JSON content type", async () 
   let received: Request | undefined;
   let title: FormDataEntryValue | null = null;
   server.use(
-    http.post("/api/library/documents/uploads", async ({ request }) => {
+    http.post("/api/documents/uploads", async ({ request }) => {
       received = request.clone();
       title = (await request.formData()).get("title");
       return HttpResponse.json({ id: "doc" }, { status: 201 });
@@ -96,7 +96,7 @@ it("sends an upload as multipart without forcing a JSON content type", async () 
   );
   const body = new FormData();
   body.set("title", "Polis");
-  await ownerRequest(session, "/api/library/documents/uploads", "fallback", {
+  await ownerRequest(session, "/api/documents/uploads", "fallback", {
     method: "POST",
     body,
   });
@@ -111,7 +111,7 @@ it("downloads a protected file as a blob with the same auth, failure and abort h
   const fetchSpy = vi.spyOn(globalThis, "fetch");
   let received: Request | undefined;
   server.use(
-    http.get("/api/library/documents/1/original", ({ request }) => {
+    http.get("/api/documents/1/original", ({ request }) => {
       received = request;
       return new HttpResponse("pdf bytes", {
         status: 200,
@@ -119,7 +119,7 @@ it("downloads a protected file as a blob with the same auth, failure and abort h
       });
     }),
   );
-  const blob = await ownerFile(session, "/api/library/documents/1/original", "fallback", {
+  const blob = await ownerFile(session, "/api/documents/1/original", "fallback", {
     cache: "no-store",
   });
   expect(blob.type).toBe("application/pdf");

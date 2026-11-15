@@ -2,7 +2,7 @@ import { m } from "../paraglide/messages.js";
 import { useLocale } from "../locale";
 import { useAuth } from "../auth-context";
 import { EmptyState } from "@/ui/EmptyState";
-import { DocumentLibraryManager } from "../library/DocumentLibraryManager";
+import { DocumentManager } from "../documents/DocumentManager";
 import { EmergencyInfoManager } from "../library/EmergencyInfoManager";
 import { OfflineManager } from "../offline/OfflineManager";
 import { HomeLink } from "../trips/HomeLink";
@@ -22,7 +22,7 @@ export function Library() {
           {m.library_trip_documents_note()} <HomeLink to="/trips">{m.trips()}</HomeLink>
         </p>
       </div>
-      <DocumentLibraryManager />
+      <DocumentManager />
       <EmergencyInfoManager />
       <OfflineManager />
     </section>

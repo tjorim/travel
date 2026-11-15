@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime, time
 from enum import StrEnum
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     Date,
@@ -1257,25 +1258,41 @@ class OwnerActivityEvent(Base):
 
 
 class StoredObject(Base):
-    """Object-storage inventory for one trip-owned file.
+    """Object-storage inventory for one stored file.
 
     A row moves `staged` -> `available` only after its checksum is verified
     against the just-written bytes; only an `available` object may back a
-    `MediaAsset` or `MediaDerivative`. Two uploads of identical bytes for the
-    same trip reuse one row (`uq_stored_object_trip_sha256`): deduplication
-    never crosses trips/owners. Detached purge inventory has no trip link and
-    survives trip deletion until the locked maintenance purge succeeds.
+    `MediaAsset`, `MediaDerivative` or `DocumentAsset`.
+
+    A media original or derivative belongs to a trip (`trip_id`) and two uploads of identical bytes for the same
+    trip reuse one row (`uq_stored_object_trip_sha256`). A document original belongs to the owner (`owner_subject`),
+    whichever trip the document is filed under, and identical bytes are stored once per owner
+    (`uq_stored_object_owner_sha256`). Both homes are set only on an object that an older version shared between a
+    photo and a document. Detached purge inventory has neither and survives trip deletion until the locked
+    maintenance purge succeeds. Deduplication never crosses trips or owners.
     """
 
     __tablename__ = "stored_objects"
-    __table_args__ = (UniqueConstraint("trip_id", "sha256", name="uq_stored_object_trip_sha256"),)
+    __table_args__ = (
+        UniqueConstraint("trip_id", "sha256", name="uq_stored_object_trip_sha256"),
+        Index(
+            "uq_stored_object_owner_sha256",
+            "owner_subject",
+            "sha256",
+            unique=True,
+            postgresql_where=text("owner_subject IS NOT NULL"),
+            sqlite_where=text("owner_subject IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str | None] = mapped_column(ForeignKey("trips.id", ondelete="SET NULL"), nullable=True, index=True)
+    owner_subject: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     bucket: Mapped[str] = mapped_column(String(64), nullable=False, default="media")
     object_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
-    byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    # 64-bit: `media_max_upload_bytes` is configurable, so a 32-bit column could overflow.
+    byte_size: Mapped[int] = mapped_column(BigInteger, nullable=False)
     content_type: Mapped[str] = mapped_column(String(120), nullable=False)
     state: Mapped[ObjectState] = mapped_column(
         _enum_column(ObjectState, "travel_object_state"), default=ObjectState.STAGED
@@ -1440,14 +1457,30 @@ class MediaDerivative(Base):
 class DocumentAsset(Base):
     """One owner-only original document.
 
-    The original object and its metadata remain behind owner authentication.
+    A document belongs to the owner and is optionally filed under one trip (`trip_id`). Only a document filed
+    under a trip can be attached to that trip's stays and routes. Deleting the trip unfiles its documents instead
+    of deleting them. The original object and its metadata remain behind owner authentication.
     """
 
     __tablename__ = "document_assets"
+    __table_args__ = (
+        # One document per file and trip (retry-safe upload); the same bytes may sit under several trips. Unfiled
+        # documents are deliberately not unique: deleting a trip unfiles its documents, and two of them may then
+        # hold the same file. No document is dropped to make a trip delete fit.
+        Index(
+            "uq_document_assets_object_trip",
+            "original_object_id",
+            "trip_id",
+            unique=True,
+            postgresql_where=text("trip_id IS NOT NULL"),
+            sqlite_where=text("trip_id IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
-    trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
-    original_object_id: Mapped[str] = mapped_column(ForeignKey("stored_objects.id"), unique=True, nullable=False)
+    owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    trip_id: Mapped[str | None] = mapped_column(ForeignKey("trips.id", ondelete="SET NULL"), nullable=True, index=True)
+    original_object_id: Mapped[str] = mapped_column(ForeignKey("stored_objects.id"), nullable=False, index=True)
     document_kind: Mapped[DocumentKind] = mapped_column(_enum_column(DocumentKind, "travel_document_kind"))
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     owner_metadata: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
@@ -1455,69 +1488,8 @@ class DocumentAsset(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     original_object: Mapped[StoredObject] = relationship(foreign_keys=[original_object_id])
-
-
-class OwnerStoredObject(Base):
-    """Object-storage inventory for one owner-wide (trip-independent) file.
-
-    Mirrors :class:`StoredObject` field-for-field but is keyed by
-    ``owner_subject`` instead of ``trip_id``, since the owner-wide document
-    library is deliberately not attached to any trip. Kept as a separate
-    table rather than making ``StoredObject.trip_id`` nullable, so the
-    trip-scoped media/document pipeline is untouched.
-    """
-
-    __tablename__ = "owner_stored_objects"
-    __table_args__ = (UniqueConstraint("owner_subject", "sha256", name="uq_owner_stored_object_owner_sha256"),)
-
-    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
-    owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    bucket: Mapped[str] = mapped_column(String(64), nullable=False, default="library")
-    object_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
-    byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
-    content_type: Mapped[str] = mapped_column(String(120), nullable=False)
-    state: Mapped[ObjectState] = mapped_column(
-        _enum_column(ObjectState, "travel_object_state"), default=ObjectState.STAGED
-    )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
-
-
-class OwnerDocument(Base):
-    """One owner-wide document original: a reusable policy, identity copy or
-    other travel essential that is not tied to a specific trip.
-
-    ``linked_trip_id`` is an optional, real foreign key because a document
-    here can only ever link to a trip. Deleting the linked trip clears the
-    link rather than the document (``ondelete="SET NULL"``); the document
-    itself is owner-wide and outlives any one trip.
-    """
-
-    __tablename__ = "owner_documents"
-
-    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
-    owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    original_object_id: Mapped[str] = mapped_column(ForeignKey("owner_stored_objects.id"), unique=True, nullable=False)
-    document_kind: Mapped[DocumentKind] = mapped_column(_enum_column(DocumentKind, "travel_document_kind"))
-    title: Mapped[str] = mapped_column(String(160), nullable=False)
-    owner_metadata: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
-    linked_trip_id: Mapped[str | None] = mapped_column(
-        ForeignKey("trips.id", ondelete="SET NULL"), nullable=True, index=True
-    )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    original_object: Mapped[OwnerStoredObject] = relationship(foreign_keys=[original_object_id])
-    linked_trip: Mapped[Trip | None] = relationship(foreign_keys=[linked_trip_id])
 
 
 class EmergencyInfoEntry(Base):

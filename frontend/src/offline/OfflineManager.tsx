@@ -13,6 +13,9 @@ import { OfflineSnapshotView } from "./OfflineSnapshotView";
 import { PackingOfflineView } from "../trips/PackingOfflineView";
 
 const KIND_LABELS: Record<OfflineResourceKind, string> = {
+  get document() {
+    return m.offline_document();
+  },
   get library_document() {
     return m.offline_library_document();
   },

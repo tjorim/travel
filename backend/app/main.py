@@ -36,8 +36,10 @@ from .routers.auth import router as auth_router
 from .routers.collections import delivery_router as collection_delivery_router
 from .routers.collections import membership_router as collection_membership_router
 from .routers.collections import router as collections_router
+from .routers.documents import library_router as library_documents_router
 from .routers.documents import router as documents_router
-from .routers.library import router as library_router
+from .routers.documents import trip_router as trip_documents_router
+from .routers.emergency_info import router as emergency_info_router
 from .routers.link_preview import router as link_preview_router
 from .routers.live_location import router as live_location_router
 from .routers.locations import router as locations_router
@@ -125,7 +127,9 @@ app.include_router(packing_router, prefix="/api")
 app.include_router(packing_templates_router, prefix="/api")
 app.include_router(packing_sources_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
-app.include_router(library_router, prefix="/api")
+app.include_router(trip_documents_router, prefix="/api")
+app.include_router(library_documents_router, prefix="/api")
+app.include_router(emergency_info_router, prefix="/api")
 app.include_router(media_router, prefix="/api")
 app.include_router(places_router, prefix="/api")
 app.include_router(areas_router, prefix="/api")

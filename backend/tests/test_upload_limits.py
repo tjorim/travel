@@ -16,12 +16,12 @@ from app.database import Base, get_session
 from app.main import app
 from app.media.providers import GooglePhotosPickerProvider, ProviderError, ProviderMediaItem
 from app.media.service import MediaImportError, read_bounded_upload
-from app.models import DocumentAsset, MediaAsset, OwnerDocument, OwnerStoredObject, StoredObject
+from app.models import DocumentAsset, MediaAsset, StoredObject
 from app.storage import LocalObjectStorage, get_storage
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-STORED_TABLES = (StoredObject, OwnerStoredObject, MediaAsset, DocumentAsset, OwnerDocument)
+STORED_TABLES = (StoredObject, MediaAsset, DocumentAsset)
 
 
 def override_session() -> Generator[Session]:
@@ -62,7 +62,11 @@ def stored_rows() -> int:
 def upload(client: TestClient, route: str, trip_id: str, contents: bytes) -> httpx.Response:
     if route == "media":
         return client.post(f"/api/trips/{trip_id}/media/uploads", files={"file": ("a.jpg", contents, "image/jpeg")})
-    url = f"/api/trips/{trip_id}/documents/uploads" if route == "documents" else "/api/library/documents/uploads"
+    url = {
+        "documents": f"/api/trips/{trip_id}/documents/uploads",
+        "library": "/api/library/documents/uploads",
+        "owner": "/api/documents/uploads",
+    }[route]
     return client.post(
         url,
         data={"title": "Upload", "document_kind": "other"},
@@ -78,7 +82,7 @@ def payload(route: str, size: int) -> bytes:
     return base + b"\0" * (size - len(base))
 
 
-ROUTES = ("documents", "library", "media")
+ROUTES = ("owner", "documents", "library", "media")
 
 
 @pytest.mark.parametrize("route", ROUTES)

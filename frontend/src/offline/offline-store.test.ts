@@ -32,7 +32,7 @@ function pinInput(overrides: Partial<PinInput> = {}): PinInput {
     subject: OWNER,
     resourceKind: "library_document",
     resourceId: "doc-1",
-    metadataUrl: "/api/library/documents/doc-1",
+    metadataUrl: "/api/documents/doc-1",
     title: "Insurance policy",
     contentType: "application/pdf",
     bytes: bytesOf("private pdf bytes"),

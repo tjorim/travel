@@ -205,7 +205,7 @@ def _sections(session: Session, trip: Trip) -> Iterator[Iterator[str]]:
             select(RouteDocumentAsset)
             .join(Route, Route.id == RouteDocumentAsset.route_id)
             .join(DocumentAsset, DocumentAsset.id == RouteDocumentAsset.document_asset_id)
-            .where(Route.trip_id == trip_id, DocumentAsset.deleted_at.is_(None))
+            .where(Route.trip_id == trip_id)
             .order_by(RouteDocumentAsset.created_at, RouteDocumentAsset.document_asset_id)
         ):
             documents.setdefault(link.route_id, []).append(link.document_asset_id)
@@ -218,7 +218,7 @@ def _sections(session: Session, trip: Trip) -> Iterator[Iterator[str]]:
             select(StayDocumentAsset)
             .join(Stay, Stay.id == StayDocumentAsset.stay_id)
             .join(DocumentAsset, DocumentAsset.id == StayDocumentAsset.document_asset_id)
-            .where(Stay.trip_id == trip_id, DocumentAsset.deleted_at.is_(None))
+            .where(Stay.trip_id == trip_id)
             .order_by(StayDocumentAsset.created_at, StayDocumentAsset.document_asset_id)
         ):
             documents.setdefault(link.stay_id, []).append(link.document_asset_id)
@@ -252,7 +252,7 @@ def _sections(session: Session, trip: Trip) -> Iterator[Iterator[str]]:
         statement = (
             select(DocumentAsset, StoredObject)
             .join(StoredObject, StoredObject.id == DocumentAsset.original_object_id)
-            .where(DocumentAsset.trip_id == trip_id, DocumentAsset.deleted_at.is_(None))
+            .where(DocumentAsset.trip_id == trip_id)
             .order_by(DocumentAsset.created_at, DocumentAsset.id)
         )
         for document, stored in _batched(session, statement):

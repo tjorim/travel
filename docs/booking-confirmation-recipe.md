@@ -46,16 +46,16 @@ it needs `confirm=true`.
 |---|---|---|
 | Find the trip | `list_trips` | Returns the trip ids. |
 | Find areas | `list_areas` (`trip_id`, `query`) | Returns the area ids that stays and routes use. |
-| Keep the confirmation | `upload_document` | A trip document. `document_kind` is `booking`. Returns the document `id`. |
+| Keep the confirmation | `upload_document` | A document filed under the trip (`trip_id`), so it can be attached to its stays and routes. `document_kind` is `booking`. Returns the document `id`. |
 | Draft stays and routes | `batch_create` | `payload.stays` and `payload.routes` in one all-or-nothing call. Returns compact rows with the new ids. |
 | Read back | `get_stay`, `get_route`, `list_documents` | |
 | Correct a draft | `update_stay`, `update_route` | |
 | Remove a draft | `delete_stay`, `delete_route` | Need `confirm=true`. |
 | Change who can see it | `set_visibility` | Needs `confirm=true`. The assistant does not call it unless you ask. |
 
-Use `upload_document` for the trip's document. `upload_library_document` stores
-a reusable owner-wide document and is not the recipe's tool. A search for
-"upload trip document" returns both.
+Use `upload_document` with the trip's `trip_id`. A document uploaded without one is
+unfiled: it is kept in the owner's library and cannot be attached to a stay or route
+until it is filed under the trip (`update_document`).
 
 Creating stays and routes and uploading a document need no confirmation. Any
 call that changes who can see something, publishes, or deletes data needs

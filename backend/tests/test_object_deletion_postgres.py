@@ -9,9 +9,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base
-from app.library.service import purge_owner_objects
 from app.media.service import _purge_pending_objects
-from app.models import ObjectState, OwnerStoredObject, StoredObject, Trip
+from app.models import ObjectState, StoredObject, Trip
 from app.storage import OBJECT_DELETION_LOCK, LocalObjectStorage
 
 
@@ -48,7 +47,7 @@ def test_purge_waits_for_a_backup_holding_the_deletion_lock(postgres, owner) -> 
     }
     with sessions() as session:
         if owner:
-            stored = OwnerStoredObject(owner_subject="owner-1", **fields)
+            stored = StoredObject(owner_subject="owner-1", **fields)
         else:
             trip = Trip(owner_subject="owner-1", title="Synthetic test")
             session.add(trip)
@@ -60,8 +59,6 @@ def test_purge_waits_for_a_backup_holding_the_deletion_lock(postgres, owner) -> 
 
     def purge() -> int:
         with sessions() as session:
-            if owner:
-                return purge_owner_objects(session, storage, object_ids=[object_id])
             return _purge_pending_objects(session, storage, object_ids=[object_id])
 
     # The apps backup takes the same key as a session lock (apps#245).

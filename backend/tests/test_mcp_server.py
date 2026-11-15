@@ -2063,7 +2063,7 @@ def _document(trip_id: str, title: str) -> str:
     """A stored trip document, as the upload tool leaves it."""
     with TestingSessionLocal() as session:
         stored = StoredObject(
-            trip_id=trip_id,
+            owner_subject="owner-1",
             object_key=f"documents/{title}",
             sha256=title.encode().hex().ljust(64, "0"),
             byte_size=10,
@@ -2073,7 +2073,11 @@ def _document(trip_id: str, title: str) -> str:
         session.add(stored)
         session.flush()
         asset = DocumentAsset(
-            trip_id=trip_id, original_object_id=stored.id, document_kind=DocumentKind.BOOKING, title=title
+            owner_subject="owner-1",
+            trip_id=trip_id,
+            original_object_id=stored.id,
+            document_kind=DocumentKind.BOOKING,
+            title=title,
         )
         session.add(asset)
         session.commit()

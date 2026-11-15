@@ -115,8 +115,8 @@ Two levels, kept apart:
 - **Trip-level** (inside `/trips/:id`): the workspace tabs, and the full
   summary page at `/trips/:id/details`, linked from the trip's Overview tab.
   A trip header shows Trips › the trip, and Trips stays highlighted in the nav.
-  The library documents linked to a trip appear on Prepare under "From your
-  library", with a link to Library.
+  The documents filed under a trip are the trip's Prepare documents, with a link
+  to Library, which lists them all (#368).
 
 Capture is an action, not a place, so it is a button in the header (floating on
 phones) rather than a nav item. `capture-context.tsx` owns the one capture

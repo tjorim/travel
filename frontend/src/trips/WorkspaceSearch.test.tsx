@@ -96,7 +96,7 @@ function signedIn() {
     { id: "s1", property_name: "Café Hotel Taipei", area, location: {} },
   ]);
   api.collection("/api/trips/t1/trip-tasks", [{ id: "k1", title: "Visum regelen" }]);
-  api.collection("/api/trips/t1/documents", []);
+  api.collection("/api/documents?trip_id=t1", []);
   api.collection(
     "/api/trips/t1/media",
     Array.from({ length: 7 }, (_, index) => photo(index + 1)),

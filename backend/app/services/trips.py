@@ -1,12 +1,13 @@
 """Ownership of a trip: every owner operation starts here."""
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from ..access import set_cover
 from ..audit import scrub_trip_audit_text
 from ..errors import RecordNotFound, Refusal, ServiceError, service_error
 from ..models import (
+    DocumentAsset,
     Location,
     MediaDerivative,
     ObjectState,
@@ -165,7 +166,10 @@ def update_trip(session: Session, subject: str, trip_id: Identifier, payload: Tr
 
 
 def delete_trip(session: Session, subject: str, trip_id: Identifier) -> None:
-    """Delete the trip and everything it holds; its stored objects wait for the purge (``docs/object-storage.md``)."""
+    """Delete the trip and everything it holds; its stored objects wait for the purge (``docs/object-storage.md``).
+
+    The owner's documents filed under the trip are not part of it: they stay, unfiled, with their files (and lose
+    their attachments with the stays and routes that held them)."""
     # First, so a writer of a sharing event with owner text either finishes before the scrub below or finds no trip.
     lock_trip(session, trip_id, subject)
     # The delete cascades through the records and their links, so read them together instead of one by one.
@@ -177,6 +181,8 @@ def delete_trip(session: Session, subject: str, trip_id: Identifier) -> None:
     for stored in session.scalars(select(StoredObject).where(StoredObject.trip_id == trip_id).with_for_update()):
         stored.state = ObjectState.PURGE_PENDING
         stored.trip_id = None
+    # The owner's documents are not the trip's: unfile them (the foreign key does the same on PostgreSQL).
+    session.execute(update(DocumentAsset).where(DocumentAsset.trip_id == trip_id).values(trip_id=None))
     session.flush()
     scrub_trip_audit_text(session, trip_id)
     session.delete(trip)

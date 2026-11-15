@@ -1,8 +1,9 @@
 # Object storage contract
 
-Trip media, documents, derivatives and owner-library files are stored
+Trip media, documents and derivatives are stored
 as objects in `TRAVEL_MEDIA_STORAGE_ROOT` (`app/storage.py`), with one
-`stored_objects` or `owner_stored_objects` row each. In production the root is
+`stored_objects` row each (a media object has a `trip_id`, a document original an `owner_subject`; there is no
+second inventory table since #368). In production the root is
 the private `travel_media` volume, and the apps backup captures it together
 with the database while `travel-api` and `travel-media-dispatcher` keep running
 (tjorim/apps#245). That backup is only consistent because every writer keeps
@@ -20,7 +21,7 @@ restore.
    same bytes (the row is matched by SHA-256). Worker output keys
    (`worker-<job>/…`) are rewritten only while no committed row names them.
 3. **Delete only after `purge_pending` commits.** Bytes are removed only by
-   `_purge_pending_objects` and `purge_owner_objects`, for a row already
+   `_purge_pending_objects`, for a row already
    committed as `purge_pending`, under the row lock, and the row is deleted in
    the same transaction afterwards. Callers mark and commit first, then purge.
    The only other removal, the media worker's `discard_unrecorded_outputs`,
@@ -44,7 +45,7 @@ add its own location to the apps backup.
 The services under `app/services` never commit; the HTTP route or the MCP tool owns the transaction. The
 rules hold because the lifecycle is split around that commit:
 
-- **Upload.** `direct_upload` (media, trip documents, the library) writes and verifies the bytes, then
+- **Upload.** `direct_upload` (media, documents) writes and verifies the bytes, then
   flushes the row. The transport commits after, so rule 1 holds; a rolled-back upload leaves an
   unreferenced file that `reconcile-objects` removes.
 - **Removal.** A service marks the object `purge_pending` and returns a `PendingPurge`. The transport
@@ -55,7 +56,31 @@ rules hold because the lifecycle is split around that commit:
 - **Provider import.** Each item is fetched from the provider and can be slow, so
   `complete_import_session` takes the transport's commit as `checkpoint` and calls it after every item.
 - The only functions that commit inside the storage modules are the purges (`_purge_pending_objects`,
-  `purge_owner_objects`, `purge_deleted_media`); a test fails for any other.
+  `purge_deleted_media`); a test fails for any other.
+
+## Documents (#368)
+
+A document's original is a `stored_objects` row owned by the owner (`owner_subject`, no `trip_id`), so what a
+document is filed under never touches the object:
+
+- Filing a document under another trip, unfiling it, and deleting its trip change only the `document_assets` row.
+  The object keeps its key and bytes (rule 2) and nothing is purged.
+- Identical bytes are one object per owner (`uq_stored_object_owner_sha256`), shared by every document that holds
+  them. Two first uploads of the same bytes can both miss the lookup: the insert of the later one waits for the first
+  to commit, fails on the unique key inside a savepoint, and takes the winner's object. The bytes it had already
+  written under its own fresh key are named by no row, like those of a rolled-back upload, and `reconcile-objects`
+  removes them (rule 1; nothing is deleted outside the purge). Deleting a document marks the object `purge_pending` only when no other document, photo or derivative
+  names it (`_object_is_referenced`); the purge re-checks under the row lock and restores a still-referenced
+  object to `available`.
+- `byte_size` is a 64-bit integer: the upload limit (`TRAVEL_MEDIA_MAX_UPLOAD_BYTES`, 200 MiB by default) is a
+  setting, and the media worker's video output limit is 80 MiB, but nothing stops an owner raising the setting
+  beyond what 32 bits hold.
+- Migration 033 merged the trip documents and the owner library: it copied the owner inventory into `stored_objects`
+  with the same ids and keys, and released a duplicate (same owner, same bytes) as `purge_pending` for the locked
+  purge. It moved, rewrote and deleted no file. `reconcile-objects` is clean before and after it (tested on
+  PostgreSQL in `tests/test_one_document_model_migration_postgres.py`). Its downgrade gives a document the photo's
+  object when both hold the same bytes in one trip (the old schema keeps one object per trip and checksum) and keeps
+  the document's own object as `purge_pending` inventory, bytes untouched.
 
 ## Unreferenced files
 
@@ -75,7 +100,7 @@ volume from a backup.
 
 ## Bounded ingestion
 
-Media, trip documents, owner-library documents and provider downloads stage to
+Media, documents and provider downloads stage to
 an automatically removed temporary file in 1 MiB chunks, computing SHA-256 and
 enforcing `TRAVEL_MEDIA_MAX_UPLOAD_BYTES` while copying. The local store copies
 chunks to its durable temporary file, fsyncs and renames before recording the

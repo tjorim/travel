@@ -36,7 +36,7 @@ const routeTree = rootRoute.addChildren([tripsListRoute, tripRoute, tripSectionR
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 // The managers and map have their own tests; this file covers trip selection and the trip editor.
-vi.mock("../trips/DocumentManager", () => ({ DocumentManager: () => null }));
+vi.mock("../documents/DocumentManager", () => ({ DocumentManager: () => null }));
 vi.mock("../trips/VisitManager", () => ({
   VisitManager: ({
     onShowOnMap,
@@ -91,7 +91,6 @@ vi.mock("../trips/TripTaskManager", () => ({
     <p>Taakfocus {focusId?.id ?? "geen"}</p>
   ),
 }));
-vi.mock("../library/LinkedLibraryDocuments", () => ({ LinkedLibraryDocuments: () => null }));
 // The overview only passes its action through: the link beside its heading is what the workspace tests check.
 vi.mock("../trips/TripOverview", () => ({
   TripOverview: ({ action }: { action?: ReactNode }) => <>{action}</>,

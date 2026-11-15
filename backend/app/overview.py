@@ -380,10 +380,14 @@ def trip_overview(session: Session, trip: Trip, today: date | None = None) -> di
     counts["routes_undated"] = sum(1 for route in trip.routes if route.departs_on is None)
     counts["trip_tasks"] = len(trip.trip_tasks)
     counts["trip_tasks_open"] = sum(1 for task in trip.trip_tasks if task.completed_at is None)
-    for key, model in (("media_assets", MediaAsset), ("documents", DocumentAsset)):
-        counts[key] = session.scalar(
-            select(func.count()).select_from(model).where(model.trip_id == trip.id, model.deleted_at.is_(None))
-        )
+    counts["media_assets"] = session.scalar(
+        select(func.count())
+        .select_from(MediaAsset)
+        .where(MediaAsset.trip_id == trip.id, MediaAsset.deleted_at.is_(None))
+    )
+    counts["documents"] = session.scalar(
+        select(func.count()).select_from(DocumentAsset).where(DocumentAsset.trip_id == trip.id)
+    )
     visibility = {
         kind: dict(Counter(item.visibility.value for item in COLLECTIONS[kind](trip))) for kind in COLLECTIONS
     }

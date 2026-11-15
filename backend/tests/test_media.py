@@ -1023,7 +1023,8 @@ def test_purge_deleted_media_retries_after_storage_failure_without_dangling_refe
         assert all(not storage.exists(key) for key in object_keys)
 
 
-def test_purge_deleted_media_keeps_a_shared_document_object(tmp_path: Path) -> None:
+def test_purge_deleted_media_leaves_the_document_that_holds_the_same_bytes(tmp_path: Path) -> None:
+    """A document's original belongs to the owner and a photo's to its trip, so the same bytes are two objects."""
     from app.document.service import direct_upload as upload_document
     from app.models import DocumentKind, Trip
 
@@ -1040,6 +1041,7 @@ def test_purge_deleted_media_keeps_a_shared_document_object(tmp_path: Path) -> N
         document, _ = upload_document(
             session,
             storage,
+            owner_subject="owner-1",
             trip_id=trip.id,
             filename="a.jpg",
             content_type="image/jpeg",
@@ -1047,8 +1049,42 @@ def test_purge_deleted_media_keeps_a_shared_document_object(tmp_path: Path) -> N
             document_kind=DocumentKind.OTHER,
             title="Receipt",
         )
+        session.commit()
+        key, document_key = asset.original_object.object_key, document.original_object.object_key
+        assert document.original_object_id != asset.original_object_id
+
+        delete_media_asset(session, media_asset=asset)
+        session.commit()
+        assert purge_deleted_media(session, storage, older_than=timedelta(seconds=-1)) == 1
+        assert not storage.exists(key)
+        assert storage.exists(document_key)
+        assert session.get(StoredObject, document.original_object_id).state == ObjectState.AVAILABLE
+
+
+def test_purge_deleted_media_keeps_an_object_a_document_also_names(tmp_path: Path) -> None:
+    """Before one document model a photo and a document of the same trip shared one object; the purge still honours it."""
+    from app.models import DocumentAsset, DocumentKind, Trip
+
+    storage = LocalObjectStorage(root=str(tmp_path))
+    with TestingSessionLocal() as session:
+        trip = Trip(owner_subject="owner-1", title="Exampleland")
+        session.add(trip)
+        session.commit()
+        asset, _ = direct_upload(
+            session, storage, trip_id=trip.id, filename="a.jpg", content_type="image/jpeg", data=jpeg_bytes()
+        )
+        session.commit()
+        asset.original_object.owner_subject = "owner-1"
+        document = DocumentAsset(
+            owner_subject="owner-1",
+            trip_id=trip.id,
+            original_object_id=asset.original_object_id,
+            document_kind=DocumentKind.OTHER,
+            title="Receipt",
+        )
+        session.add(document)
+        session.commit()
         key = asset.original_object.object_key
-        assert document.original_object_id == asset.original_object_id
 
         delete_media_asset(session, media_asset=asset)
         session.commit()

@@ -51,7 +51,6 @@ export function TripDetail() {
     visits,
     tasks,
     documents,
-    libraryDocuments,
     media,
     readError,
   } = useTripDetail(tripId);
@@ -72,7 +71,6 @@ export function TripDetail() {
     !visits ||
     !tasks ||
     !documents ||
-    !libraryDocuments ||
     !media
   ) {
     return (
@@ -138,12 +136,7 @@ export function TripDetail() {
       <TasksBlock trip={trip} tasks={tasks} />
       <LocationsBlock trip={trip} places={places} />
       <AreasBlock trip={trip} areas={areas} />
-      <DocumentsBlock
-        trip={trip}
-        documents={documents}
-        libraryDocuments={libraryDocuments}
-        openFile={openFile}
-      />
+      <DocumentsBlock trip={trip} documents={documents} openFile={openFile} />
       <MediaBlock trip={trip} media={media} session={owner?.session ?? null} openFile={openFile} />
     </main>
   );

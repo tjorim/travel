@@ -73,7 +73,7 @@ def _seed(engine) -> dict[str, str]:
         documents = []
         for number in range(2):
             stored = StoredObject(
-                trip_id=trip.id,
+                owner_subject="owner-1",
                 object_key=f"documents/{uuid4().hex}",
                 sha256=uuid4().hex + uuid4().hex,
                 byte_size=10,
@@ -83,7 +83,11 @@ def _seed(engine) -> dict[str, str]:
             session.add(stored)
             session.flush()
             document = DocumentAsset(
-                trip_id=trip.id, original_object_id=stored.id, document_kind=DocumentKind.BOOKING, title=f"Doc {number}"
+                owner_subject="owner-1",
+                trip_id=trip.id,
+                original_object_id=stored.id,
+                document_kind=DocumentKind.BOOKING,
+                title=f"Doc {number}",
             )
             session.add(document)
             documents.append(document)

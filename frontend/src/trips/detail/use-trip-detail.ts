@@ -1,8 +1,4 @@
-import {
-  useLinkedLibraryDocuments,
-  useTripResource,
-  useTripWithUpdates,
-} from "../../query/owner-queries";
+import { useTripResource, useTripWithUpdates } from "../../query/owner-queries";
 
 /** Every read behind the owner's complete trip overview; nothing is read for a trip that does not exist. */
 export function useTripDetail(tripId: string | undefined) {
@@ -15,7 +11,6 @@ export function useTripDetail(tripId: string | undefined) {
   const visitsQuery = useTripResource(id, "visits");
   const tasksQuery = useTripResource(id, "trip-tasks");
   const documentsQuery = useTripResource(id, "documents");
-  const libraryDocumentsQuery = useLinkedLibraryDocuments(id);
   const mediaQuery = useTripResource(id, "media");
 
   const readError = [
@@ -28,7 +23,6 @@ export function useTripDetail(tripId: string | undefined) {
     visitsQuery,
     tasksQuery,
     documentsQuery,
-    libraryDocumentsQuery,
     mediaQuery,
   ].find((query) => query.isError)?.error;
 
@@ -42,7 +36,6 @@ export function useTripDetail(tripId: string | undefined) {
     visits: visitsQuery.data,
     tasks: tasksQuery.data,
     documents: documentsQuery.data,
-    libraryDocuments: libraryDocumentsQuery.data,
     media: mediaQuery.data,
     readError,
   };

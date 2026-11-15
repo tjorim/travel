@@ -19,7 +19,6 @@ import type {
   Visit,
   MediaAsset,
   MediaDerivative,
-  OwnerDocument,
   Location,
   ProviderConnectionStatus,
   PublicProjectionStatus,
@@ -94,6 +93,13 @@ const resourceFailure: Record<TripResource, ErrorFallback> = {
 export const tripPath = (tripId: string, resource?: string) =>
   `/api/trips/${encodeURIComponent(tripId)}${resource ? `/${resource}` : ""}`;
 
+/** Documents are the owner's, filed under a trip: a trip's list is the owner's list filtered to it. */
+export const documentsPath = (filter?: { tripId?: string }) =>
+  `/api/documents${filter?.tripId ? `?trip_id=${encodeURIComponent(filter.tripId)}` : ""}`;
+
+const resourcePath = (tripId: string, resource: TripResource) =>
+  resource === "documents" ? documentsPath({ tripId }) : tripPath(tripId, resource);
+
 /** Query options shared by every hook and by `useQueries` callers. */
 export function tripsQueryOptions(owner: Owner | null) {
   return {
@@ -145,7 +151,7 @@ export function tripResourceQueryOptions<R extends TripResource>(
     queryFn: ({ signal }: { signal: AbortSignal }) =>
       ownerRequest<TripResourceData[R]>(
         owner!.session,
-        tripPath(tripId!, resource),
+        resourcePath(tripId!, resource),
         resourceFailure[resource],
         {
           signal,
@@ -267,9 +273,8 @@ export function useDerivatives<K extends DerivativeParent>(
   return useQuery(derivativesQueryOptions(useOwner(), tripId, kind, assetId));
 }
 
-type LibraryData = { documents: OwnerDocument[]; "emergency-info": EmergencyInfoEntry[] };
+type LibraryData = { "emergency-info": EmergencyInfoEntry[] };
 const libraryFailure: Record<LibraryResource, ErrorFallback> = {
-  documents: m.library_your_library_could_not_be_loaded,
   "emergency-info": m.library_your_emergency_information_could_not_be_loaded,
 };
 
@@ -291,16 +296,17 @@ export function useLibrary<R extends LibraryResource>(resource: R) {
   });
 }
 
-export function useLinkedLibraryDocuments(tripId: string | null) {
+/** Every document of the owner, whichever trip it is filed under (or none). */
+export function useDocuments(enabled = true) {
   const owner = useOwner();
   return useQuery({
-    queryKey: ownerKeys.linkedLibraryDocuments(owner?.subject ?? "", tripId ?? ""),
-    enabled: owner !== null && tripId !== null,
+    queryKey: ownerKeys.documents(owner?.subject ?? ""),
+    enabled: owner !== null && enabled,
     queryFn: ({ signal }: { signal: AbortSignal }) =>
-      ownerRequest<OwnerDocument[]>(
+      ownerRequest<DocumentAsset[]>(
         owner!.session,
-        `${libraryPath("documents")}?linked_trip_id=${encodeURIComponent(tripId!)}`,
-        m.library_linked_library_documents_could_not_be_loaded,
+        documentsPath(),
+        m.library_your_documents_could_not_be_loaded,
         { signal },
       ),
   });
