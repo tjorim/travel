@@ -28,6 +28,7 @@ import {
   type StayValues,
 } from "./model";
 import { useInPlaceCreate, type CreateRequestProps } from "../create-request";
+import { useReturnTarget, useRowDelete } from "../use-row-delete";
 import { StayDetails } from "./StayDetails";
 import { StayForm } from "./StayForm";
 import { useStayMutations } from "./use-stay-mutations";
@@ -56,8 +57,16 @@ export function StayEditor({
   const locationsQuery = useTripResource(trip.id, "locations");
   const documentsQuery = useTripResource(trip.id, "documents");
   const stayDialog = useRecordDialog(stays);
-  useDialogFocus(focusId, stayDialog.inspect);
-  const [deleteTarget, setDeleteTarget] = useState<Stay | null>(null);
+  // A delete asked from a record's dialog, or from an agenda row's menu with no dialog behind it.
+  const del = useRowDelete<Stay>();
+  const returnTarget = useReturnTarget();
+  useDialogFocus(focusId, (id, action, returnTo) => {
+    returnTarget.remember(returnTo);
+    const stay = stays.find((candidate) => candidate.id === id);
+    if (action === "edit" && stay) return editStay(stay);
+    if (action === "delete" && stay) return del.askFromRow(stay, returnTo ?? null);
+    stayDialog.inspect(id);
+  });
   // A stay's place is only rewritten when one of its fields differs from what the editor opened with.
   const baseline = useRef<StayValues>(blankStay(trip));
 
@@ -139,16 +148,19 @@ export function StayEditor({
     stayDialog.edit(stay.id);
   }
   function confirmDelete() {
-    if (!deleteTarget) return;
-    deleteStay.mutateAsync(deleteTarget).then(
+    if (!del.target) return;
+    deleteStay.mutateAsync(del.target).then(
       () => {
         closeStay();
-        setDeleteTarget(null);
+        del.clear();
         onNotice(textNotice(() => m.stays_private_stay_deleted()));
       },
       (error: unknown) => {
-        setDeleteTarget(null);
-        stayDialog.setError(errorNotice(error, m.stays_the_stay_could_not_be_deleted));
+        del.clear();
+        const failure = errorNotice(error, m.stays_the_stay_could_not_be_deleted);
+        // Asked from a row there is no dialog to show the failure in: the block's status line says it.
+        if (stayDialog.selected) stayDialog.setError(failure);
+        else onNotice(failure);
       },
     );
   }
@@ -179,7 +191,7 @@ export function StayEditor({
         dirty={editingStay && stayRecord.dirty}
         error={stayDialog.error}
         onDismiss={closeStay}
-        returnFocus={inPlace.returnFocus}
+        returnFocus={() => inPlace.returnFocus() ?? returnTarget.take()}
       >
         {!editingStay && selectedStay && (
           <StayDetails
@@ -189,7 +201,7 @@ export function StayEditor({
             saving={saveStay.isPending}
             onCancelAlternatives={cancelAlternatives}
             onEdit={editStay}
-            onDelete={setDeleteTarget}
+            onDelete={del.ask}
           />
         )}
         {editingStay && (
@@ -204,10 +216,10 @@ export function StayEditor({
           />
         )}
       </RecordDialog>
-      {deleteTarget && (
+      {del.target && (
         <DeleteConfirmation
-          title={m.common_delete_confirm_title({ name: stayLabel(deleteTarget) })}
-          onCancel={() => setDeleteTarget(null)}
+          title={m.common_delete_confirm_title({ name: stayLabel(del.target) })}
+          onCancel={del.clear}
           onConfirm={confirmDelete}
         />
       )}

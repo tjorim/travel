@@ -11,10 +11,12 @@ import { useOfflineCopies } from "../../offline/useOfflineCopies";
 import { m } from "../../paraglide/messages.js";
 import { errorNotice, FeedbackError, textNotice, type ReportNotice } from "../../query/feedback";
 import { useTripResource } from "../../query/owner-queries";
-import { RecordDialog } from "../../RecordDialog";
+import { DeleteConfirmation, RecordDialog } from "../../RecordDialog";
+import { visitTitle } from "../../records";
 import type { Trip, Visit } from "../../api-types";
 import { hasPlace, placeFields, samePlace } from "../PlacePicker";
 import { useInPlaceCreate, type CreateRequestProps } from "../create-request";
+import { useReturnTarget, useRowDelete } from "../use-row-delete";
 import { blank, fromVisit, serverFields, visitFromPrefill, type Values } from "./model";
 import { useVisitMutations } from "./use-visit-mutations";
 import { VisitDetails } from "./VisitDetails";
@@ -44,7 +46,16 @@ export function VisitEditor({
   const visits = useTripResource(trip.id, "visits").data ?? EMPTY;
   const stays = useTripResource(trip.id, "stays").data ?? [];
   const dialog = useRecordDialog(visits);
-  useDialogFocus(focusId, dialog.inspect);
+  // The row menu's Delete asks its question with no dialog behind it.
+  const rowDelete = useRowDelete<Visit>();
+  const returnTarget = useReturnTarget();
+  useDialogFocus(focusId, (id, action, returnTo) => {
+    returnTarget.remember(returnTo);
+    const visit = visits.find((candidate) => candidate.id === id);
+    if (action === "edit" && visit) return edit(visit);
+    if (action === "delete" && visit) return rowDelete.askFromRow(visit, returnTo ?? null);
+    dialog.inspect(id);
+  });
   const { selected, editing, editingId } = dialog;
   // A place is only rewritten when the editor changed it.
   const baseline = useRef<Values>(blank());
@@ -109,43 +120,57 @@ export function VisitEditor({
     load(fromVisit(visit));
     dialog.edit(visit.id);
   }
-  function erase(visit: Visit) {
+  function erase(visit: Visit, fromRow = false) {
     remove.mutateAsync(visit).then(
       async () => {
         await offline.removeByResource("visit", visit.id);
         close();
+        rowDelete.clear();
         onNotice(textNotice(() => m.visits_visit_deleted()));
       },
       (error: unknown) => {
+        rowDelete.clear();
+        const failure = errorNotice(error, m.visits_the_visit_could_not_be_deleted);
+        // Asked from a row there is no dialog to show the failure in: the block's status line says it.
+        if (fromRow) return onNotice(failure);
         dialog.setConfirmDelete(false);
-        dialog.setError(errorNotice(error, m.visits_the_visit_could_not_be_deleted));
+        dialog.setError(failure);
       },
     );
   }
 
   return (
-    <RecordDialog
-      open={editing || selected !== null}
-      title={
-        editing ? (editingId ? m.visits_edit_visit() : m.visits_add_visit()) : m.common_visit()
-      }
-      dirty={editing && record.dirty}
-      error={dialog.error}
-      onDismiss={close}
-      returnFocus={inPlace.returnFocus}
-    >
-      {!editing && selected && (
-        <VisitDetails
-          trip={trip}
-          selected={selected}
-          stays={stays}
-          confirmDelete={dialog.confirmDelete}
-          onConfirmDelete={dialog.setConfirmDelete}
-          onEdit={edit}
-          onErase={erase}
+    <>
+      <RecordDialog
+        open={editing || selected !== null}
+        title={
+          editing ? (editingId ? m.visits_edit_visit() : m.visits_add_visit()) : m.common_visit()
+        }
+        dirty={editing && record.dirty}
+        error={dialog.error}
+        onDismiss={close}
+        returnFocus={() => inPlace.returnFocus() ?? returnTarget.take()}
+      >
+        {!editing && selected && (
+          <VisitDetails
+            trip={trip}
+            selected={selected}
+            stays={stays}
+            confirmDelete={dialog.confirmDelete}
+            onConfirmDelete={dialog.setConfirmDelete}
+            onEdit={edit}
+            onErase={erase}
+          />
+        )}
+        {editing && <VisitForm tripId={trip.id} record={record} editingId={editingId} />}
+      </RecordDialog>
+      {rowDelete.target && (
+        <DeleteConfirmation
+          title={m.visits_delete_visit({ title: visitTitle(rowDelete.target) })}
+          onCancel={rowDelete.clear}
+          onConfirm={() => erase(rowDelete.target!, true)}
         />
       )}
-      {editing && <VisitForm tripId={trip.id} record={record} editingId={editingId} />}
-    </RecordDialog>
+    </>
   );
 }

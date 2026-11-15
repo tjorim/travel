@@ -221,11 +221,12 @@ test.describe("deferred owner views", () => {
     await search.fill("routes");
     await page.getByRole("option", { name: /Plan › Routes/ }).click();
     await expect(page).toHaveURL(new RegExp(`/admin/trips/${ownerTrip.id}/plan#routes$`));
-    await expect(page.getByRole("button", { name: /^Routes/ })).toHaveAttribute(
+    // The agenda's kind filter has buttons of the same names: the blocks' titles carry their count.
+    await expect(page.getByRole("button", { name: /^Routes \d+$/ })).toHaveAttribute(
       "aria-expanded",
       "true",
     );
-    await expect(page.getByRole("button", { name: /^Stays/ })).toHaveAttribute(
+    await expect(page.getByRole("button", { name: /^Stays \d+$/ })).toHaveAttribute(
       "aria-expanded",
       "false",
     );

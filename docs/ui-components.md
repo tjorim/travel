@@ -626,6 +626,33 @@ text links use. It joins the two homes of documents and of sharing; see
 [the decision note](decisions/240-create-in-place-and-duplicate-homes.md). No shadcn or Base UI
 component covers a router link.
 
+## Agenda as the manager (#374, step 3)
+
+The agenda row is a title button (it opens the record) beside a row menu, and the block carries its own
+filters, "New" menu and alternatives. Nothing custom was built for it:
+
+- **Row menu** (`RowMenu` in `trips/AgendaView.tsx`): the same generated `dropdown-menu` as the day menu, with a
+  button whose accessible name carries the record's title ("Actions for Harbour walk"). Items: Edit, Show on map and
+  Save offline (visits), Delete. Delete is a danger-coloured item. The audience control stays in the record dialog,
+  where the owner sees what sharing means. A menu's button can be recreated while the menu closes (its id stays),
+  so the dialogs and the delete question return focus through `liveElement` (`RecordDialog.tsx`) rather than a stored
+  element; a deleted row hands focus to its neighbour (`useRowDelete`).
+- **Block "New" menu** (`NewMenu`): the same menu, offering a new visit, stay or route with no day.
+- **Filters**: two generated `toggle-group`s (kind; status: in the plan, ideas, cancelled), `multiple`, so each item
+  keeps `aria-pressed` and none chosen means all. This is a real optional filter, unlike the required single
+  choices that stay on `ChoiceGroup`. The choice is remembered per trip in `localStorage` as a convenience (see
+  [browser persistence](browser-persistence-contract.md)); a "Show all" button and a "Showing n of m" line say when it
+  hides something, and starting a record from the agenda drops it so the new row can take focus.
+- **Nights buttons** on a stay's check-in row: the existing `Button`s, shown under the old rule (private, idea or planned).
+- **Alternatives area** (`alternatives/AlternativesArea.tsx`): one title and help text above the timeline; each kind
+  with something to compare is a labelled `role="group"` (not a `<section>`, which would repeat the names of the type
+  blocks as landmarks).
+- **Status line**: one `role="status"` for the block, fed by the visit, stay and route dialogs through `onNotice`.
+- **Empty days**: every day of the trip's date range is listed, with its Add menu; on a phone the "Nothing planned
+  yet." text is screen-reader-only to keep the row to one line.
+
+The three type blocks stay until step 4; hosted in the plan tab they only ask the agenda's dialogs to open.
+
 ## Sharing preset picker and review dialog (#241, step 3)
 
 `trips/publication/PresetSection.tsx` composes existing controls only. The preset choice is the

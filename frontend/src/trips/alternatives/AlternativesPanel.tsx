@@ -34,21 +34,35 @@ const REASONS: Record<AlternativeSuggestion["reason"], () => string> = {
   same_journey: () => m.alternatives_reason_journey(),
 };
 
+/** Whether a kind has something to show: a group, a suggestion, or loose records enough to make a group. */
+export const hasAlternatives = (
+  records: readonly AlternativeRecord[],
+  groups: readonly AlternativeGroup[],
+  suggestions: readonly AlternativeSuggestion[],
+) =>
+  groups.length > 0 ||
+  suggestions.length > 0 ||
+  records.filter((record) => !groupedIds(groups).has(record.id)).length >= 2;
+
 /**
  * The owner's alternative groups of one kind and the groups the app suggests from loose ideas.
  * A suggestion is stored only when the owner confirms it. Groups are private planning state.
+ * `heading` names the kind when several panels share one area (`AlternativesArea`): the area then carries the
+ * title, the help text and a failed load, and the panel only its own kind.
  */
 export function AlternativesPanel({
   tripId,
   kind,
   records,
   onOpen,
+  heading,
 }: {
   tripId: string;
   kind: AlternativeKind;
   /** Every record of this kind on the trip, to name members and to offer loose ones for a new group. */
   records: AlternativeRecord[];
   onOpen: (id: string) => void;
+  heading?: string;
 }) {
   useLocale();
   const { groups: groupsQuery, suggestions: suggestionsQuery } = useAlternativeQueries(tripId);
@@ -78,7 +92,7 @@ export function AlternativesPanel({
   const loose = records.filter((record) => !groupedIds(groups).has(record.id));
   const failed = groupsQuery.error ?? suggestionsQuery.error;
 
-  if (!failed && !groups.length && !suggestions.length && loose.length < 2) return null;
+  if (!hasAlternatives(records, groups, suggestions) && (heading || !failed)) return null;
 
   const names = (ids: string[]) =>
     ids.map((id) => (byId.get(id) ? recordTitle(kind, byId.get(id)!) : "")).filter(Boolean);
@@ -142,28 +156,42 @@ export function AlternativesPanel({
     }
   }
 
+  // Alone it is a region of its own; in the shared area it is a labelled group, so the kinds are not landmarks that
+  // repeat the names of the blocks below.
+  const Wrapper = heading ? "div" : "section";
   const busy = choose.isPending || undo.isPending || create.isPending || dissolve.isPending;
   const choosingName = choosing ? recordTitle(kind, byId.get(choosing.id)!) : "";
 
   return (
-    <section className="grid gap-2" aria-labelledby={`alternatives-${kind}-title`}>
+    <Wrapper
+      className="grid gap-2"
+      aria-labelledby={`alternatives-${kind}-title`}
+      {...(heading ? { role: "group" } : {})}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h4 id={`alternatives-${kind}-title`} className="m-0">
-          {m.alternatives_heading()}
-        </h4>
+        {heading ? (
+          <h5 id={`alternatives-${kind}-title`} className="m-0">
+            {heading}
+          </h5>
+        ) : (
+          <h4 id={`alternatives-${kind}-title`} className="m-0">
+            {m.alternatives_heading()}
+          </h4>
+        )}
         {loose.length >= 2 && (
           <Button
             className="secondary compact"
             type="button"
             disabled={busy}
+            aria-label={heading ? m.alternatives_new_group_of({ kind: heading }) : undefined}
             onClick={() => setEditing("new")}
           >
             {m.alternatives_new_group()}
           </Button>
         )}
       </div>
-      <p className="help">{m.alternatives_help()}</p>
-      {failed && (
+      {!heading && <p className="help">{m.alternatives_help()}</p>}
+      {failed && !heading && (
         <p role="alert">
           {errorMessage(failed, m.alternatives_your_alternatives_could_not_be_loaded)}
         </p>
@@ -365,7 +393,7 @@ export function AlternativesPanel({
           }}
         />
       )}
-    </section>
+    </Wrapper>
   );
 }
 

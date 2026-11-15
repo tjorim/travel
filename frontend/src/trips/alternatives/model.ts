@@ -26,7 +26,7 @@ export function membersOf(group: AlternativeGroup): Member[] {
 }
 
 /** The ids of every record that is in a group, so a list can tell grouped records from loose ones. */
-export const groupedIds = (groups: AlternativeGroup[]): Set<string> =>
+export const groupedIds = (groups: readonly AlternativeGroup[]): Set<string> =>
   new Set(groups.flatMap((group) => group.members.map((member) => member.record_id)));
 
 export function recordTitle(kind: AlternativeKind, record: AlternativeRecord): string {

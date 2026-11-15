@@ -103,3 +103,11 @@ assigned to a signed-in owner, replayed or deleted by this migration. Incompatib
 version 3 records also remain untouched and block replacement. Manual recovery
 requires independent ownership review outside automatic restore; do not import an
 unknown-owner draft into the current account merely because a trip ID matches.
+
+## Travel agenda filter (#374)
+
+The plan tab's agenda remembers which kinds and statuses are filtered in unencrypted localStorage under
+`travel-agenda-filter:<trip id>` (`{ kinds, statuses }`, both lists of known values). It is a per-browser convenience
+only: it holds no record content, is never part of the address, history or API, and is not scoped to an account or
+wiped on logout. Reads validate every value and ignore anything unreadable; every read and write is wrapped so denied
+or full storage leaves the agenda working in memory. Clearing the filter removes the key.

@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
+import { routeAgendaRecords } from "./agenda-records";
 import { choosePreferences, mockApi, signInOwner, summaryOf } from "./mock-api";
 
 // Synthetic content only; the evidence images contain no owner trip data.
@@ -44,7 +45,13 @@ const trips = [
 
 const cover = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600"><rect width="900" height="600" fill="#6a8f7a"/><circle cx="650" cy="170" r="70" fill="#f0c860"/><path d="M0 600V380l220-150 190 130 160-110 330 200v150z" fill="#2b4f40"/></svg>`;
 
-async function open(page: Page, path: string, locale: "nl" | "en", theme: "light" | "dark") {
+async function open(
+  page: Page,
+  path: string,
+  locale: "nl" | "en",
+  theme: "light" | "dark",
+  prepare?: (page: Page) => Promise<unknown>,
+) {
   await mockApi(page);
   await signInOwner(page);
   await page.route("**/api/trips", (route) => route.fulfill({ json: trips.map(summaryOf) }));
@@ -86,6 +93,7 @@ async function open(page: Page, path: string, locale: "nl" | "en", theme: "light
     route.fulfill({ contentType: "image/svg+xml", body: cover }),
   );
   await choosePreferences(page, locale, theme);
+  await prepare?.(page);
   await page.goto(path);
   await expect(page.locator("html")).toHaveAttribute("lang", locale);
 }
@@ -122,6 +130,39 @@ for (const locale of ["nl", "en"] as const) {
           await page.screenshot({ path: testInfo.outputPath("owner.png"), fullPage: true });
         });
       }
+    }
+  }
+}
+
+// The agenda manages visits, stays and routes: rows with their status, audience and menu, and the filters above them.
+for (const locale of ["nl", "en"] as const) {
+  for (const theme of ["light", "dark"] as const) {
+    for (const width of [360, 1920]) {
+      test(`owner plan agenda ${locale} ${theme} ${width}`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 1000 });
+        await open(page, "/admin/trips/trip-active/plan", locale, theme, (target) =>
+          routeAgendaRecords(target, "trip-active"),
+        );
+        const agenda = page.locator("#agenda");
+        await expect(agenda.locator("[data-agenda-record]").first()).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+        const check = async () =>
+          expect(
+            (
+              await new AxeBuilder({ page })
+                .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+                .analyze()
+            ).violations.map((violation) => violation.id),
+          ).toEqual([]);
+        await check();
+        // The same page with a row's menu open.
+        await agenda
+          .getByRole("button", { name: /^(Actions for|Acties voor) / })
+          .first()
+          .click();
+        await expect(page.getByRole("menu")).toBeVisible();
+        await check();
+      });
     }
   }
 }

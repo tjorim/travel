@@ -1,5 +1,5 @@
 import { m } from "../paraglide/messages.js";
-import { addDays, localDate, wallClock } from "../dates";
+import { addDays, daysBetween, localDate, wallClock } from "../dates";
 import { areaName, routeTitle, stayInPlan, stayLabel, visitTitle } from "../records";
 import type { PlanningStatus, Route, Stay, Visibility, Visit } from "../api-types";
 import { routeLine } from "./routes/model";
@@ -195,6 +195,30 @@ export function groupAgendaItems(items: readonly AgendaItem[]): {
     if (!isUndated(item)) days.set(item.first, [...(days.get(item.first) ?? []), item]);
   return { days: [...days], undated: items.filter(isUndated) };
 }
+
+/** The longest trip whose every day gets a row of its own, so an absurd date range cannot flood the page. */
+const MAX_TRIP_DAYS = 366;
+
+/**
+ * The agenda's days with the trip's own days among them: a day with nothing planned is listed too, so a gap shows
+ * and can be filled. Days outside the trip's dates that hold something keep their place; with no usable dates
+ * only the days that have rows are listed.
+ */
+export function withTripDays(
+  days: readonly [string, AgendaItem[]][],
+  trip: { starts_on: string | null; ends_on: string | null },
+): [string, AgendaItem[]][] {
+  const { starts_on: first, ends_on: last } = trip;
+  if (!first || !last || last < first || daysBetween(first, last) >= MAX_TRIP_DAYS)
+    return [...days];
+  const byDay = new Map(days);
+  for (let day = first; day <= last; day = addDays(day, 1)) if (!byDay.has(day)) byDay.set(day, []);
+  return [...byDay].sort(([left], [right]) => left.localeCompare(right));
+}
+
+/** The rows that stand for a record itself (a stay's later nights and check-out morning do not). */
+export const isRecordRow = (item: Pick<AgendaItem, "phase">): boolean =>
+  item.phase === undefined || item.phase === "check-in";
 
 /** The statuses the agenda filters by: what is in the plan, what is still an idea, what is cancelled. */
 export type AgendaStatusGroup = "plan" | "idea" | "cancelled";

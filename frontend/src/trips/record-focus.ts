@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import type { DialogFocusRequest } from "../forms/useRecordDialog";
+import type { DialogFocusAction, DialogFocusRequest } from "../forms/useRecordDialog";
 
 /** The record kinds whose dialog the workspace can open on arrival, from an Agenda row, the map or the overview. */
 export const RECORD_KINDS = [
@@ -27,7 +27,7 @@ export const focusFor = (focus: RecordFocus | null, kind: RecordKind): RecordFoc
 
 /**
  * The requests that open one editor's dialog on an existing record: the workspace's (an agenda row, the map) and
- * the block's own (a list entry), as the one `focusId` the editor takes. `open(id)` is the block's own request.
+ * the block's own (a list entry), as the one `focusId` the editor takes. `open(id, action, returnTo)` is the block's own request.
  */
 export function useFocusRequest(external: DialogFocusRequest | null | undefined) {
   const [request, setRequest] = useState<DialogFocusRequest | null>(external ?? null);
@@ -38,6 +38,7 @@ export function useFocusRequest(external: DialogFocusRequest | null | undefined)
   return {
     focusId: request,
     // A negative token never collides with the workspace's, which counts up.
-    open: (id: string) => setRequest({ id, token: -(own.current += 1) }),
+    open: (id: string, action?: DialogFocusAction, returnTo?: HTMLElement | null) =>
+      setRequest({ id, token: -(own.current += 1), action, returnTo }),
   };
 }

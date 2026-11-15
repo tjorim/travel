@@ -8,7 +8,9 @@ import {
   filterAgendaByKind,
   filterAgendaByStatus,
   groupAgendaItems,
+  isRecordRow,
   isUndated,
+  withTripDays,
 } from "./agenda-items";
 import { routeLine } from "./routes/model";
 import { stayLine } from "./stays/model";
@@ -221,4 +223,47 @@ it("combines the kind and status filters and leaves the input untouched", () => 
   expect(rows.map((item) => item.id)).toEqual(["stay-s2", "visit-v2"]);
   expect(filterAgenda(items, {})).toEqual(items);
   expect(items).toEqual(before);
+});
+
+it("lists every day of the trip, with the days that hold something in their place", () => {
+  const { days } = groupAgendaItems(buildAgendaItems([stay("s1")], [], []));
+  const listed = withTripDays(days, { starts_on: "2054-11-15", ends_on: "2054-11-19" });
+  expect(listed.map(([day]) => day)).toEqual([
+    "2054-11-15",
+    "2054-11-16",
+    "2054-11-17",
+    "2054-11-18",
+    "2054-11-19",
+  ]);
+  expect(listed[0]![1]).toEqual([]);
+  expect(listed[1]![1].map((item) => item.id)).toEqual(["stay-s1"]);
+  // A day outside the trip's dates that holds something keeps its row.
+  const outside = withTripDays(days, { starts_on: "2054-11-01", ends_on: "2054-11-02" });
+  expect(outside.map(([day]) => day)).toEqual([
+    "2054-11-01",
+    "2054-11-02",
+    "2054-11-16",
+    "2054-11-17",
+    "2054-11-18",
+  ]);
+});
+
+it("lists only the days that hold something when the trip has no usable dates", () => {
+  const { days } = groupAgendaItems(buildAgendaItems([stay("s1")], [], []));
+  for (const dates of [
+    { starts_on: null, ends_on: null },
+    { starts_on: "2054-11-16", ends_on: null },
+    { starts_on: "2054-11-20", ends_on: "2054-11-16" },
+    { starts_on: "2000-01-01", ends_on: "2054-11-16" },
+  ])
+    expect(withTripDays(days, dates)).toEqual(days);
+});
+
+it("tells the rows that stand for a record from a stay's later nights", () => {
+  const rows = buildAgendaItems([stay("s1")], [], []);
+  expect(rows.map((item) => [item.phase, isRecordRow(item)])).toEqual([
+    ["check-in", true],
+    ["night", false],
+    ["check-out", false],
+  ]);
 });
