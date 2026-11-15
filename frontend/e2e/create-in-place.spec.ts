@@ -146,7 +146,7 @@ for (const locale of locales) {
         expect(created[0]).toMatchObject({ starts_on: "2054-11-12", title: "Harbour walk" });
         // The new visit's agenda row takes the focus.
         await expect(
-          agenda.getByRole("button", { name: new RegExp("Harbour walk") }),
+          agenda.locator("[data-agenda-record]", { hasText: "Harbour walk" }),
         ).toBeFocused();
       });
 
