@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from ..access import apply_visibility, receivers
@@ -12,6 +12,7 @@ from ..models import TRAVEL_UPDATE_ORDER, Location, MediaAsset, TravelUpdate, Tr
 from ..schemas import Identifier, TravelUpdateCreate, TravelUpdatePatch
 from ..update_day import at_wall_clock, update_zone
 from ..update_zones import trip_zone_spans
+from .localized import write_texts
 from .placement import location_from_input, selected_area
 from .trips import owned_trip
 
@@ -113,7 +114,7 @@ def list_travel_updates(
         .where(TravelUpdate.trip_id == trip.id)
     )
     if q:
-        statement = statement.where(TravelUpdate.title.ilike(f"%{q}%"))
+        statement = statement.where(or_(TravelUpdate.title_nl.ilike(f"%{q}%"), TravelUpdate.title_en.ilike(f"%{q}%")))
     if latest is not None:
         # The tail of the one order, read from its end and put back: no second rule.
         tail = statement.order_by(*(column.desc() for column in TRAVEL_UPDATE_ORDER)).limit(latest)
@@ -127,7 +128,7 @@ def list_travel_updates(
 def create_travel_update(
     session: Session, subject: str, trip_id: Identifier, payload: TravelUpdateCreate
 ) -> TravelUpdate:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     location = location_from_input(session, trip.id, payload.location) if payload.location else None
     if location is not None and payload.area_id is not None:
         raise Refusal(
@@ -144,10 +145,9 @@ def create_travel_update(
         media_links=media_links_from_ids(session, trip.id, payload.media_asset_ids),
         occurred_at=occurred_at,
         share_date_precision=payload.share_date_precision,
-        title=payload.title,
-        body=payload.body,
         private_notes=payload.private_notes,
     )
+    write_texts(update, ("title", "body"), payload, trip.content_language, required=("title",))
     session.add(update)
     session.flush()
     if wall_clock is not None:
@@ -180,7 +180,7 @@ def _choose_visibility(
 def update_travel_update(
     session: Session, subject: str, trip_id: Identifier, update_id: Identifier, payload: TravelUpdatePatch
 ) -> TravelUpdate:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     update = owned_update(session, trip, update_id)
     # A present null is intentional: the owner may remove a location or notes
     # while editing. Pydantic otherwise represents omitted and null alike.
@@ -197,10 +197,17 @@ def update_travel_update(
         update.area_id = selected_area(session, trip.id, payload.area_id).id if payload.area_id is not None else None
     if "media_asset_ids" in payload.model_fields_set:
         update.media_links = media_links_from_ids(session, trip.id, payload.media_asset_ids or [])
-    values = payload.model_dump(exclude_unset=True, exclude={"area_id", "location", "media_asset_ids", "visibility"})
+    write_texts(update, ("title", "body"), payload, trip.content_language, required=("title",))
+    values = payload.model_dump(
+        exclude_unset=True,
+        exclude={
+            "area_id", "location", "media_asset_ids", "visibility",
+            "title", "title_nl", "title_en", "body", "body_nl", "body_en",
+        },
+    )  # fmt: skip
     wall_clock = None
     for field, value in values.items():
-        if value is None and field in {"occurred_at", "share_date_precision", "title", "body"}:
+        if value is None and field in {"occurred_at", "share_date_precision"}:
             raise Refusal(f"{field} is required", code="missing", field=field)
         if field == "occurred_at":
             value, wall_clock = _stored_placeholder(value)

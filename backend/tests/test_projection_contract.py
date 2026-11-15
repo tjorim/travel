@@ -179,6 +179,7 @@ def _rich_document(owner: TestClient, tmp_path: Path) -> tuple[dict, dict]:
             f"{base}/visits",
             json={
                 "title": "Dinner",
+                "summary": "A fine evening",
                 "area_id": area["id"],
                 "location": {"existing_location_id": hotel["id"]},
                 "starts_on": "2054-04-04",
@@ -284,7 +285,14 @@ def _rich_document(owner: TestClient, tmp_path: Path) -> tuple[dict, dict]:
 def test_a_delivered_document_carries_only_declared_fields_and_every_conditional_one_was_exercised(
     tmp_path: Path,
 ) -> None:
-    document, _ = _rich_document(client_for("owner-1"), tmp_path)
+    document, delivered_to = _rich_document(client_for("owner-1"), tmp_path)
+    # The same trip asked for in English: its texts are only written in Dutch, so each one falls back and carries its
+    # `<field>_lang` marker. The markers are conditional fields too, and the one document that has them must be valid.
+    english = TestClient(app).get(f"/api/public/trips/{delivered_to['slug']}", params={"lang": "en"}).json()
+    assert schemas.ProjectionDocument.model_validate(english).model_dump(mode="json") == english
+    assert english["title_lang"] == "nl" and english["summary_lang"] == "nl"
+    assert {"title_lang"} <= {name for record in english["visits"] for name in record}
+    assert not any(name.endswith("_lang") for record in document["visits"] for name in record)
     # Every record validates against its own model (forbidding anything else) ...
     parsed = schemas.ProjectionDocument.model_validate(document)
     assert (
@@ -298,7 +306,7 @@ def test_a_delivered_document_carries_only_declared_fields_and_every_conditional
     )
     # ... and the fixture reaches every optional field, so a field no fixture sends cannot hide here.
     for key, model in RECORDS.items():
-        sent = {name for record in document[key] for name in record}
+        sent = {name for record in (*document[key], *english[key]) for name in record}
         assert sent <= set(model.model_fields), (key, sent - set(model.model_fields))
         # A video's marker is the one group this fixture (a photo) cannot send.
         assert set(model.model_fields) - sent <= {"video", "poster", "duration_seconds"}, (

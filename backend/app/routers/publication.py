@@ -19,12 +19,14 @@ from ..capability import verifier_for
 from ..database import get_session
 from ..errors import ApiException
 from ..http_delivery import (
+    LanguageQuery,
     file_response,
     malformed_path,
     persist_lazy_expiry,
     preview_navigation,
     reject_malformed_token,
     validate_public_path,
+    visitor_language,
 )
 from ..models import (
     AuditEvent,
@@ -415,7 +417,9 @@ delivery_router = APIRouter(tags=["sharing-delivery"], dependencies=[Depends(val
 @delivery_router.get(
     "/public/trips", response_model=list[PublicTripCard], dependencies=[Depends(public_delivery_limit)]
 )
-def list_public_trips(request: Request, session: SessionDep, response: Response) -> list[PublicTripCard]:
+def list_public_trips(
+    request: Request, session: SessionDep, response: Response, lang: LanguageQuery = None
+) -> list[PublicTripCard]:
     # Select only published surfaces. Card text is separately gated by the
     # current scope, just as it is on the individual visitor page.
     rows = session.execute(
@@ -427,21 +431,28 @@ def list_public_trips(request: Request, session: SessionDep, response: Response)
     response.headers["Cache-Control"] = "no-store"
     cards = []
     for surface, trip in rows:
-        projection = render_projection(trip, surface.scope, "travel/public-trip@1")
+        projection = render_projection(trip, surface.scope, "travel/public-trip@1", visitor_language(lang))
         photo = next((item for item in projection["media"] if item["id"] == projection["cover"]), None)
         cover = None
         if photo is not None:
             cover = {
                 "url": f"/api/public/trips/{surface.slug}/files/{photo['id']}",
-                **{key: photo[key] for key in ("width", "height", "alt_text", "focal_x", "focal_y")},
+                **{
+                    key: photo[key]
+                    for key in ("width", "height", "alt_text", "alt_text_lang", "focal_x", "focal_y")
+                    if key in photo
+                },
             }
         cards.append(
             PublicTripCard(
                 slug=surface.slug,
-                title=projection["title"],
-                summary=projection["summary"],
                 dates=projection["dates"],
                 cover=cover,
+                **{
+                    key: projection[key]
+                    for key in ("title", "title_lang", "summary", "summary_lang")
+                    if key in projection
+                },
             )
         )
     return cards
@@ -450,7 +461,9 @@ def list_public_trips(request: Request, session: SessionDep, response: Response)
 @delivery_router.get(
     "/public/trips/{slug}", response_model=ProjectionDocument, dependencies=[Depends(public_delivery_limit)]
 )
-def get_public_trip(request: Request, slug: str, session: SessionDep, response: Response) -> dict:
+def get_public_trip(
+    request: Request, slug: str, session: SessionDep, response: Response, lang: LanguageQuery = None
+) -> dict:
     surface = session.scalar(select(PublicSurface).where(PublicSurface.slug == slug))
     if surface is None or surface.state != SurfaceState.PUBLISHED:
         raise ApiException(
@@ -472,7 +485,7 @@ def get_public_trip(request: Request, slug: str, session: SessionDep, response: 
     # projection without asking the API again.
     response.headers["Cache-Control"] = "no-store"
 
-    return render_document(session, PublicAudience(surface), trip, surface.scope)
+    return render_document(session, PublicAudience(surface), trip, surface.scope, visitor_language(lang))
 
 
 @delivery_router.get(
@@ -514,7 +527,9 @@ def get_public_file(slug: str, local_id: str, session: SessionDep, storage: Stor
     response_model=ProjectionDocument | CollectionIndexDocument,
     dependencies=[Depends(shared_delivery_limit)],
 )
-def get_shared_trip(request: Request, token: str, session: SessionDep, response: Response) -> dict | BaseModel:
+def get_shared_trip(
+    request: Request, token: str, session: SessionDep, response: Response, lang: LanguageQuery = None
+) -> dict | BaseModel:
     # Headers are also attached to each HTTPException below: FastAPI's error
     # path builds its own response and does not carry over `response.headers`
     # mutations, and a not-found/expired/revoked link must be just as
@@ -532,7 +547,7 @@ def get_shared_trip(request: Request, token: str, session: SessionDep, response:
             raise not_found
         for header, value in UNLISTED_HEADERS.items():
             response.headers[header] = value
-        return collection_index(session, collection)
+        return collection_index(session, collection, visitor_language(lang))
     if link.state != LinkState.ACTIVE:
         raise not_found
     if has_expired(link.expires_at):
@@ -545,7 +560,7 @@ def get_shared_trip(request: Request, token: str, session: SessionDep, response:
     for header, value in UNLISTED_HEADERS.items():
         response.headers[header] = value
 
-    return render_document(session, LinkAudience(link), trip, link.scope)
+    return render_document(session, LinkAudience(link), trip, link.scope, visitor_language(lang))
 
 
 @delivery_router.get(
@@ -595,21 +610,21 @@ def get_shared_file(token: str, local_id: str, session: SessionDep, storage: Sto
 
 
 @delivery_router.get("/public/trips/{slug}/feed.atom", dependencies=[Depends(public_delivery_limit)])
-def public_feed(request: Request, slug: str, session: SessionDep) -> Response:
+def public_feed(request: Request, slug: str, session: SessionDep, lang: LanguageQuery = None) -> Response:
     try:
-        document = get_public_trip(request, slug, session, Response())
+        document = get_public_trip(request, slug, session, Response(), lang)
     except ApiException as exc:
         exc.headers = {**(exc.headers or {}), **UNLISTED_HEADERS}
         raise
     return Response(
-        atom_document(document, f"urn:travel:public:{slug}"),
+        atom_document(document, f"urn:travel:public:{slug}", visitor_language(lang)),
         media_type="application/atom+xml",
         headers=UNLISTED_HEADERS,
     )
 
 
 @delivery_router.get("/shared/{token}/feed.atom", dependencies=[Depends(shared_delivery_limit)])
-def link_feed(request: Request, token: str, session: SessionDep) -> Response:
+def link_feed(request: Request, token: str, session: SessionDep, lang: LanguageQuery = None) -> Response:
     from ..authlimit import failed_authentication
 
     retry = failed_authentication.retry_after(request)
@@ -633,10 +648,10 @@ def link_feed(request: Request, token: str, session: SessionDep) -> Response:
     trip = session.scalar(trip_query().where(Trip.id == link.trip_id))
     if trip is None:
         raise ApiException(404, "Link not found", headers=UNLISTED_HEADERS, code="not_found")
-    document = render_projection(trip, link.scope, "travel/unlisted-trip@1")
+    document = render_projection(trip, link.scope, "travel/unlisted-trip@1", visitor_language(lang))
     # A token-free, audience-local identity: no page token or canonical trip id.
     return Response(
-        atom_document(document, f"urn:travel:feed:{verifier_for(token)}"),
+        atom_document(document, f"urn:travel:feed:{verifier_for(token)}", visitor_language(lang)),
         media_type="application/atom+xml",
         headers=UNLISTED_HEADERS,
     )

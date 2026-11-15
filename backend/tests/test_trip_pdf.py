@@ -65,7 +65,7 @@ def test_audience_is_exact_projection_with_exclusions_and_precision():
         data, photos = pdf_data(
             session, trip, PdfRequest(content="both", view="audience", locale="en", audience=link.id)
         )
-        assert data == render_projection(trip, link.scope, "travel/unlisted-trip@1")
+        assert data == render_projection(trip, link.scope, "travel/unlisted-trip@1", "en")
         assert data["updates"] == [] and photos == {}
 
 
@@ -350,7 +350,7 @@ def test_collection_member_uses_its_own_scope_and_owner_boundary():
         trip = owned_trip(session, ids["trip"], "owner-1", load_relations=False)
         payload = PdfRequest(content="both", view="audience", locale="en", audience=f"collection:{member.id}")
         data, photos = pdf_data(session, trip, payload)
-        assert data == render_projection(trip, member.scope, "travel/unlisted-trip@1")
+        assert data == render_projection(trip, member.scope, "travel/unlisted-trip@1", "en")
         assert data["title"] is None
         collection.owner_subject = "someone-else"
         session.commit()

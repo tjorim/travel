@@ -50,24 +50,27 @@ from .update_zones import trip_zone_spans
 
 logger = logging.getLogger("travel.export")
 
-EXPORT_SCHEMA_VERSION = "travel/trip-export@2"
+EXPORT_SCHEMA_VERSION = "travel/trip-export@3"
 EXPORT_AUDIT_ACTION = "trip.export"
 _BATCH = 200
 
-TRIP = ("id", "title", "summary", "starts_on", "ends_on", "created_at", "updated_at")
+TRIP = (
+    "id", "content_language", "title_nl", "title_en", "summary_nl", "summary_en", "starts_on", "ends_on",
+    "created_at", "updated_at",
+)  # fmt: skip
 AREA = (
-    "id", "visibility", "label", "region", "country_code", "latitude", "longitude", "timezone",
+    "id", "visibility", "label_nl", "label_en", "region", "country_code", "latitude", "longitude", "timezone",
     "created_at", "updated_at",
 )  # fmt: skip
 LOCATION = (
-    "id", "visibility", "area_id", "label", "share_address", "osm_element_type", "osm_element_id", "osm_url",
+    "id", "visibility", "area_id", "label_nl", "label_en", "share_address", "osm_element_type", "osm_element_id", "osm_url",
     "display_name", "address_line1", "address_line2", "locality", "admin_area", "postal_code", "country_code",
     "latitude", "longitude", "viewport_north", "viewport_south", "viewport_east", "viewport_west",
     "navigation_provider", "navigation_provider_place_id", "notes", "created_at", "updated_at",
 )  # fmt: skip
 VISIT = (
-    "id", "visibility", "area_id", "location_id", "title", "kind", "status", "starts_on", "ends_on",
-    "start_time", "end_time", "notes", "summary", "share_time", "share_date_precision", "created_at", "updated_at",
+    "id", "visibility", "area_id", "location_id", "title_nl", "title_en", "kind", "status", "starts_on", "ends_on",
+    "start_time", "end_time", "notes", "summary_nl", "summary_en", "share_time", "share_date_precision", "created_at", "updated_at",
 )  # fmt: skip
 STAY = (
     "id", "visibility", "area_id", "location_id", "check_in_date", "check_out_date", "check_in_time", "check_out_time",
@@ -75,14 +78,14 @@ STAY = (
     "share_date_precision", "created_at", "updated_at",
 )  # fmt: skip
 ROUTE = (
-    "id", "visibility", "mode", "status", "label", "departure_area_id", "arrival_area_id", "departure_location_id",
+    "id", "visibility", "mode", "status", "label_nl", "label_en", "departure_area_id", "arrival_area_id", "departure_location_id",
     "arrival_location_id", "departs_on", "departs_at", "arrives_at", "departure_timezone", "arrival_timezone",
     "carrier", "service_reference", "travel_class", "booking_reference", "notes", "geometry", "created_at",
     "updated_at",
 )  # fmt: skip
 TRAVEL_UPDATE = (
-    "id", "visibility", "share_id", "area_id", "location_id", "occurred_at", "share_date_precision", "title", "body",
-    "private_notes", "created_at", "updated_at",
+    "id", "visibility", "share_id", "area_id", "location_id", "occurred_at", "share_date_precision", "title_nl", "title_en",
+    "body_nl", "body_en", "private_notes", "created_at", "updated_at",
 )  # fmt: skip
 MEDIA_ASSET = (
     "id", "media_kind", "captured_at", "captured_local", "import_id", "raw_metadata", "created_at", "updated_at",
@@ -90,7 +93,7 @@ MEDIA_ASSET = (
 MEDIA_DERIVATIVE = (
     "id", "visibility", "media_asset_id", "processing_state", "processing_backend", "processing_started_at",
     "remove_audio", "duration_seconds", "purpose", "metadata_stripped_at", "review_state", "width", "height",
-    "travel_update_id", "caption", "alt_text", "focal_x", "focal_y", "is_cover", "created_at",
+    "travel_update_id", "caption_nl", "caption_en", "alt_text_nl", "alt_text_en", "focal_x", "focal_y", "is_cover", "created_at",
 )  # fmt: skip
 IMPORT_RECORD = ("id", "provider", "provider_item_id", "state", "media_asset_id", "requested_at", "completed_at", "failure_code")  # fmt: skip
 DOCUMENT = ("id", "document_kind", "title", "owner_metadata", "created_at", "updated_at")

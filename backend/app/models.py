@@ -25,6 +25,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.types import JSON
 
+from .content_language import DEFAULT_LANGUAGE, Localized
 from .database import Base
 from .update_day import ZoneSpan, update_day, update_zone
 
@@ -294,6 +295,27 @@ def _visibility_column():
     return mapped_column(_enum_column(Visibility, "travel_visibility"), default=Visibility.PRIVATE, nullable=False)
 
 
+def _content_language_column():
+    """The language a write to a plain text field name lands in (``nl`` or ``en``); see ``app.content_language``."""
+    return mapped_column(
+        String(2), default=DEFAULT_LANGUAGE.value, server_default=DEFAULT_LANGUAGE.value, nullable=False
+    )
+
+
+def _trip_language(record) -> str:
+    """The content language of the trip a record belongs to (the default while it has no trip loaded yet)."""
+    trip = record.trip
+    return trip.content_language if trip is not None and trip.content_language else DEFAULT_LANGUAGE.value
+
+
+def _languages(*fields: str) -> tuple[CheckConstraint, ...]:
+    """One check per required text field (``table.field``): it is written in at least one language."""
+    return tuple(
+        CheckConstraint(f"{field}_nl IS NOT NULL OR {field}_en IS NOT NULL", name=f"ck_{table}_{field}_present")
+        for table, field in (item.split(".") for item in fields)
+    )
+
+
 class Area(Base):
     """A city or region: where things are, without saying exactly where.
 
@@ -312,9 +334,12 @@ class Area(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     trip_id: Mapped[str] = mapped_column(ForeignKey("trips.id", ondelete="CASCADE"), nullable=False, index=True)
     visibility: Mapped[Visibility] = _visibility_column()
-    # ``None`` marks an unnamed area: the owner gave no name, so the interface
-    # shows its own translated fallback and nothing language-bound is stored.
-    label: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # Both ``None`` marks an unnamed area: the owner gave no name, so the interface
+    # shows its own translated fallback and nothing language-bound is stored. ``label`` is the plain name over
+    # the two languages (``app.content_language``).
+    label_nl: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    label_en: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    label = Localized()
     region: Mapped[str | None] = mapped_column(String(120), nullable=True)
     country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -324,6 +349,12 @@ class Area(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+    trip: Mapped[Trip] = relationship(foreign_keys=[trip_id], viewonly=True)
+
+    @property
+    def content_language(self) -> str:
+        return _trip_language(self)
 
 
 class Location(Base):
@@ -365,7 +396,9 @@ class Location(Base):
     visibility: Mapped[Visibility] = _visibility_column()
     # The name a shared location goes by: owner-only until the location is shared,
     # and required for that, because the display name usually contains the address.
-    label: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    label_nl: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    label_en: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    label = Localized()
     # Whether a shared location also shows its address, for example a hotel family
     # may need to contact. A separate choice from sharing the location at all.
     share_address: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -396,15 +429,31 @@ class Location(Base):
     )
 
     area: Mapped[Area] = relationship(foreign_keys=[area_id])
+    trip: Mapped[Trip] = relationship(foreign_keys=[trip_id], viewonly=True)
+
+    @property
+    def content_language(self) -> str:
+        return _trip_language(self)
 
 
 class Trip(Base):
     __tablename__ = "trips"
+    __table_args__ = (
+        *_languages("trips.title"),
+        CheckConstraint("content_language IN ('nl', 'en')", name="ck_trips_content_language"),
+    )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    title: Mapped[str] = mapped_column(String(160), nullable=False)
-    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The language a write to ``title`` or ``summary`` lands in, and the one a read prefers. Neither language is
+    # the original: each text field is two columns, and the plain name is the content language's with fallback.
+    content_language: Mapped[str] = _content_language_column()
+    title_nl: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    title_en: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    title = Localized(default="")
+    summary_nl: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary = Localized()
     # Local calendar dates of the first and last travel day. Owner-only
     # unless a share scope explicitly selects them at a chosen precision.
     starts_on: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -502,6 +551,7 @@ class TravelUpdate(Base):
     always references an area, never a location."""
 
     __tablename__ = "travel_updates"
+    __table_args__ = _languages("travel_updates.title")
     __allow_unmapped__ = True  # ``zone_spans`` is a plain attribute, not a column
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
@@ -511,8 +561,12 @@ class TravelUpdate(Base):
     location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id"), nullable=True)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     share_date_precision: Mapped[DatePrecision] = mapped_column(_enum_column(DatePrecision, "travel_date_precision"))
-    title: Mapped[str] = mapped_column(String(160), nullable=False)
-    body: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    title_nl: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    title_en: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    title = Localized(default="")
+    body_nl: Mapped[str | None] = mapped_column(Text, nullable=True)
+    body_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    body = Localized(default="")
     private_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     visibility: Mapped[Visibility] = _visibility_column()
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -526,6 +580,10 @@ class TravelUpdate(Base):
     media_links: Mapped[list[TravelUpdateMediaAsset]] = relationship(
         back_populates="travel_update", cascade="all, delete-orphan", order_by="TravelUpdateMediaAsset.created_at"
     )
+
+    @property
+    def content_language(self) -> str:
+        return _trip_language(self)
 
     @property
     def media_asset_ids(self) -> list[str]:
@@ -669,7 +727,9 @@ class Route(Base):
         _enum_column(PlanningStatus, "travel_planning_status"), default=PlanningStatus.PLANNED
     )
     # A name for the route; without one it is shown as "<from> → <to>".
-    label: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    label_nl: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    label_en: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    label = Localized()
     departure_area_id: Mapped[str] = mapped_column(ForeignKey("areas.id"), nullable=False)
     arrival_area_id: Mapped[str] = mapped_column(ForeignKey("areas.id"), nullable=False)
     departure_location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id"), nullable=True)
@@ -709,6 +769,10 @@ class Route(Base):
     document_links: Mapped[list[RouteDocumentAsset]] = relationship(
         back_populates="route", cascade="all, delete-orphan", order_by="RouteDocumentAsset.created_at"
     )
+
+    @property
+    def content_language(self) -> str:
+        return _trip_language(self)
 
     @property
     def document_asset_ids(self) -> list[str]:
@@ -762,7 +826,9 @@ class Visit(Base):
     area_id: Mapped[str] = mapped_column(ForeignKey("areas.id"), nullable=False, index=True)
     location_id: Mapped[str | None] = mapped_column(ForeignKey("locations.id"), nullable=True)
     # Without a title a visit goes by the name of its location, else of its area.
-    title: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    title_nl: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    title_en: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    title = Localized()
     kind: Mapped[VisitKind | None] = mapped_column(_enum_column(VisitKind, "travel_visit_kind"), nullable=True)
     # Owner-only planning state; never part of a shared visit.
     status: Mapped[PlanningStatus] = mapped_column(
@@ -775,7 +841,9 @@ class Visit(Base):
     start_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     end_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary_nl: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary = Localized()
     visibility: Mapped[Visibility] = _visibility_column()
     # Whether a shared visit also shows its times. A separate choice from sharing the visit at all.
     # ``share_date_precision`` is this visit's own cap on its days; ``None`` follows the audience.
@@ -799,6 +867,10 @@ class Visit(Base):
     alternative_membership: Mapped[AlternativeGroupMember | None] = relationship(
         back_populates="visit", cascade="all, delete-orphan", uselist=False
     )
+
+    @property
+    def content_language(self) -> str:
+        return _trip_language(self)
 
 
 class AlternativeGroup(Base):
@@ -1111,11 +1183,16 @@ class Collection(Base):
     label is owner-only; `title` is optional text written for visitors."""
 
     __tablename__ = "collections"
+    __table_args__ = (CheckConstraint("content_language IN ('nl', 'en')", name="ck_collections_content_language"),)
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=opaque_id)
     owner_subject: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     label: Mapped[str] = mapped_column(String(120), nullable=False)
-    title: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    # A collection belongs to no single trip, so it has its own content language, like a trip.
+    content_language: Mapped[str] = _content_language_column()
+    title_nl: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    title_en: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    title = Localized()
     state: Mapped[LinkState] = mapped_column(_enum_column(LinkState, "travel_link_state"), default=LinkState.DRAFT)
     token: Mapped[str | None] = mapped_column(String(128), nullable=True)
     token_verifier: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
@@ -1435,8 +1512,12 @@ class MediaDerivative(Base):
     travel_update_id: Mapped[str | None] = mapped_column(
         ForeignKey("travel_updates.id", ondelete="SET NULL"), nullable=True
     )
-    caption: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    alt_text: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    caption_nl: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    caption_en: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    caption = Localized()
+    alt_text_nl: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    alt_text_en: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    alt_text = Localized()
     focal_x: Mapped[int | None] = mapped_column(Integer, nullable=True)
     focal_y: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # A photo attached to a reisupdate is delivered with that update and this
@@ -1452,6 +1533,10 @@ class MediaDerivative(Base):
     media_asset: Mapped[MediaAsset] = relationship(back_populates="derivatives")
     object: Mapped[StoredObject | None] = relationship(foreign_keys=[object_id])
     poster_object: Mapped[StoredObject | None] = relationship(foreign_keys=[poster_object_id])
+
+    @property
+    def content_language(self) -> str:
+        return _trip_language(self)
 
 
 class DocumentAsset(Base):

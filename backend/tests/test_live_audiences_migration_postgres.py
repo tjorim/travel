@@ -17,7 +17,8 @@ from sqlalchemy.orm import Session
 
 from alembic import command
 from app.config import settings
-from app.models import LinkState, ShareLink, Trip
+from app.models import LinkState, ShareLink
+from tests import legacy_rows
 
 
 @pytest.fixture
@@ -47,10 +48,8 @@ def database(monkeypatch):
 def _seed(engine) -> dict:
     """One trip with a link per state, and two sessions whose JSON dictionaries name them (and one that is gone)."""
     with Session(engine) as session:
-        trip = Trip(owner_subject="owner-1", title="Exampleland 2054")
-        other = Trip(owner_subject="owner-1", title="Elsewhere 2054")
-        session.add_all([trip, other])
-        session.flush()
+        trip = legacy_rows.trip(session, "Exampleland 2054", "owner-1")
+        other = legacy_rows.trip(session, "Elsewhere 2054", "owner-1")
         links = {
             state: ShareLink(trip_id=trip.id, label=state.value, series_id=uuid4().hex, state=state)
             for state in LinkState

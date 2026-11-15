@@ -14,6 +14,8 @@ const area: Area = {
   id: "area-1",
   visibility: "private",
   label: "Taipei",
+  label_nl: "Taipei",
+  label_en: null,
   country_code: "TW",
   region: null,
   latitude: null,

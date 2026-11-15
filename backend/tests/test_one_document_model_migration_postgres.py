@@ -16,9 +16,10 @@ from sqlalchemy.orm import Session
 from alembic import command
 from app.config import settings
 from app.media.service import _purge_pending_objects
-from app.models import Area, MediaAsset, MediaKind, Route, Stay, Trip
+from app.models import MediaAsset, MediaKind, Stay, Trip
 from app.storage import LocalObjectStorage
 from app.storage_reconcile import unreferenced_objects
+from tests import legacy_rows
 
 PREVIOUS = "032_live_audiences"
 DIGESTS = {name: f"{number}" * 64 for number, name in enumerate(["booking", "policy", "photo", "passport", "other"])}
@@ -105,19 +106,15 @@ def _seed(engine, storage: LocalObjectStorage) -> dict[str, str]:
     ids: dict[str, str] = {}
     with Session(engine) as session:
         for name, owner in (("a", "owner-1"), ("b", "owner-1"), ("c", "owner-2")):
-            trip = Trip(owner_subject=owner, title=f"Exampleland {name}")
-            session.add(trip)
-            session.flush()
+            trip = legacy_rows.trip(session, f"Exampleland {name}", owner)
             ids[f"trip_{name}"] = trip.id
-        area = Area(trip_id=ids["trip_a"], label="Taipei")
-        other = Area(trip_id=ids["trip_a"], label="Kaohsiung")
-        session.add_all([area, other])
-        session.flush()
+        area = legacy_rows.area(session, ids["trip_a"], "Taipei")
+        other = legacy_rows.area(session, ids["trip_a"], "Kaohsiung")
         stay = Stay(
             trip_id=ids["trip_a"], area_id=area.id, check_in_date=date(2054, 4, 1), check_out_date=date(2054, 4, 5)
         )
-        route = Route(trip_id=ids["trip_a"], departure_area_id=area.id, arrival_area_id=other.id)
-        session.add_all([stay, route])
+        route = legacy_rows.route(session, ids["trip_a"], area.id, other.id)
+        session.add(stay)
         session.commit()
         ids["stay"], ids["route"] = stay.id, route.id
 

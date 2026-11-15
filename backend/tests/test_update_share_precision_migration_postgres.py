@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from alembic import command
 from app.config import settings
 from app.models import DatePrecision, TravelUpdate, Trip
+from tests import legacy_rows
 
 PREVIOUS = "029_visit_order"
 
@@ -57,9 +58,7 @@ def test_upgrade_renames_the_column_keeping_each_value_and_the_downgrade_restore
     command.upgrade(config, PREVIOUS)
     assert "date_precision" in _columns(engine)
     with Session(engine) as session:
-        trip = Trip(owner_subject="owner-1", title="Exampleland 2054")
-        session.add(trip)
-        session.flush()
+        trip = legacy_rows.trip(session, "Exampleland 2054", "owner-1")
         for precision in ("day", "month", "year"):
             # Raw SQL: the model describes the head schema, whose column has the new name.
             session.execute(

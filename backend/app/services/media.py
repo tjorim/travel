@@ -68,6 +68,7 @@ from ..schemas import (
 )
 from ..secrets import SecretStore
 from ..storage import ObjectStorage
+from .localized import text_keys, trip_language, write_texts
 from .trips import owned_trip
 
 IMPORT_PROVIDERS = (ImportProvider.GOOGLE_PHOTOS_PICKER, ImportProvider.GOPRO_CLOUD)
@@ -125,7 +126,11 @@ def derivative_response(derivative: MediaDerivative, trip_id: str) -> MediaDeriv
         height=derivative.height,
         travel_update_id=derivative.travel_update_id,
         caption=derivative.caption,
+        caption_nl=derivative.caption_nl,
+        caption_en=derivative.caption_en,
         alt_text=derivative.alt_text,
+        alt_text_nl=derivative.alt_text_nl,
+        alt_text_en=derivative.alt_text_en,
         focal_x=derivative.focal_x,
         focal_y=derivative.focal_y,
         visibility=derivative.visibility,
@@ -358,8 +363,10 @@ def update_derivative_presentation(
     derivative_id: str,
     payload: MediaDerivativePresentationUpdate,
 ) -> MediaDerivativeResponse:
+    owned_trip(session, trip_id, subject, lock=True)
     derivative = owned_derivative(session, subject, trip_id, media_id, derivative_id)
-    values = payload.model_dump(exclude_unset=True)
+    values = payload.model_dump(exclude_unset=True, exclude=text_keys("caption", "alt_text"))
+    write_texts(derivative, ("caption", "alt_text"), payload, trip_language(session, trip_id))
     if values.get("travel_update_id") is not None:
         update = session.get(TravelUpdate, values["travel_update_id"])
         if update is None or update.trip_id != trip_id:

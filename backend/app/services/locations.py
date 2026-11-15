@@ -43,13 +43,16 @@ from ..visitor_changes import (
     widened_record_details,
     widened_records,
 )
+from .localized import trip_language, write_texts
 from .placement import location_from_input, selected_area
 from .trips import owned_trip
 from .visibility import make_private
 
 
-def owned_location(session: Session, trip_id: Identifier, subject: str, location_id: Identifier) -> Location:
-    owned_trip(session, trip_id, subject)
+def owned_location(
+    session: Session, trip_id: Identifier, subject: str, location_id: Identifier, *, lock: bool = False
+) -> Location:
+    owned_trip(session, trip_id, subject, lock=lock)
     location = session.scalar(select(Location).where(Location.id == location_id, Location.trip_id == trip_id))
     if location is None:
         raise RecordNotFound("Location not found")
@@ -70,14 +73,16 @@ def list_locations(
     if q or limit is not None or offset:
         statement = statement.order_by(Location.id)
     if q:
-        statement = statement.where(contains(Location.label, q) | contains(Location.display_name, q))
+        statement = statement.where(
+            contains(Location.label_nl, q) | contains(Location.label_en, q) | contains(Location.display_name, q)
+        )
     if limit is not None:
         statement = statement.limit(limit)
     return list(session.scalars(statement.offset(offset)))
 
 
 def save_location(session: Session, subject: str, trip_id: Identifier, payload: LocationInput) -> Location:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     return location_from_input(session, trip.id, payload)
 
 
@@ -198,7 +203,7 @@ def update_location(
     ``acknowledge_visitor_changes``; the refusal lists each field's before and
     after and the audiences. An acknowledged change is recorded in the audit trail.
     """
-    location = owned_location(session, trip_id, subject, location_id)
+    location = owned_location(session, trip_id, subject, location_id, lock=True)
     changes = payload.model_fields_set
     live = live_audiences(session, trip_id)
     before_view = location_visitor_view(location)
@@ -214,8 +219,7 @@ def update_location(
                 )
             )
         )
-    if "label" in changes:
-        location.label = payload.label
+    write_texts(location, ("label",), payload, trip_language(session, trip_id))
     if "area_id" in changes:
         if payload.area_id is None:
             raise Refusal("Every location needs an area", code="every_location_needs_an_area")

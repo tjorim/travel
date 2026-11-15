@@ -243,3 +243,23 @@ def test_other_owners_cannot_review_or_change_the_location() -> None:
 def test_the_acknowledgement_cannot_be_null() -> None:
     setup = Setup(client_for("owner-1"), "everyone")
     assert setup.owner.patch(setup.path, json={"acknowledge_visitor_changes": None}).status_code == 422
+
+
+def test_a_change_between_two_pairs_that_read_the_same_joined_is_still_a_change() -> None:
+    """('Hotel / Museum', none) and ('Hotel', 'Museum') read alike when joined, but are different public names."""
+    setup = Setup(client_for("owner-1"), "everyone")
+    first = setup.owner.patch(setup.path, json={"label_nl": "Hotel / Museum", "acknowledge_visitor_changes": True})
+    assert first.status_code == 200, first.text
+    assert (first.json()["label_nl"], first.json()["label_en"]) == ("Hotel / Museum", None)
+
+    refused = setup.owner.patch(setup.path, json={"label_nl": "Hotel", "label_en": "Museum"})
+    (change,) = changes_of(refused).values()
+    assert change["field"] == "label"
+    assert (change["before"], change["after"]) == ("Hotel / Museum", "Hotel / Museum")
+    before = len(setup.events())
+
+    accepted = setup.owner.patch(
+        setup.path, json={"label_nl": "Hotel", "label_en": "Museum", "acknowledge_visitor_changes": True}
+    )
+    assert accepted.status_code == 200, accepted.text
+    assert len(setup.events()) == before + 1

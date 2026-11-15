@@ -2,7 +2,7 @@
 
 from math import asin, cos, radians, sin, sqrt
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 from timezonefinder import TimezoneFinder
 
@@ -32,6 +32,7 @@ from ..visitor_changes import (
     widened_record_details,
     widened_records,
 )
+from .localized import text_keys, write_texts
 from .placement import is_city_level
 from .trips import owned_trip
 from .visibility import make_private
@@ -101,7 +102,7 @@ def list_areas(
     if q or limit is not None or offset:
         statement = statement.order_by(Area.id)
     if q:
-        statement = statement.where(contains(Area.label, q))
+        statement = statement.where(or_(contains(Area.label_nl, q), contains(Area.label_en, q)))
     if limit is not None:
         statement = statement.limit(limit)
     return list(session.scalars(statement.offset(offset)))
@@ -109,10 +110,11 @@ def list_areas(
 
 def save_area(session: Session, subject: str, trip_id: Identifier, payload: AreaInput) -> Area:
     """Create an owner-selected area without treating it as a visit."""
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     if (payload.latitude is None) != (payload.longitude is None):
         raise Refusal("Supply both coordinates or neither", code="supply_both_coordinates_or_neither")
-    area = Area(trip_id=trip.id, **payload.model_dump())
+    area = Area(trip_id=trip.id, **payload.model_dump(exclude=text_keys("label")))
+    write_texts(area, ("label",), payload, trip.content_language)
     session.add(area)
     session.flush()
     return area
@@ -120,10 +122,12 @@ def save_area(session: Session, subject: str, trip_id: Identifier, payload: Area
 
 def update_area(session: Session, subject: str, trip_id: Identifier, area_id: Identifier, payload: AreaUpdate) -> Area:
     """Edit an owner's area, for example to add its time zone."""
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     area = owned_area(session, trip.id, area_id)
-    values = payload.model_dump(exclude_unset=True)
-    if "label" in values and values["label"] is None:
+    values = payload.model_dump(exclude_unset=True, exclude=text_keys("label"))
+    named = area.label is not None
+    write_texts(area, ("label",), payload, trip.content_language)
+    if named and area.label is None:
         raise Refusal("label is required", code="missing", field="label")
     for field, value in values.items():
         setattr(area, field, value)

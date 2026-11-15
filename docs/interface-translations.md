@@ -15,7 +15,13 @@ use the translated operation fallback; raw server/provider/JavaScript diagnostic
 and submitted values are never interface messages. See [API errors](api-errors.md).
 
 Never translate authored titles, Markdown, captions, alt text, filenames, places,
-packing names/categories or templates. App-created defaults and snippets use the
+packing names/categories or templates. The text a visitor can receive may be *written* in both languages by the
+owner (`<field>_nl`, `<field>_en`, stored as two texts; see [the domain model](domain-model.md)); the application
+still never translates it itself. A visitor gets the version in their interface language and, where the owner
+wrote only the other one, that text unchanged with a `<field>_lang` marker, so the page sets `lang` on the element
+and a screen reader uses the right voice. The visitor document is requested in the interface language
+(`?lang=nl|en`) and fetched again when it changes; the owner's own record text is never switched by the interface
+locale. App-created defaults and snippets use the
 locale only at creation/insertion. Never recognize saved authored text by matching
 it to a default. Keep ISO input values, endpoint timezones, date precision, numeric
 payloads and integer grams unchanged. Display formatting uses `locale.tsx`/Day.js.

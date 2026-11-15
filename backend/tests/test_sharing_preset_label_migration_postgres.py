@@ -19,14 +19,12 @@ from app.models import (
     AuditEvent,
     AuditEventKind,
     AuditTargetType,
-    Collection,
     CollectionAuditEvent,
     CollectionMember,
-    LinkState,
     PublicSurface,
     ShareLink,
-    Trip,
 )
+from tests import legacy_rows
 
 PREVIOUS = "021_alternative_groups"
 TABLES = ("public_surfaces", "share_links", "collection_members")
@@ -66,12 +64,8 @@ SCOPES = {
 def _seed(engine) -> dict[str, str]:
     """A trip with every audience kind at the previous revision, whose scopes the migration must not touch."""
     with Session(engine) as session:
-        trip = Trip(owner_subject="owner-1", title="Exampleland 2054")
-        session.add(trip)
-        session.flush()
-        collection = Collection(owner_subject="owner-1", label="Family", state=LinkState.DRAFT)
-        session.add(collection)
-        session.flush()
+        trip = legacy_rows.trip(session, "Exampleland 2054", "owner-1")
+        collection = legacy_rows.collection(session, "Family", "owner-1")
         # Raw SQL: the models describe the head schema, which has the label columns this revision adds.
         ids = {"trip": trip.id, "link": uuid4().hex, "collection": collection.id, "member": uuid4().hex}
         for statement, values in (

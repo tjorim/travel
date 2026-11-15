@@ -1,6 +1,6 @@
 # Trip Export Format
 
-Schema `travel/trip-export@2`. Implements [#119](https://github.com/tjorim/travel/issues/119)
+Schema `travel/trip-export@3`. Implements [#119](https://github.com/tjorim/travel/issues/119)
 under owner decision 2026-11-01: **JSON records only**, no files.
 
 `GET /api/trips/{trip_id}/export` (owner session or token, like every owner route)
@@ -14,7 +14,7 @@ is "Export trip data (JSON)" in the trip's details dialog.
 
 ```json
 {
-  "schema_version": "travel/trip-export@2",
+  "schema_version": "travel/trip-export@3",
   "exported_at": "2054-05-01T09:00:00+00:00",
   "trip": {},
   "areas": [], "locations": [], "visits": [], "stays": [], "routes": [],
@@ -72,6 +72,17 @@ the array order (or `starts_on`, `start_time` and `created_at`) instead.
 `travel/trip-export@2` (#386), the name a visit or stay already uses for its own cap on the date a visitor
 sees; the same version raise as the visit `position` removal covers it. A consumer that read
 `travel_updates[].date_precision` reads `share_date_precision` instead (same values: `day`, `month`, `year`).
+
+Authored text is exported in both languages (#376), so `travel/trip-export@3` replaced the single field by two:
+`trip.title`, `trip.summary`, `visits[].title` and `visits[].summary`, `travel_updates[].title` and `.body`,
+`areas[].label`, `locations[].label`, `routes[].label` and `media_derivatives[].caption` and `.alt_text` became
+`<field>_nl` and `<field>_en` (null where that language is empty; neither is the original), and `trip` gained
+`content_language` (`nl` or `en`), the language the owner's plain field name stands for. A consumer that read
+`title` reads `title_<content_language>` and falls back to the other language, as the application does (the
+trip's `title`, an update's `body` and the rest follow the same rule). An empty update body is now null in both
+languages. No importer exists, so no earlier version has to be accepted yet; one must read `@2` by moving each
+single field into `<field>_nl` and setting `content_language` to `nl`. Collections hold no trip and are not
+exported.
 
 `travel_updates[].local_date` is the update's calendar day in its zone, and `travel_updates[].timezone` is that
 zone (the area's, else the zone of the trip's nearest dated stay or visit, else `UTC`; see

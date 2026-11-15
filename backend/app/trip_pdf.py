@@ -19,6 +19,7 @@ from sqlalchemy import String, cast, event, func, select
 from sqlalchemy.orm import Session
 
 from .access import sharing_blocker
+from .content_language import resolve
 from .export import ROUTE, STAY, TRAVEL_UPDATE, VISIT, _default, _record
 from .models import (
     Base,
@@ -111,10 +112,24 @@ def check_budget(session: Session, trip_id: str) -> None:
         if rows > MAX_ROWS or chars > MAX_TEXT:
             raise HTTPException(413, "PDF input limit exceeded")
     trip_size = session.scalar(
-        select(func.length(Trip.title) + func.coalesce(func.length(Trip.summary), 0)).where(Trip.id == trip_id)
+        select(
+            func.coalesce(func.length(Trip.title_nl), 0)
+            + func.coalesce(func.length(Trip.title_en), 0)
+            + func.coalesce(func.length(Trip.summary_nl), 0)
+            + func.coalesce(func.length(Trip.summary_en), 0)
+        ).where(Trip.id == trip_id)
     )
     if (trip_size or 0) + chars > MAX_TEXT:
         raise HTTPException(413, "PDF input limit exceeded")
+
+
+def _read(row: Any, columns: tuple[str, ...], locale: str) -> dict[str, Any]:
+    """An owner record for the PDF: each text field in the PDF's language, else the other (``app.content_language``)."""
+    record = _record(row, columns)
+    for key in [name for name in record if name.endswith("_nl")]:
+        base = key.removesuffix("_nl")
+        record[base] = resolve(record.pop(key), record.pop(f"{base}_en", None), locale)
+    return record
 
 
 def pdf_data(session: Session, trip: Trip, request: PdfRequest) -> tuple[dict, dict]:
@@ -146,7 +161,10 @@ def pdf_data(session: Session, trip: Trip, request: PdfRequest) -> tuple[dict, d
                 raise HTTPException(404, "Audience not found")
             scope = link.scope
         data = render_projection(
-            trip, scope, "travel/public-trip@1" if request.audience == "public" else "travel/unlisted-trip@1"
+            trip,
+            scope,
+            "travel/public-trip@1" if request.audience == "public" else "travel/unlisted-trip@1",
+            request.locale,
         )
         for media in data["media"]:
             if "image" in media:
@@ -156,20 +174,20 @@ def pdf_data(session: Session, trip: Trip, request: PdfRequest) -> tuple[dict, d
     else:
         spans = zone_spans(trip)
         data = {
-            "title": trip.title,
-            "summary": trip.summary,
+            "title": resolve(trip.title_nl, trip.title_en, request.locale),
+            "summary": resolve(trip.summary_nl, trip.summary_en, request.locale),
             "dates": {"starts_on": trip.starts_on, "ends_on": trip.ends_on},
             "updates": [
                 # The owner's copy names the local day too, the one the audience views show.
-                _record(row, TRAVEL_UPDATE) | {"story_date": update_day(row, spans)}
+                _read(row, TRAVEL_UPDATE, request.locale) | {"story_date": update_day(row, spans)}
                 for row in sorted(trip.travel_updates, key=travel_update_order_key)
             ],
-            "visits": [_record(row, VISIT) for row in trip.visits],
-            "stays": [_record(row, STAY) for row in trip.stays],
-            "routes": [_record(row, ROUTE) for row in trip.routes],
+            "visits": [_read(row, VISIT, request.locale) for row in trip.visits],
+            "stays": [_read(row, STAY, request.locale) for row in trip.stays],
+            "routes": [_read(row, ROUTE, request.locale) for row in trip.routes],
             "places": [
                 {
-                    "label": row.label,
+                    "label": resolve(row.label_nl, row.label_en, request.locale),
                     "notes": row.notes,
                     "address_line1": row.address_line1,
                     "address_line2": row.address_line2,
@@ -187,11 +205,19 @@ def pdf_data(session: Session, trip: Trip, request: PdfRequest) -> tuple[dict, d
         for item in trip.media_derivatives:
             if item.media_asset.media_kind == MediaKind.PHOTO and sharing_blocker("media_derivative", item) is None:
                 identifier = local_id("media_derivative", item)
-                data["media"].append({"id": identifier, "caption": item.caption, "alt_text": item.alt_text})
+                data["media"].append(
+                    {
+                        "id": identifier,
+                        "caption": resolve(item.caption_nl, item.caption_en, request.locale),
+                        "alt_text": resolve(item.alt_text_nl, item.alt_text_en, request.locale),
+                    }
+                )
                 photos[identifier] = item.object
     if request.view == "private":
-        areas = {area.id: area.label for area in trip.areas}
-        locations = {location.id: location.label for location in trip.locations}
+        areas = {area.id: resolve(area.label_nl, area.label_en, request.locale) for area in trip.areas}
+        locations = {
+            location.id: resolve(location.label_nl, location.label_en, request.locale) for location in trip.locations
+        }
         for section in ("updates", "visits", "stays", "routes"):
             for row in data[section]:
                 for key, target in (

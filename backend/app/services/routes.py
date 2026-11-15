@@ -16,6 +16,7 @@ from ..document.service import trip_documents
 from ..errors import RecordNotFound, Refusal
 from ..models import ROUTE_ORDER, Area, Location, PlanningStatus, Route, RouteDocumentAsset, Trip, Visibility
 from ..schemas import Identifier, RouteCreate, RouteUpdate
+from .localized import text_keys, write_texts
 from .placement import resolve_place, selected_area
 from .trips import owned_trip
 
@@ -144,7 +145,7 @@ def get_route(session: Session, subject: str, trip_id: Identifier, route_id: Ide
 
 
 def create_route(session: Session, subject: str, trip_id: Identifier, payload: RouteCreate) -> Route:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     departs_at = arrives_at = None
     if payload.departs_at is not None and payload.arrives_at is not None:
         departs_at = endpoint_instant(payload.departs_at, payload.departure_timezone)
@@ -167,6 +168,7 @@ def create_route(session: Session, subject: str, trip_id: Identifier, payload: R
         geometry=payload.geometry.model_dump() if payload.geometry is not None else None,
         **payload.model_dump(
             exclude={
+                *text_keys("label"),
                 "departure_area_id",
                 "arrival_area_id",
                 "departure_location",
@@ -179,6 +181,7 @@ def create_route(session: Session, subject: str, trip_id: Identifier, payload: R
             }
         ),
     )
+    write_texts(route, ("label",), payload, trip.content_language)
     settle_departure_day(route, payload.departs_on, payload.departs_on is not None)
     session.add(route)
     session.flush()
@@ -210,7 +213,7 @@ def _update_end(session: Session, trip: Trip, route: Route, payload: RouteUpdate
 def update_route(
     session: Session, subject: str, trip_id: Identifier, route_id: Identifier, payload: RouteUpdate
 ) -> Route:
-    trip = owned_trip(session, trip_id, subject)
+    trip = owned_trip(session, trip_id, subject, lock=True)
     route = owned_route(session, trip, route_id)
     _update_end(session, trip, route, payload, "departure")
     _update_end(session, trip, route, payload, "arrival")
@@ -229,6 +232,7 @@ def update_route(
     values = payload.model_dump(
         exclude_unset=True,
         exclude={
+            *text_keys("label"),
             "departure_area_id",
             "arrival_area_id",
             "departure_location",
@@ -238,6 +242,7 @@ def update_route(
             "geometry",
         },
     )
+    write_texts(route, ("label",), payload, trip.content_language)
     if "geometry" in payload.model_fields_set:
         route.geometry = payload.geometry.model_dump() if payload.geometry is not None else None
     for required in ("mode", "status"):

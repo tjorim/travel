@@ -15,6 +15,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from .access import COLLECTIONS, find_record, is_delivered, sharing_blocker
+from .content_language import DEFAULT_LANGUAGE, ContentLanguage, pick
 from .errors import ServiceError
 from .exclusions import EXCLUDE_KEY, hidden_records, is_excludable, stored_exclusions
 from .markdown import markdown_text, render_inline, render_markdown
@@ -66,15 +67,39 @@ def _utc_instant(value: datetime) -> datetime:
     return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
-def _share_place(place: Area | None, shared_areas: set[str] | None = None) -> ProjectionArea | None:
+def visitor_text(record: Any, field: str, language: ContentLanguage | str) -> dict[str, Any]:
+    """One authored text as a visitor reads it: ``{field: text}``, plus ``{field_lang: code}`` when the text is in
+    the other language because the requested one is empty (``app.content_language``). Both keys are left to the
+    projection model as set values, so a text in the requested language carries no marker at all."""
+    text, found = pick(getattr(record, f"{field}_nl"), getattr(record, f"{field}_en"), language)
+    return {field: text} | ({f"{field}_lang": found.value} if found is not None and found != language else {})
+
+
+def _first_text(candidates: list[tuple[Any, str]], field: str, language: ContentLanguage | str) -> dict[str, Any]:
+    """The first of several records' texts that exists (a visit goes by its own title, else its location's name,
+    else its area's), with the language marker of the one used."""
+    for record, name in candidates:
+        if record is not None:
+            found = visitor_text(record, name, language)
+            if found[name] is not None:
+                return {field: found[name]} | (
+                    {f"{field}_lang": found[f"{name}_lang"]} if f"{name}_lang" in found else {}
+                )
+    return {field: None}
+
+
+def _share_place(
+    place: Area | None, shared_areas: set[str] | None = None, language: ContentLanguage | str | None = None
+) -> ProjectionArea | None:
     """Embed only an area's deliberately authored safe fields."""
     if place is None:
         return None
+    language = language or place.content_language
     # An area the audience receives itself shows its point; one only embedded in a record shows none.
     shared = shared_areas is None or place.id in shared_areas
     point = shared and place.latitude is not None and place.longitude is not None
     return ProjectionArea(
-        label=place.label,
+        **visitor_text(place, "label", language),
         country_code=place.country_code,
         region=place.region,
         latitude=round(place.latitude, 2) if point and place.latitude is not None else None,
@@ -82,19 +107,22 @@ def _share_place(place: Area | None, shared_areas: set[str] | None = None) -> Pr
     )
 
 
-def _share_shared_place(place: Area | Location, identifier: str) -> ProjectionPlace:
+def _share_shared_place(
+    place: Area | Location, identifier: str, language: ContentLanguage | str | None = None
+) -> ProjectionPlace:
     """A shared area (its label and region) or location (its public name).
 
     A location shows its owner-chosen public name, city, country and point. Its
     address is added only when the owner chose to share it. Its notes, provider
     ids and display name (which usually contains the address) are never shown.
     """
+    language = language or place.content_language
     if isinstance(place, Area):
-        area = _share_place(place)
+        area = _share_place(place, None, language)
         assert area is not None
         return ProjectionPlace(
             id=identifier,
-            label=area.label,
+            **visitor_text(place, "label", language),
             country_code=area.country_code,
             region=area.region,
             latitude=area.latitude,
@@ -112,7 +140,7 @@ def _share_shared_place(place: Area | Location, identifier: str) -> ProjectionPl
         values["address"] = ProjectionAddress(**{key: value for key, value in address.items() if value})
     return ProjectionPlace(
         id=identifier,
-        label=place.label,
+        **visitor_text(place, "label", language),
         country_code=place.country_code,
         region=place.locality,
         latitude=place.latitude,
@@ -125,10 +153,12 @@ def _embedded_location(location: Location | None, context: dict[str, Any]) -> Pr
     """The location of an update or stay, only when this audience receives that location."""
     if location is None or location.id not in context["locations"]:
         return None
-    return _share_shared_place(location, local_id("location", location))
+    return _share_shared_place(location, local_id("location", location), context["language"])
 
 
-def _share_route_map_point(place: Location | None, mode: str) -> ProjectionRoutePoint | None:
+def _share_route_map_point(
+    place: Location | None, mode: str, language: ContentLanguage | str
+) -> ProjectionRoutePoint | None:
     """A route end on the map, only when that location is itself shared.
 
     A shared location always has a label (``sharing_blocker`` refuses one without), so a labelless point is never
@@ -136,7 +166,7 @@ def _share_route_map_point(place: Location | None, mode: str) -> ProjectionRoute
     if place is None or not place.label or place.latitude is None or place.longitude is None:
         return None
     return ProjectionRoutePoint(
-        label=place.label,
+        **visitor_text(place, "label", language),
         country_code=place.country_code,
         latitude=place.latitude,
         longitude=place.longitude,
@@ -293,8 +323,9 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
     field added here without being declared there is refused. The document keeps carrying plain dictionaries."""
     record: ProjectionRecord
     values: dict[str, Any]
+    language = context["language"]
     if kind in {"area", "location"}:
-        record = _share_shared_place(item, identifier)
+        record = _share_shared_place(item, identifier, language)
     elif kind == "visit":
         precision = effective_precision(own_value(item), context["date_precision"])
         shared_location = _embedded_location(item.location, context)
@@ -310,12 +341,17 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
                 values["timezone"] = item.area.timezone
         if shared_location:
             values["location"] = shared_location
+        summary = visitor_text(item, "summary", language)
         record = ProjectionVisit(
             id=identifier,
-            title=item.title or (shared_location.label if shared_location else None) or item.area.label,
-            summary=item.summary,
-            summary_html=render_markdown(item.summary),
-            place=_share_place(item.area, context["areas"]),
+            **_first_text(
+                [(item, "title"), (item.location if shared_location else None, "label"), (item.area, "label")],
+                "title",
+                language,
+            ),
+            **summary,
+            summary_html=render_markdown(summary["summary"]),
+            place=_share_place(item.area, context["areas"], language),
             date_precision=DatePrecision(precision),
             **values,
         )
@@ -343,10 +379,10 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
                     type=item.geometry.get("type"), coordinates=item.geometry.get("coordinates")
                 )
         departure = _share_route_map_point(
-            item.departure_location if item.departure_location_id in locations else None, item.mode.value
+            item.departure_location if item.departure_location_id in locations else None, item.mode.value, language
         )
         arrival = _share_route_map_point(
-            item.arrival_location if item.arrival_location_id in locations else None, item.mode.value
+            item.arrival_location if item.arrival_location_id in locations else None, item.mode.value, language
         )
         if departure or arrival:
             values["map"] = ProjectionRouteMap(departure=departure, arrival=arrival)
@@ -354,9 +390,9 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
             id=identifier,
             mode=item.mode,
             status=item.status,
-            label=item.label,
-            departure=_share_place(item.departure_area, context["areas"]),
-            arrival=_share_place(item.arrival_area, context["areas"]),
+            **visitor_text(item, "label", language),
+            departure=_share_place(item.departure_area, context["areas"], language),
+            arrival=_share_place(item.arrival_area, context["areas"], language),
             carrier=item.carrier,
             service_reference=item.service_reference,
             **values,
@@ -368,8 +404,8 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
             values["location"] = location
         record = ProjectionStay(
             id=identifier,
-            title=item.area.label,
-            place=_share_place(item.area, context["areas"]),
+            **_first_text([(item.area, "label")], "title", language),
+            place=_share_place(item.area, context["areas"], language),
             date_precision=DatePrecision(precision),
             starts_on=_safe_date(item.check_in_date, precision),
             ends_on=_safe_date(item.check_out_date, precision),
@@ -382,14 +418,18 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
         values = {}
         if location := _embedded_location(item.location, context):
             values["location"] = location
+        body = visitor_text(item, "body", language)
+        # An update without text in either language (which no audience is delivered, see ``sharing_blocker``) is
+        # still an empty text, never a missing one: the model requires a string.
+        body["body"] = body["body"] or ""
         record = ProjectionUpdate(
             id=identifier,
-            title=item.title,
-            body=item.body,
-            body_html=render_markdown(item.body),
+            **visitor_text(item, "title", language),
+            **body,
+            body_html=render_markdown(body["body"]),
             date_precision=DatePrecision(precision),
             story_date=_safe_date(update_day(item, context["zone_spans"]), precision),
-            place=_share_place(item.area, context["areas"]),
+            place=_share_place(item.area, context["areas"], language),
             **values,
         )
     elif kind == "media_derivative":
@@ -406,11 +446,12 @@ def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> d
         )
         if item.travel_update_id in context["updates"]:
             values["update"] = context["updates"][item.travel_update_id]
+        caption = visitor_text(item, "caption", language)
         record = ProjectionMedia(
             id=identifier,
-            caption=item.caption,
-            caption_html=render_inline(item.caption),
-            alt_text=item.alt_text,
+            **caption,
+            caption_html=render_inline(caption["caption"]),
+            **visitor_text(item, "alt_text", language),
             width=item.width,
             height=item.height,
             focal_x=item.focal_x,
@@ -461,10 +502,18 @@ def _cover(trip: Trip, received: list[MediaDerivative]) -> str | None:
     return None
 
 
-def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
-    """Render one complete public or unlisted document from its live scope."""
+def render_projection(
+    trip: Trip, scope: dict, schema_version: str, language: ContentLanguage | str | None = None
+) -> dict:
+    """Render one complete public or unlisted document from its live scope.
+
+    ``language`` is the visitor's language (``nl`` or ``en``): each authored text is delivered in it, else in the
+    other language, and an item whose text is in the other language carries ``<field>_lang`` with that code. Without
+    one the trip's own content language is the requested one."""
+    language = ContentLanguage(language or trip.content_language or DEFAULT_LANGUAGE)
     records = delivered(trip, scope)
     context = {
+        "language": language,
         "updates": {item.id: local_id("travel_update", item) for item in records["travel_update"]},
         "locations": {item.id for item in records["location"]},
         "areas": {item.id for item in records["area"]},
@@ -475,11 +524,14 @@ def render_projection(trip: Trip, scope: dict, schema_version: str) -> dict:
     }
     # Markdown fields carry their source, sanitized HTML for display, and, for
     # the trip summary shown on cards, a one-line plain-text preview.
-    summary = trip.summary if scope.get("trip", {}).get("summary", True) else None
+    trip_fields = scope.get("trip", {})
+    title = visitor_text(trip, "title", language) if trip_fields.get("title", True) else {"title": None}
+    summary_fields = visitor_text(trip, "summary", language) if trip_fields.get("summary", True) else {"summary": None}
+    summary = summary_fields["summary"]
     projection: dict[str, Any] = {
         "schema_version": schema_version,
-        "title": trip.title if scope.get("trip", {}).get("title", True) else None,
-        "summary": summary,
+        **title,
+        **summary_fields,
         "summary_html": render_markdown(summary),
         "summary_text": markdown_text(summary),
         "dates": shared_trip_dates(trip, scope),

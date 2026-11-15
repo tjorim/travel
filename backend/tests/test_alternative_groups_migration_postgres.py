@@ -20,14 +20,13 @@ from app.models import (
     AlternativeGroup,
     AlternativeGroupKind,
     AlternativeGroupMember,
-    Area,
     AuditEvent,
     AuditEventKind,
     AuditTargetType,
     PlanningStatus,
     Stay,
-    Trip,
 )
+from tests import legacy_rows
 
 
 @pytest.fixture
@@ -56,12 +55,8 @@ def database(monkeypatch):
 
 def _seed(engine) -> dict[str, str]:
     with Session(engine) as session:
-        trip = Trip(owner_subject="owner-1", title="Exampleland 2054")
-        session.add(trip)
-        session.flush()
-        area = Area(trip_id=trip.id, label="Tainan", country_code="TW")
-        session.add(area)
-        session.flush()
+        trip = legacy_rows.trip(session, "Exampleland 2054", "owner-1")
+        area = legacy_rows.area(session, trip.id, "Tainan", country_code="TW")
         stays = [
             Stay(
                 trip_id=trip.id,

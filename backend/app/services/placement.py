@@ -1,11 +1,12 @@
 """Where a record is: the area, and optionally the location, that a route end or a visit points at."""
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from ..errors import Refusal
 from ..models import Area, Location
 from ..schemas import Identifier, LocationInput
+from .localized import text_keys, trip_language, write_texts
 
 
 def selected_area(session: Session, trip_id: Identifier, area_id: Identifier) -> Area:
@@ -26,13 +27,16 @@ def area_for_location(session: Session, trip_id: Identifier, location: Location)
     and rename in the owner UI."""
     name = (location.locality or location.admin_area or "").strip()
     fallback = not name
-    named = Area.label.is_(None) if fallback else func.lower(Area.label) == name.lower()
+    named = (
+        Area.label_nl.is_(None) & Area.label_en.is_(None)
+        if fallback
+        else or_(func.lower(Area.label_nl) == name.lower(), func.lower(Area.label_en) == name.lower())
+    )
     for area in session.scalars(select(Area).where(Area.trip_id == trip_id, named)):
         if not area.country_code or not location.country_code or area.country_code == location.country_code:
             return area
     area = Area(
         trip_id=trip_id,
-        label=None if fallback else name[:120],
         country_code=location.country_code,
         region=location.admin_area if location.locality and not fallback else None,
         latitude=round(location.latitude, 2)
@@ -42,6 +46,8 @@ def area_for_location(session: Session, trip_id: Identifier, location: Location)
         if not fallback and location.latitude is not None and location.longitude is not None
         else None,
     )
+    if not fallback:
+        setattr(area, f"label_{trip_language(session, trip_id)}", name[:120])
     session.add(area)
     session.flush()
     return area
@@ -75,11 +81,17 @@ def location_from_input(session: Session, trip_id: Identifier, payload: Location
         if existing is None:
             raise Refusal("Location not found on this trip", code="location_not_found_on_this_trip")
         return existing
-    location = Location(trip_id=trip_id, **payload.model_dump(exclude={"existing_location_id", "area_id", "new_area"}))
+    language = trip_language(session, trip_id)
+    location = Location(
+        trip_id=trip_id,
+        **payload.model_dump(exclude={"existing_location_id", "area_id", "new_area"} | text_keys("label")),
+    )
+    write_texts(location, ("label",), payload, language)
     if payload.osm_element_type is not None and payload.osm_element_id is not None:
         location.osm_url = f"https://www.openstreetmap.org/{payload.osm_element_type}/{payload.osm_element_id}"
     if payload.new_area is not None:
-        location.area = Area(trip_id=trip_id, **payload.new_area.model_dump())
+        location.area = Area(trip_id=trip_id, **payload.new_area.model_dump(exclude=text_keys("label")))
+        write_texts(location.area, ("label",), payload.new_area, language)
         session.add(location.area)
         session.flush()
     elif payload.area_id is not None:

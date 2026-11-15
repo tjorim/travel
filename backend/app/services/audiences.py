@@ -26,6 +26,7 @@ from ..audience import (
     capability_editable,
 )
 from ..audit import record_audience_event, scope_fingerprint
+from ..content_language import ContentLanguage
 from ..errors import Conflict, InvalidRevision, RecordNotFound, RevisionConflict, service_error
 from ..exclusion_review import exclusion_changes, widening
 from ..models import Collection, CollectionMember, PublicSurface, ShareLink, Trip
@@ -190,10 +191,12 @@ def preview_scope(
     return trip, checked_scope(trip, audience, candidate)
 
 
-def render_document(session: Session, audience: Audience, trip: Trip, scope: dict) -> dict:
-    """The document a visitor of this audience receives for ``scope``, with the current location live location may
-    show it (only the public view and a hidden link can be shown one)."""
-    document = render_projection(trip, scope, audience.schema_version)
+def render_document(
+    session: Session, audience: Audience, trip: Trip, scope: dict, language: ContentLanguage | str | None = None
+) -> dict:
+    """The document a visitor of this audience receives for ``scope`` in ``language`` (the trip's own when none),
+    with the current location live location may show it (only the public view and a hidden link can be shown one)."""
+    document = render_projection(trip, scope, audience.schema_version, language)
     key = audience.live_location_key
     if key is not None and (positions := current_for_audience(session, trip.id, key)):
         document["current_locations"] = positions

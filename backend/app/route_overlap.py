@@ -66,16 +66,21 @@ def route_title(route: Route) -> str:
 
 
 def _about_the_journey(visit: Visit, route: Route) -> bool:
-    title, text = visit.title or "", f"{visit.title or ''} {visit.summary or ''}"
-    squashed_text, squashed_title = _squash(text), _squash(title)
+    # Every language the owner wrote counts: a Dutch route label restated by an English visit title is still a restatement.
+    titles = [title for title in (visit.title_nl, visit.title_en) if title]
+    squashed_text = _squash(
+        " ".join(text for text in (visit.title_nl, visit.title_en, visit.summary_nl, visit.summary_en) if text)
+    )
     if len(reference := _squash(route.service_reference)) >= 3 and reference in squashed_text:
         return True
     if len(carrier := _squash(route.carrier)) >= 4 and carrier in squashed_text:
         return True
-    label = _squash(route.label)
-    if len(label) >= 6 and squashed_title and (label in squashed_title or squashed_title in label):
-        return True
-    return bool(_words(title) & set(_MODE_WORDS.get(route.mode, ())))
+    for label in (_squash(route.label_nl), _squash(route.label_en)):
+        if len(label) >= 6:
+            for squashed_title in map(_squash, titles):
+                if squashed_title and (label in squashed_title or squashed_title in label):
+                    return True
+    return any(_words(title) & set(_MODE_WORDS.get(route.mode, ())) for title in titles)
 
 
 def overlapping_routes(visit: Visit, routes: Iterable[Route]) -> list[Route]:

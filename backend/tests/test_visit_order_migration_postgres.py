@@ -16,7 +16,8 @@ from sqlalchemy.orm import Session
 
 from alembic import command
 from app.config import settings
-from app.models import Area, Trip, Visit
+from app.models import Trip, Visit
+from tests import legacy_rows
 
 
 @pytest.fixture
@@ -56,12 +57,8 @@ VISITS = [
 
 def _seed(engine) -> tuple[str, str]:
     with Session(engine) as session:
-        trip = Trip(owner_subject="owner-1", title="Exampleland 2054")
-        session.add(trip)
-        session.flush()
-        area = Area(trip_id=trip.id, label="Taipei")
-        session.add(area)
-        session.flush()
+        trip = legacy_rows.trip(session, "Exampleland 2054", "owner-1")
+        area = legacy_rows.area(session, trip.id, "Taipei")
         # Raw SQL: the Visit model describes the head schema, which has no position.
         for title, position, day, at in VISITS:
             session.execute(
