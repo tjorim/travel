@@ -1,8 +1,10 @@
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
+import { ChoiceGroup } from "@/ui/ChoiceGroup";
 import { useState } from "react";
 
 import { useAuth } from "../auth-context";
+import type { ContentLanguage } from "../content-language";
 import { useLocale } from "../locale";
 import { m } from "../paraglide/messages.js";
 import type { Projection } from "../ProjectionView";
@@ -80,20 +82,31 @@ export function MemberScopeDialog({
   const adopt = (saved: PresetAppliedAudience) =>
     setScope(cloneScope((saved as CollectionMember).scope));
   const [notice, setNotice] = useFeedback<string | null>(null);
-  const [preview, setPreview] = useState<{ document: Projection; scope: ShareScope } | null>(null);
+  const [preview, setPreview] = useState<{
+    document: Projection;
+    scope: ShareScope;
+    language: ContentLanguage;
+  } | null>(null);
   const locked = collection.state === "revoked" || collection.state === "expired";
   // Saving would show an active collection's visitors more (an exclusion was removed); the owner confirms first.
   const [widening, setWidening] = useState<ExclusionWidening | null>(null);
 
-  async function showPreview() {
-    const candidate = cloneScope(scope);
+  /** The preview of the candidate scope: in the trip's own language, or in `language` once the owner asks for one. */
+  async function showPreview(language?: ContentLanguage) {
+    // Reading it in the other language shows the same candidate, not whatever the editor holds by now.
+    const candidate = language && preview ? preview.scope : cloneScope(scope);
     try {
       const document = await previewMember.mutateAsync({
         collectionId: collection.id,
         memberId: member.id,
         scope: candidate,
+        language,
       });
-      setPreview({ document: document as Projection, scope: candidate });
+      setPreview({
+        document: document as Projection,
+        scope: candidate,
+        language: language ?? trip.content_language ?? "nl",
+      });
       // The review counts the same server state as this preview, also when the scope did not change since the last one.
       void refreshFutureDisclosure();
     } catch (error) {
@@ -185,8 +198,19 @@ export function MemberScopeDialog({
               scope={preview.scope}
             />
             <p className="help">{m.sharing_preview_unsaved_note()}</p>
+            <ChoiceGroup
+              label={m.publication_preview_language_label()}
+              value={preview.language}
+              choices={[
+                { value: "nl", label: m.localized_dutch() },
+                { value: "en", label: m.localized_english() },
+              ]}
+              onChange={(next) => void showPreview(next)}
+            />
+            <p className="help">{m.publication_preview_language_hint()}</p>
             <RenderedPreview
               projection={preview.document}
+              language={preview.language}
               audience="share"
               tripId={trip.id}
               scope={preview.scope}

@@ -246,6 +246,42 @@ it("reviews what the previewed member scope shows of a trip that has not started
   expect(api.count("PUT /api/collections/c1/members/m1")).toBe(0);
 });
 
+it("previews the member in the other language from the same candidate scope", async () => {
+  api.on("POST", /\/api\/collections\/c1\/members\/m1\/preview(\?lang=\w+)?$/, () => ({
+    schema_version: "travel/unlisted-trip@1",
+    title: "Exampleland",
+  }));
+  api.on("POST", /\/api\/collections\/c1\/members\/m1\/future-disclosure$/, () => ({
+    transport: 0,
+    day_dates: 0,
+  }));
+  renderWithOwner(
+    <MemberScopeDialog
+      collection={collection("active")}
+      member={member}
+      trip={{ ...trip, content_language: "nl" } as TripSummary}
+      onClose={() => undefined}
+    />,
+  );
+  await screen.findByRole("region", { name: "Weggelaten voor dit publiek" });
+  fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
+  const languages = within(
+    await screen.findByRole("radiogroup", { name: "Taal van het voorbeeld" }),
+  );
+  // The first preview is the trip's own language: nothing is asked for.
+  expect(api.count("POST /api/collections/c1/members/m1/preview")).toBe(1);
+  expect(languages.getByRole("radio", { name: "Nederlands" }).getAttribute("aria-checked")).toBe(
+    "true",
+  );
+  fireEvent.click(languages.getByRole("radio", { name: "Engels" }));
+  await waitFor(() =>
+    expect(api.count("POST /api/collections/c1/members/m1/preview?lang=en")).toBe(1),
+  );
+  expect(api.lastBody<ShareScope>("POST /api/collections/c1/members/m1/preview?lang=en")).toEqual(
+    member.scope,
+  );
+});
+
 it("shows no review when the previewed member scope shows nothing of the future", async () => {
   api.on("POST", /\/api\/collections\/c1\/members\/m1\/preview$/, () => ({
     schema_version: "travel/unlisted-trip@1",
