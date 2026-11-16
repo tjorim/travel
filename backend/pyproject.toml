@@ -35,7 +35,7 @@ dev = [
   "pypdf==7.0.1",
   "pytest==9.2.0",
   "python-travel",
-  "ruff==0.17.4",
+  "ruff==0.17.5",
   "ty==0.0.99",
 ]
 
