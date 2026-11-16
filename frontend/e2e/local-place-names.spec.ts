@@ -62,8 +62,8 @@ for (const locale of locales) {
         exact: false,
       });
       await expect(local).toHaveValue("臺北市");
-      // The field is lang-neutral: no language is claimed for a name the app cannot read.
-      await expect(local).not.toHaveAttribute("lang");
+      // The field marks its language unknown (`lang=""`): the app cannot read the name.
+      await expect(local).toHaveAttribute("lang", "");
       await expect(local).toHaveAttribute("dir", "auto");
       await expect(dialog.getByText(message(locale, "localized_suggested_names"))).toBeVisible();
       const violations = (await new AxeBuilder({ page }).include('[role="dialog"]').analyze())
