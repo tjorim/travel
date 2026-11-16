@@ -433,6 +433,100 @@ it("keeps the edit and returns focus when the owner declines the visitor-facing 
   expect(screen.queryByRole("alert")).toBeNull();
 });
 
+it("previews a changed local name like the public name, and the review names it", async () => {
+  shareEverywhere();
+  renderWithOwner(
+    <LocationManager
+      trip={trip}
+      areas={[taipei]}
+      request={{ id: "e1", token: 1 }}
+      onNeedArea={() => undefined}
+    />,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "Bewerken" }));
+  fireEvent.change(screen.getByLabelText("Lokale naam (optioneel)"), {
+    target: { value: "河畔飯店" },
+  });
+  expect(await screen.findByText(/Lokale naam \(gelezen door publieke pagina\)/)).toBeTruthy();
+  api.failNext = review([
+    { field: "local_name", before: null, after: "河畔飯店", audiences: [publicAudience] },
+  ]);
+  fireEvent.click(screen.getByRole("button", { name: "Locatie opslaan" }));
+  const dialog = await screen.findByRole("alertdialog", {
+    name: "Bevestig wat bezoekers gaan lezen",
+  });
+  expect(within(dialog).getByText("Na: 河畔飯店")).toBeTruthy();
+  fireEvent.click(within(dialog).getByRole("button", { name: "Opslaan voor bezoekers" }));
+  await waitFor(() => expect(api.count("PATCH /api/trips/trip/locations/e1")).toBe(2));
+  expect(api.lastBody("PATCH /api/trips/trip/locations/e1")).toMatchObject({
+    local_name: "河畔飯店",
+    acknowledge_visitor_changes: true,
+  });
+});
+
+it("fills the local name from a search result and offers its Dutch and English names for the public name", async () => {
+  api = fakeApi()
+    .collection("/api/trips/trip/locations", [])
+    .value("/api/trips/trip/public-projection", {
+      trip_id: "trip",
+      surface_state: "unpublished",
+      scope: { items: [] },
+      slug: null,
+    })
+    .value("/api/trips/trip/share-links", []);
+  api.on("POST", /\/places\/search$/, () => ({
+    attribution: "© OpenStreetMap contributors",
+    attribution_url: "https://www.openstreetmap.org/copyright",
+    results: [
+      {
+        osm_element_type: "node",
+        osm_element_id: "42",
+        display_name: "Senso-ji, Asakusa, Tokyo, Japan",
+        locality: "Tokyo",
+        country_code: "JP",
+        latitude: 35.7148,
+        longitude: 139.7967,
+        local_name: "浅草寺",
+        name_nl: "Sensō-ji",
+        name_en: "Senso-ji",
+      },
+    ],
+  }));
+  renderWithOwner(
+    <LocationManager
+      trip={trip}
+      areas={[taipei]}
+      request={{ areaId: "a1", token: 7 }}
+      onNeedArea={() => undefined}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText("Zoek via OpenStreetMap"), {
+    target: { value: "Senso-ji" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Zoeken" }));
+  const found = await screen.findByRole("button", { name: /^Senso-ji, Asakusa/ });
+  expect(within(found).getByText("浅草寺").getAttribute("lang")).toBe("");
+  fireEvent.click(found);
+  const local = screen.getByLabelText("Lokale naam (optioneel)") as HTMLInputElement;
+  expect(local.value).toBe("浅草寺");
+  // Nothing was applied to the public name: the owner decides.
+  expect((screen.getByLabelText("Publieke naam (optioneel)") as HTMLInputElement).value).toBe("");
+  fireEvent.click(screen.getByRole("button", { name: "Deze namen gebruiken" }));
+  expect((screen.getByLabelText("Publieke naam (optioneel)") as HTMLInputElement).value).toBe(
+    "Sensō-ji",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Locatie opslaan" }));
+  await waitFor(() =>
+    expect(api.lastBody("POST /api/trips/trip/locations")).toMatchObject({
+      label_nl: "Sensō-ji",
+      label_en: "Senso-ji",
+      local_name: "浅草寺",
+    }),
+  );
+  // What was sent is a location: the suggestion fields are not part of it.
+  expect(api.lastBody("POST /api/trips/trip/locations")).not.toHaveProperty("name_nl");
+});
+
 it("names the areas and what moves along when the owner moves a shared location", async () => {
   shareEverywhere();
   const tainan = { ...taipei, id: "a2", label: "Tainan" } as Area;

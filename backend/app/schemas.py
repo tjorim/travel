@@ -75,6 +75,16 @@ PLAIN_TEXT = (
 )
 DUTCH_TEXT = "The Dutch text. Null or an empty string clears it; a visitor who reads Dutch gets this one."
 ENGLISH_TEXT = "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
+LOCAL_NAME = (
+    "The name of the place as written where it is (for example `東京` or `Αθήνα`): not a translation of the label, "
+    "and often not in Latin script. Used for search and navigation, and shown beside the label wherever the label "
+    "is shared; never shared without one. Null or an empty string clears it."
+)
+
+
+def blank_to_none(value: str | None) -> str | None:
+    """A name that is only whitespace is no name: it clears the field, like an empty string."""
+    return (value.strip() or None) if isinstance(value, str) else value
 
 
 def _html(source: str | None) -> str | None:
@@ -188,10 +198,13 @@ class LocationFields(InputModel):
     label: str | None = Field(default=None, max_length=120, description=PLAIN_TEXT)
     label_nl: str | None = Field(default=None, max_length=120, description=DUTCH_TEXT)
     label_en: str | None = Field(default=None, max_length=120, description=ENGLISH_TEXT)
+    local_name: str | None = Field(default=None, max_length=120, description=LOCAL_NAME)
     # The area the location belongs to. Left out, it is derived from the location's city.
     area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     # Show the address too when the location is shared. Off unless the owner chooses it.
     share_address: bool = False
+
+    _local_name = field_validator("local_name")(blank_to_none)
 
     @field_validator("osm_element_id")
     @classmethod
@@ -258,6 +271,7 @@ class LocationUpdate(InputModel):
     label: str | None = Field(default=None, max_length=120, description=PLAIN_TEXT)
     label_nl: str | None = Field(default=None, max_length=120, description=DUTCH_TEXT)
     label_en: str | None = Field(default=None, max_length=120, description=ENGLISH_TEXT)
+    local_name: str | None = Field(default=None, max_length=120, description=LOCAL_NAME)
     area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     share_address: bool | None = None
     display_name: str | None = Field(default=None, max_length=500)
@@ -301,6 +315,8 @@ class LocationUpdate(InputModel):
     )
     navigation_provider: str | None = Field(default=None, max_length=40)
     navigation_provider_place_id: str | None = Field(default=None, max_length=255)
+
+    _local_name = field_validator("local_name")(blank_to_none)
 
     @model_validator(mode="after")
     def geo_groups_are_set_or_cleared_together(self):
@@ -532,6 +548,19 @@ class PlaceSearchResult(ResponseModel):
     admin_area: str | None = None
     postal_code: str | None = None
     country_code: str | None = COUNTRY_CODE_FIELD
+    local_name: str | None = Field(
+        default=None,
+        description="The provider's own name for the place, as written where it is, when that differs from the "
+        "English name in `display_name`. Offered as `local_name`; saved only if the owner keeps it.",
+    )
+    name_nl: str | None = Field(
+        default=None,
+        description="The provider's Dutch name (`name:nl`): a suggestion for `label_nl`, never saved by itself.",
+    )
+    name_en: str | None = Field(
+        default=None,
+        description="The provider's English name (`name:en`): a suggestion for `label_en`, never saved by itself.",
+    )
     viewport_north: float | None = Field(default=None, ge=-90, le=90)
     viewport_south: float | None = Field(default=None, ge=-90, le=90)
     viewport_east: float | None = Field(default=None, ge=-180, le=180)
@@ -559,6 +588,7 @@ class AreaInput(InputModel):
     label: str | None = Field(default=None, max_length=120, description=PLAIN_TEXT)
     label_nl: str | None = Field(default=None, max_length=120, description=DUTCH_TEXT)
     label_en: str | None = Field(default=None, max_length=120, description=ENGLISH_TEXT)
+    local_name: str | None = Field(default=None, max_length=120, description=LOCAL_NAME)
     country_code: str | None = COUNTRY_CODE_FIELD
     region: str | None = Field(default=None, max_length=120)
     latitude: float | None = Field(default=None, ge=-90, le=90)
@@ -566,6 +596,7 @@ class AreaInput(InputModel):
     timezone: str | None = Field(default=None, max_length=64)
 
     _timezone = field_validator("timezone")(require_timezone)
+    _local_name = field_validator("local_name")(blank_to_none)
 
     @field_validator("latitude", "longitude")
     @classmethod
@@ -577,6 +608,7 @@ class AreaUpdate(InputModel):
     label: str | None = Field(default=None, max_length=120, description=PLAIN_TEXT)
     label_nl: str | None = Field(default=None, max_length=120, description=DUTCH_TEXT)
     label_en: str | None = Field(default=None, max_length=120, description=ENGLISH_TEXT)
+    local_name: str | None = Field(default=None, max_length=120, description=LOCAL_NAME)
     country_code: str | None = COUNTRY_CODE_FIELD
     region: str | None = Field(default=None, max_length=120)
     latitude: float | None = Field(default=None, ge=-90, le=90)
@@ -584,6 +616,7 @@ class AreaUpdate(InputModel):
     timezone: str | None = Field(default=None, max_length=64)
 
     _timezone = field_validator("timezone")(require_timezone)
+    _local_name = field_validator("local_name")(blank_to_none)
 
     @field_validator("latitude", "longitude")
     @classmethod
@@ -2052,6 +2085,11 @@ LANGUAGE_MARKER = (
     "Present only when this text is in the other language because the one the visitor asked for is empty: "
     "`nl` or `en`, so the page can set `lang` on the element."
 )
+LOCAL_NAME_SHOWN = (
+    "The name of the place as written where it is, present only beside a delivered `label` (it follows the label's "
+    "visibility) and only when the owner entered one. It is in no particular language, so the page sets no `lang` "
+    "on it."
+)
 
 
 class ProjectionRecord(BaseModel):
@@ -2082,6 +2120,7 @@ class ProjectionArea(ProjectionRecord):
 
     label: str | None
     label_lang: TextLanguage | None = Field(default=None, description=LANGUAGE_MARKER)
+    local_name: str | None = Field(default=None, description=LOCAL_NAME_SHOWN)
     country_code: str | None
     region: str | None
     latitude: float | None
@@ -2104,6 +2143,7 @@ class ProjectionPlace(ProjectionRecord):
     id: str
     label: str | None
     label_lang: TextLanguage | None = Field(default=None, description=LANGUAGE_MARKER)
+    local_name: str | None = Field(default=None, description=LOCAL_NAME_SHOWN)
     country_code: str | None
     region: str | None
     latitude: float | None
@@ -2194,6 +2234,7 @@ class ProjectionRoutePoint(ProjectionRecord):
 
     label: str
     label_lang: TextLanguage | None = Field(default=None, description=LANGUAGE_MARKER)
+    local_name: str | None = Field(default=None, description=LOCAL_NAME_SHOWN)
     country_code: str | None
     latitude: float
     longitude: float

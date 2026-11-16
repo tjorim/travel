@@ -3,6 +3,7 @@ import { AuthoredText } from "../../content-language";
 import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
+import { LocalName } from "../../LocalName";
 import { m } from "../../paraglide/messages.js";
 import { DeleteConfirmation } from "../../RecordDialog";
 import type { Area, Trip } from "../../api-types";
@@ -62,6 +63,11 @@ export function AreaDetails({
         <AuthoredText as="h3" record={selected} field="label">
           {selected.label}
         </AuthoredText>
+        {selected.local_name && (
+          <p>
+            {m.areas_local_name()}: <LocalName name={selected.local_name} />
+          </p>
+        )}
         <p>{areaSummary(selected)}</p>
         {selected.latitude !== null && selected.longitude !== null && (
           <p>

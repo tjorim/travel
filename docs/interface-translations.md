@@ -28,7 +28,12 @@ choice (the language control) wins, is remembered, and makes the page ask for th
 while keeping what it shows. Index pages ask for the interface language. The owner's own record text is never
 switched by the interface locale, and the owner's lists and details mark each authored text with its language the
 same way (`AuthoredText`, `lang` from the record's `<field>_nl`/`<field>_en` and the trip's content language).
-An owner editor shows the two versions of a field behind a Dutch | English switch (`LocalizedField`), and a new
+A place's **local name** (`local_name`, #376) is not a third language version: it is the name as written where the
+place is, in a language the application cannot know, so no `lang` is set on it anywhere (the input, the owner's
+lists and details, the place-search results, the visitor page; `LocalName` and `LocalNameField` add `dir="auto"`
+only, and the input turns off spell checking). The provider's own Dutch and English names are the exception: they
+come from the tags `name:nl` and `name:en`, so they carry `lang="nl"` and `lang="en"` where they are offered
+(`SuggestedNamesNotice`). An owner editor shows the two versions of a field behind a Dutch | English switch (`LocalizedField`), and a new
 trip or collection is written in the interface language it was opened in. App-created defaults and snippets use the
 locale only at creation/insertion. Never recognize saved authored text by matching
 it to a default. Keep ISO input values, endpoint timezones, date precision, numeric

@@ -34,6 +34,7 @@ const area = (id: string, label: string): Area => ({
   label,
   label_nl: label,
   label_en: null,
+  local_name: null,
   visibility: "private",
   country_code: "TW",
   region: null,

@@ -1,10 +1,11 @@
 import { m } from "../../paraglide/messages.js";
-import type { Area } from "../../api-types";
+import type { Area, LocationInput } from "../../api-types";
 import type { FormContext } from "../../forms/form-context";
 
 export type Values = {
   labelNl: string;
   labelEn: string;
+  localName: string;
   countryCode: string;
   region: string;
   latitude: string;
@@ -14,6 +15,7 @@ export type Values = {
 export const blank = (): Values => ({
   labelNl: "",
   labelEn: "",
+  localName: "",
   countryCode: "",
   region: "",
   latitude: "",
@@ -23,6 +25,7 @@ export const blank = (): Values => ({
 export const fromArea = (area: Area): Values => ({
   labelNl: area.label_nl ?? "",
   labelEn: area.label_en ?? "",
+  localName: area.local_name ?? "",
   countryCode: area.country_code ?? "",
   region: area.region ?? "",
   latitude: area.latitude?.toString() ?? "",
@@ -33,6 +36,7 @@ export const serverFields = {
   label: "labelNl",
   label_nl: "labelNl",
   label_en: "labelEn",
+  local_name: "localName",
   country_code: "countryCode",
   region: "region",
   latitude: "latitude",
@@ -61,6 +65,18 @@ export const knownTimeZone = ({ value }: { value: string }) => {
     return m.areas_unknown_time_zone_choose_one_from_the_suggestions;
   }
 };
+/** The name an area takes from a place-search result: its city, else its region, else the whole display name. */
+export const areaLabelOf = (result: LocationInput) =>
+  result.locality ?? result.admin_area ?? result.display_name ?? "";
+/**
+ * Whether a search result is the city or region itself, not something inside it: the provider's own name for the
+ * place (the first part of its English display name) is the name the area takes. Only then do the result's local
+ * name and Dutch and English names describe the area.
+ */
+export function namesTheArea(result: LocationInput): boolean {
+  const own = result.display_name?.split(",")[0]?.trim().toLowerCase();
+  return Boolean(own) && areaLabelOf(result).trim().toLowerCase() === own;
+}
 export const areaCoordinate = (value: number) => (Math.round(value * 100) / 100).toString();
 export const areaSummary = (area: Area) =>
   [area.region, area.country_code, area.timezone].filter(Boolean).join(" · ") ||

@@ -8,6 +8,7 @@ export type Values = {
   displayName: string;
   labelNl: string;
   labelEn: string;
+  localName: string;
   addressLine1: string;
   addressLine2: string;
   locality: string;
@@ -22,6 +23,7 @@ export const blank = (areaId = ""): Values => ({
   displayName: "",
   labelNl: "",
   labelEn: "",
+  localName: "",
   addressLine1: "",
   addressLine2: "",
   locality: "",
@@ -36,6 +38,7 @@ export const fromPlace = (place: Location): Values => ({
   displayName: place.display_name ?? "",
   labelNl: place.label_nl ?? "",
   labelEn: place.label_en ?? "",
+  localName: place.local_name ?? "",
   addressLine1: place.address_line1 ?? "",
   addressLine2: place.address_line2 ?? "",
   locality: place.locality ?? "",
@@ -123,6 +126,7 @@ export const serverFields = {
   label: "labelNl",
   label_nl: "labelNl",
   label_en: "labelEn",
+  local_name: "localName",
   address_line1: "addressLine1",
   address_line2: "addressLine2",
   locality: "locality",
@@ -138,6 +142,7 @@ export type RecipientState = "loading" | "failed" | "ready";
 /** A field visitors read, as the API names it: what the location editor and the server's review both list. */
 export type VisitorField =
   | "label"
+  | "local_name"
   | "locality"
   | "country_code"
   | "address_line1"
@@ -161,6 +166,7 @@ export type VisitorChange = {
 };
 const VISITOR_FIELDS: VisitorField[] = [
   "label",
+  "local_name",
   "locality",
   "country_code",
   "address_line1",
@@ -200,6 +206,7 @@ export function visitorReview(error: unknown): VisitorChange[] | null {
 
 const FIELD_LABELS: Record<VisitorField, () => string> = {
   label: m.locations_public_name_label,
+  local_name: m.locations_local_name,
   locality: m.locations_city,
   country_code: m.locations_country_code,
   address_line1: m.locations_address_first_line,
@@ -228,6 +235,7 @@ function visitorText(values: Values): Partial<Record<VisitorField, string | null
   const shown: Partial<Record<VisitorField, string | null>> = {
     // Either language is read by some visitor, so a change to either is a change to the name.
     label: [optional(values.labelNl), optional(values.labelEn)].join("\u0000"),
+    local_name: optional(values.localName),
     locality: optional(values.locality),
     country_code: optional(values.countryCode)?.toUpperCase() ?? null,
   };

@@ -248,7 +248,11 @@ MCP_INSTRUCTIONS = (
     "language is the original. The plain name (title) is the text in the trip's content_language and writing it "
     "alone sets only that language; where one language is empty the other is shown, per record and per field. "
     "Clear a language with null or an empty string; a trip's and an update's title needs at least one language. "
-    "Nothing is translated automatically: write each language yourself or leave it empty."
+    "Nothing is translated automatically: write each language yourself or leave it empty. An area and a location "
+    "can also hold local_name, the place's name as written where it is (not a translation, often not in Latin "
+    "script): search_places offers it, with the provider's Dutch and English names as name_nl and name_en "
+    "suggestions, but nothing is saved until you send it. It is searched, used for navigation without a point, and "
+    "shown to a visitor only beside a label that is shared."
 )
 
 

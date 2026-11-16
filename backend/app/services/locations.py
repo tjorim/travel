@@ -74,7 +74,10 @@ def list_locations(
         statement = statement.order_by(Location.id)
     if q:
         statement = statement.where(
-            contains(Location.label_nl, q) | contains(Location.label_en, q) | contains(Location.display_name, q)
+            contains(Location.label_nl, q)
+            | contains(Location.label_en, q)
+            | contains(Location.local_name, q)
+            | contains(Location.display_name, q)
         )
     if limit is not None:
         statement = statement.limit(limit)
@@ -229,6 +232,7 @@ def update_location(
         location.share_address = payload.share_address
     for field in (
         "display_name",
+        "local_name",
         "address_line1",
         "address_line2",
         "locality",
@@ -300,14 +304,6 @@ def _referencing(session: Session, trip_id: Identifier, location_id: Identifier)
         ),
         "travel_updates": rows(TravelUpdate, TravelUpdate.location_id == location_id),
     }
-
-
-_REFERENCE_NAMES = {
-    "visits": ("bezoek", "bezoeken"),
-    "stays": ("verblijf", "verblijven"),
-    "routes": ("route", "routes"),
-    "travel_updates": ("reisupdate", "reisupdates"),
-}
 
 
 _REFERENCE_NAMES = {

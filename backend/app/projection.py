@@ -75,6 +75,16 @@ def visitor_text(record: Any, field: str, language: ContentLanguage | str) -> di
     return {field: text} | ({f"{field}_lang": found.value} if found is not None and found != language else {})
 
 
+def place_names(place: Area | Location, language: ContentLanguage | str) -> dict[str, Any]:
+    """A place's label as ``visitor_text`` delivers it, plus its local name (#376) beside it.
+
+    The local name follows the label exactly: it is delivered only where the label is, and only when the label
+    resolves to a text. A place without a delivered label shows no local name, so the name never makes a place
+    visible or readable that its label would not."""
+    names = visitor_text(place, "label", language)
+    return names | ({"local_name": place.local_name} if names["label"] is not None and place.local_name else {})
+
+
 def _first_text(candidates: list[tuple[Any, str]], field: str, language: ContentLanguage | str) -> dict[str, Any]:
     """The first of several records' texts that exists (a visit goes by its own title, else its location's name,
     else its area's), with the language marker of the one used."""
@@ -99,7 +109,7 @@ def _share_place(
     shared = shared_areas is None or place.id in shared_areas
     point = shared and place.latitude is not None and place.longitude is not None
     return ProjectionArea(
-        **visitor_text(place, "label", language),
+        **place_names(place, language),
         country_code=place.country_code,
         region=place.region,
         latitude=round(place.latitude, 2) if point and place.latitude is not None else None,
@@ -122,7 +132,7 @@ def _share_shared_place(
         assert area is not None
         return ProjectionPlace(
             id=identifier,
-            **visitor_text(place, "label", language),
+            **place_names(place, language),
             country_code=area.country_code,
             region=area.region,
             latitude=area.latitude,
@@ -140,7 +150,7 @@ def _share_shared_place(
         values["address"] = ProjectionAddress(**{key: value for key, value in address.items() if value})
     return ProjectionPlace(
         id=identifier,
-        **visitor_text(place, "label", language),
+        **place_names(place, language),
         country_code=place.country_code,
         region=place.locality,
         latitude=place.latitude,
@@ -166,7 +176,7 @@ def _share_route_map_point(
     if place is None or not place.label or place.latitude is None or place.longitude is None:
         return None
     return ProjectionRoutePoint(
-        **visitor_text(place, "label", language),
+        **place_names(place, language),
         country_code=place.country_code,
         latitude=place.latitude,
         longitude=place.longitude,

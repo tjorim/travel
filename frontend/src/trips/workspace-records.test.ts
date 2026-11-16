@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import type { Area, MediaAsset, Route, TripTask } from "../api-types";
+import type { Area, Location, MediaAsset, Route, TripTask } from "../api-types";
 import { matchesQuery, RECORDS_PER_KIND, searchRecords } from "./workspace-records";
 
 const area = (label: string) => ({ id: label, label }) as Area;
@@ -26,6 +26,23 @@ it("labels a match with its tab and block, in workspace order", () => {
     "Plan › Agenda › Naar Taipei",
     "Voorbereiden › Nog te regelen › Taipei visum",
   ]);
+});
+
+it("finds an area or a location by its local name too, without showing it", () => {
+  const found = searchRecords(
+    {
+      areas: [{ id: "a", label: "Taipei", local_name: "臺北" } as Area],
+      locations: [{ id: "l", label: "Hotel", local_name: "河畔飯店" } as Location],
+    },
+    "臺北",
+  );
+  expect(found.map((match) => match.label)).toEqual(["Plan › Gebieden en locaties › Taipei"]);
+  expect(
+    searchRecords(
+      { locations: [{ id: "l", label: "Hotel", local_name: "河畔飯店" } as Location] },
+      "河畔",
+    ),
+  ).toHaveLength(1);
 });
 
 it("ignores a list that has not loaded", () => {

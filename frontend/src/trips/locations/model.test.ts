@@ -140,3 +140,28 @@ it("reads a visitor review only from the server's 409 with that code", () => {
   ).toBeNull();
   expect(visitorReview(new Error("x"))).toBeNull();
 });
+
+it("counts a change of the local name as a change visitors read, like the public name", () => {
+  const saved = place({ label: "Hotel", local_name: "飯店" });
+  const values = fromPlace(saved);
+  expect(values.localName).toBe("飯店");
+  expect(pendingVisitorFields(saved, values)).toEqual([]);
+  expect(pendingVisitorFields(saved, { ...values, localName: "旅館" })).toEqual(["local_name"]);
+  expect(pendingVisitorFields(saved, { ...values, localName: " " })).toEqual(["local_name"]);
+  expect(blank("a1").localName).toBe("");
+});
+
+it("reads the server's review of a changed local name", () => {
+  const error = new ApiError("fallback", 409, [], {
+    code: "visitor_visible_change_needs_acknowledgement",
+    changes: [
+      {
+        field: "local_name",
+        before: null,
+        after: "飯店",
+        audiences: [{ id: "public", label: null }],
+      },
+    ],
+  });
+  expect(visitorReview(error)?.map((change) => change.field)).toEqual(["local_name"]);
+});

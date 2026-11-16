@@ -2,10 +2,12 @@ import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
 import { useLocale } from "../../locale";
+import { LocalName } from "../../LocalName";
 import { m } from "../../paraglide/messages.js";
 import type { PlaceSearchResponse, LocationInput } from "../../api-types";
 import type { UpdateDraft } from "../../capture-draft";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
+import { splitPlaceResult } from "../place-result";
 import { SuggestionAside } from "./SuggestionAside";
 
 type Gps = { latitude: number; longitude: number };
@@ -101,9 +103,14 @@ export function LocationSearch({
               className="w-full border border-travel-border bg-travel-surface text-left font-semibold text-travel-ink"
               type="button"
               key={`${result.osm_element_type}-${result.osm_element_id}`}
-              onClick={() => onSelect(result)}
+              onClick={() => onSelect(splitPlaceResult(result).location)}
             >
-              {result.display_name}
+              <span className="grid gap-0.5">
+                <span>{result.display_name}</span>
+                {result.local_name && (
+                  <LocalName name={result.local_name} className="font-normal" />
+                )}
+              </span>
             </Button>
           ))}
           <p className="help">

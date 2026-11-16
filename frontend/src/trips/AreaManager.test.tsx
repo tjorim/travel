@@ -33,6 +33,7 @@ const area: Area = {
   label: "Taipei",
   label_nl: "Taipei",
   label_en: null,
+  local_name: null,
   country_code: "TW",
   region: "Taipei City",
   latitude: 25.03,
@@ -251,6 +252,112 @@ it("turns a place lookup into an editable, rounded area", async () => {
   expect((screen.getByLabelText("Lengtegraad (optioneel)") as HTMLInputElement).value).toBe(
     "121.56",
   );
+});
+
+const emptyApi = () =>
+  fakeApi()
+    .collection("/api/documents?trip_id=trip", [ticket])
+    .collection("/api/trips/trip/areas", [])
+    .collection("/api/trips/trip/locations", [])
+    .collection("/api/trips/trip/stays", [], createdStay)
+    .collection("/api/trips/trip/routes", [])
+    .collection("/api/trips/trip/visits", [])
+    .value("/api/trips/trip/public-projection", {
+      trip_id: "trip",
+      surface_state: "unpublished",
+      scope: { items: [] },
+      slug: null,
+    })
+    .value("/api/trips/trip/share-links", []);
+
+const searchResult = {
+  osm_element_type: "relation",
+  osm_element_id: "123",
+  display_name: "Taipei, Taiwan",
+  locality: "Taipei",
+  admin_area: "Taipei City",
+  country_code: "TW",
+  latitude: 25.033964,
+  longitude: 121.564468,
+  local_name: "臺北市",
+  name_nl: "Taipeh",
+  name_en: "Taipei City",
+};
+
+it("shows the local name beside a search result and offers its names without saving them", async () => {
+  api = emptyApi();
+  api.on("POST", /\/places\/search$/, () => ({
+    attribution: "© OpenStreetMap contributors",
+    attribution_url: "https://www.openstreetmap.org/copyright",
+    results: [
+      searchResult,
+      { ...searchResult, osm_element_id: "9", display_name: "Taipei 101, Xinyi, Taipei, Taiwan" },
+    ],
+  }));
+  renderWithOwner(<AreaManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Gebied toevoegen" }));
+  fireEvent.change(screen.getByLabelText("Zoek stad of regio"), { target: { value: "Taipei" } });
+  fireEvent.click(screen.getByRole("button", { name: "Zoeken" }));
+  const city = await screen.findByRole("button", { name: /^Taipei, Taiwan/ });
+  // The local name sits next to the translated one and marks its language unknown (`lang=""`).
+  const shown = within(city).getByText("臺北市");
+  expect(shown.getAttribute("lang")).toBe("");
+  fireEvent.click(city);
+
+  // The name from the result fills the editor's own field, which marks its language unknown (`lang=""`) either.
+  const local = screen.getByLabelText("Lokale naam (optioneel)") as HTMLInputElement;
+  expect(local.value).toBe("臺北市");
+  expect(local.getAttribute("lang")).toBe("");
+  expect(local.getAttribute("dir")).toBe("auto");
+  // The provider's Dutch and English names are offered, not applied: the English one is not typed anywhere yet.
+  expect((screen.getByLabelText("Naam") as HTMLInputElement).value).toBe("Taipei");
+  expect(screen.getByText("Namen uit de kaartgegevens")).toBeTruthy();
+  expect(screen.getByText("Taipeh").getAttribute("lang")).toBe("nl");
+  expect(screen.getByText("Taipei City").getAttribute("lang")).toBe("en");
+  fireEvent.click(screen.getByRole("button", { name: "Deze namen gebruiken" }));
+  expect((screen.getByLabelText("Naam") as HTMLInputElement).value).toBe("Taipeh");
+  expect(screen.queryByText("Namen uit de kaartgegevens")).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: "Gebied opslaan" }));
+  await screen.findByRole("button", { name: "Gebied Taipeh bekijken" });
+  expect(api.lastBody("POST /api/trips/trip/areas")).toMatchObject({
+    label_nl: "Taipeh",
+    label_en: "Taipei City",
+    local_name: "臺北市",
+  });
+});
+
+it("takes no local name from a result that is only a place inside the city", async () => {
+  api = emptyApi();
+  api.on("POST", /\/places\/search$/, () => ({
+    attribution: "© OpenStreetMap contributors",
+    attribution_url: "https://www.openstreetmap.org/copyright",
+    results: [
+      { ...searchResult, display_name: "Taipei 101, Xinyi, Taipei, Taiwan", local_name: "台北101" },
+    ],
+  }));
+  renderWithOwner(<AreaManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Gebied toevoegen" }));
+  fireEvent.change(screen.getByLabelText("Zoek stad of regio"), { target: { value: "101" } });
+  fireEvent.click(screen.getByRole("button", { name: "Zoeken" }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Taipei 101/ }));
+  expect((screen.getByLabelText("Naam") as HTMLInputElement).value).toBe("Taipei");
+  expect((screen.getByLabelText("Lokale naam (optioneel)") as HTMLInputElement).value).toBe("");
+  expect(screen.queryByText("Namen uit de kaartgegevens")).toBeNull();
+});
+
+it("edits and clears an area's local name, shown in its detail", async () => {
+  api = emptyApi().collection("/api/trips/trip/areas", [{ ...area, local_name: "臺北" }]);
+  renderWithOwner(<AreaManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
+  expect(within(screen.getByRole("dialog")).getByText("臺北")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  const local = screen.getByLabelText("Lokale naam (optioneel)") as HTMLInputElement;
+  expect(local.value).toBe("臺北");
+  fireEvent.change(local, { target: { value: "" } });
+  fireEvent.click(screen.getByRole("button", { name: "Gebied opslaan" }));
+  await waitFor(() => expect(api.count("PATCH /api/trips/trip/areas/area-1")).toBe(1));
+  expect(api.lastBody("PATCH /api/trips/trip/areas/area-1")).toMatchObject({ local_name: null });
 });
 
 it("reports a refused area delete inside the dialog, where the owner is looking", async () => {

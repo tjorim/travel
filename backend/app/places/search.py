@@ -4,6 +4,10 @@ Search phrases can reveal sensitive destinations.  They are sent only to the
 configured provider over HTTPS, are never logged, and live only in a bounded
 in-process TTL cache.  The cache is intentionally not persistent: a database
 cache would retain a searchable history of confidential owner queries.
+
+A result also carries the provider's names for the place (``namedetails``): its local name and its Dutch and
+English names, offered to the owner and stored only if the owner saves them (see ``_names`` and
+``docs/place-search-provider.md``).
 """
 
 from collections import OrderedDict
@@ -69,6 +73,44 @@ def _address(data: dict) -> dict[str, str | None]:
     }
 
 
+MAX_NAME = 120  # a stored label or local name is at most this long; a longer provider name is not offered
+
+
+def _name_tag(details: dict, key: str) -> str | None:
+    value = details.get(key)
+    text = " ".join(value.split()) if isinstance(value, str) else ""
+    return text if 0 < len(text) <= MAX_NAME else None
+
+
+def _names(item: dict) -> dict[str, str | None]:
+    """The provider's names for the place itself: its local name and its Dutch and English ones, as suggestions.
+
+    ``display_name`` stays the English reading the request asks for (``accept-language: en``). Next to it the
+    provider's ``namedetails`` give the raw OpenStreetMap name tags:
+
+    * ``local_name`` is the plain ``name`` tag, which OpenStreetMap defines as the name used where the place is
+      (in the local language and script). It is offered only when it differs from the English name the provider
+      returned (the first part of ``display_name``, or ``name:en``): the same text twice is no information. The
+      comparison folds case only, so ``Zürich`` stays a local name next to ``Zurich``.
+    * ``name_nl`` and ``name_en`` are the ``name:nl`` and ``name:en`` tags, offered as suggestions for the Dutch and
+      English labels. A place that has no such tag has no suggestion: nothing is translated or guessed.
+
+    A name longer than a stored one can be is dropped. Nothing here is stored: the owner applies a suggestion."""
+    details = item.get("namedetails")
+    if not isinstance(details, dict):
+        return {}
+    name_nl, name_en = _name_tag(details, "name:nl"), _name_tag(details, "name:en")
+    local = _name_tag(details, "name")
+    shown = {
+        name.casefold() for name in (str(item.get("display_name", "")).split(",")[0].strip(), name_en or "") if name
+    }
+    return {
+        "local_name": local if local is not None and local.casefold() not in shown else None,
+        "name_nl": name_nl,
+        "name_en": name_en,
+    }
+
+
 class NominatimSearchProvider:
     name = "nominatim"
     attribution = NOMINATIM_ATTRIBUTION
@@ -83,7 +125,13 @@ class NominatimSearchProvider:
         try:
             response = httpx.get(
                 f"{self.config.osm_place_search_api_base.rstrip('/')}/{path}",
-                params={"format": "jsonv2", "addressdetails": 1, "accept-language": "en", **params},
+                params={
+                    "format": "jsonv2",
+                    "addressdetails": 1,
+                    "namedetails": 1,
+                    "accept-language": "en",
+                    **params,
+                },
                 headers={"User-Agent": self.config.osm_place_search_user_agent, "Accept": "application/json"},
                 timeout=self.config.osm_place_search_timeout_seconds,
             )
@@ -110,6 +158,7 @@ class NominatimSearchProvider:
                 viewport_east=east,
                 viewport_west=west,
                 **_address(item),
+                **_names(item),
             )
         except KeyError, TypeError, ValueError:
             # One malformed provider item must not turn into a partial unsafe

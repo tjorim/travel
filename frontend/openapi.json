@@ -12696,6 +12696,19 @@
             "title": "Label En",
             "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
+          "local_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Name",
+            "description": "The name of the place as written where it is (for example `東京` or `Αθήνα`): not a translation of the label, and often not in Latin script. Used for search and navigation, and shown beside the label wherever the label is shared; never shared without one. Null or an empty string clears it."
+          },
           "country_code": {
             "anyOf": [
               {
@@ -12926,6 +12939,19 @@
             "title": "Label En",
             "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
+          "local_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Name",
+            "description": "The name of the place as written where it is (for example `東京` or `Αθήνα`): not a translation of the label, and often not in Latin script. Used for search and navigation, and shown beside the label wherever the label is shared; never shared without one. Null or an empty string clears it."
+          },
           "country_code": {
             "anyOf": [
               {
@@ -13003,6 +13029,7 @@
           "label",
           "label_nl",
           "label_en",
+          "local_name",
           "country_code",
           "region",
           "latitude",
@@ -13112,6 +13139,19 @@
             ],
             "title": "Label En",
             "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
+          },
+          "local_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Name",
+            "description": "The name of the place as written where it is (for example `東京` or `Αθήνα`): not a translation of the label, and often not in Latin script. Used for search and navigation, and shown beside the label wherever the label is shared; never shared without one. Null or an empty string clears it."
           },
           "country_code": {
             "anyOf": [
@@ -15819,6 +15859,19 @@
             "title": "Label En",
             "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
+          "local_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Name",
+            "description": "The name of the place as written where it is (for example `東京` or `Αθήνα`): not a translation of the label, and often not in Latin script. Used for search and navigation, and shown beside the label wherever the label is shared; never shared without one. Null or an empty string clears it."
+          },
           "area_id": {
             "anyOf": [
               {
@@ -16261,6 +16314,19 @@
             "title": "Label En",
             "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
+          "local_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Name",
+            "description": "The name of the place as written where it is (for example `東京` or `Αθήνα`): not a translation of the label, and often not in Latin script. Used for search and navigation, and shown beside the label wherever the label is shared; never shared without one. Null or an empty string clears it."
+          },
           "area_id": {
             "type": "string",
             "title": "Area Id"
@@ -16325,6 +16391,7 @@
           "label",
           "label_nl",
           "label_en",
+          "local_name",
           "area_id",
           "share_address",
           "id",
@@ -16374,6 +16441,19 @@
             ],
             "title": "Label En",
             "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
+          },
+          "local_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Name",
+            "description": "The name of the place as written where it is (for example `東京` or `Αθήνα`): not a translation of the label, and often not in Latin script. Used for search and navigation, and shown beside the label wherever the label is shared; never shared without one. Null or an empty string clears it."
           },
           "area_id": {
             "anyOf": [
@@ -19197,6 +19277,42 @@
             ],
             "title": "Country Code"
           },
+          "local_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Name",
+            "description": "The provider's own name for the place, as written where it is, when that differs from the English name in `display_name`. Offered as `local_name`; saved only if the owner keeps it."
+          },
+          "name_nl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name Nl",
+            "description": "The provider's Dutch name (`name:nl`): a suggestion for `label_nl`, never saved by itself."
+          },
+          "name_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name En",
+            "description": "The provider's English name (`name:en`): a suggestion for `label_en`, never saved by itself."
+          },
           "viewport_north": {
             "anyOf": [
               {
@@ -19263,6 +19379,9 @@
           "admin_area",
           "postal_code",
           "country_code",
+          "local_name",
+          "name_nl",
+          "name_en",
           "viewport_north",
           "viewport_south",
           "viewport_east",
@@ -19872,6 +19991,18 @@
             "title": "Label Lang",
             "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
           },
+          "local_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Name",
+            "description": "The name of the place as written where it is, present only beside a delivered `label` (it follows the label's visibility) and only when the owner entered one. It is in no particular language, so the page sets no `lang` on it."
+          },
           "country_code": {
             "anyOf": [
               {
@@ -20429,6 +20560,18 @@
             "title": "Label Lang",
             "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
           },
+          "local_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Name",
+            "description": "The name of the place as written where it is, present only beside a delivered `label` (it follows the label's visibility) and only when the owner entered one. It is in no particular language, so the page sets no `lang` on it."
+          },
           "country_code": {
             "anyOf": [
               {
@@ -20768,6 +20911,18 @@
             ],
             "title": "Label Lang",
             "description": "Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element."
+          },
+          "local_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Name",
+            "description": "The name of the place as written where it is, present only beside a delivered `label` (it follows the label's visibility) and only when the owner entered one. It is in no particular language, so the page sets no `lang` on it."
           },
           "country_code": {
             "anyOf": [

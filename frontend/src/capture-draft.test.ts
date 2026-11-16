@@ -155,3 +155,15 @@ it("rolls back a write when another tab logs out between the fence check and sto
   spy.mockRestore();
   expect(readDraft("trip")?.title).toBe("original");
 });
+it("keeps the local name of a picked place in the draft", async () => {
+  owner("A");
+  const draft = {
+    ...emptyDraft("trip"),
+    location: { display_name: "Senso-ji, Tokyo", local_name: "浅草寺" },
+  };
+  expect(await saveDraft(draft)).toBe("saved");
+  expect(readDraft("trip")?.location).toEqual({
+    display_name: "Senso-ji, Tokyo",
+    local_name: "浅草寺",
+  });
+});

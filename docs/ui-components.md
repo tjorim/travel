@@ -741,3 +741,15 @@ component covers two linked values of one field, so the composition stays custom
 `TripLanguage` (`trips/TripLanguage.tsx`) composes `ChoiceGroup`, Base UI Field with `TravelCheckbox` and the existing
 `DeleteConfirmation` Alert Dialog (through `useConfirmation`) for the move-all-texts warning. `LocalizedFieldView`
 takes field-shaped objects (`plainField`) so the collection editor, which is not a TanStack form, uses the same switch.
+
+## Local place names (#376)
+
+`LocalNameField` (`forms/LocalNameField.tsx`) is a Base UI Field with the existing `Input` (`FieldLabel`,
+`FieldDescription` for the hint, `FieldError`): a plain input, not a Dutch | English pair, because a local name is not
+a version of the label. It claims no `lang` (the name is in a language the app cannot know), sets `dir="auto"` and
+turns off spell checking, auto-capitalisation and auto-correction. `LocalName` (`LocalName.tsx`) is the matching
+read-only span for lists, details and the visitor page. `SuggestedNamesNotice` (`forms/SuggestedNames.tsx`) lists the
+provider's own Dutch and English names for a chosen place (each with its own `lang`) and has one Button that fills the
+label's two versions; it hides once they are what is typed. No registry component covers a read-only name in an
+unknown language or a one-click apply of two linked suggestions, so these three stay custom compositions of Field,
+Input and Button. A place-search result is a Button whose content is the English name with the local name beside it.

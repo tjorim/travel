@@ -148,7 +148,14 @@ def _rich_document(owner: TestClient, tmp_path: Path) -> tuple[dict, dict]:
     area = _ok(
         owner.post(
             f"{base}/areas",
-            json={"label": "Taipei", "country_code": "TW", "region": "North", "latitude": 25.0, "longitude": 121.5},
+            json={
+                "label": "Taipei",
+                "local_name": "台北",
+                "country_code": "TW",
+                "region": "North",
+                "latitude": 25.0,
+                "longitude": 121.5,
+            },
         )
     )
     other = owner.post(f"{base}/areas", json={"label": "Tainan", "country_code": "TW"}).json()
@@ -158,6 +165,7 @@ def _rich_document(owner: TestClient, tmp_path: Path) -> tuple[dict, dict]:
             json={
                 "area_id": area["id"],
                 "label": "Hotel Riverside",
+                "local_name": "河畔飯店",
                 "address_line1": "12 Guangming Road",
                 "postal_code": "112",
                 "locality": "Taipei",
@@ -171,7 +179,13 @@ def _rich_document(owner: TestClient, tmp_path: Path) -> tuple[dict, dict]:
     station = _ok(
         owner.post(
             f"{base}/locations",
-            json={"area_id": other["id"], "label": "Tainan Station", "latitude": 22.99, "longitude": 120.2},
+            json={
+                "area_id": other["id"],
+                "label": "Tainan Station",
+                "local_name": "臺南車站",
+                "latitude": 22.99,
+                "longitude": 120.2,
+            },
         )
     )
     visit = _ok(

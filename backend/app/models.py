@@ -322,8 +322,8 @@ class Area(Base):
     An area holds a label, country and region, an optional rounded point and an
     optional IANA time zone (for example ``Asia/Taipei``), which lets the
     owner's views place stays and live local time. Sharing an area shows its
-    label, region, country and point, never its time zone, and never shares the
-    locations filed under it."""
+    label, local name (beside the label), region, country and point, never its time
+    zone, and never shares the locations filed under it."""
 
     __tablename__ = "areas"
     __table_args__ = (
@@ -340,6 +340,9 @@ class Area(Base):
     label_nl: Mapped[str | None] = mapped_column(String(120), nullable=True)
     label_en: Mapped[str | None] = mapped_column(String(120), nullable=True)
     label = Localized()
+    # The name as written where the place is (#376): not a translation, often not in Latin script, and in neither
+    # language of the labels. Shown beside the label wherever the label is shared, and used for navigation.
+    local_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     region: Mapped[str | None] = mapped_column(String(120), nullable=True)
     country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -361,8 +364,8 @@ class Location(Base):
     """A hotel, station or monument, with an address and coordinates, or just a city.
 
     A location always belongs to one ``area``. It can be shared by its
-    ``visibility``, but only through a fixed allowlist: its public ``label``,
-    city, country and point, and its address only when the owner has also
+    ``visibility``, but only through a fixed allowlist: its public ``label`` (and the
+    ``local_name`` beside it), city, country and point, and its address only when the owner has also
     chosen ``share_address``. Notes, provider ids and the display name (which
     usually contains the address) are never shared, and a location cannot be
     shared without a ``label``."""
@@ -399,6 +402,8 @@ class Location(Base):
     label_nl: Mapped[str | None] = mapped_column(String(120), nullable=True)
     label_en: Mapped[str | None] = mapped_column(String(120), nullable=True)
     label = Localized()
+    # The name as written where the place is (#376), as on an area. It follows the label's visibility.
+    local_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     # Whether a shared location also shows its address, for example a hotel family
     # may need to contact. A separate choice from sharing the location at all.
     share_address: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

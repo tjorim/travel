@@ -17,6 +17,7 @@ const area: Area = {
   label: "Linkou",
   label_nl: "Linkou",
   label_en: null,
+  local_name: null,
   country_code: "TW",
   region: null,
   latitude: null,

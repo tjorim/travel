@@ -1,6 +1,9 @@
 import { AdvancedSection } from "../../forms/AdvancedSection";
 import { pickText, useContentLanguage } from "../../content-language";
 import { LocalizedField } from "../../forms/LocalizedField";
+import { LocalNameField } from "../../forms/LocalNameField";
+import { SuggestedNamesNotice } from "../../forms/SuggestedNames";
+import type { SuggestedNames } from "../place-result";
 import { areaName } from "../../records";
 import { Button } from "@/ui/button";
 
@@ -34,6 +37,7 @@ export function LocationForm({
   editingId,
   selected,
   suggestion,
+  suggestedNames,
   areas,
   addressPreview,
   canShareAddress,
@@ -47,6 +51,8 @@ export function LocationForm({
   editingId: string | null | undefined;
   selected: Location | null;
   suggestion: LocationInput | null;
+  /** The provider's Dutch and English names for the chosen result, offered for the public name. */
+  suggestedNames: SuggestedNames | null;
   areas: Area[];
   addressPreview: Record<string, string | null | undefined>;
   canShareAddress: boolean;
@@ -135,6 +141,16 @@ export function LocationForm({
         optional
         maxLength={120}
       />
+      <SuggestedNamesNotice form={record.form} name="label" names={suggestedNames} />
+      <record.form.Field name="localName">
+        {(field) => (
+          <LocalNameField
+            field={field}
+            label={m.locations_local_name()}
+            hint={m.locations_local_name_hint()}
+          />
+        )}
+      </record.form.Field>
       <div className="field-row">
         <record.form.Field name="addressLine1">
           {(field) => (

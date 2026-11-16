@@ -46,6 +46,7 @@ const area: Area = {
   label: "Taipei",
   label_nl: "Taipei",
   label_en: null,
+  local_name: null,
   country_code: "TW",
   region: "Taipei City",
   latitude: 25.03,

@@ -69,6 +69,7 @@ export function AreaManager({
         payload: {
           label_nl: values.labelNl.trim() || null,
           label_en: values.labelEn.trim() || null,
+          local_name: values.localName.trim() || null,
           country_code: values.countryCode.trim().toUpperCase() || null,
           region: values.region.trim() || null,
           latitude: values.latitude === "" ? null : Number(values.latitude),

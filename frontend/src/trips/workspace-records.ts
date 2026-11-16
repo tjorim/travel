@@ -30,7 +30,8 @@ export type SearchableRecords = {
 /** How many matches one kind of record shows; the rest is counted, so a trip with many photos cannot bury the others. */
 export const RECORDS_PER_KIND = 5;
 
-type Candidate = { kind: RecordKind; id: string; title: string };
+/** `also` is more text the jump search matches without showing it (a place's name as written where it is). */
+type Candidate = { kind: RecordKind; id: string; title: string; also?: string | null };
 
 /** In the order the workspace shows them. */
 function candidates(records: SearchableRecords): Candidate[] {
@@ -38,10 +39,17 @@ function candidates(records: SearchableRecords): Candidate[] {
     kind: RecordKind,
     items: T[] | undefined,
     title: (item: T) => string,
-  ): Candidate[] => (items ?? []).map((item) => ({ kind, id: item.id, title: title(item) }));
+    also?: (item: T) => string | null,
+  ): Candidate[] =>
+    (items ?? []).map((item) => ({ kind, id: item.id, title: title(item), also: also?.(item) }));
   return [
-    ...list("area", records.areas, (area) => areaName(area)),
-    ...list("location", records.locations, ownerLocationName),
+    ...list(
+      "area",
+      records.areas,
+      (area) => areaName(area),
+      (area) => area.local_name,
+    ),
+    ...list("location", records.locations, ownerLocationName, (place) => place.local_name),
     ...list("visit", records.visits, visitTitle),
     ...list("stay", records.stays, stayLabel),
     ...list("route", records.routes, routeTitle),
@@ -77,7 +85,9 @@ export type RecordMatch =
 
 /** The records whose title matches, labelled with their tab and block. Pure and local: the query never leaves the browser. */
 export function searchRecords(records: SearchableRecords, query: string): RecordMatch[] {
-  const found = candidates(records).filter((candidate) => matchesQuery(candidate.title, query));
+  const found = candidates(records).filter((candidate) =>
+    matchesQuery(candidate.also ? `${candidate.title} ${candidate.also}` : candidate.title, query),
+  );
   const result: RecordMatch[] = [];
   for (const kind of new Set(found.map((candidate) => candidate.kind))) {
     const place = locateRecord(kind);

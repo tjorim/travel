@@ -1,6 +1,7 @@
 import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
+import { LocalName } from "../../LocalName";
 import { m } from "../../paraglide/messages.js";
 import { DeleteConfirmation } from "../../RecordDialog";
 import { ownerLocationName } from "../../records";
@@ -83,6 +84,11 @@ export function LocationDetails({
         <p>
           {m.locations_public_name()} {selected.label || m.locations_no_public_name_yet()}
         </p>
+        {selected.local_name && (
+          <p>
+            {m.locations_local_name()}: <LocalName name={selected.local_name} />
+          </p>
+        )}
         <p>
           {m.locations_saved_address()} {address(selected) || m.locations_no_address_captured()}
           {address(selected) && selected.country_code ? `, ${selected.country_code}` : ""}

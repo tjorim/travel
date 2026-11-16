@@ -11,6 +11,7 @@ const area = {
   label: "Area",
   label_nl: "Area",
   label_en: null,
+  local_name: null,
   country_code: "PT",
   region: null,
   latitude: null,
