@@ -44,6 +44,9 @@ class FakePlaceSearchProvider:
                 longitude=121.565,
                 locality="Taipei",
                 country_code="TW",
+                local_name="祕密飯店",
+                name_nl="Geheim Hotel",
+                name_en="Secret Hotel",
             )
         ]
 
@@ -80,13 +83,22 @@ def test_owner_searches_and_saves_a_durable_osm_reference_without_persisting_que
     assert provider.reverse_calls == 1
     assert owner.get(f"/api/trips/{trip['id']}/locations").json() == []
 
-    saved = owner.post(f"/api/trips/{trip['id']}/locations", json=result)
+    # The suggested names are offered, never saved: the rest of the result is a location as it stands.
+    suggestions = {"name_nl", "name_en"}
+    assert suggestions <= set(result)
+    saved = owner.post(
+        f"/api/trips/{trip['id']}/locations",
+        json={key: value for key, value in result.items() if key not in suggestions},
+    )
     assert saved.status_code == 201
     place = saved.json()
     assert place["osm_element_type"] == "way"
     assert place["osm_element_id"] == "12345"
     assert place["osm_url"] == "https://www.openstreetmap.org/way/12345"
     assert place["display_name"] == "Secret Hotel, Taipei, Exampleland"
+    # The local name is part of the chosen result; the suggested labels were not saved.
+    assert place["local_name"] == "祕密飯店"
+    assert (place["label"], place["label_nl"], place["label_en"]) == (None, None, None)
     # The exact target exists only on the owner route, not a public projection.
     navigation = owner.get(f"/api/trips/{trip['id']}/locations/{place['id']}/navigation")
     assert navigation.json() == {
@@ -283,7 +295,7 @@ def test_a_shared_area_offers_a_city_level_navigation_target() -> None:
     marker = anonymous.get(f"/api/public/trips/{slug}").json()["navigation"][0]["id"]
     city = anonymous.get(f"/api/public/trips/{slug}/navigation/{marker}", follow_redirects=False)
     assert city.status_code == 302
-    assert city.headers["location"] == "https://www.google.com/maps/dir/?api=1&destination=Taipei%2C+TW"
+    assert city.headers["location"] == "https://www.google.com/maps/dir/?api=1&destination=Taipei%2C+Taiwan"
 
 
 def test_a_custom_location_reaches_only_the_link_that_lists_it() -> None:

@@ -1,6 +1,7 @@
 import { Button } from "@/ui/button";
 
 import { useLocale } from "../../locale";
+import { LocalName } from "../../LocalName";
 import { m } from "../../paraglide/messages.js";
 import { ownerLocationName, areaName } from "../../records";
 import { type Area, type Location } from "../../api-types";
@@ -41,6 +42,12 @@ export function AreaInventory({
             >
               <strong>{areaName(area)}</strong>
               <span>
+                {area.local_name && (
+                  <>
+                    <LocalName name={area.local_name} className="text-inherit" />
+                    {" · "}
+                  </>
+                )}
                 {areaSummary(area)} · {visibilityLabel(area.visibility)}
               </span>
             </Button>
@@ -65,6 +72,12 @@ export function AreaInventory({
                   >
                     <strong>{ownerLocationName(place)}</strong>
                     <span>
+                      {place.local_name && (
+                        <>
+                          <LocalName name={place.local_name} className="text-inherit" />
+                          {" · "}
+                        </>
+                      )}
                       {[
                         place.address_line1,
                         place.locality,

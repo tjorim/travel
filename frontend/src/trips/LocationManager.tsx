@@ -11,6 +11,7 @@ import { useTripResource } from "../query/owner-queries";
 import { RecordDialog } from "../RecordDialog";
 import type { Area, Location, LocationInput, Trip } from "../api-types";
 import { duplicateLocations } from "./merge-candidates";
+import type { SuggestedNames } from "./place-result";
 import { mergedNotice, type MergeRequest } from "./MergeDialog";
 import { LocationDetails } from "./locations/LocationDetails";
 import { LocationForm } from "./locations/LocationForm";
@@ -56,6 +57,7 @@ export function LocationManager({
   const dialog = useRecordDialog(locations);
   useDialogFocus(focusId, dialog.inspect);
   const [suggestion, setSuggestion] = useState<LocationInput | null>(null);
+  const [suggestedNames, setSuggestedNames] = useState<SuggestedNames | null>(null);
   const [resume, setResume] = useState(false);
   const [merge, setMerge] = useState<MergeRequest | null>(null);
   // The last delete was refused because the location is still used, so merging is the way to tidy up.
@@ -83,6 +85,7 @@ export function LocationManager({
         display_name: optional(values.displayName),
         label_nl: optional(values.labelNl),
         label_en: optional(values.labelEn),
+        local_name: optional(values.localName),
         address_line1: optional(values.addressLine1),
         address_line2: optional(values.addressLine2),
         locality: optional(values.locality),
@@ -128,6 +131,7 @@ export function LocationManager({
     },
     onSuccess: (place) => {
       setSuggestion(null);
+      setSuggestedNames(null);
       dialog.inspect(place.id);
       setNotice(textNotice(() => m.locations_location_saved()));
       onSaved?.();
@@ -137,6 +141,7 @@ export function LocationManager({
     dialog.close();
     record.load(blank());
     setSuggestion(null);
+    setSuggestedNames(null);
     setResume(false);
     setMerge(null);
     setInUse(false);
@@ -146,6 +151,7 @@ export function LocationManager({
   function create(areaId = "") {
     record.load(blank(areaId));
     setSuggestion(null);
+    setSuggestedNames(null);
     setNotice("");
     dialog.create();
   }
@@ -166,6 +172,7 @@ export function LocationManager({
   function edit(place: Location) {
     record.load(fromPlace(place));
     setSuggestion(null);
+    setSuggestedNames(null);
     setNotice("");
     dialog.edit(place.id);
   }
@@ -183,11 +190,14 @@ export function LocationManager({
     } else create(request.areaId);
     // A request token is the deliberate trigger; form and dialog callbacks change each render.
   }, [request?.token]);
-  function choose(result: LocationInput) {
+  function choose(result: LocationInput, _existing?: unknown, names?: SuggestedNames) {
     setSuggestion(result);
+    // The provider's Dutch and English names are only offered; the owner applies them to the public name.
+    setSuggestedNames(names ?? null);
     const proposed = {
       displayName: result.display_name,
       [trip.content_language === "en" ? "labelEn" : "labelNl"]: result.label,
+      localName: result.local_name,
       addressLine1: result.address_line1,
       addressLine2: result.address_line2,
       locality: result.locality,
@@ -276,6 +286,7 @@ export function LocationManager({
             editingId={editingId}
             selected={selected}
             suggestion={suggestion}
+            suggestedNames={suggestedNames}
             areas={areas}
             addressPreview={addressPreview}
             canShareAddress={canShareAddress}

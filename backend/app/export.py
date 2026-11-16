@@ -59,11 +59,11 @@ TRIP = (
     "created_at", "updated_at",
 )  # fmt: skip
 AREA = (
-    "id", "visibility", "label_nl", "label_en", "region", "country_code", "latitude", "longitude", "timezone",
+    "id", "visibility", "label_nl", "label_en", "local_name", "region", "country_code", "latitude", "longitude", "timezone",
     "created_at", "updated_at",
 )  # fmt: skip
 LOCATION = (
-    "id", "visibility", "area_id", "label_nl", "label_en", "share_address", "osm_element_type", "osm_element_id", "osm_url",
+    "id", "visibility", "area_id", "label_nl", "label_en", "local_name", "share_address", "osm_element_type", "osm_element_id", "osm_url",
     "display_name", "address_line1", "address_line2", "locality", "admin_area", "postal_code", "country_code",
     "latitude", "longitude", "viewport_north", "viewport_south", "viewport_east", "viewport_west",
     "navigation_provider", "navigation_provider_place_id", "notes", "created_at", "updated_at",

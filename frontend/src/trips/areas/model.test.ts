@@ -17,6 +17,7 @@ it("loads an area into editor values and back to blanks", () => {
     label: "Taipei",
     label_nl: "Taipei",
     label_en: null,
+    local_name: "臺北",
     country_code: "TW",
     region: null,
     latitude: 25.03,
@@ -26,6 +27,7 @@ it("loads an area into editor values and back to blanks", () => {
   expect(values).toEqual({
     labelNl: "Taipei",
     labelEn: "",
+    localName: "臺北",
     countryCode: "TW",
     region: "",
     latitude: "25.03",
@@ -33,6 +35,7 @@ it("loads an area into editor values and back to blanks", () => {
     timezone: "Asia/Taipei",
   });
   expect(blank().labelNl).toBe("");
+  expect(blank().localName).toBe("");
 });
 
 it("summarises an area by region, country and time zone", () => {

@@ -22,7 +22,7 @@ from .update_day import update_day
 # Location fields a visitor can read, in display order. The address parts are
 # published only while the owner shares the address; ``locality`` is the region
 # either way.
-ALWAYS_VISIBLE = ("label", "locality", "country_code")
+ALWAYS_VISIBLE = ("label", "local_name", "locality", "country_code")
 ADDRESS_FIELDS = ("address_line1", "address_line2", "postal_code", "admin_area")
 
 

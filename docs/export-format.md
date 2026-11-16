@@ -84,6 +84,10 @@ languages. No importer exists, so no earlier version has to be accepted yet; one
 single field into `<field>_nl` and setting `content_language` to `nl`. Collections hold no trip and are not
 exported.
 
+`areas[].local_name` and `locations[].local_name` (the name of the place as written where it is, null when the owner
+entered none; see [the domain model](domain-model.md)) were added without changing the schema version, because
+adding a field is compatible; a consumer that ignores unknown keys loses only that name.
+
 `travel_updates[].local_date` is the update's calendar day in its zone, and `travel_updates[].timezone` is that
 zone (the area's, else the zone of the trip's nearest dated stay or visit, else `UTC`; see
 [the domain model](domain-model.md)). `timezone` was added without changing the schema

@@ -102,7 +102,9 @@ def list_areas(
     if q or limit is not None or offset:
         statement = statement.order_by(Area.id)
     if q:
-        statement = statement.where(or_(contains(Area.label_nl, q), contains(Area.label_en, q)))
+        statement = statement.where(
+            or_(contains(Area.label_nl, q), contains(Area.label_en, q), contains(Area.local_name, q))
+        )
     if limit is not None:
         statement = statement.limit(limit)
     return list(session.scalars(statement.offset(offset)))

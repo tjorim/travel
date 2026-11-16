@@ -83,7 +83,7 @@ collection member, in the audience editor under *Delen* ("Sharing").
 - [ ] **Open the rendered preview and read every item as a stranger.** The
       shared words are yours and no rule can read them: titles, summaries, stage
       summaries, the text written for visitors in a *reisupdate*, public
-      location names, captions, route labels. None may contain an exact
+      location names (and the local name that appears beside one), captions, route labels. None may contain an exact
       accommodation, home or meeting address, a booking or confirmation code, a
       ticket, a travel-party name or contact detail, or a live or near-real-time
       location. The public view's title and summary are also what a chat app

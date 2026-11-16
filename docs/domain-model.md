@@ -17,6 +17,7 @@ Everything in a trip is one of these. The Dutch word is what the owner sees.
   projected until the owner chooses **Gebruik als punt**, which rounds it.
   Focusing an area fits its dot and all its location dots in the owner map;
   the viewport is calculated for display and is not an area radius or boundary.
+  An area, like a location, can also hold a **local name** (see below).
 - **Location** (*locatie*): a hotel, station, monument or just a city, with an
   address and coordinates when known. It always belongs to exactly one area,
   and stays private until the owner gives it a public name and chooses who
@@ -30,6 +31,23 @@ Everything in a trip is one of these. The Dutch word is what the owner sees.
   within 25 km, otherwise a new area candidate from reverse lookup with a
   proposed IANA time zone. The suggestion never saves or silently re-files a
   location. The owner selects or edits it before saving.
+- **Local name** (`local_name`, on an area and a location): the name of the place as written where it is (`東京`,
+  `Αθήνα`). It is a third kind of name next to the Dutch and English labels: not a translation, often not in Latin
+  script, and in no language the application can name, so the owner's views and the visitor page set no `lang` on
+  it (`dir="auto"` only). It is nullable, at most 120 characters, trimmed (a blank value clears it) and only the
+  owner's choice puts text in it: a place-search result offers the provider's own name, which the owner keeps by
+  saving the area or location (see [the place search provider](place-search-provider.md)). It is indexed by the
+  owner's search (with `label_nl` and `label_en`), exported (`areas[].local_name`, `locations[].local_name`), and used
+  for navigation: a text target, which is an area, or a location without a point, goes by the local name, else the
+  label, with the region or city and the **country as a name**, never as a raw code (an area: local name or label,
+  region, country; a location: local name or label, city, country; without either name a location falls back to its
+  provider's display name, then its address). A location with a point is still opened by the point.
+  A visitor reads it only **beside a label that is delivered** (`local_name` next to `label` on a shared area or
+  location, on the area a visit, stay or route names, and on a route's map point), and never otherwise: it follows
+  the label's visibility exactly (the same audiences, the same exclusions, nothing when the label is missing) and
+  reveals nothing a location's label would not. It carries no `_lang` marker. Because visitors read it, a change to
+  the local name of a location with live receivers needs the same acknowledgement as a change of its public name.
+  The PDF and the Atom feeds do not carry it.
 - **Visit** (*bezoek*): a stop of the trip: an area, or a location in one, and
   optionally when: days, a start and end time (local at the visit, in the time
   zone of its area) and a kind (free or work). Getting somewhere is a route, not

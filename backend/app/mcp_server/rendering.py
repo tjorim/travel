@@ -36,8 +36,8 @@ def _models(values: list[Any], model_type: type[BaseModel]) -> list[dict[str, An
 # ids on, without repeating every embedded area and location in full. ``get_*``
 # returns the complete record.
 _COMPACT_FIELDS = {
-    "area": ("id", "label", "country_code", "region", "timezone", "visibility"),
-    "location": ("id", "label", "display_name", "locality", "area_id", "visibility"),
+    "area": ("id", "label", "local_name", "country_code", "region", "timezone", "visibility"),
+    "location": ("id", "label", "local_name", "display_name", "locality", "area_id", "visibility"),
     "visit": (
         "id",
         "title",

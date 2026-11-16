@@ -1112,6 +1112,7 @@ def test_list_tools_are_compact_by_default_and_areas_can_be_found_by_name(backen
         {
             "id": taipei["id"],
             "label": "Taipei",
+            "local_name": None,
             "country_code": "TW",
             "region": None,
             "timezone": None,

@@ -1,13 +1,19 @@
 import { RecordForm, TextField, TimeZoneField } from "../../forms/fields";
 import { LocalizedField } from "../../forms/LocalizedField";
+import { LocalNameField } from "../../forms/LocalNameField";
+import { SuggestedNamesNotice } from "../../forms/SuggestedNames";
 import { useContentLanguage } from "../../content-language";
 import type { useRecordForm } from "../../forms/useRecordForm";
 import { useLocale } from "../../locale";
 import { m } from "../../paraglide/messages.js";
+import { useState } from "react";
 import type { Area, LocationInput } from "../../api-types";
 import { PlaceSearchField } from "../PlaceSearchField";
+import type { SuggestedNames } from "../place-result";
 import {
   areaCoordinate,
+  areaLabelOf,
+  namesTheArea,
   bothCoordinates,
   knownTimeZone,
   latitudeRange,
@@ -25,12 +31,15 @@ export function AreaForm({
 }) {
   useLocale();
   const language = useContentLanguage();
-  function fillFromSearch(result: LocationInput) {
+  const [suggested, setSuggested] = useState<SuggestedNames | null>(null);
+  function fillFromSearch(result: LocationInput, _existing?: unknown, names?: SuggestedNames) {
     // The provider's name is in one language only: it goes into the trip's, and the owner can add the other.
-    record.form.setFieldValue(
-      language === "en" ? "labelEn" : "labelNl",
-      result.locality ?? result.admin_area ?? result.display_name ?? "",
-    );
+    record.form.setFieldValue(language === "en" ? "labelEn" : "labelNl", areaLabelOf(result));
+    // The provider's names belong to the result. They describe the area only when the result is the city or region
+    // itself; a result inside it (a station, a hotel) names something else, so nothing of it is offered.
+    const itself = namesTheArea(result);
+    record.form.setFieldValue("localName", itself ? (result.local_name ?? "") : "");
+    setSuggested(itself && names ? names : null);
     record.form.setFieldValue("countryCode", result.country_code ?? "");
     record.form.setFieldValue("region", result.admin_area ?? "");
     // A Nominatim result can be a precise POI. Areas deliberately use a
@@ -69,6 +78,16 @@ export function AreaForm({
           )}
         </record.form.Field>
       </div>
+      <SuggestedNamesNotice form={record.form} name="label" names={suggested} />
+      <record.form.Field name="localName">
+        {(field) => (
+          <LocalNameField
+            field={field}
+            label={m.areas_local_name()}
+            hint={m.areas_local_name_hint()}
+          />
+        )}
+      </record.form.Field>
       <div className="field-row">
         <record.form.Field name="region">
           {(field) => (

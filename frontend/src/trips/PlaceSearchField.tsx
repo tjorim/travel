@@ -1,4 +1,5 @@
 import { useLocale } from "../locale";
+import { LocalName } from "../LocalName";
 import { m } from "../paraglide/messages.js";
 import { textNotice, errorNotice, useFeedback } from "../query/feedback";
 import { Input } from "@/ui/input";
@@ -9,7 +10,13 @@ import { AsyncSearchSelect } from "../forms/fields";
 
 import { tripPath, useLocationSearch, useOwnerMutation } from "../query/owner-queries";
 import { locationName } from "../records";
-import { type Location, type PlaceSearchResponse, type LocationInput } from "../api-types";
+import {
+  type Location,
+  type PlaceSearchResponse,
+  type PlaceSearchResult,
+  type LocationInput,
+} from "../api-types";
+import { splitPlaceResult, type SuggestedNames } from "./place-result";
 import { Field, FieldLabel, FieldSet, FieldLegend } from "@/ui/field";
 
 /** Owner-only place lookup that never persists a selected result by itself. */
@@ -29,8 +36,11 @@ export function PlaceSearchField({
   inputLabel: string;
   placeholder: string;
   help: string;
-  /** Existing locations include their full owner-only data for pre-filling adjacent fields. */
-  onSelect: (result: LocationInput, existingPlace?: Location) => void;
+  /**
+   * Existing locations include their full owner-only data for pre-filling adjacent fields. A new result carries the
+   * provider's own Dutch and English names as `names`: suggestions for the labels, never part of the location.
+   */
+  onSelect: (result: LocationInput, existingPlace?: Location, names?: SuggestedNames) => void;
   /** Location-based editors may reuse a saved private location; area search must not. */
   allowExisting?: boolean;
   /** Names the place the record is already linked to, shown until a new one is chosen. */
@@ -84,8 +94,9 @@ export function PlaceSearchField({
       },
     );
   }
-  function choose(result: LocationInput) {
-    onSelect(result);
+  function choose(found: PlaceSearchResult) {
+    const { location, names } = splitPlaceResult(found);
+    onSelect(location, undefined, names);
     setResults(null);
     setState(textNotice(() => m.locations_location_suggested_all_fields_remain_editable()));
   }
@@ -193,7 +204,12 @@ export function PlaceSearchField({
               key={`${result.osm_element_type}-${result.osm_element_id}`}
               onClick={() => choose(result)}
             >
-              {result.display_name}
+              <span className="grid gap-0.5">
+                <span>{result.display_name}</span>
+                {result.local_name && (
+                  <LocalName name={result.local_name} className="font-normal" />
+                )}
+              </span>
             </Button>
           ))}
           <p className="help">

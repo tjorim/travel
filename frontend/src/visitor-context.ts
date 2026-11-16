@@ -29,12 +29,13 @@ function text(value: string | null | undefined): string | null {
 
 /**
  * An area as the visitor sees it. The projection carries no area id, so two records are "the same area" only when
- * every shared field (label, country, region and rounded point) is identical.
+ * every shared field (label, local name, country, region and rounded point) is identical.
  */
 function areaKey(area: ProjectionArea | null | undefined): string | null {
   if (!area || !text(area.label)) return null;
   return JSON.stringify([
     text(area.label),
+    text(area.local_name),
     text(area.country_code),
     text(area.region),
     area.latitude ?? null,

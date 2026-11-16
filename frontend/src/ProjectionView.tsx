@@ -34,6 +34,7 @@ import {
 } from "react";
 import { cn } from "cn";
 import { dayjs } from "./dayjs";
+import { LocalName } from "./LocalName";
 import { Markdown } from "./Markdown";
 import { Authored, DocumentLanguageProvider, useTextLang } from "./visitor-language";
 import type { ContentLanguage } from "./content-language";
@@ -197,6 +198,13 @@ function PlaceText({ area, transport = false }: { area: ProjectionArea; transpor
   return (
     <>
       {label && <span lang={lang(area.label_lang)}>{label}</span>}
+      {label && text(area.local_name) && (
+        <>
+          {" ("}
+          <LocalName name={text(area.local_name) ?? ""} className="text-inherit" />
+          {")"}
+        </>
+      )}
       {label && rest && " · "}
       {rest}
     </>
@@ -1961,6 +1969,11 @@ function ProjectionBody({
             marker={item.label_lang}
             fallback={m.visitor_location()}
           />
+          {text(item.label) && text(item.local_name) && (
+            <p>
+              <LocalName name={text(item.local_name) ?? ""} className="text-inherit" />
+            </p>
+          )}
           {[text(item.region), country(item)].filter(Boolean).length > 0 && (
             <p>{[text(item.region), country(item)].filter(Boolean).join(" · ")}</p>
           )}

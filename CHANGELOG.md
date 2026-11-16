@@ -25,6 +25,11 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 - **Web:** The owner's lists and details mark each authored title and text with the language it is written in (`lang`), and the visitor page does the same for every authored text it shows (titles, texts, place names, captions, alternative text), so a screen reader uses the right voice whatever language the interface is in. The page translates nothing itself.
 - **Web:** A visitor with no language of their own saved reads a trip in the trip's own language, interface included; their own choice wins from then on and is asked for from the server (`?lang=`) as soon as they make it, without blanking the page. The public index asks for the interface language. The owner's visitor preview can be switched between the languages.
 - The server says which language a visitor document is in (`Content-Language` on `GET /api/public/trips/{slug}`, `/api/shared/{token}` and the collection member route), so a page that asked for none knows the trip's own language. The owner's previews (`POST` on the public view, a hidden link, a collection member and the collection index) take `?lang=nl|en` too.
+- An area and a location can hold a **local name** (`local_name`): the name of the place as written where it is, such as `東京` or `Αθήνα`. It is not a translation and often not in Latin script, so it is a third kind of name next to `label_nl` and `label_en`. The owner API and the MCP tools take and return it; it is empty unless the owner enters it (#376).
+- Place search asks the provider for the names of a result: `local_name` (the provider's own name for the place, offered only when it differs from the English name) and `name_nl` and `name_en` (its Dutch and English names, as suggestions for the labels). `display_name` stays English. Nothing is stored until the owner saves an area or a location; a result is saved as a location without `name_nl` and `name_en` (they are not location fields).
+- Owner search finds an area or a location by its local name too, ignoring case and accents, next to `label_nl` and `label_en`: the `q` of the area and location lists (and so the MCP `list_areas` query) and the workspace's jump search.
+- A visitor reads the local name beside a label that is shared: `local_name` on a shared area or location, on the area a visit, stay or route names and on a route's map point. It is delivered only with its label, to exactly the audiences that receive the label, and carries no `_lang` marker. Changing the local name of a location with live receivers needs the same acknowledgement as changing its public name.
+- **Web:** The area and location editors have a "Local name" field, a plain input that claims no language. A place-search result shows its local name beside its English name; picking it fills the local name, and the provider's Dutch and English names are offered for the label with one button ("Use these names") instead of being applied. For an area, a result takes its names only when it is the city or region itself. The local name also shows in the area and location details and lists, and beside the name on the visitor page.
 
 ### Changed
 
@@ -55,6 +60,7 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 
 - **Web:** The notes under uploads now say your files stay in your private Travel app instead of "your private tracker".
 - A share link, public page and collection member always report their scope with `schema_version`, `trip` and `items`, even when the stored scope held only some of them (the response used to repeat the stored document as it was).
+- Opening an area or a location without a point in a map application searches for its local name, else its label, with its region or city and the **country as a name** (`Taipei, Northern, Taiwan`) instead of the raw country code (`TW`). A location with a point is still opened by the point.
 
 ### Fixed
 
@@ -117,6 +123,8 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 - Align the release workflow with the shared job graph used by every app: `validate`, `library-checks`, `publish-library`, `package-hacs`, `draft`. The HACS archive is built and checked in its own job, and the library tests run before the PyPI approval instead of after it.
 - Reduce `PLAN.md` to the open, ordered issues (adding the clean-up group #357-#376), fix four model docstrings that described an earlier state, tidy `docs/domain-model.md` and `AGENTS.md`, and drop the stale mapped-field inventory in favour of `models.py`.
 - Record the convention for dates, times and record names in `docs/domain-model.md` (inclusive `starts_on`/`ends_on`, wall clock plus the area's zone, `title`/`label`/`name`), with the documented exceptions, and open #386 for the one rename it chooses (#358).
+- Migration 035 adds the nullable `local_name` column to `areas` and `locations` (existing rows start without one) and downgrades by dropping it. The trip export (`travel/trip-export@3`) lists `areas[].local_name` and `locations[].local_name`; adding a field is compatible, so the schema version stays (#376).
+- A duplicate `_REFERENCE_NAMES` table in the location service is gone.
 
 ## [2026.11.2] - 2026-11-10
 

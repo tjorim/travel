@@ -30,6 +30,7 @@ const area = (
   label,
   label_nl: label,
   label_en: null,
+  local_name: null,
   country_code: "TW",
   region: null,
   latitude,

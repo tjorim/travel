@@ -526,6 +526,39 @@ it("does not invent values for omitted fields and keeps audience links separate"
   expect(isProjection(data, "share")).toBe(true);
 });
 
+it("shows a shared place's local name beside its label, in no language of its own", () => {
+  const data = projection();
+  data.places = [
+    { id: "place", label: "Hotel Riverside", local_name: "河畔飯店", country_code: "TW" },
+  ];
+  data.visits = [
+    {
+      id: "visit",
+      title: "Dinner",
+      place: { label: "Taipei", local_name: "台北", country_code: "TW" },
+    },
+  ];
+  render(<ProjectionView projection={data} audience="public" identifier="slug" />);
+  const hotel = screen.getByText("河畔飯店");
+  expect(hotel.hasAttribute("lang")).toBe(false);
+  expect(hotel.getAttribute("dir")).toBe("auto");
+  // Beside the label of the place a visit names, in the same line.
+  const visitPlace = screen.getByText("台北");
+  expect(visitPlace.hasAttribute("lang")).toBe(false);
+  expect(visitPlace.parentElement?.textContent).toContain("Taipei (台北)");
+});
+
+it("shows no local name where its label is not delivered", () => {
+  const data = projection();
+  // A name without a label never reaches a visitor from the server; the page does not show it on its own either.
+  data.places = [{ id: "place", local_name: "祕密住處", country_code: "TW" }];
+  data.visits = [
+    { id: "visit", title: "Dinner", place: { local_name: "祕密住處", country_code: "TW" } },
+  ];
+  render(<ProjectionView projection={data} audience="public" identifier="slug" />);
+  expect(screen.queryByText("祕密住處")).toBeNull();
+});
+
 it("requests a fresh scoped projection after navigation and shows live edits", async () => {
   let title = "Before edit";
   const fetcher = vi.fn(

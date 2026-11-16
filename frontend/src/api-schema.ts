@@ -2851,6 +2851,11 @@ export interface components {
              * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
              */
             label_en?: string | null;
+            /**
+             * Local Name
+             * @description The name of the place as written where it is (for example `東京` or `Αθήνα`): not a translation of the label, and often not in Latin script. Used for search and navigation, and shown beside the label wherever the label is shared; never shared without one. Null or an empty string clears it.
+             */
+            local_name?: string | null;
             /** Country Code */
             country_code?: string | null;
             /** Region */
@@ -2924,6 +2929,11 @@ export interface components {
              * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
              */
             label_en: string | null;
+            /**
+             * Local Name
+             * @description The name of the place as written where it is (for example `東京` or `Αθήνα`): not a translation of the label, and often not in Latin script. Used for search and navigation, and shown beside the label wherever the label is shared; never shared without one. Null or an empty string clears it.
+             */
+            local_name: string | null;
             /** Country Code */
             country_code: string | null;
             /** Region */
@@ -2970,6 +2980,11 @@ export interface components {
              * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
              */
             label_en?: string | null;
+            /**
+             * Local Name
+             * @description The name of the place as written where it is (for example `東京` or `Αθήνα`): not a translation of the label, and often not in Latin script. Used for search and navigation, and shown beside the label wherever the label is shared; never shared without one. Null or an empty string clears it.
+             */
+            local_name?: string | null;
             /** Country Code */
             country_code?: string | null;
             /** Region */
@@ -3939,6 +3954,11 @@ export interface components {
              * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
              */
             label_en?: string | null;
+            /**
+             * Local Name
+             * @description The name of the place as written where it is (for example `東京` or `Αθήνα`): not a translation of the label, and often not in Latin script. Used for search and navigation, and shown beside the label wherever the label is shared; never shared without one. Null or an empty string clears it.
+             */
+            local_name?: string | null;
             /** Area Id */
             area_id?: string | null;
             /**
@@ -4051,6 +4071,11 @@ export interface components {
              * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
              */
             label_en: string | null;
+            /**
+             * Local Name
+             * @description The name of the place as written where it is (for example `東京` or `Αθήνα`): not a translation of the label, and often not in Latin script. Used for search and navigation, and shown beside the label wherever the label is shared; never shared without one. Null or an empty string clears it.
+             */
+            local_name: string | null;
             /** Area Id */
             area_id: string;
             /**
@@ -4092,6 +4117,11 @@ export interface components {
              * @description The English text. Null or an empty string clears it; a visitor who reads English gets this one.
              */
             label_en?: string | null;
+            /**
+             * Local Name
+             * @description The name of the place as written where it is (for example `東京` or `Αθήνα`): not a translation of the label, and often not in Latin script. Used for search and navigation, and shown beside the label wherever the label is shared; never shared without one. Null or an empty string clears it.
+             */
+            local_name?: string | null;
             /** Area Id */
             area_id?: string | null;
             /** Share Address */
@@ -5056,6 +5086,21 @@ export interface components {
             postal_code: string | null;
             /** Country Code */
             country_code: string | null;
+            /**
+             * Local Name
+             * @description The provider's own name for the place, as written where it is, when that differs from the English name in `display_name`. Offered as `local_name`; saved only if the owner keeps it.
+             */
+            local_name: string | null;
+            /**
+             * Name Nl
+             * @description The provider's Dutch name (`name:nl`): a suggestion for `label_nl`, never saved by itself.
+             */
+            name_nl: string | null;
+            /**
+             * Name En
+             * @description The provider's English name (`name:en`): a suggestion for `label_en`, never saved by itself.
+             */
+            name_en: string | null;
             /** Viewport North */
             viewport_north: number | null;
             /** Viewport South */
@@ -5339,6 +5384,11 @@ export interface components {
              * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
              */
             label_lang?: ("nl" | "en") | null;
+            /**
+             * Local Name
+             * @description The name of the place as written where it is, present only beside a delivered `label` (it follows the label's visibility) and only when the owner entered one. It is in no particular language, so the page sets no `lang` on it.
+             */
+            local_name?: string | null;
             /** Country Code */
             country_code: string | null;
             /** Region */
@@ -5501,6 +5551,11 @@ export interface components {
              * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
              */
             label_lang?: ("nl" | "en") | null;
+            /**
+             * Local Name
+             * @description The name of the place as written where it is, present only beside a delivered `label` (it follows the label's visibility) and only when the owner entered one. It is in no particular language, so the page sets no `lang` on it.
+             */
+            local_name?: string | null;
             /** Country Code */
             country_code: string | null;
             /** Region */
@@ -5593,6 +5648,11 @@ export interface components {
              * @description Present only when this text is in the other language because the one the visitor asked for is empty: `nl` or `en`, so the page can set `lang` on the element.
              */
             label_lang?: ("nl" | "en") | null;
+            /**
+             * Local Name
+             * @description The name of the place as written where it is, present only beside a delivered `label` (it follows the label's visibility) and only when the owner entered one. It is in no particular language, so the page sets no `lang` on it.
+             */
+            local_name?: string | null;
             /** Country Code */
             country_code: string | null;
             /** Latitude */
