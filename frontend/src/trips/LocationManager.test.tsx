@@ -505,7 +505,7 @@ it("fills the local name from a search result and offers its Dutch and English n
   });
   fireEvent.click(screen.getByRole("button", { name: "Zoeken" }));
   const found = await screen.findByRole("button", { name: /^Senso-ji, Asakusa/ });
-  expect(within(found).getByText("浅草寺").hasAttribute("lang")).toBe(false);
+  expect(within(found).getByText("浅草寺").getAttribute("lang")).toBe("");
   fireEvent.click(found);
   const local = screen.getByLabelText("Lokale naam (optioneel)") as HTMLInputElement;
   expect(local.value).toBe("浅草寺");

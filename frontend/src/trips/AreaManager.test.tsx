@@ -299,15 +299,15 @@ it("shows the local name beside a search result and offers its names without sav
   fireEvent.change(screen.getByLabelText("Zoek stad of regio"), { target: { value: "Taipei" } });
   fireEvent.click(screen.getByRole("button", { name: "Zoeken" }));
   const city = await screen.findByRole("button", { name: /^Taipei, Taiwan/ });
-  // The local name sits next to the translated one and claims no language.
+  // The local name sits next to the translated one and marks its language unknown (`lang=""`).
   const shown = within(city).getByText("臺北市");
-  expect(shown.hasAttribute("lang")).toBe(false);
+  expect(shown.getAttribute("lang")).toBe("");
   fireEvent.click(city);
 
-  // The name from the result fills the editor's own field, which claims no language either.
+  // The name from the result fills the editor's own field, which marks its language unknown (`lang=""`) either.
   const local = screen.getByLabelText("Lokale naam (optioneel)") as HTMLInputElement;
   expect(local.value).toBe("臺北市");
-  expect(local.hasAttribute("lang")).toBe(false);
+  expect(local.getAttribute("lang")).toBe("");
   expect(local.getAttribute("dir")).toBe("auto");
   // The provider's Dutch and English names are offered, not applied: the English one is not typed anywhere yet.
   expect((screen.getByLabelText("Naam") as HTMLInputElement).value).toBe("Taipei");

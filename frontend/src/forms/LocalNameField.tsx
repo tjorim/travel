@@ -7,7 +7,7 @@ import { optionalNote, useFieldErrors } from "./fields";
 
 /**
  * A place's name as written where the place is (#376): a plain input, not a Dutch | English pair, because it is
- * not a version of the label. It is in a language the app cannot know, so the input claims none (no `lang`),
+ * not a version of the label. It is in a language the app cannot know, so the input says so with `lang=""` (unknown),
  * leaves the browser's spell checker and capitalisation out of it and lets a right-to-left name read the right
  * way round.
  */
@@ -31,6 +31,7 @@ export function LocalNameField({
         </span>
       </FieldLabel>
       <Input
+        lang=""
         dir="auto"
         spellCheck={false}
         autoCapitalize="off"

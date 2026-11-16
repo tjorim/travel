@@ -52,7 +52,7 @@ it("shows a result's local name beside its name and passes on the suggested name
   const result = await screen.findByRole("button", { name: /^Senso-ji, Tokyo, Japan/ });
   // The local name sits beside the translated one; its language is unknown, so it claims none.
   const local = within(result).getByText("浅草寺");
-  expect(local.hasAttribute("lang")).toBe(false);
+  expect(local.getAttribute("lang")).toBe("");
   expect(local.getAttribute("dir")).toBe("auto");
   fireEvent.click(result);
   const [location, existing, names] = onSelect.mock.calls[0];

@@ -96,6 +96,7 @@ function location(value: unknown): LocationInput | null | undefined {
     "existing_location_id",
     "id",
     "label",
+    "local_name",
     "display_name",
     "osm_element_type",
     "osm_element_id",

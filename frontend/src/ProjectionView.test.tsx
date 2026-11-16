@@ -540,11 +540,11 @@ it("shows a shared place's local name beside its label, in no language of its ow
   ];
   render(<ProjectionView projection={data} audience="public" identifier="slug" />);
   const hotel = screen.getByText("河畔飯店");
-  expect(hotel.hasAttribute("lang")).toBe(false);
+  expect(hotel.getAttribute("lang")).toBe("");
   expect(hotel.getAttribute("dir")).toBe("auto");
   // Beside the label of the place a visit names, in the same line.
   const visitPlace = screen.getByText("台北");
-  expect(visitPlace.hasAttribute("lang")).toBe(false);
+  expect(visitPlace.getAttribute("lang")).toBe("");
   expect(visitPlace.parentElement?.textContent).toContain("Taipei (台北)");
 });
 
