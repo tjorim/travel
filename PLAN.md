@@ -87,9 +87,7 @@ Source review clean-up, found at commit `def2173` and tracked by [#373](https://
 
 ### Independent tidy-ups
 
-- [ ] [#371](https://github.com/tjorim/travel/issues/371) Prune and regroup the message catalogue.
 - [ ] [#370](https://github.com/tjorim/travel/issues/370) Separate visitor, owner and shared frontend source.
-- [ ] [#376](https://github.com/tjorim/travel/issues/376) Authored content in Dutch and English, with fallback.
 
 ### Earlier follow-ups
 
