@@ -242,7 +242,7 @@ jobs:
       - name: Compile interface messages
         run: pnpm paraglide:compile
       - name: Run Playwright smoke and accessibility checks
-        run: pnpm e2e --shard=${{ matrix.shard }}/3 --workers=2 --reporter=github,blob
+        run: pnpm test:e2e --shard=${{ matrix.shard }}/3 --workers=2 --reporter=github,blob
       - name: Upload failure traces and blob report
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

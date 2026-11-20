@@ -119,7 +119,7 @@ pnpm typecheck
 pnpm test --maxWorkers=2
 pnpm build
 pnpm bundle:check
-pnpm e2e
+pnpm test:e2e
 ```
 
 Use the existing E2E/auth setup documented in the repository; do not bypass

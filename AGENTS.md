@@ -43,10 +43,10 @@ pnpm install --frozen-lockfile
 pnpm lint
 pnpm format:check
 pnpm build
-pnpm e2e
+pnpm test:e2e
 ```
 
-`pnpm e2e` runs the Playwright smoke and axe checks in `frontend/e2e/` against
+`pnpm test:e2e` runs the Playwright smoke and axe checks in `frontend/e2e/` against
 the Vite dev server with the API mocked, so it needs no session or database.
 Run `pnpm exec playwright install chromium` once; extend `e2e/mock-api.ts` when
 a screen under test needs more data.
