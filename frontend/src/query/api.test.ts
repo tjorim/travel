@@ -1,3 +1,4 @@
+import { fixtureResponse } from "@/mocks/response";
 // @vitest-environment happy-dom
 import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it, vi } from "vitest";
@@ -16,7 +17,11 @@ it("sends the bearer token only in the request header", async () => {
   server.use(
     http.get("/api/trips", ({ request }) => {
       received = request;
-      return HttpResponse.json([1]);
+      return HttpResponse.json(
+        /* Fixture exception: Transport/cache control sentinel; only identity or transport behavior is asserted. */ [
+          1,
+        ],
+      );
     }),
   );
   await expect(ownerRequest(session, "/api/trips", "fallback")).resolves.toEqual([1]);
@@ -27,14 +32,14 @@ it("sends the bearer token only in the request header", async () => {
 
 it("localizes descriptors, keeps safe diagnostics separate and never renders unknown prose", async () => {
   const invalid = await apiFailure(
-    new Response(
-      JSON.stringify({
+    fixtureResponse(
+      /* Fixture exception: Error or persistence-control fixture; no successful Travel record is consumed. */ {
         detail: "diagnostic only",
         errors: [
           { code: "string_too_long", path: ["body", "title"], params: { max_length: 120 } },
           { code: "missing", path: ["body", "items", 0, "name"], params: {} },
         ],
-      }),
+      },
       { status: 422 },
     ),
     "fallback",
@@ -51,7 +56,10 @@ it("localizes descriptors, keeps safe diagnostics separate and never renders unk
     { errors: [null, {}] },
   ]) {
     const failure = await apiFailure(
-      new Response(JSON.stringify(body), { status: 409 }),
+      fixtureResponse(
+        /* Fixture exception: Error or persistence-control fixture; no successful Travel record is consumed. */ body,
+        { status: 409 },
+      ),
       "fallback",
     );
     expect(failure.message).toBe("Dit kon niet worden uitgevoerd. Probeer opnieuw.");
@@ -91,7 +99,12 @@ it("sends an upload as multipart without forcing a JSON content type", async () 
     http.post("/api/documents/uploads", async ({ request }) => {
       received = request.clone();
       title = (await request.formData()).get("title");
-      return HttpResponse.json({ id: "doc" }, { status: 201 });
+      return HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+          id: "doc",
+        },
+        { status: 201 },
+      );
     }),
   );
   const body = new FormData();
@@ -128,7 +141,14 @@ it("downloads a protected file as a blob with the same auth, failure and abort h
   expect(fetchSpy.mock.calls[0]?.[1]).toMatchObject({ cache: "no-store" });
 
   server.use(
-    http.get("/x", () => HttpResponse.json({ detail: "Bestand bestaat niet." }, { status: 404 })),
+    http.get("/x", () =>
+      HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+          detail: "Bestand bestaat niet.",
+        },
+        { status: 404 },
+      ),
+    ),
   );
   await expect(ownerFile(session, "/x", "fallback")).rejects.toMatchObject({
     message: "Dit kon niet worden uitgevoerd. Probeer opnieuw.",
@@ -187,7 +207,11 @@ it("replays an unauthorized save once with the renewed token and identical body"
     http.patch("/api/trips/draft", async ({ request }) => {
       bodies.push(await request.json());
       return request.headers.get("Authorization") === "Bearer renewed"
-        ? HttpResponse.json({ saved: true })
+        ? HttpResponse.json(
+            /* Fixture exception: Transport/cache control sentinel; only identity or transport behavior is asserted. */ {
+              saved: true,
+            },
+          )
         : new HttpResponse(null, { status: 401 });
     }),
   );
@@ -236,12 +260,14 @@ it("sends binary imports without JSON encoding or putting file bytes in the URL"
     http.post("/api/trips/example/route-line-import", async ({ request }) => {
       received = request;
       body = await request.text();
-      return HttpResponse.json({
-        coordinates: [
-          [1, 2],
-          [3, 4],
-        ],
-      });
+      return HttpResponse.json(
+        /* Fixture exception: Transport/cache control sentinel; only identity or transport behavior is asserted. */ {
+          coordinates: [
+            [1, 2],
+            [3, 4],
+          ],
+        },
+      );
     }),
   );
   await ownerRequest(session, "/api/trips/example/route-line-import", () => "fallback", {

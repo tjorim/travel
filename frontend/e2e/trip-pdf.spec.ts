@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
@@ -11,7 +12,17 @@ for (const locale of ["nl", "en"] as const) {
       await choosePreferences(page, locale, theme);
       await page.setViewportSize({ width: 360, height: 800 });
       await page.route(`**/api/trips/${ownerTrip.id}/collections`, (route) =>
-        route.fulfill({ json: [{ member_id: "synthetic-member", label: "Synthetic family" }] }),
+        route.fulfill({
+          json: [
+            {
+              collection_id: "synthetic",
+              state: "draft",
+              expires_at: null,
+              member_id: "synthetic-member",
+              label: "Synthetic family",
+            },
+          ] satisfies Api.CollectionMembershipResponse[],
+        }),
       );
       let payload: unknown;
       await page.route(`**/api/trips/${ownerTrip.id}/export/pdf`, async (route) => {

@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { choosePreferences, mockApi } from "./mock-api";
@@ -12,61 +13,82 @@ const area = (label: string, latitude: number, longitude: number) => ({
   latitude,
   longitude,
 });
-const photos = Array.from({ length: 9 }, (_, index) => ({
-  id: `media-${index}`,
-  image: { id: `media-${index}` },
-  alt_text: `Synthetic photo ${index}`,
-  caption: `Caption ${index}`,
-  width: 1200,
-  height: index % 2 ? 1600 : 800,
-  focal_x: 50,
-  focal_y: 50,
-}));
-const trip = (overrides: Record<string, unknown> = {}) => ({
-  schema_version: "travel/public-trip@1",
-  title: "Exampleland 2054",
-  summary: "Three weeks around the island.",
-  summary_html: "<p>Three weeks around the island.</p>",
-  summary_text: "Three weeks around the island.",
-  dates: { starts_on: "2054-11-01", ends_on: "2054-11-21", date_precision: "day" },
-  cover: "media-0",
-  visits: [
-    { id: "visit-1", title: "Harbour", place: area("Keelung", 25.13, 121.74) },
-    { id: "visit-2", title: "Old street", place: area("Tainan", 22.99, 120.21) },
-  ],
-  places: [],
-  updates: [
-    {
-      id: "update-a",
-      title: "Arrival",
-      body: lorem,
-      body_html: `<p>${lorem}</p>`,
-      story_date: "2054-11-01",
-      date_precision: "day",
-      place: area("Keelung", 25.13, 121.74),
-    },
-    {
-      id: "update-b",
-      title: "Market day",
-      body: "Short note.",
-      body_html: "<p>Short note.</p>",
-      story_date: "2054-11-04",
-      date_precision: "day",
-    },
-  ],
-  stays: [],
-  media: photos.map((photo, index) => (index < 3 ? { ...photo, update: "update-a" } : photo)),
-  routes: [],
-  navigation: [],
-  ...overrides,
-});
+const photos = Array.from(
+  { length: 9 },
+  (_, index) =>
+    ({
+      caption_html: null,
+      id: `media-${index}`,
+      image: { id: `media-${index}` },
+      alt_text: `Synthetic photo ${index}`,
+      caption: `Caption ${index}`,
+      width: 1200,
+      height: index % 2 ? 1600 : 800,
+      focal_x: 50,
+      focal_y: 50,
+    }) satisfies Api.ProjectionMedia,
+);
+const trip = (overrides: Record<string, unknown> = {}) =>
+  ({
+    schema_version: "travel/public-trip@1",
+    title: "Exampleland 2054",
+    summary: "Three weeks around the island.",
+    summary_html: "<p>Three weeks around the island.</p>",
+    summary_text: "Three weeks around the island.",
+    dates: { starts_on: "2054-11-01", ends_on: "2054-11-21", date_precision: "day" },
+    cover: "media-0",
+    visits: [
+      {
+        summary: null,
+        summary_html: null,
+        date_precision: "day",
+        id: "visit-1",
+        title: "Harbour",
+        place: area("Keelung", 25.13, 121.74),
+      },
+      {
+        summary: null,
+        summary_html: null,
+        date_precision: "day",
+        id: "visit-2",
+        title: "Old street",
+        place: area("Tainan", 22.99, 120.21),
+      },
+    ],
+    places: [],
+    updates: [
+      {
+        id: "update-a",
+        title: "Arrival",
+        body: lorem,
+        body_html: `<p>${lorem}</p>`,
+        story_date: "2054-11-01",
+        date_precision: "day",
+        place: area("Keelung", 25.13, 121.74),
+      },
+      {
+        place: null,
+        id: "update-b",
+        title: "Market day",
+        body: "Short note.",
+        body_html: "<p>Short note.</p>",
+        story_date: "2054-11-04",
+        date_precision: "day",
+      },
+    ],
+    stays: [],
+    media: photos.map((photo, index) => (index < 3 ? { ...photo, update: "update-a" } : photo)),
+    routes: [],
+    navigation: [],
+    ...overrides,
+  }) satisfies Api.ProjectionDocument;
 
 const coverSvg = (index: number) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="${index === 2 ? 2400 : index % 2 ? 600 : 1600}" height="${index % 2 ? 1200 : index === 2 ? 400 : 900}"><rect width="${index === 2 ? 2400 : index % 2 ? 600 : 1600}" height="${index % 2 ? 1200 : index === 2 ? 400 : 900}" fill="${index % 2 ? "#6a8f7d" : "#c9a95a"}"/><circle cx="800" cy="450" r="220" fill="#f6f1e7"/></svg>`;
 
 async function open(
   page: Page,
-  data: unknown,
+  data: Api.ProjectionDocument,
   locale: "nl" | "en",
   theme: "light" | "dark",
   // Runs after the mocks, which abort every request that leaves localhost, so its routes take precedence.
@@ -75,7 +97,7 @@ async function open(
   await mockApi(page);
   await setup?.();
   await page.route("**/api/public/trips/exampleland-2054", (route) =>
-    route.fulfill({ json: data }),
+    route.fulfill({ json: data satisfies Api.ProjectionDocument }),
   );
   await page.route("**/api/public/trips/exampleland-2054/files/*", (route) => {
     const id = Number(route.request().url().split("media-")[1]);
@@ -193,7 +215,7 @@ test("a cover that cannot load falls back to the text-only header", async ({ pag
   await page.setViewportSize({ width: 820, height: 1000 });
   await mockApi(page);
   await page.route("**/api/public/trips/exampleland-2054", (route) =>
-    route.fulfill({ json: trip() }),
+    route.fulfill({ json: trip() satisfies Api.ProjectionDocument }),
   );
   await page.route("**/api/public/trips/exampleland-2054/files/media-0", (route) => route.abort());
   await choosePreferences(page, "en", "light");
@@ -236,7 +258,7 @@ for (const audience of ["public", "share"] as const) {
               updates,
               cover: null,
               media: [],
-            }),
+            }) satisfies Api.ProjectionDocument,
           }),
         );
         await choosePreferences(page, locale, theme);
@@ -290,7 +312,7 @@ for (const locale of ["en", "nl"] as const) {
             json: trip({
               schema_version: "travel/unlisted-trip@1",
               ...(variant === "empty" ? { updates: [], media: [], cover: null } : {}),
-            }),
+            }) satisfies Api.ProjectionDocument,
           }),
         );
         await page.route("**/api/shared/synthetic/files/*", (route) =>
@@ -342,7 +364,7 @@ test("the map sits beside the story, follows the update in view and pins its pho
     await page.route("https://tiles.openfreemap.org/styles/*", (route) =>
       route.fulfill({
         headers: { "access-control-allow-origin": "*" },
-        json: {
+        json: /* Fixture exception: External map style, outside the Travel OpenAPI contract. */ {
           version: 8,
           sources: {},
           glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
@@ -450,7 +472,7 @@ for (const [width, title] of [
       await page.setViewportSize({ width, height: 900 });
       await mockApi(page);
       await page.route("**/api/public/trips/exampleland-2054", (route) =>
-        route.fulfill({ json: trip({ title }) }),
+        route.fulfill({ json: trip({ title }) satisfies Api.ProjectionDocument }),
       );
       await page.route("**/api/public/trips/exampleland-2054/files/*", (route) =>
         route.fulfill({
@@ -514,7 +536,7 @@ for (const audience of ["public", "share"] as const) {
 
               schema_version:
                 audience === "public" ? "travel/public-trip@1" : "travel/unlisted-trip@1",
-            }),
+            }) satisfies Api.ProjectionDocument,
           }),
         );
         await page.route(`**${api}/files/*`, (route) =>

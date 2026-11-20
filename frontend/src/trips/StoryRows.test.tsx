@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -62,14 +64,44 @@ const trip = (updates: TravelUpdate[]): Trip => ({
   ends_on: null,
   travel_updates: updates,
 });
-const asset = (id: string, extra: object = {}) => ({
+const asset = (
+  id: string,
+  extra: Partial<Api.MediaAssetResponse> = {},
+): Api.MediaAssetResponse => ({
+  ...responseFixtures.MediaAssetResponse,
   id,
   media_kind: "photo",
   original_filename: `${id}.jpg`,
   thumbnail_url: `/files/${id}-thumb`,
   ...extra,
 });
-const copy = (id: string, assetId: string, updateId: string | null, altText: string | null) => ({
+const copy = (
+  id: string,
+  assetId: string,
+  updateId: string | null,
+  altText: string | null,
+): Api.MediaDerivativeResponse => ({
+  processing_state: "ready",
+  media_kind: "photo",
+  content_type: null,
+  byte_size: null,
+  duration_seconds: null,
+  poster_url: null,
+  remove_audio: false,
+  metadata_stripped_at: null,
+  width: null,
+  height: null,
+  caption_nl: null,
+  caption_en: null,
+  alt_text_nl: null,
+  alt_text_en: null,
+  focal_x: null,
+  focal_y: null,
+  visibility: "private",
+  is_cover: false,
+  created_at: "2054-01-01T00:00:00Z",
+  file_url: "synthetic",
+  caption_html: null,
   id,
   media_asset_id: assetId,
   purpose: "share",
@@ -80,37 +112,57 @@ const copy = (id: string, assetId: string, updateId: string | null, altText: str
 });
 
 let api: FakeApi;
-let status: {
-  surface_state: "published" | "unpublished";
-  scope: ShareScope;
-  revision: number;
-  slug: string | null;
-};
-let links: object[];
+let status: Api.PublicProjectionStatusResponse;
+let links: Api.ShareLinkResponse[];
 
-function seed(media: ReturnType<typeof asset>[], copies: Record<string, object[]> = {}) {
+function seed(
+  media: ReturnType<typeof asset>[],
+  copies: Record<string, Api.MediaDerivativeResponse[]> = {},
+) {
   api = fakeApi()
-    .collection("/api/trips/trip/locations", [])
-    .collection("/api/trips/trip/media", media)
-    .value("/api/trips/trip/public-projection", status)
-    .value("/api/trips/trip/share-links", links);
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [])
+    .collection<Api.MediaAssetResponse>("/api/trips/trip/media", media)
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", status)
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", links);
   for (const item of media)
-    api.collection(
+    api.collection<Api.MediaDerivativeResponse>(
       `/api/trips/trip/media/${item.id}/derivatives`,
-      (copies[item.id] ?? []) as never[],
+      copies[item.id] ?? [],
     );
-  api.on("GET", /^\/files\//, () => ({}));
-  api.on("POST", /\/share-scope\/exclusion-review$/, () => ({
+  api.on<object | string>(
+    /* Fixture exception: File/thumbnail transport sentinel; no JSON API record. */ "GET",
+    /^\/files\//,
+    () => ({}),
+  );
+  api.on<Api.ExclusionReview>("POST", /\/share-scope\/exclusion-review$/, () => ({
     excluded: [],
     also_hidden: {},
     stale: 0,
     baseline: [],
   }));
-  api.on("POST", /\/future-disclosure$/, () => ({ transport: 0, day_dates: 0 }));
-  api.on("POST", /\/preview$/, (_body, _match) => ({
+  api.on<Api.FutureDisclosure>("POST", /\/future-disclosure$/, () => ({
+    transport: 0,
+    day_dates: 0,
+  }));
+  api.on<Api.ProjectionDocument>("POST", /\/preview$/, (_body, _match) => ({
+    summary: null,
+    dates: null,
+    summary_html: null,
+    summary_text: null,
+    cover: null,
     schema_version: "travel/public-trip@1",
     title: "Exampleland",
-    updates: [{ id: "update-abc", title: "Aankomst", body: "Tekst van Aankomst" }],
+    updates: [
+      {
+        body_html: null,
+        date_precision: "day",
+        story_date: null,
+        place: null,
+        id: "update-abc",
+        title: "Aankomst",
+        body: "Tekst van Aankomst",
+      },
+    ],
     visits: [],
     places: [],
     stays: [],
@@ -139,7 +191,13 @@ beforeEach(() => {
   auth.session = { accessToken: testToken() };
   stubObjectUrls();
   stubObserver();
-  status = { surface_state: "published", scope: scope(), revision: 1, slug: "x" };
+  status = {
+    ...responseFixtures.PublicProjectionStatusResponse,
+    surface_state: "published",
+    scope: scope(),
+    revision: 1,
+    slug: "x",
+  };
   links = [];
 });
 afterEach(() => {
@@ -223,6 +281,7 @@ it("previews through a hidden link that delivers an update the public page does 
   status = { ...status, surface_state: "unpublished" };
   links = [
     {
+      ...responseFixtures.ShareLinkResponse,
       id: "l1",
       series_id: "l1",
       label: "Familie",

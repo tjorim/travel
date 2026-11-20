@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
@@ -13,6 +14,12 @@ for (const locale of ["en", "nl"] as const)
       await choosePreferences(page, locale, theme);
       await page.setViewportSize({ width: 390, height: 844 });
       let link = {
+        activated_at: null,
+        revoked_at: null,
+        exclusions: { excluded: [], also_hidden: {}, stale: 0 },
+        applied_preset: null,
+        applied_preset_at: null,
+        preset_exceptions: null,
         revision: 1,
         id: "feed-link",
         series_id: "feed-link",
@@ -28,9 +35,9 @@ for (const locale of ["en", "nl"] as const)
           trip: { title: true, summary: true, dates: null },
           items: [],
         },
-      };
+      } satisfies Api.ShareLinkResponse;
       await page.route(`**/api/trips/${ownerTrip.id}/share-links`, (route) =>
-        route.fulfill({ json: [link] }),
+        route.fulfill({ json: [link] satisfies Api.ShareLinkResponse[] }),
       );
       await page.route(
         `**/api/trips/${ownerTrip.id}/share-links/feed-link/feed/*`,
@@ -43,7 +50,7 @@ for (const locale of ["en", "nl"] as const)
               action === "revoke" ? null : action === "rotate" ? "rotated-feed" : "separate-feed",
             feed_expires_at: "2054-02-01T00:00:00Z",
           };
-          await route.fulfill({ json: link });
+          await route.fulfill({ json: link satisfies Api.ShareLinkResponse });
         },
       );
       await page.goto(`/admin/trips/${ownerTrip.id}/sharing`);

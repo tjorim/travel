@@ -1,3 +1,5 @@
+import type * as Api from "@/api-schema";
+import { jsonResponse, fixtureResponse } from "@/mocks/response";
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto";
 import { afterEach, expect, it, vi } from "vitest";
@@ -55,7 +57,10 @@ function stubFetch(entries: EmergencyInfoEntry[]): {
         const failure = state.failNext;
         state.failNext = null;
         return Promise.resolve(
-          new Response(JSON.stringify(failure.body), { status: failure.status }),
+          fixtureResponse(
+            /* Fixture exception: Error or persistence-control fixture; no successful Travel record is consumed. */ failure.body,
+            { status: failure.status },
+          ),
         );
       }
       if (method === "POST" && url === "/api/library/emergency-info") {
@@ -64,16 +69,21 @@ function stubFetch(entries: EmergencyInfoEntry[]): {
           ...(body as Partial<EmergencyInfoEntry>),
         });
         state.entries = [...state.entries, created];
-        return Promise.resolve(new Response(JSON.stringify(created), { status: 201 }));
+        return Promise.resolve(
+          jsonResponse<Api.EmergencyInfoEntryResponse>(created, { status: 201 }),
+        );
       }
       if (method === "PATCH") {
         state.entries = state.entries.map((item) =>
           url.endsWith(item.id) ? { ...item, ...(body as Partial<EmergencyInfoEntry>) } : item,
         );
         return Promise.resolve(
-          new Response(JSON.stringify(state.entries.find((item) => url.endsWith(item.id))), {
-            status: 200,
-          }),
+          jsonResponse<Api.EmergencyInfoEntryResponse>(
+            state.entries.find((item) => url.endsWith(item.id))!,
+            {
+              status: 200,
+            },
+          ),
         );
       }
       if (method === "DELETE") {
@@ -81,7 +91,9 @@ function stubFetch(entries: EmergencyInfoEntry[]): {
         return Promise.resolve(new Response(null, { status: 204 }));
       }
       if (url === "/api/library/emergency-info")
-        return Promise.resolve(new Response(JSON.stringify(state.entries), { status: 200 }));
+        return Promise.resolve(
+          jsonResponse<Api.EmergencyInfoEntryResponse[]>(state.entries, { status: 200 }),
+        );
       return Promise.resolve(new Response(null, { status: 404 }));
     }),
   );

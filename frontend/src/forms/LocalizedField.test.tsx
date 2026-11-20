@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { useForm } from "@tanstack/react-form";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -68,7 +69,13 @@ function answers(...replies: Response[]) {
   server.use(
     http.post("/api/translation/drafts", async ({ request }) => {
       sent.push(await request.json());
-      return replies.shift() ?? HttpResponse.json({}, { status: 500 });
+      return (
+        replies.shift() ??
+        HttpResponse.json(
+          /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {},
+          { status: 500 },
+        )
+      );
     }),
   );
   return sent;
@@ -129,7 +136,14 @@ it("allows clearing one language but not the last of a required text", async () 
 });
 
 it("fills the empty language with a draft that stays marked as unreviewed until saved", async () => {
-  const sent = answers(HttpResponse.json({ text: "We arrived late.", source: "nl", target: "en" }));
+  const sent = answers(
+    HttpResponse.json<Api.TranslationDraftResponse>({
+      machine_translated: true,
+      text: "We arrived late.",
+      source: "nl",
+      target: "en",
+    }),
+  );
   withOwner(<Editor initial={{ bodyNl: "Wij kwamen laat aan." }} />);
   const body = () => screen.getByLabelText("Tekst") as HTMLTextAreaElement;
   // The Dutch text is there; no action for the language it is written in.
@@ -160,15 +174,26 @@ it("fills the empty language with a draft that stays marked as unreviewed until 
 
 it("can discard a draft, reports a failure and retries, and leaves the other text alone", async () => {
   answers(
-    HttpResponse.json({ text: "Hello", source: "nl", target: "en" }),
+    HttpResponse.json<Api.TranslationDraftResponse>({
+      machine_translated: true,
+      text: "Hello",
+      source: "nl",
+      target: "en",
+    }),
     HttpResponse.json(
+      /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */
       {
         detail: "x",
         errors: [{ code: "translation_service_is_unavailable", params: {}, path: [] }],
       },
       { status: 503 },
     ),
-    HttpResponse.json({ text: "Hello again", source: "nl", target: "en" }),
+    HttpResponse.json<Api.TranslationDraftResponse>({
+      machine_translated: true,
+      text: "Hello again",
+      source: "nl",
+      target: "en",
+    }),
   );
   withOwner(<Editor initial={{ titleNl: "Hallo" }} />);
   fireEvent.click(choice(/^Engels/));

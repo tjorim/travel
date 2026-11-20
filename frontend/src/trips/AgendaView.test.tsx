@@ -1,10 +1,12 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
-import type { Area, Route, Stay, Trip, Visit } from "../api-types";
+import type { Area, Stay, Trip } from "../api-types";
 import { AgendaView } from "./AgendaView";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
@@ -53,27 +55,53 @@ afterEach(() => {
   expect(api.unexpected).toEqual([]);
 });
 
-function seed(stays: unknown[], routes: unknown[], visits: unknown[]) {
+function seed(stays: Api.StayResponse[], routes: Api.RouteResponse[], visits: Api.VisitResponse[]) {
   api = fakeApi()
-    .collection("/api/trips/trip/stays", stays as never[])
-    .collection("/api/trips/trip/routes", routes as never[])
-    .collection("/api/trips/trip/visits", visits as never[]);
+    .collection<Api.StayResponse>("/api/trips/trip/stays", stays)
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", routes)
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", visits);
 }
 
 it("lists stays, routes and visits together by day, then what has no day yet", async () => {
   seed(
     [
       {
+        check_out_time: null,
+        status: "planned",
+        website_url: null,
+        booking_reference: null,
+        contact_details: null,
+        notes: null,
+        document_asset_ids: [],
+        location: null,
+        visibility: "private",
+        share_date_precision: null,
+        notes_html: null,
+        contact_details_html: null,
         id: "s1",
         check_in_date: "2054-11-16",
         check_out_date: "2054-11-20",
         property_name: "Hotel Royal",
         check_in_time: null,
         area: linkou,
-      } as unknown as Stay,
+      } satisfies Api.StayResponse,
     ],
     [
       {
+        status: "planned",
+        label_nl: null,
+        label_en: null,
+        departure_location: null,
+        arrival_location: null,
+        carrier: null,
+        service_reference: null,
+        travel_class: null,
+        booking_reference: null,
+        notes: null,
+        document_asset_ids: [],
+        geometry: null,
+        visibility: "private",
+        notes_html: null,
         id: "r1",
         mode: "flight",
         label: null,
@@ -86,6 +114,22 @@ it("lists stays, routes and visits together by day, then what has no day yet", a
         arrival_timezone: "Asia/Taipei",
       },
       {
+        status: "planned",
+        label_nl: null,
+        label_en: null,
+        departure_location: null,
+        arrival_location: null,
+        departure_timezone: null,
+        arrival_timezone: null,
+        carrier: null,
+        service_reference: null,
+        travel_class: null,
+        booking_reference: null,
+        notes: null,
+        document_asset_ids: [],
+        geometry: null,
+        visibility: "private",
+        notes_html: null,
         id: "r2",
         mode: "train",
         label: "Losse route",
@@ -96,6 +140,22 @@ it("lists stays, routes and visits together by day, then what has no day yet", a
         arrives_at: null,
       },
       {
+        status: "planned",
+        label_nl: null,
+        label_en: null,
+        departure_location: null,
+        arrival_location: null,
+        departure_timezone: null,
+        arrival_timezone: null,
+        carrier: null,
+        service_reference: null,
+        travel_class: null,
+        booking_reference: null,
+        notes: null,
+        document_asset_ids: [],
+        geometry: null,
+        visibility: "private",
+        notes_html: null,
         id: "r3",
         mode: "train",
         label: "Naar het noorden",
@@ -105,9 +165,24 @@ it("lists stays, routes and visits together by day, then what has no day yet", a
         departs_at: null,
         arrives_at: null,
       },
-    ] as unknown as Route[],
+    ] satisfies Api.RouteResponse[],
     [
       {
+        location: null,
+        title_nl: null,
+        title_en: null,
+        kind: null,
+        status: "planned",
+        notes: null,
+        summary: null,
+        summary_nl: null,
+        summary_en: null,
+        visibility: "private",
+        share_time: false,
+        share_date_precision: null,
+        possible_route_duplicates: [],
+        notes_html: null,
+        summary_html: null,
         id: "v1",
         title: "Nachtmarkt",
         area: taipei,
@@ -117,6 +192,21 @@ it("lists stays, routes and visits together by day, then what has no day yet", a
         end_time: null,
       },
       {
+        location: null,
+        title_nl: null,
+        title_en: null,
+        kind: null,
+        status: "planned",
+        notes: null,
+        summary: null,
+        summary_nl: null,
+        summary_en: null,
+        visibility: "private",
+        share_time: false,
+        share_date_precision: null,
+        possible_route_duplicates: [],
+        notes_html: null,
+        summary_html: null,
         id: "v2",
         title: "Ooit",
         area: taipei,
@@ -125,7 +215,7 @@ it("lists stays, routes and visits together by day, then what has no day yet", a
         start_time: null,
         end_time: null,
       },
-    ] as unknown as Visit[],
+    ] satisfies Api.VisitResponse[],
   );
   renderWithOwner(<AgendaView trip={trip} />);
   await screen.findByText(/Bezoek: Nachtmarkt/);
@@ -160,6 +250,22 @@ it("keeps each record's own order for same-day items without a time, instead of 
     [
       // Ids sort alphabetically the other way around, so an id-based tiebreak would reverse these.
       {
+        status: "planned",
+        label_nl: null,
+        label_en: null,
+        departure_location: null,
+        arrival_location: null,
+        departure_timezone: null,
+        arrival_timezone: null,
+        carrier: null,
+        service_reference: null,
+        travel_class: null,
+        booking_reference: null,
+        notes: null,
+        document_asset_ids: [],
+        geometry: null,
+        visibility: "private",
+        notes_html: null,
         id: "z-arrival",
         mode: "train",
         label: "Lisbon → Sintra",
@@ -170,6 +276,22 @@ it("keeps each record's own order for same-day items without a time, instead of 
         arrives_at: null,
       },
       {
+        status: "planned",
+        label_nl: null,
+        label_en: null,
+        departure_location: null,
+        arrival_location: null,
+        departure_timezone: null,
+        arrival_timezone: null,
+        carrier: null,
+        service_reference: null,
+        travel_class: null,
+        booking_reference: null,
+        notes: null,
+        document_asset_ids: [],
+        geometry: null,
+        visibility: "private",
+        notes_html: null,
         id: "a-return",
         mode: "train",
         label: "Sintra → Lisbon",
@@ -179,9 +301,24 @@ it("keeps each record's own order for same-day items without a time, instead of 
         departs_at: null,
         arrives_at: null,
       },
-    ] as unknown as Route[],
+    ] satisfies Api.RouteResponse[],
     [
       {
+        location: null,
+        title_nl: null,
+        title_en: null,
+        kind: null,
+        status: "planned",
+        notes: null,
+        summary: null,
+        summary_nl: null,
+        summary_en: null,
+        visibility: "private",
+        share_time: false,
+        share_date_precision: null,
+        possible_route_duplicates: [],
+        notes_html: null,
+        summary_html: null,
         id: "v-sintra",
         title: "Sintra",
         area: area("sintra", "Sintra"),
@@ -190,7 +327,7 @@ it("keeps each record's own order for same-day items without a time, instead of 
         start_time: null,
         end_time: null,
       },
-    ] as unknown as Visit[],
+    ] satisfies Api.VisitResponse[],
   );
   renderWithOwner(<AgendaView trip={trip} />);
   await screen.findByText(/Bezoek: Sintra/);
@@ -206,16 +343,44 @@ it("opens the record behind an agenda row when it is clicked", async () => {
   seed(
     [
       {
+        check_out_time: null,
+        status: "planned",
+        website_url: null,
+        booking_reference: null,
+        contact_details: null,
+        notes: null,
+        document_asset_ids: [],
+        location: null,
+        visibility: "private",
+        share_date_precision: null,
+        notes_html: null,
+        contact_details_html: null,
         id: "s1",
         check_in_date: "2054-11-16",
         check_out_date: "2054-11-20",
         property_name: "Hotel Royal",
         check_in_time: null,
         area: linkou,
-      } as unknown as Stay,
+      } satisfies Api.StayResponse,
     ],
     [
       {
+        status: "planned",
+        label_nl: null,
+        label_en: null,
+        departure_location: null,
+        arrival_location: null,
+        departure_timezone: null,
+        arrival_timezone: null,
+        carrier: null,
+        service_reference: null,
+        travel_class: null,
+        booking_reference: null,
+        notes: null,
+        document_asset_ids: [],
+        geometry: null,
+        visibility: "private",
+        notes_html: null,
         id: "r1",
         mode: "train",
         label: null,
@@ -225,9 +390,24 @@ it("opens the record behind an agenda row when it is clicked", async () => {
         departs_at: null,
         arrives_at: null,
       },
-    ] as unknown as Route[],
+    ] satisfies Api.RouteResponse[],
     [
       {
+        location: null,
+        title_nl: null,
+        title_en: null,
+        kind: null,
+        status: "planned",
+        notes: null,
+        summary: null,
+        summary_nl: null,
+        summary_en: null,
+        visibility: "private",
+        share_time: false,
+        share_date_precision: null,
+        possible_route_duplicates: [],
+        notes_html: null,
+        summary_html: null,
         id: "v1",
         title: "Nachtmarkt",
         area: taipei,
@@ -236,7 +416,7 @@ it("opens the record behind an agenda row when it is clicked", async () => {
         start_time: null,
         end_time: null,
       },
-    ] as unknown as Visit[],
+    ] satisfies Api.VisitResponse[],
   );
   const onOpenRecord = vi.fn();
   renderWithOwner(<AgendaView trip={trip} onOpenRecord={onOpenRecord} />);
@@ -249,6 +429,17 @@ it("starts a visit, stay or route on a day, with the area where the owner sleeps
   seed(
     [
       {
+        check_out_time: null,
+        website_url: null,
+        booking_reference: null,
+        contact_details: null,
+        notes: null,
+        document_asset_ids: [],
+        location: null,
+        visibility: "private",
+        share_date_precision: null,
+        notes_html: null,
+        contact_details_html: null,
         id: "s1",
         check_in_date: "2054-11-16",
         check_out_date: "2054-11-19",
@@ -289,7 +480,36 @@ it("starts a visit, stay or route on a day, with the area where the owner sleeps
 });
 
 it("offers no way to start a record unless the workspace can open one", async () => {
-  seed([], [], [{ id: "v1", title: "Nachtmarkt", area: taipei, starts_on: "2054-11-21" }]);
+  seed(
+    [],
+    [],
+    [
+      {
+        location: null,
+        title_nl: null,
+        title_en: null,
+        kind: null,
+        status: "planned",
+        ends_on: null,
+        start_time: null,
+        end_time: null,
+        notes: null,
+        summary: null,
+        summary_nl: null,
+        summary_en: null,
+        visibility: "private",
+        share_time: false,
+        share_date_precision: null,
+        possible_route_duplicates: [],
+        notes_html: null,
+        summary_html: null,
+        id: "v1",
+        title: "Nachtmarkt",
+        area: taipei,
+        starts_on: "2054-11-21",
+      },
+    ],
+  );
   renderWithOwner(<AgendaView trip={trip} />);
   await screen.findByText(/Bezoek: Nachtmarkt/);
   expect(screen.queryByRole("button", { name: /^Toevoegen aan / })).toBeNull();
@@ -297,6 +517,7 @@ it("offers no way to start a record unless the workspace can open one", async ()
 
 const planStay = (id: string, fields: Partial<Stay> = {}) =>
   ({
+    ...responseFixtures.StayResponse,
     id,
     status: "planned",
     property_name: `Hotel ${id}`,
@@ -308,7 +529,7 @@ const planStay = (id: string, fields: Partial<Stay> = {}) =>
     area: linkou,
     visibility: "private",
     ...fields,
-  }) as unknown as Stay;
+  }) satisfies Api.StayResponse;
 const noMenu = {
   onAct: () => {},
   isPinned: () => false,

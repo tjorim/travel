@@ -24,7 +24,14 @@ it.each([
   async (locale, failure, retry, empty) => {
     changeLocale(locale);
     const onChange = vi.fn();
-    server.use(http.get("/api/search", () => HttpResponse.json({}, { status: 503 })));
+    server.use(
+      http.get("/api/search", () =>
+        HttpResponse.json(
+          /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {},
+          { status: 503 },
+        ),
+      ),
+    );
     render(
       <form>
         <input aria-label="Notes" defaultValue="Unsaved notes" />
@@ -49,7 +56,11 @@ it.each([
     server.use(
       http.get("/api/search", ({ request }) => {
         expect(new URL(request.url).searchParams.get("q")).toBe("Bay");
-        return HttpResponse.json([{ value: "bay", label: "Example Bay" }]);
+        return HttpResponse.json(
+          /* Fixture exception: Synthetic combobox search provider, not a Travel endpoint. */ [
+            { value: "bay", label: "Example Bay" },
+          ],
+        );
       }),
     );
     const user = userEvent.setup();
@@ -73,7 +84,9 @@ it("announces loading separately from an empty result", async () => {
   server.use(
     http.get("/api/search", async () => {
       await pending;
-      return HttpResponse.json([]);
+      return HttpResponse.json(
+        /* Fixture exception: Synthetic combobox search provider, not a Travel endpoint. */ [],
+      );
     }),
   );
   render(

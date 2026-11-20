@@ -628,9 +628,13 @@ class AreaSuggestRequest(PlaceReverseGeocodeRequest):
     city: str | None = Field(default=None, max_length=120)
 
 
+class SuggestedArea(AreaInput):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+
 class AreaSuggestion(ResponseModel):
     existing_area_id: str | None = None
-    area: AreaInput
+    area: SuggestedArea
 
 
 class AreaResponse(AreaInput):
@@ -1313,6 +1317,8 @@ class GeoJsonLineString(InputModel):
     """A reviewed approximate GeoJSON line, drawn or seeded from a finished-file
     draft. Coordinates are longitude, latitude pairs; raw tracks are never stored."""
 
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
     type: Literal["LineString"] = "LineString"
     coordinates: list[tuple[float, float]] = Field(min_length=2, max_length=10_000)
 
@@ -1331,7 +1337,7 @@ class GeoJsonLineString(InputModel):
 class StoredGeoJsonLineString(GeoJsonLineString):
     """A saved line as a response reads it back, including one carried over from an older schema."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore", json_schema_serialization_defaults_required=True)
 
 
 _DEPARTS_ON = (
@@ -2274,7 +2280,7 @@ class ProjectionNavigation(ProjectionRecord):
     id: str
 
 
-class ProjectionDocument(BaseModel):
+class ProjectionDocument(ResponseModel):
     current_locations: list[CurrentLocation] | None = Field(default=None, exclude_if=lambda value: value is None)
     numbers: dict[Literal["days", "areas", "countries", "nights"], int] | None = Field(
         default=None,
@@ -2319,7 +2325,7 @@ class PublicTripCover(BaseModel):
     focal_y: float | None
 
 
-class PublicTripCard(BaseModel):
+class PublicTripCard(ResponseModel):
     cover: PublicTripCover | None = None
     slug: str
     title: str | None
@@ -2646,7 +2652,7 @@ class CollectionIndexEntry(BaseModel):
     )
 
 
-class CollectionIndexDocument(BaseModel):
+class CollectionIndexDocument(ResponseModel):
     schema_version: Literal["travel/collection@1"] = "travel/collection@1"
     title: str | None
     title_lang: TextLanguage | None = Field(

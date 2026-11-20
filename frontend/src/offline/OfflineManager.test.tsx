@@ -52,7 +52,15 @@ function withSession(): void {
 }
 
 function stubMetadataFetch(): void {
-  server.use(http.get("/api/*", () => HttpResponse.json({ id: "doc-1" })));
+  server.use(
+    http.get("/api/*", () =>
+      HttpResponse.json(
+        /* Fixture exception: Offline revalidation control sentinel; only document identity is consumed. */ {
+          id: "doc-1",
+        },
+      ),
+    ),
+  );
 }
 
 it("shows an empty state without any pinned copies", async () => {

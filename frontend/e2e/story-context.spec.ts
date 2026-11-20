@@ -29,6 +29,8 @@ const data = {
   cover: null,
   visits: [
     {
+      summary: null,
+      summary_html: null,
       id: "visit-a",
       title: "Harbour walk",
       place: keelung,
@@ -39,6 +41,8 @@ const data = {
       private_notes: PRIVATE[3],
     },
     {
+      summary: null,
+      summary_html: null,
       id: "visit-undated",
       title: "Night market",
       place: tainan,
@@ -48,6 +52,8 @@ const data = {
     },
     // Two updates in Tainan on this day make the visit ambiguous, so it keeps its compact separate block.
     {
+      summary: null,
+      summary_html: null,
       id: "visit-repeat",
       title: "Old street again",
       place: tainan,
@@ -101,6 +107,9 @@ const data = {
   media: [],
   routes: [
     {
+      label: null,
+      carrier: null,
+      service_reference: null,
       id: "route-a",
       mode: "train",
       status: "planned",
@@ -116,7 +125,9 @@ const data = {
 async function open(page: Page, locale: "nl" | "en", theme: "light" | "dark") {
   await mockApi(page);
   await page.route("**/api/public/trips/exampleland-2054", (route) =>
-    route.fulfill({ json: data }),
+    route.fulfill({
+      json: /* Deliberately malformed: injects private owner fields to verify visitor non-disclosure. */ data,
+    }),
   );
   await choosePreferences(page, locale, theme);
   await page.goto("/trips/exampleland-2054");

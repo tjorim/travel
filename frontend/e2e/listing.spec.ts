@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi } from "./mock-api";
@@ -5,12 +6,13 @@ import { choosePreferences, mockApi } from "./mock-api";
 // Synthetic authored content only; evidence contains no owner trip data.
 const trips = [
   {
+    summary_text: null,
     slug: "long",
     title: "A slow journey through mountains, forests and small towns along the coast",
   },
-  { slug: "sparse", title: null },
-  { slug: "word", title: "AnUnbrokenAuthoredTitle".repeat(8) },
-  { slug: "short", title: "A weekend away" },
+  { summary_text: null, slug: "sparse", title: null },
+  { summary_text: null, slug: "word", title: "AnUnbrokenAuthoredTitle".repeat(8) },
+  { summary_text: null, slug: "short", title: "A weekend away" },
 ].map((trip, index) => ({
   ...trip,
   summary: null,
@@ -38,7 +40,9 @@ for (const locale of ["nl", "en"] as const) {
       test(`listing ${locale} ${theme} ${width}`, async ({ page }, testInfo) => {
         await page.setViewportSize({ width, height: 1000 });
         await mockApi(page);
-        await page.route("**/api/public/trips{,?*}", (route) => route.fulfill({ json: trips }));
+        await page.route("**/api/public/trips{,?*}", (route) =>
+          route.fulfill({ json: trips satisfies Api.PublicTripCard[] }),
+        );
         await choosePreferences(page, locale, theme);
         await page.goto(locale === "en" ? "/" : "/trips/");
         const links = page.locator(".travel-trip-card");
@@ -65,8 +69,12 @@ test("listing loading, empty and retry states", async ({ page }) => {
   let state = "loading";
   await page.route("**/api/public/trips{,?*}", async (route) => {
     if (state === "loading") return; // Keep the first request pending until navigation.
-    if (state === "error") return route.fulfill({ status: 503, json: {} });
-    return route.fulfill({ json: [] });
+    if (state === "error")
+      return route.fulfill({
+        status: 503,
+        json: /* Fixture exception: Error response exercises failure handling. */ {},
+      });
+    return route.fulfill({ json: [] satisfies Api.PublicTripCard[] });
   });
   await page.goto("/trips/");
   await expect(page.getByRole("status")).toBeVisible();
@@ -111,6 +119,9 @@ for (const locale of ["nl", "en"] as const) {
       await page.route("**/api/shared/synthetic-active-capability{,?*}", (route) =>
         route.fulfill({
           json: {
+            summary_html: null,
+            summary_text: null,
+            cover: null,
             schema_version: "travel/unlisted-trip@1",
             title: "Current shared title",
             summary: "Current selected summary",
@@ -122,7 +133,7 @@ for (const locale of ["nl", "en"] as const) {
             stays: [],
             routes: [],
             media: [],
-          },
+          } satisfies Api.ProjectionDocument,
         }),
       );
       await page.goto("/trips/");

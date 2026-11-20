@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { message } from "./messages";
@@ -46,7 +47,7 @@ for (const locale of ["nl", "en"] as const) {
                 no_longer_reached: ["public", "link:hidden-link"],
               },
             },
-          ],
+          ] satisfies Api.AuditEventResponse[],
         }),
       );
       await page.goto(`/admin/trips/${ownerTrip.id}/sharing`);

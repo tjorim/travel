@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw/http";
@@ -9,7 +10,7 @@ import { VisitorRoutes } from "./visitor-routes";
 const token = "synthetic-collection-capability-0001";
 const storageKey = "travel-saved-shared-trips@1";
 
-const index = {
+const index: Api.CollectionIndexDocument = {
   schema_version: "travel/collection@1",
   title: "Shared with family",
   trips: [
@@ -47,7 +48,9 @@ afterEach(() => {
 });
 
 it("lists the members a collection link grants and opens each at its own page", async () => {
-  server.use(http.get(`/api/shared/${token}`, () => HttpResponse.json(index)));
+  server.use(
+    http.get(`/api/shared/${token}`, () => HttpResponse.json<Api.CollectionIndexDocument>(index)),
+  );
   render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
   expect(await screen.findByRole("heading", { level: 1, name: "Shared with family" })).toBeTruthy();
   const link = screen.getByRole("link", { name: /Alpha Coast 2054/ });
@@ -69,7 +72,11 @@ it("lists the members a collection link grants and opens each at its own page", 
 });
 
 it("renders a member trip through the projection and links back without forgetting the collection", async () => {
-  server.use(http.get(`/api/shared/${token}/trips/member-1`, () => HttpResponse.json(trip)));
+  server.use(
+    http.get(`/api/shared/${token}/trips/member-1`, () =>
+      HttpResponse.json<Api.ProjectionDocument>(trip),
+    ),
+  );
   render(<VisitorRoutes initialEntries={[`/share/${token}/trips/member-1`]} />);
   expect(await screen.findByRole("heading", { name: "Alpha Coast 2054" })).toBeTruthy();
   expect(screen.getByRole("link", { name: "Alle reizen in deze link" }).getAttribute("href")).toBe(
@@ -86,8 +93,18 @@ it("shows one unavailable page for a revoked collection and for a removed member
     JSON.stringify([{ token, title: "Old", summary: null, lastVisitedAt: "2054-01-01T00:00:00Z" }]),
   );
   server.use(
-    http.get(`/api/shared/${token}`, () => HttpResponse.json({}, { status: 404 })),
-    http.get(`/api/shared/${token}/trips/gone`, () => HttpResponse.json({}, { status: 404 })),
+    http.get(`/api/shared/${token}`, () =>
+      HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {},
+        { status: 404 },
+      ),
+    ),
+    http.get(`/api/shared/${token}/trips/gone`, () =>
+      HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {},
+        { status: 404 },
+      ),
+    ),
   );
   const first = render(<VisitorRoutes initialEntries={[`/share/${token}/trips/gone`]} />);
   await screen.findByText("Reis niet beschikbaar");
@@ -100,13 +117,17 @@ it("shows one unavailable page for a revoked collection and for a removed member
 });
 
 it("shows an empty collection and validates a saved collection on the home page", async () => {
-  server.use(http.get(`/api/shared/${token}`, () => HttpResponse.json({ ...index, trips: [] })));
+  server.use(
+    http.get(`/api/shared/${token}`, () =>
+      HttpResponse.json<Api.CollectionIndexDocument>({ ...index, trips: [] }),
+    ),
+  );
   render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
   expect(await screen.findByText("Nog geen reizen hier")).toBeTruthy();
   cleanup();
   server.use(
-    http.get("/api/public/trips", () => HttpResponse.json([])),
-    http.get(`/api/shared/${token}`, () => HttpResponse.json(index)),
+    http.get("/api/public/trips", () => HttpResponse.json<Api.PublicTripCard[]>([])),
+    http.get(`/api/shared/${token}`, () => HttpResponse.json<Api.CollectionIndexDocument>(index)),
   );
   render(<VisitorRoutes initialEntries={["/trips"]} />);
   expect(await screen.findByText("Shared with family")).toBeTruthy();

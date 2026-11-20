@@ -37,7 +37,14 @@ it("shares one renewal and validates the child source before exchanging its code
           },
         }),
     ),
-    http.post(tokenUrl, () => HttpResponse.json({ access_token: "fresh", expires_in: 120 })),
+    http.post(tokenUrl, () =>
+      HttpResponse.json(
+        /* Fixture exception: External OIDC token response, outside the Travel OpenAPI contract. */ {
+          access_token: "fresh",
+          expires_in: 120,
+        },
+      ),
+    ),
   );
   const first = renewSession();
   expect(renewSession()).toBe(first);

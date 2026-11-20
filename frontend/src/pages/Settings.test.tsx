@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -12,7 +13,7 @@ const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 
 let api: FakeApi;
-let providers: { provider: string; available: boolean; connected: boolean }[];
+let providers: Api.ProviderConnectionStatus[];
 beforeEach(() => {
   window.history.replaceState(null, "", "/admin/settings");
   auth.session = { accessToken: testToken() };
@@ -21,14 +22,18 @@ beforeEach(() => {
     { provider: "gopro_cloud", available: false, connected: false },
   ];
   api = fakeApi();
-  api.on("GET", /^\/api\/provider-tokens$/, () => providers);
-  api.on("POST", /^\/api\/provider-tokens\/google_photos_picker\/oauth\/complete$/, () => {
-    providers = providers.map((item) =>
-      item.provider === "google_photos_picker" ? { ...item, connected: true } : item,
-    );
-    return undefined;
-  });
-  api.on("DELETE", /^\/api\/provider-tokens\/([^/]+)$/, (_body, match) => {
+  api.on<Api.ProviderConnectionStatus[]>("GET", /^\/api\/provider-tokens$/, () => providers);
+  api.on<Api.ProviderConnectionStatus>(
+    "POST",
+    /^\/api\/provider-tokens\/google_photos_picker\/oauth\/complete$/,
+    () => {
+      providers = providers.map((item) =>
+        item.provider === "google_photos_picker" ? { ...item, connected: true } : item,
+      );
+      return undefined;
+    },
+  );
+  api.on<undefined>("DELETE", /^\/api\/provider-tokens\/([^/]+)$/, (_body, match) => {
     providers = providers.map((item) =>
       item.provider === match[1] ? { ...item, connected: false } : item,
     );
@@ -140,7 +145,7 @@ it("retranslates an open confirmation and an existing failure without refetching
 
 it("offers a retry when the provider status cannot be loaded", async () => {
   let failing = true;
-  api.on("GET", /^\/api\/provider-tokens$/, () => {
+  api.on<Api.ProviderConnectionStatus[]>("GET", /^\/api\/provider-tokens$/, () => {
     if (failing) throw new Error("offline");
     return providers;
   });

@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -113,7 +114,7 @@ const stay = {
 let api: FakeApi;
 function seed(visits: Visit[] = []) {
   api = fakeApi()
-    .collection("/api/trips/trip/visits", visits, {
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", visits, {
       create: (body, count) =>
         visit(`new-${count}`, {
           title: (body.title_nl as string | null) ?? null,
@@ -130,10 +131,10 @@ function seed(visits: Visit[] = []) {
         }),
       update: (row, body) => resolveTexts({ ...row, ...body }),
     })
-    .collection("/api/trips/trip/areas", [taipei, tainan])
-    .collection("/api/trips/trip/locations", [spring])
-    .collection("/api/trips/trip/stays", [stay])
-    .on("POST", /\/api\/trips\/trip\/visits\/route-check$/, () => []);
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [taipei, tainan])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [spring])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [stay])
+    .on<Api.RouteReference[]>("POST", /\/api\/trips\/trip\/visits\/route-check$/, () => []);
   ensurePlanApi(api);
 }
 beforeEach(() => {
@@ -254,7 +255,7 @@ it("hints, without blocking, that a visit restates an existing route", async () 
 
 it("warns before saving when the draft visit restates a route, and never blocks the save", async () => {
   seed();
-  api.on("POST", /\/api\/trips\/trip\/visits\/route-check$/, (body) =>
+  api.on<Api.RouteReference[]>("POST", /\/api\/trips\/trip\/visits\/route-check$/, (body) =>
     (body as { title: string }).title === "Vertrek EX101"
       ? [{ id: "r1", title: "Schiphol → Taoyuan" }]
       : [],

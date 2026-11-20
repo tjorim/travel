@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -33,7 +34,8 @@ const bag = (
   position: number,
   weight_limit_g: number | null = null,
   type: string | null = null,
-) => ({
+): Api.PackingBagResponse => ({
+  list_id: "list",
   id,
   name,
   type,
@@ -46,7 +48,8 @@ const item = (
   bag_id: string | null,
   position: number,
   extra: Record<string, unknown> = {},
-) => ({
+): Api.PackingItemResponse => ({
+  list_id: "list",
   id,
   label,
   bag_id,
@@ -68,7 +71,7 @@ let items: ReturnType<typeof item>[];
 let failToggle: boolean;
 let failLists: boolean;
 const calls: { method: string; url: string; body: Record<string, unknown> }[] = [];
-const json = (value: unknown, status = 200) =>
+const json = <T = never,>(value: NoInfer<T>, status = 200) =>
   Promise.resolve(new Response(JSON.stringify(value), { status }));
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
@@ -87,13 +90,31 @@ beforeEach(() => {
       const body = init.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
       calls.push({ method, url, body });
       if (url.endsWith("/packing-lists") && method === "GET")
-        return failLists ? json({ detail: "Oops" }, 500) : json([{ id: "list", name: "Paklijst" }]);
+        return failLists
+          ? json<unknown>(
+              /* Fixture exception: Error fixture preserves server diagnostics for failure handling. */ {
+                detail: "Oops",
+              },
+              500,
+            )
+          : json<Api.PackingListResponse[]>([
+              {
+                trip_id: "synthetic",
+                created_at: "2054-01-01T00:00:00Z",
+                id: "list",
+                name: "Paklijst",
+              },
+            ]);
       if (url.endsWith("/packing-list-sources") && method === "GET")
-        return json([{ id: "source", name: "Paklijst", trip_id: "other", trip_title: "Japan" }]);
+        return json<Api.PackingListSourceResponse[]>([
+          { id: "source", name: "Paklijst", trip_id: "other", trip_title: "Japan" },
+        ]);
       if (url.endsWith("/packing-templates") && method === "GET")
-        return json([{ id: "template", name: "Weekend" }]);
+        return json<Api.PackingTemplateResponse[]>([
+          { created_at: "2054-01-01T00:00:00Z", id: "template", name: "Weekend" },
+        ]);
       if (url.endsWith("/suggestions") && method === "GET")
-        return json([
+        return json<Api.PackingSuggestionResponse[]>([
           {
             label: "Oplader",
             category: "Elektronica",
@@ -103,15 +124,28 @@ beforeEach(() => {
           },
         ]);
       if (url.endsWith("/packing-lists") && method === "POST")
-        return json({ id: "new-list", name: body.name }, 201);
+        return json<Api.PackingListResponse>(
+          {
+            trip_id: "synthetic",
+            created_at: "2054-01-01T00:00:00Z",
+            id: "new-list",
+            name: String(body.name),
+          },
+          201,
+        );
       if (url.endsWith("/packing-lists/list") && method === "GET")
-        return json({ id: "list", name: "Paklijst" });
-      if (url.endsWith("/bags") && method === "GET") return json(bags);
-      if (url.endsWith("/items") && method === "GET") return json(items);
+        return json<Api.PackingListResponse>({
+          trip_id: "synthetic",
+          created_at: "2054-01-01T00:00:00Z",
+          id: "list",
+          name: "Paklijst",
+        });
+      if (url.endsWith("/bags") && method === "GET") return json<Api.PackingBagResponse[]>(bags);
+      if (url.endsWith("/items") && method === "GET") return json<Api.PackingItemResponse[]>(items);
       if (url.endsWith("/bags") && method === "POST") {
         const next = bag(`new-${bags.length}`, String(body.name), bags.length);
         bags.push(next);
-        return json(next, 201);
+        return json<Api.PackingBagResponse>(next, 201);
       }
       if (url.endsWith("/items") && method === "POST") {
         const next = item(
@@ -121,16 +155,21 @@ beforeEach(() => {
           items.length,
         );
         items.push(next);
-        return json(next, 201);
+        return json<Api.PackingItemResponse>(next, 201);
       }
       const match = /\/items\/([^/]+)$/.exec(url);
       if (match && method === "PATCH") {
         if (failToggle && "packed" in body) {
           failToggle = false;
-          return json({ detail: "Try again" }, 503);
+          return json<unknown>(
+            /* Fixture exception: Error fixture preserves server diagnostics for failure handling. */ {
+              detail: "Try again",
+            },
+            503,
+          );
         }
         items = items.map((row) => (row.id === match[1] ? { ...row, ...body } : row));
-        return json(items.find((row) => row.id === match[1]));
+        return json<Api.PackingItemResponse>(items.find((row) => row.id === match[1])!);
       }
       throw Error(`Unexpected ${method} ${url}`);
     }),

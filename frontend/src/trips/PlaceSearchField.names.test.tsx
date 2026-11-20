@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
@@ -15,12 +17,13 @@ it("shows a result's local name beside its name and passes on the suggested name
   auth.session = { accessToken: testToken() };
   server.use(
     http.post("/api/trips/trip/places/search", () =>
-      HttpResponse.json({
+      HttpResponse.json<Api.PlaceSearchResponse>({
         provider: "synthetic",
         attribution: "Synthetic",
         attribution_url: "https://example.test",
         results: [
           {
+            ...responseFixtures.PlaceSearchResult,
             osm_element_type: "node",
             osm_element_id: "1",
             display_name: "Senso-ji, Tokyo, Japan",

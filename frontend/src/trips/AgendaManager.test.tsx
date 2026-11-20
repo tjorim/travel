@@ -1,8 +1,9 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
+import { http, HttpResponse, type JsonBodyType } from "msw";
 import { useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
@@ -121,43 +122,46 @@ let routeDeleteGate: Promise<void> | undefined;
 let sent: { method: string; path: string; body?: unknown }[];
 
 function serve() {
-  const json = (read: () => unknown) => () => HttpResponse.json(read() as never);
+  const json =
+    <T extends JsonBodyType = never>(read: () => NoInfer<T>) =>
+    () =>
+      HttpResponse.json<T>(read());
   server.use(
     http.get(
       "/api/trips/trip/visits",
-      json(() => visits),
+      json<Api.VisitResponse[]>(() => visits),
     ),
     http.get(
       "/api/trips/trip/stays",
-      json(() => stays),
+      json<Api.StayResponse[]>(() => stays),
     ),
     http.get(
       "/api/trips/trip/routes",
-      json(() => routes),
+      json<Api.RouteResponse[]>(() => routes),
     ),
     http.get(
       "/api/trips/trip/areas",
-      json(() => [taipei]),
+      json<Api.AreaResponse[]>(() => [taipei]),
     ),
     http.get(
       "/api/trips/trip/locations",
-      json(() => []),
+      json<never[]>(() => []),
     ),
     http.get(
       "/api/trips/trip/documents",
-      json(() => []),
+      json<never[]>(() => []),
     ),
     http.get(
       "/api/documents",
-      json(() => []),
+      json<never[]>(() => []),
     ),
     http.get(
       "/api/trips/trip/alternative-groups",
-      json(() => []),
+      json<never[]>(() => []),
     ),
     http.get(
       "/api/trips/trip/alternative-groups/suggestions",
-      json(() => []),
+      json<never[]>(() => []),
     ),
     http.delete("/api/trips/trip/visits/:id", ({ params, request }) => {
       sent.push({ method: "DELETE", path: new URL(request.url).pathname });
@@ -170,7 +174,9 @@ function serve() {
       stays = stays.map((candidate) =>
         candidate.id === params.id ? { ...candidate, ...body } : candidate,
       );
-      return HttpResponse.json(stays.find((candidate) => candidate.id === params.id) as never);
+      return HttpResponse.json<Api.StayResponse>(
+        stays.find((candidate) => candidate.id === params.id)!,
+      );
     }),
     http.delete("/api/trips/trip/routes/:id", async ({ params, request }) => {
       sent.push({ method: "DELETE", path: new URL(request.url).pathname });

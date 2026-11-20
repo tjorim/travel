@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { mockCaptureLocks } from "../capture-draft-test-utils";
 import { createRootRoute } from "@tanstack/react-router";
@@ -73,11 +74,39 @@ beforeEach(() => {
       travel_updates: [update("m1", "Eerste avond"), update("m2", "Tweede dag")],
     },
   };
-  api = fakeApi().collection("/api/trips/trip/media", [
-    { id: "p1", media_kind: "photo", original_filename: "markt.jpg", captured_at: null, gps: null },
-  ]);
-  api.on("GET", /^\/api\/trips$/, () => [
+  api = fakeApi().collection<Api.MediaAssetResponse>("/api/trips/trip/media", [
     {
+      byte_size: 0,
+      content_type: "synthetic",
+      captured_local: false,
+      created_at: "2054-01-01T00:00:00Z",
+      deleted_at: null,
+      camera_make: null,
+      camera_model: null,
+      file_url: "/api/trips/trip/media/p1/original",
+      thumbnail_url: null,
+      id: "p1",
+      media_kind: "photo",
+      original_filename: "markt.jpg",
+      captured_at: null,
+      gps: null,
+    },
+  ]);
+  api.on<string>(
+    /* Fixture exception: Private photo stream, not a JSON API response. */ "GET",
+    /media\/p1\/original$/,
+    () => "synthetic image bytes",
+  );
+  api.on<Api.TripSummaryResponse[]>("GET", /^\/api\/trips$/, () => [
+    {
+      owner_subject: "synthetic",
+      title_nl: null,
+      title_en: null,
+      summary_nl: null,
+      summary_en: null,
+      cover_derivative_id: null,
+      cover_url: null,
+      summary_html: null,
       id: state.trip.id,
       content_language: "nl",
       title: state.trip.title,
@@ -88,8 +117,12 @@ beforeEach(() => {
       last_update_at: null,
     },
   ]);
-  api.on("GET", /^\/api\/trips\/trip\/travel-updates$/, () => state.trip.travel_updates);
-  api.on("POST", /^\/api\/trips\/trip\/travel-updates$/, (body) => {
+  api.on<Api.TravelUpdateResponse[]>(
+    "GET",
+    /^\/api\/trips\/trip\/travel-updates$/,
+    () => state.trip.travel_updates,
+  );
+  api.on<Api.TravelUpdateResponse>("POST", /^\/api\/trips\/trip\/travel-updates$/, (body) => {
     const created = {
       id: `new-${state.trip.travel_updates.length}`,
       location: null,
@@ -98,16 +131,20 @@ beforeEach(() => {
     state.trip = { ...state.trip, travel_updates: [...state.trip.travel_updates, created] };
     return created;
   });
-  api.on("PATCH", /^\/api\/trips\/trip\/travel-updates\/([^/]+)$/, (body, match) => {
-    state.trip = {
-      ...state.trip,
-      travel_updates: state.trip.travel_updates.map((item) =>
-        item.id === match[1] ? resolveTexts({ ...item, ...(body as object) }) : item,
-      ),
-    };
-    return state.trip.travel_updates.find((item) => item.id === match[1]);
-  });
-  api.on("DELETE", /^\/api\/trips\/trip\/travel-updates\/([^/]+)$/, (_body, match) => {
+  api.on<Api.TravelUpdateResponse>(
+    "PATCH",
+    /^\/api\/trips\/trip\/travel-updates\/([^/]+)$/,
+    (body, match) => {
+      state.trip = {
+        ...state.trip,
+        travel_updates: state.trip.travel_updates.map((item) =>
+          item.id === match[1] ? resolveTexts({ ...item, ...(body as object) }) : item,
+        ),
+      };
+      return state.trip.travel_updates.find((item) => item.id === match[1]);
+    },
+  );
+  api.on<undefined>("DELETE", /^\/api\/trips\/trip\/travel-updates\/([^/]+)$/, (_body, match) => {
     state.trip = {
       ...state.trip,
       travel_updates: state.trip.travel_updates.filter((item) => item.id !== match[1]),
@@ -168,7 +205,7 @@ it("does not save a restored edit of a saved update before it knows what languag
   server.use(
     http.get("/api/trips/trip/travel-updates", async () => {
       await hold;
-      return HttpResponse.json(state.trip.travel_updates);
+      return HttpResponse.json<Api.TravelUpdateResponse[]>(state.trip.travel_updates);
     }),
   );
   await saveDraft({ ...emptyDraft("trip"), updateId: "m3", title: "First evening, edited" });
@@ -292,11 +329,26 @@ it("does not send anything while offline and keeps the draft local", async () =>
 });
 
 it("searches a place, lets the owner choose it and sends it with the update", async () => {
-  api.on("POST", /\/places\/search$/, () => ({
+  api.on<Api.PlaceSearchResponse>("POST", /\/places\/search$/, () => ({
+    provider: "synthetic",
     attribution: "OpenStreetMap",
     attribution_url: "https://osm.example",
     results: [
       {
+        latitude: 0,
+        longitude: 0,
+        address_line1: null,
+        address_line2: null,
+        admin_area: null,
+        postal_code: null,
+        country_code: null,
+        local_name: null,
+        name_nl: null,
+        name_en: null,
+        viewport_north: null,
+        viewport_south: null,
+        viewport_east: null,
+        viewport_west: null,
         display_name: "Taipei Main Station",
         osm_element_type: "node",
         osm_element_id: "1",

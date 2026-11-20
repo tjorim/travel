@@ -15,7 +15,14 @@ afterEach(() => {
 it.each([403, 404, 503])(
   "offers a fixed public-index exit for status %s in both locales",
   async (status) => {
-    server.use(http.get("/api/public/trips/example", () => HttpResponse.json({}, { status })));
+    server.use(
+      http.get("/api/public/trips/example", () =>
+        HttpResponse.json(
+          /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {},
+          { status },
+        ),
+      ),
+    );
     render(<VisitorRoutes initialEntries={["/trips/example"]} />);
     expect(
       (await screen.findByRole("link", { name: "Alle openbare reizen" })).getAttribute("href"),
@@ -31,7 +38,14 @@ it.each([403, 404, 503])(
 it.each([403, 404, 503])(
   "keeps unlisted preferences with a public-index link for status %s in both locales",
   async (status) => {
-    server.use(http.get("/api/shared/synthetic-token", () => HttpResponse.json({}, { status })));
+    server.use(
+      http.get("/api/shared/synthetic-token", () =>
+        HttpResponse.json(
+          /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {},
+          { status },
+        ),
+      ),
+    );
     render(<VisitorRoutes initialEntries={["/share/synthetic-token"]} />);
     await screen.findByRole("button", { name: "Voorkeuren" });
     expect(screen.getByRole("link", { name: "Alle openbare reizen" })).toHaveAttribute(

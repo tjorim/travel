@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi, signInOwner } from "./mock-api";
@@ -8,7 +9,12 @@ for (const locale of ["nl", "en"] as const) {
       await mockApi(page);
       await signInOwner(page);
       await choosePreferences(page, locale, theme);
-      await page.route("**/api/trips", (route) => route.fulfill({ status: 500, json: {} }));
+      await page.route("**/api/trips", (route) =>
+        route.fulfill({
+          status: 500,
+          json: /* Fixture exception: Error response exercises failure handling. */ {},
+        }),
+      );
       await page.goto("/admin/");
       const notice = page.locator('[data-slot="alert"][role="alert"]');
       await expect(notice).toBeVisible();
@@ -23,6 +29,8 @@ for (const locale of ["nl", "en"] as const) {
       await page.route("**/api/public/trips/exampleland-2054", (route) =>
         route.fulfill({
           json: {
+            summary_html: null,
+            summary_text: null,
             schema_version: "travel/public-trip@1",
             title: "Exampleland",
             summary: null,
@@ -35,7 +43,7 @@ for (const locale of ["nl", "en"] as const) {
             media: [],
             routes: [],
             navigation: [],
-          },
+          } satisfies Api.ProjectionDocument,
         }),
       );
       await page.goto("/trips/exampleland-2054");

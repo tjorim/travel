@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -55,14 +56,48 @@ let documents: DocumentAsset[];
 /** The owner's one document list, served whole, filtered by trip, and changed by uploads, edits and deletes. */
 function serve(initial: DocumentAsset[]) {
   documents = initial.slice();
-  api = fakeApi().collection("/api/trips", [
-    { id: "trip", title: "Exampleland" },
-    { id: "other", title: "Elsewhere" },
+  api = fakeApi().collection<Api.TripSummaryResponse>("/api/trips", [
+    {
+      owner_subject: "synthetic",
+      content_language: "nl",
+      title_nl: null,
+      title_en: null,
+      summary: null,
+      summary_nl: null,
+      summary_en: null,
+      starts_on: null,
+      ends_on: null,
+      cover_derivative_id: null,
+      cover_url: null,
+      travel_update_count: 0,
+      last_update_at: null,
+      summary_html: null,
+      id: "trip",
+      title: "Exampleland",
+    },
+    {
+      owner_subject: "synthetic",
+      content_language: "nl",
+      title_nl: null,
+      title_en: null,
+      summary: null,
+      summary_nl: null,
+      summary_en: null,
+      starts_on: null,
+      ends_on: null,
+      cover_derivative_id: null,
+      cover_url: null,
+      travel_update_count: 0,
+      last_update_at: null,
+      summary_html: null,
+      id: "other",
+      title: "Elsewhere",
+    },
   ]);
-  api.on("GET", /^\/api\/documents(\?trip_id=(\w+))?$/, (_body, match) =>
+  api.on<Api.DocumentResponse[]>("GET", /^\/api\/documents(\?trip_id=(\w+))?$/, (_body, match) =>
     documents.filter((document) => !match[2] || document.trip_id === match[2]),
   );
-  api.on("POST", /^\/api\/documents\/uploads$/, (body) => {
+  api.on<Api.DocumentResponse>("POST", /^\/api\/documents\/uploads$/, (body) => {
     const form = body as FormData;
     const created = asset(
       "d-new",
@@ -72,14 +107,14 @@ function serve(initial: DocumentAsset[]) {
     documents = [...documents, created];
     return created;
   });
-  api.on("PATCH", /^\/api\/documents\/(\w+)$/, (body, match) => {
+  api.on<Api.DocumentResponse>("PATCH", /^\/api\/documents\/(\w+)$/, (body, match) => {
     const changes = body as Partial<DocumentAsset>;
     documents = documents.map((document) =>
       document.id === match[1] ? { ...document, ...changes } : document,
     );
     return documents.find((document) => document.id === match[1]);
   });
-  api.on("DELETE", /^\/api\/documents\/(\w+)$/, (_body, match) => {
+  api.on<undefined>("DELETE", /^\/api\/documents\/(\w+)$/, (_body, match) => {
     documents = documents.filter((document) => document.id !== match[1]);
     return undefined;
   });
@@ -190,7 +225,11 @@ it("removes a deleted document and refreshes cached stay links before another ed
 });
 
 it("pins a document through the authenticated download and unpins it again", async () => {
-  api.on("GET", /\/documents\/d1\/original$/, () => "pdf bytes");
+  api.on<object | string>(
+    /* Fixture exception: File/thumbnail transport sentinel; no JSON API record. */ "GET",
+    /\/documents\/d1\/original$/,
+    () => "pdf bytes",
+  );
   renderWithOwner(<DocumentManager trip={trip} />);
   await screen.findByText("Vliegticket");
   fireEvent.click(screen.getAllByRole("button", { name: "Offline bewaren" })[0]);
@@ -205,7 +244,11 @@ it("pins a document through the authenticated download and unpins it again", asy
 it("opens the original with the bearer token in the request, not in a link", async () => {
   const open = vi.spyOn(window, "open").mockReturnValue({} as Window);
   stubObjectUrls("blob:original");
-  api.on("GET", /\/documents\/d2\/original$/, () => "pdf");
+  api.on<object | string>(
+    /* Fixture exception: File/thumbnail transport sentinel; no JSON API record. */ "GET",
+    /\/documents\/d2\/original$/,
+    () => "pdf",
+  );
   renderWithOwner(<DocumentManager trip={trip} />);
   await screen.findByText("Hotelbevestiging");
   fireEvent.click(screen.getAllByRole("button", { name: "Origineel bekijken" })[1]);

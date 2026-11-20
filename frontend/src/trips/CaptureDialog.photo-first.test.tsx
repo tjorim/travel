@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { mockCaptureLocks } from "../capture-draft-test-utils";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -41,7 +43,8 @@ const trip = (
   last_update_at: null,
 });
 
-const photo = (id: string, name: string) => ({
+const photo = (id: string, name: string): Api.MediaAssetResponse => ({
+  ...responseFixtures.MediaAssetResponse,
   id,
   media_kind: "photo",
   original_filename: name,
@@ -76,15 +79,19 @@ beforeEach(() => {
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   trips = [trip("t1", "Exampleland", null, null), trip("t2", "IJsland", null, null)];
   api = fakeApi()
-    .collection("/api/trips/t1/media", [])
-    .collection("/api/trips/t2/media", [])
-    .collection("/api/trips/t1/travel-updates", [])
-    .collection("/api/trips/t2/travel-updates", []);
-  api.on("GET", /^\/api\/trips$/, () => trips);
-  api.on("GET", /\/thumbnail$/, () => ({}));
-  api.on("POST", /^\/api\/trips\/t1\/media\/uploads$/, (body) => {
+    .collection<Api.MediaAssetResponse>("/api/trips/t1/media", [])
+    .collection<Api.MediaAssetResponse>("/api/trips/t2/media", [])
+    .collection<Api.TravelUpdateResponse>("/api/trips/t1/travel-updates", [])
+    .collection<Api.TravelUpdateResponse>("/api/trips/t2/travel-updates", []);
+  api.on<Api.TripSummaryResponse[]>("GET", /^\/api\/trips$/, () => trips);
+  api.on<object | string>(
+    /* Fixture exception: File/thumbnail transport sentinel; no JSON API record. */ "GET",
+    /\/thumbnail$/,
+    () => ({}),
+  );
+  api.on<Api.MediaAssetResponse>("POST", /^\/api\/trips\/t1\/media\/uploads$/, (body) => {
     const name = (body as FormData).get("file") as File;
-    return api.push(
+    return api.push<Api.MediaAssetResponse>(
       "/api/trips/t1/media",
       photo(`up-${api.rows("/api/trips/t1/media").length}`, name.name),
     );
@@ -240,7 +247,10 @@ it("lets a failed upload be removed and then saves without it", async () => {
 });
 
 it("restores a draft with its photos as thumbnails and keeps them in the local draft", async () => {
-  api.collection("/api/trips/t1/media", [photo("m1", "kust.jpg"), photo("m2", "markt.jpg")]);
+  api.collection<Api.MediaAssetResponse>("/api/trips/t1/media", [
+    photo("m1", "kust.jpg"),
+    photo("m2", "markt.jpg"),
+  ]);
   await saveDraft({ ...emptyDraft("t1"), title: "Bewaard", mediaAssetIds: ["m1", "m2"] });
   mount();
   await waitFor(() => expect(screen.getByLabelText("Titel")).toHaveValue("Bewaard"));
@@ -284,7 +294,9 @@ it("starts the global entry on the trip underway, not the first trip the API lis
     trip("t2", "Nu onderweg", day(-2), day(5)),
     trip("t3", "Voorbij", day(-90), day(-80)),
   ];
-  api.collection("/api/trips/t3/media", []).collection("/api/trips/t3/travel-updates", []);
+  api
+    .collection<Api.MediaAssetResponse>("/api/trips/t3/media", [])
+    .collection<Api.TravelUpdateResponse>("/api/trips/t3/travel-updates", []);
   mount({ lockedTripId: null });
   await screen.findByLabelText("Titel");
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Aangekomen" } });
@@ -300,7 +312,9 @@ it("starts on the next upcoming trip when none is underway", async () => {
     trip("t2", "Binnenkort", day(10), day(20)),
     trip("t3", "Voorbij", day(-90), day(-80)),
   ];
-  api.collection("/api/trips/t3/media", []).collection("/api/trips/t3/travel-updates", []);
+  api
+    .collection<Api.MediaAssetResponse>("/api/trips/t3/media", [])
+    .collection<Api.TravelUpdateResponse>("/api/trips/t3/travel-updates", []);
   mount({ lockedTripId: null });
   await screen.findByLabelText("Titel");
   fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Pakken" } });

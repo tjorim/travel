@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
@@ -27,7 +28,12 @@ it.each([
     server.use(
       http.post("/api/trips/trip/places/search", () => {
         calls++;
-        return HttpResponse.json({ detail: "Private provider prose" }, { status });
+        return HttpResponse.json(
+          /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+            detail: "Private provider prose",
+          },
+          { status },
+        );
       }),
     );
     const submit = vi.fn((event) => event.preventDefault());
@@ -59,7 +65,7 @@ it.each([
     server.use(
       http.post("/api/trips/trip/places/search", () => {
         calls++;
-        return HttpResponse.json({
+        return HttpResponse.json<Api.PlaceSearchResponse>({
           provider: "synthetic",
           attribution: "Synthetic",
           attribution_url: "https://example.test",

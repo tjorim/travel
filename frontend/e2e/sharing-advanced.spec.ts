@@ -1,28 +1,33 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
 import { message } from "./messages";
 
 // Synthetic content only.
-const scopeWith = (overrides: Record<string, unknown>) => ({
-  schema_version: "travel/share-scope@1",
-  trip: { title: true, summary: true, dates: null },
-  defaults: { date_precision: "month" },
-  items: [],
-  ...overrides,
-});
+const scopeWith = (overrides: Partial<Api.ShareScope>) =>
+  ({
+    schema_version: "travel/share-scope@1",
+    trip: { title: true, summary: true, dates: null },
+    defaults: { date_precision: "month" },
+    items: [],
+    ...overrides,
+  }) satisfies Api.ShareScope;
 
-async function openSharing(page: Page, scope: Record<string, unknown>) {
+async function openSharing(page: Page, scope: Api.ShareScope) {
   await page.route(`**/api/trips/${ownerTrip.id}/public-projection`, (route) => {
     if (route.request().method() !== "GET") return route.fallback();
     return route.fulfill({
       json: {
+        applied_preset: null,
+        applied_preset_at: null,
+        preset_exceptions: null,
         revision: 1,
         trip_id: ownerTrip.id,
         scope,
         surface_state: "unpublished",
         slug: "exampleland-2054",
-      },
+      } satisfies Api.PublicProjectionStatusResponse,
     });
   });
   await page.goto(`/admin/trips/${ownerTrip.id}/sharing`);

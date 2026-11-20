@@ -1,3 +1,5 @@
+import type * as Api from "@/api-schema";
+import { responseFixtures } from "@/mocks/response-test-fixtures";
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw/http";
@@ -82,7 +84,13 @@ it("keeps a pending save and submitted authored values across switches", async (
   );
   expect((sent[0] as { title_nl: string }).title_nl).toBe("Eigen reis");
   await act(async () =>
-    finish(HttpResponse.json({ id: "new", title: "Eigen reis", travel_updates: [] })),
+    finish(
+      HttpResponse.json<Api.TripResponse>({
+        ...responseFixtures.TripResponse,
+        id: "new",
+        title: "Eigen reis",
+      }),
+    ),
   );
 });
 

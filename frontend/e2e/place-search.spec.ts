@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { locales, message } from "./messages";
@@ -21,7 +22,7 @@ for (const locale of locales) {
       await name.fill("Unsaved route");
       let failed = true;
       await page.route("**/api/trips/*/areas?*", (route) =>
-        route.fulfill({ status: failed ? 503 : 200, json: [] }),
+        route.fulfill({ status: failed ? 503 : 200, json: [] satisfies Api.AreaResponse[] }),
       );
       const search = dialog.getByRole("combobox", {
         name: message(locale, "routes_departure"),

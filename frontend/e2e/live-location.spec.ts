@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { locales, message, plural } from "./messages";
@@ -14,6 +15,10 @@ for (const locale of locales)
         route.fulfill({
           json: [
             {
+              delays: {},
+              previews: {},
+              created_at: "2054-01-01T00:00:00Z",
+              updated_at: "2054-01-01T00:00:00Z",
               id: "synthetic-source",
               source: "person.synthetic",
               enabled: false,
@@ -21,7 +26,7 @@ for (const locale of locales)
               current: null,
               stale: false,
             },
-          ],
+          ] satisfies Api.LiveSessionResponse[],
         }),
       );
       await page.goto(`/admin/trips/${ownerTrip.id}/sharing`);
@@ -75,6 +80,9 @@ for (const locale of locales)
         reads += 1;
         return route.fulfill({
           json: {
+            summary_html: null,
+            summary_text: null,
+            cover: null,
             schema_version: "travel/public-trip@1",
             title: "Synthetic delayed trip",
             summary: null,
@@ -101,7 +109,7 @@ for (const locale of locales)
                   ],
                 }
               : {}),
-          },
+          } satisfies Api.ProjectionDocument,
         });
       });
       await page.clock.install();

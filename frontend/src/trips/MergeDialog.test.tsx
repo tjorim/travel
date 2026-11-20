@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -55,11 +56,12 @@ const airport = (id: string, areaId: string) =>
     locality: "Taoyuan",
     country_code: "TW",
   }) as Location;
-const preview = {
+const preview: Api.LocationMergeResult = {
   keep_id: "air-1",
   applied: false,
   duplicates: [
     {
+      widened_records: [],
       id: "air-2",
       label: null,
       display_name: "Taoyuan Airport",
@@ -80,22 +82,30 @@ let api: FakeApi;
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
   api = fakeApi()
-    .collection("/api/trips/trip/areas", [taoyuan, taipei])
-    .collection("/api/trips/trip/locations", [
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [taoyuan, taipei])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [
       airport("air-1", "taoyuan"),
       airport("air-2", "taipei"),
     ])
-    .collection("/api/trips/trip/stays", [])
-    .collection("/api/trips/trip/routes", [])
-    .collection("/api/trips/trip/visits", [])
-    .value("/api/trips/trip/public-projection", {
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [])
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", [])
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", [])
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "unpublished",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: null,
     })
-    .value("/api/trips/trip/share-links", []);
-  api.on("POST", /\/locations\/merge$/, (body) => {
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
+  api.on<Api.LocationMergeResult>("POST", /\/locations\/merge$/, (body) => {
     const { confirm, duplicate_ids } = body as { confirm: boolean; duplicate_ids: string[] };
     if (confirm) {
       const rows = api.rows("/api/trips/trip/locations");
@@ -297,11 +307,12 @@ it("offers the merge from a refused delete", async () => {
 });
 
 it("merges duplicate areas and points at the city-level locations that follow", async () => {
-  api.on("POST", /\/areas\/merge$/, (body) => ({
+  api.on<Api.AreaMergeResult>("POST", /\/areas\/merge$/, (body) => ({
     keep_id: "taoyuan",
     applied: (body as { confirm: boolean }).confirm,
     duplicates: [
       {
+        widened_records: [],
         id: "taipei",
         label: "Taipei",
         locations: 1,
@@ -350,7 +361,7 @@ const widening = [
   { audience: "public", label: null, stays: 1, visits: 2, routes: 0, travel_updates: 0 },
   { audience: "link:abc", label: "Familie", stays: 0, visits: 0, routes: 1, travel_updates: 1 },
 ];
-const withWidening = (duplicate: object) => ({
+const withWidening = (duplicate: Partial<Api.LocationMergeDuplicate>): Api.LocationMergeResult => ({
   ...preview,
   duplicates: [{ ...preview.duplicates[0], narrowed_audiences: [], ...duplicate }],
 });
@@ -363,7 +374,7 @@ async function previewWidening() {
 }
 
 it("lists who sees more and keeps Merge disabled until that is acknowledged", async () => {
-  api.on("POST", /\/locations\/merge$/, (body) => ({
+  api.on<Api.LocationMergeResult>("POST", /\/locations\/merge$/, (body) => ({
     ...withWidening({ widened: widening }),
     applied: (body as { confirm: boolean }).confirm,
   }));
@@ -394,7 +405,9 @@ it("lists who sees more and keeps Merge disabled until that is acknowledged", as
 });
 
 it("names the audiences in English and asks again after going back", async () => {
-  api.on("POST", /\/locations\/merge$/, () => withWidening({ widened: widening }));
+  api.on<Api.LocationMergeResult>("POST", /\/locations\/merge$/, () =>
+    withWidening({ widened: widening }),
+  );
   act(() => changeLocale("en"));
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(
@@ -415,7 +428,9 @@ it("names the audiences in English and asks again after going back", async () =>
 
 it("shows what a stale preview missed when the server refuses an unacknowledged merge", async () => {
   let widens = false;
-  api.on("POST", /\/locations\/merge$/, () => withWidening({ widened: widens ? widening : [] }));
+  api.on<Api.LocationMergeResult>("POST", /\/locations\/merge$/, () =>
+    withWidening({ widened: widens ? widening : [] }),
+  );
   const dialog = await previewWidening();
   widens = true;
   api.failNext = {
@@ -440,11 +455,13 @@ it("shows what a stale preview missed when the server refuses an unacknowledged 
 });
 
 it("explains the area point an area merge newly shows", async () => {
-  api.on("POST", /\/areas\/merge$/, (body) => ({
+  api.on<Api.AreaMergeResult>("POST", /\/areas\/merge$/, (body) => ({
     keep_id: "taoyuan",
     applied: (body as { confirm: boolean }).confirm,
     duplicates: [
       {
+        stays: 0,
+        widened_records: [],
         id: "taipei",
         label: "Taipei",
         locations: 0,
@@ -479,7 +496,11 @@ it("explains the area point an area merge newly shows", async () => {
   );
 });
 
-const record = (kind: string, id: string, extra: object = {}) => ({
+const record = (
+  kind: Api.MergeWidenedRecord["kind"],
+  id: string,
+  extra: Partial<Api.MergeWidenedRecord> = {},
+): Api.MergeWidenedRecord => ({
   kind,
   id,
   label: null,
@@ -502,11 +523,13 @@ const records = [
 const choiceWidened = [
   { audience: "public", label: null, stays: 2, visits: 1, routes: 0, travel_updates: 0 },
 ];
-const withRecords = (list: object[], widened: object[] = choiceWidened) =>
-  withWidening({ widened, widened_records: list });
+const withRecords = (
+  list: Api.MergeWidenedRecord[],
+  widened: Api.MergeWidening[] = choiceWidened,
+) => withWidening({ widened, widened_records: list });
 
-function previewRecords(list: object[] = records) {
-  api.on("POST", /\/locations\/merge$/, (body) => ({
+function previewRecords(list: Api.MergeWidenedRecord[] = records) {
+  api.on<Api.LocationMergeResult>("POST", /\/locations\/merge$/, (body) => ({
     ...withRecords(list),
     applied: (body as { confirm: boolean }).confirm,
   }));
@@ -608,7 +631,7 @@ it("needs no acknowledgement once every newly shown record is made private, and 
 
 it("refreshes the preview and drops a choice the server no longer offers", async () => {
   let list = records;
-  api.on("POST", /\/locations\/merge$/, () => withRecords(list));
+  api.on<Api.LocationMergeResult>("POST", /\/locations\/merge$/, () => withRecords(list));
   const dialog = await previewWidening();
   fireEvent.click(within(dialog).getByRole("checkbox", { name: "Maak Wandeling eerst privé" }));
   list = records.slice(0, 2);
@@ -639,7 +662,7 @@ it("refreshes the preview and drops a choice the server no longer offers", async
 it("keeps a long list usable: grouped, every row reachable by keyboard, in English", async () => {
   const many = Array.from({ length: 60 }, (_, index) => record("stay", `stay-${index}`));
   act(() => changeLocale("en"));
-  api.on("POST", /\/locations\/merge$/, () =>
+  api.on<Api.LocationMergeResult>("POST", /\/locations\/merge$/, () =>
     withRecords(many, [{ ...choiceWidened[0], stays: 60, visits: 0 }]),
   );
   renderWithOwner(<AreaManager trip={trip} />);
@@ -657,11 +680,12 @@ it("keeps a long list usable: grouped, every row reachable by keyboard, in Engli
 });
 
 it("offers the same per-record choice when merging areas", async () => {
-  api.on("POST", /\/areas\/merge$/, (body) => ({
+  api.on<Api.AreaMergeResult>("POST", /\/areas\/merge$/, (body) => ({
     keep_id: "taoyuan",
     applied: (body as { confirm: boolean }).confirm,
     duplicates: [
       {
+        stays: 0,
         id: "taipei",
         label: "Taipei",
         locations: 0,

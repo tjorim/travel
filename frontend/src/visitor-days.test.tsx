@@ -323,6 +323,9 @@ it("tells a day audience from records already shown with a story update", () => 
 
 function projection(extra: Partial<Projection> = {}): Projection {
   return {
+    summary_html: null,
+    summary_text: null,
+    cover: null,
     schema_version: "travel/public-trip@1",
     title: "Day plan",
     summary: null,

@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { createRootRoute } from "@tanstack/react-router";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
@@ -37,7 +39,11 @@ it("downloads the export through an authenticated request with no token in the U
   server.use(
     http.get("*/api/trips/trip-1/export", ({ request }) => {
       seen = { url: request.url, authorization: request.headers.get("authorization") };
-      return HttpResponse.json({ schema_version: "travel/trip-export@2" });
+      return HttpResponse.json(
+        /* Fixture exception: Versioned streaming archive download, not an ordinary API response model. */ {
+          schema_version: "travel/trip-export@2",
+        },
+      );
     }),
   );
   const created: Blob[] = [];
@@ -71,7 +77,12 @@ it("shows pending state, then a translated error without server prose", async ()
   server.use(
     http.get("*/api/trips/trip-1/export", async () => {
       await gate;
-      return HttpResponse.json({ detail: "Internal secret prose" }, { status: 500 });
+      return HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+          detail: "Internal secret prose",
+        },
+        { status: 500 },
+      );
     }),
   );
   render();
@@ -91,14 +102,26 @@ it("shows pending state, then a translated error without server prose", async ()
 it("requires explicit PDF selections and keeps server prose out of download errors", async () => {
   let payload: unknown;
   server.use(
-    http.get("*/api/trips/trip-1/share-links", () => HttpResponse.json([])),
-    http.get("*/api/trips/trip-1/collections", () => HttpResponse.json([])),
+    http.get("*/api/trips/trip-1/share-links", () =>
+      HttpResponse.json<Api.ShareLinkResponse[]>([]),
+    ),
+    http.get("*/api/trips/trip-1/collections", () =>
+      HttpResponse.json<Api.CollectionMembershipResponse[]>([]),
+    ),
     http.get("*/api/trips/trip-1/public-projection", () =>
-      HttpResponse.json({ slug: "synthetic" }),
+      HttpResponse.json<Api.PublicProjectionStatusResponse>({
+        ...responseFixtures.PublicProjectionStatusResponse,
+        slug: "synthetic",
+      }),
     ),
     http.post("*/api/trips/trip-1/export/pdf", async ({ request }) => {
       payload = await request.json();
-      return HttpResponse.json({ detail: "Secret private server prose" }, { status: 500 });
+      return HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+          detail: "Secret private server prose",
+        },
+        { status: 500 },
+      );
     }),
   );
   render();

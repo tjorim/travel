@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -31,7 +32,7 @@ function withSession(): void {
   );
 }
 
-const document = {
+const document: Api.DocumentResponse = {
   id: "doc-1",
   document_kind: "other",
   title: "Insurance policy",
@@ -42,7 +43,10 @@ const document = {
   created_at: "2054-01-01T00:00:00Z",
   file_url: "/api/documents/doc-1/original",
 };
-const contact = {
+const contact: Api.EmergencyInfoEntryResponse = {
+  updated_at: "2054-01-01T00:00:00Z",
+  notes_html: null,
+  notes_text: null,
   id: "entry-1",
   kind: "contact",
   label: "Mom",
@@ -53,16 +57,20 @@ const contact = {
 
 function serveLibrary(): void {
   server.use(
-    http.get("/api/documents", () => HttpResponse.json([document])),
-    http.get("/api/documents/doc-1", () => HttpResponse.json(document)),
+    http.get("/api/documents", () => HttpResponse.json<Api.DocumentResponse[]>([document])),
+    http.get("/api/documents/doc-1", () => HttpResponse.json<Api.DocumentResponse>(document)),
     http.get("/api/documents/doc-1/original", () =>
       HttpResponse.arrayBuffer(new TextEncoder().encode("private pdf bytes").buffer, {
         headers: { "Content-Type": "application/pdf" },
       }),
     ),
-    http.get("/api/library/emergency-info", () => HttpResponse.json([contact])),
-    http.get("/api/library/emergency-info/entry-1", () => HttpResponse.json(contact)),
-    http.get("/api/trips", () => HttpResponse.json([])),
+    http.get("/api/library/emergency-info", () =>
+      HttpResponse.json<Api.EmergencyInfoEntryResponse[]>([contact]),
+    ),
+    http.get("/api/library/emergency-info/entry-1", () =>
+      HttpResponse.json<Api.EmergencyInfoEntryResponse>(contact),
+    ),
+    http.get("/api/trips", () => HttpResponse.json<Api.TripSummaryResponse[]>([])),
   );
 }
 

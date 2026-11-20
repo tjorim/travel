@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { locales, message } from "./messages";
@@ -13,17 +14,37 @@ for (const locale of locales)
       await mockApi(page);
       await signInOwner(page);
       await choosePreferences(page, locale, theme);
-      const area = (id: string, longitude: number) => ({
-        id,
-        label: id,
-        country_code: "BE",
-        latitude: 40,
-        longitude,
-        visibility: "private",
-      });
+      const area = (id: string, longitude: number) =>
+        ({
+          label_nl: null,
+          label_en: null,
+          local_name: null,
+          region: null,
+          timezone: null,
+          id,
+          label: id,
+          country_code: "BE",
+          latitude: 40,
+          longitude,
+          visibility: "private",
+        }) satisfies Api.AreaResponse;
       const from = area("West", -60),
         to = area("East", 60);
       const flight = {
+        label_nl: null,
+        label_en: null,
+        departs_on: null,
+        departs_at: null,
+        arrives_at: null,
+        departure_timezone: null,
+        arrival_timezone: null,
+        carrier: null,
+        service_reference: null,
+        travel_class: null,
+        booking_reference: null,
+        notes: null,
+        visibility: "private",
+        notes_html: null,
         id: "flight",
         mode: "flight",
         label: "Example flight",
@@ -40,12 +61,12 @@ for (const locale of locales)
             [3, 4],
           ],
         },
-      };
+      } satisfies Api.RouteResponse;
       await page.route(`**/api/trips/${ownerTrip.id}/routes`, (route) =>
-        route.fulfill({ json: [flight] }),
+        route.fulfill({ json: [flight] satisfies Api.RouteResponse[] }),
       );
       await page.route(`**/api/trips/${ownerTrip.id}/areas`, (route) =>
-        route.fulfill({ json: [from, to] }),
+        route.fulfill({ json: [from, to] satisfies Api.AreaResponse[] }),
       );
       await page.goto(`/admin/trips/${ownerTrip.id}/plan`);
       await page
@@ -68,7 +89,7 @@ for (const locale of locales)
               [4.12, 50.12],
               [5.23, 51.23],
             ],
-          },
+          } satisfies Api.GeoJsonLineStringOutput,
         });
       });
       const preview = dialog.getByRole("button", {

@@ -19,7 +19,14 @@ vi.mock("../auth-context", () => ({ useAuth: () => auth }));
 const TASKS = "/api/trips/trip/trip-tasks";
 
 /** Serves the tasks of the test trip and counts how often the API is asked. */
-function serveTasks(respond: () => Response = () => HttpResponse.json([{ id: "task" }])) {
+function serveTasks(
+  respond: () => Response = () =>
+    HttpResponse.json(
+      /* Fixture exception: Transport/cache control sentinel; only identity or transport behavior is asserted. */ [
+        { id: "task" },
+      ],
+    ),
+) {
   const requests: Request[] = [];
   server.use(
     http.get(TASKS, ({ request }) => {
@@ -90,13 +97,15 @@ it("aborts an in-flight read when its screen goes away", async () => {
 it("keeps one owner's records out of another owner's cache", async () => {
   server.use(
     http.get("/api/trips", ({ request }) =>
-      HttpResponse.json([
-        {
-          id: request.headers.get("authorization")?.includes(testToken("owner-1"))
-            ? "mine"
-            : "theirs",
-        },
-      ]),
+      HttpResponse.json(
+        /* Fixture exception: Transport/cache control sentinel; only identity or transport behavior is asserted. */ [
+          {
+            id: request.headers.get("authorization")?.includes(testToken("owner-1"))
+              ? "mine"
+              : "theirs",
+          },
+        ],
+      ),
     ),
   );
   const client = testClient();
@@ -162,7 +171,12 @@ it("discards the owner cache on sign-out", async () => {
 
 it("ends the session once on a 401 and does not retry it", async () => {
   const requests = serveTasks(() =>
-    HttpResponse.json({ detail: "Not authenticated" }, { status: 401 }),
+    HttpResponse.json(
+      /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+        detail: "Not authenticated",
+      },
+      { status: 401 },
+    ),
   );
   sessionStorage.setItem("travel-tracker-session", "kept-until-cleared");
   const client = createOwnerQueryClient({ onUnauthorized: () => auth.setSession(null) });
@@ -177,7 +191,12 @@ it("ends the session once on a 401 and does not retry it", async () => {
 
 it("preserves the session and restore marker on a final 401", async () => {
   const requests = serveTasks(() =>
-    HttpResponse.json({ detail: "Not authenticated" }, { status: 401 }),
+    HttpResponse.json(
+      /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+        detail: "Not authenticated",
+      },
+      { status: 401 },
+    ),
   );
   localStorage.setItem("travel-tracker-may-restore-session", "1");
   render(

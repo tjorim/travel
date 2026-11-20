@@ -1,9 +1,18 @@
+import { responseFixtures } from "../src/mocks/response-test-fixtures";
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { locales, message } from "./messages";
 import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
 
 const city = {
+  postal_code: null,
+  viewport_north: null,
+  viewport_south: null,
+  viewport_east: null,
+  viewport_west: null,
+  address_line1: "synthetic",
+  address_line2: "synthetic",
   osm_element_type: "relation",
   osm_element_id: "1",
   display_name: "Taipei, Taiwan",
@@ -15,7 +24,7 @@ const city = {
   local_name: "臺北市",
   name_nl: "Taipeh",
   name_en: "Taipei City",
-};
+} satisfies Api.PlaceSearchResult;
 
 for (const locale of locales) {
   for (const theme of ["light", "dark"] as const) {
@@ -32,15 +41,22 @@ for (const locale of locales) {
             attribution: "© OpenStreetMap contributors",
             attribution_url: "https://www.openstreetmap.org/copyright",
             results: [city],
-          },
+          } satisfies Api.PlaceSearchResponse,
         }),
       );
       await page.route(`**/api/trips/${ownerTrip.id}/areas`, async (route) => {
-        if (route.request().method() !== "POST") return route.fulfill({ json: [] });
+        if (route.request().method() !== "POST")
+          return route.fulfill({ json: [] satisfies Api.AreaResponse[] });
         saved = route.request().postDataJSON() as Record<string, unknown>;
         return route.fulfill({
           status: 201,
-          json: { id: "area-new", visibility: "private", label: "Taipeh", ...saved },
+          json: {
+            ...responseFixtures.AreaResponse,
+            id: "area-new",
+            visibility: "private",
+            label: "Taipeh",
+            ...saved,
+          } satisfies Api.AreaResponse,
         });
       });
       await signInOwner(page);

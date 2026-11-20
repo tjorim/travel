@@ -187,6 +187,9 @@ it("reads a timed route's day in its departure time zone", () => {
 
 function data(): Projection {
   return {
+    summary_html: null,
+    summary_text: null,
+    cover: null,
     schema_version: "travel/public-trip@1",
     title: "Trip",
     summary: null,

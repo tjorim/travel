@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw/http";
@@ -15,6 +16,9 @@ import { VisitorRoutes } from "./visitor-routes";
 
 const token = "synthetic-saved-trip-capability";
 const projection: Projection = {
+  summary_html: null,
+  summary_text: null,
+  cover: null,
   schema_version: "travel/unlisted-trip@1",
   title: "Stored title",
   summary: "Stored private summary",
@@ -29,7 +33,7 @@ const projection: Projection = {
 };
 
 function index() {
-  server.use(http.get("/api/public/trips", () => HttpResponse.json([])));
+  server.use(http.get("/api/public/trips", () => HttpResponse.json<Api.PublicTripCard[]>([])));
   return render(<VisitorRoutes initialEntries={["/trips/"]} />);
 }
 
@@ -75,7 +79,7 @@ it("shows only freshly selected fields after validation with private request opt
   const fetcher = vi.spyOn(globalThis, "fetch");
   server.use(
     http.get(`/api/shared/${token}`, () =>
-      HttpResponse.json({
+      HttpResponse.json<Api.ProjectionDocument>({
         ...projection,
         title: "Current title",
         summary: null,
@@ -111,7 +115,10 @@ it.each([503, "offline", "malformed"])(
       http.get(`/api/shared/${token}`, () =>
         failure === "offline"
           ? HttpResponse.error()
-          : HttpResponse.json({}, { status: typeof failure === "number" ? failure : 200 }),
+          : HttpResponse.json(
+              /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {},
+              { status: typeof failure === "number" ? failure : 200 },
+            ),
       ),
     );
     index();
@@ -153,7 +160,9 @@ it("survives disabled storage and reports failed Forget all without claiming rem
       throw new Error("disabled");
     },
   });
-  server.use(http.get(`/api/shared/${token}`, () => HttpResponse.json(projection)));
+  server.use(
+    http.get(`/api/shared/${token}`, () => HttpResponse.json<Api.ProjectionDocument>(projection)),
+  );
   index();
   await screen.findByRole("link", { name: /Stored title/ });
   fireEvent.click(screen.getByRole("button", { name: m.forget_all_trips() }));

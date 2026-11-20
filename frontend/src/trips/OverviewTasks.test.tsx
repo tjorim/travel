@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { createRootRoute } from "@tanstack/react-router";
 import { cleanup, screen } from "@testing-library/react";
@@ -48,12 +49,15 @@ const render = () =>
 
 function serve(tasks: TripTask[] | number) {
   server.use(
-    http.get("*/api/trips/:id/stays", () => HttpResponse.json([])),
-    http.get("*/api/trips/:id/routes", () => HttpResponse.json([])),
+    http.get("*/api/trips/:id/stays", () => HttpResponse.json<Api.StayResponse[]>([])),
+    http.get("*/api/trips/:id/routes", () => HttpResponse.json<Api.RouteResponse[]>([])),
     http.all("*", () =>
       typeof tasks === "number"
-        ? HttpResponse.json({}, { status: tasks })
-        : HttpResponse.json(tasks),
+        ? HttpResponse.json(
+            /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {},
+            { status: tasks },
+          )
+        : HttpResponse.json<Api.TripTaskResponse[]>(tasks),
     ),
   );
 }

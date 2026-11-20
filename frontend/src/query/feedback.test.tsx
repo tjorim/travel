@@ -1,3 +1,4 @@
+import { fixtureResponse } from "@/mocks/response";
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
@@ -19,11 +20,11 @@ const descriptor = (code: string, params = {}, path: (string | number)[] = []) =
 
 it("updates an already-visible mutation error without replacing the input or losing focus", async () => {
   const error = await apiFailure(
-    new Response(
-      JSON.stringify({
+    fixtureResponse(
+      /* Fixture exception: Error or persistence-control fixture; no successful Travel record is consumed. */ {
         detail: "private diagnostic",
         errors: [descriptor("arrival_must_be_after_departure")],
-      }),
+      },
       { status: 422 },
     ),
     "fallback",

@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import { expect, test, type Route } from "@playwright/test";
 import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
 import { locales, message } from "./messages";
@@ -24,7 +25,12 @@ for (const locale of locales) {
         return route.fulfill({
           headers,
           contentType: "application/json",
-          body: JSON.stringify({ access_token: `e30.${payload}.fresh`, expires_in: 3600 }),
+          body: JSON.stringify(
+            /* Fixture exception: External OIDC token response. */ {
+              access_token: `e30.${payload}.fresh`,
+              expires_in: 3600,
+            },
+          ),
         });
       }
       const silent = url.searchParams.get("prompt") === "none";
@@ -45,7 +51,10 @@ for (const locale of locales) {
         status: authenticated ? 200 : 401,
         contentType: "application/json",
         body: authenticated
-          ? JSON.stringify({ ...ownerTrip, title: "Unsaved synthetic draft" })
+          ? JSON.stringify({
+              ...ownerTrip,
+              title: "Unsaved synthetic draft",
+            } satisfies Api.TripResponse)
           : "{}",
       });
     });

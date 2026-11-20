@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
@@ -40,7 +41,7 @@ afterEach(() => {
 });
 
 function renderEditor(saved: Trip | null, onSaved = vi.fn()) {
-  server.use(http.get("/api/trips", () => HttpResponse.json([])));
+  server.use(http.get("/api/trips", () => HttpResponse.json<Api.TripSummaryResponse[]>([])));
   renderWithOwner(
     <TripEditor
       trip={saved}
@@ -59,9 +60,14 @@ it("creates a trip in the language the owner uses the app in, with both title ve
   server.use(
     http.post("/api/trips", async ({ request }) => {
       bodies.push(await request.json());
-      return HttpResponse.json(trip({ id: "new", content_language: "en", title_en: "Japan" }), {
-        status: 201,
-      });
+      return HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ trip(
+          { id: "new", content_language: "en", title_en: "Japan" },
+        ),
+        {
+          status: 201,
+        },
+      );
     }),
   );
   act(() => changeLocale("en"));
@@ -85,7 +91,7 @@ it("saves both language versions of an existing trip's title and summary", async
   server.use(
     http.patch("/api/trips/trip", async ({ request }) => {
       bodies.push(await request.json());
-      return HttpResponse.json(trip());
+      return HttpResponse.json<Api.TripResponse>(trip());
     }),
   );
   renderEditor(trip());
@@ -103,7 +109,7 @@ it("changes the content language alone, without touching any text", async () => 
   server.use(
     http.patch("/api/trips/trip", async ({ request }) => {
       bodies.push(await request.json());
-      return HttpResponse.json(trip({ content_language: "en" }));
+      return HttpResponse.json<Api.TripResponse>(trip({ content_language: "en" }));
     }),
   );
   const onSaved = renderEditor(trip());
@@ -123,7 +129,7 @@ it("warns before moving every text to the other language, and sends move_texts o
   server.use(
     http.patch("/api/trips/trip", async ({ request }) => {
       bodies.push(await request.json());
-      return HttpResponse.json(
+      return HttpResponse.json<Api.TripResponse>(
         trip({ content_language: "en", title_nl: null, title_en: "Rondreis Taiwan" }),
       );
     }),
@@ -167,6 +173,7 @@ it("explains a refused move, and holds the language change while the details are
   server.use(
     http.patch("/api/trips/trip", () =>
       HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */
         {
           detail: "x",
           errors: [{ code: "trip_text_in_both_languages", params: { field: "title" }, path: [] }],
@@ -196,8 +203,10 @@ it("explains a refused move, and holds the language change while the details are
 
 it("refreshes every cached record of the trip after the texts moved, not only the trip list", async () => {
   server.use(
-    http.get("/api/trips", () => HttpResponse.json([])),
-    http.patch("/api/trips/trip", () => HttpResponse.json(trip({ content_language: "en" }))),
+    http.get("/api/trips", () => HttpResponse.json<Api.TripSummaryResponse[]>([])),
+    http.patch("/api/trips/trip", () =>
+      HttpResponse.json<Api.TripResponse>(trip({ content_language: "en" })),
+    ),
   );
   const { client } = renderWithOwner(
     <TripEditor
@@ -223,10 +232,10 @@ it("holds the trip's details while the language change saves, so nothing typed m
   let release: () => void = () => undefined;
   const gate = new Promise<void>((resolve) => (release = resolve));
   server.use(
-    http.get("/api/trips", () => HttpResponse.json([])),
+    http.get("/api/trips", () => HttpResponse.json<Api.TripSummaryResponse[]>([])),
     http.patch("/api/trips/trip", async () => {
       await gate;
-      return HttpResponse.json(trip({ content_language: "en" }));
+      return HttpResponse.json<Api.TripResponse>(trip({ content_language: "en" }));
     }),
   );
   renderEditor(trip());

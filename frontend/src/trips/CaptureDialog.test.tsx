@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { mockCaptureLocks } from "../capture-draft-test-utils";
 import { http, HttpResponse } from "msw/http";
@@ -71,8 +73,16 @@ beforeEach(() => {
       travel_updates: [],
     },
   ];
-  api = fakeApi().collection("/api/trips/t1/media", []).collection("/api/trips/t2/media", []);
-  api.on("GET", /^\/api\/trips$/, () => trips);
+  api = fakeApi()
+    .collection<Api.MediaAssetResponse>("/api/trips/t1/media", [])
+    .collection<Api.MediaAssetResponse>("/api/trips/t2/media", []);
+  api.on<Api.TripSummaryResponse[]>("GET", /^\/api\/trips$/, () =>
+    trips.map(({ travel_updates, ...fields }) => ({
+      ...fields,
+      travel_update_count: travel_updates.length,
+      last_update_at: null,
+    })),
+  );
 });
 
 afterEach(() => {
@@ -102,8 +112,17 @@ it("never mixes drafts between trips: opening one trip's dialog leaves another t
 it("takes a media-review candidate even though the closed dialog already loaded its stored draft", async () => {
   await saveDraft({ ...emptyDraft("t1"), title: "Bewaard concept", notes: "" });
   api = fakeApi()
-    .collection("/api/trips/t1/media", [
+    .collection<Api.MediaAssetResponse>("/api/trips/t1/media", [
       {
+        content_type: "synthetic",
+        captured_local: false,
+        created_at: "2054-01-01T00:00:00Z",
+        deleted_at: null,
+        camera_make: null,
+        camera_model: null,
+        gps: null,
+        file_url: "synthetic",
+        thumbnail_url: null,
         id: "m1",
         media_kind: "photo",
         original_filename: "kust.jpg",
@@ -111,8 +130,14 @@ it("takes a media-review candidate even though the closed dialog already loaded 
         captured_at: null,
       },
     ])
-    .collection("/api/trips/t2/media", []);
-  api.on("GET", /^\/api\/trips$/, () => trips);
+    .collection<Api.MediaAssetResponse>("/api/trips/t2/media", []);
+  api.on<Api.TripSummaryResponse[]>("GET", /^\/api\/trips$/, () =>
+    trips.map(({ travel_updates, ...fields }) => ({
+      ...fields,
+      travel_update_count: travel_updates.length,
+      last_update_at: null,
+    })),
+  );
   const consumed = vi.fn();
   const dialog = (open: boolean, candidate?: Parameters<typeof CaptureDialog>[0]["candidate"]) => (
     <CaptureDialog
@@ -142,16 +167,18 @@ it("takes a media-review candidate even though the closed dialog already loaded 
   expect(consumed).toHaveBeenCalled();
 });
 
-const place = {
+const place: Api.PlaceSearchResult = {
+  ...responseFixtures.PlaceSearchResult,
   display_name: "Taipei Main Station",
   osm_element_type: "way",
-  osm_element_id: 1,
+  osm_element_id: "1",
   latitude: 25.04,
   longitude: 121.51,
 };
 
 it("asks for at least two characters, then searches, lists results and keeps the chosen place in the draft", async () => {
-  api.on("POST", /^\/api\/trips\/t1\/places\/search$/, () => ({
+  api.on<Api.PlaceSearchResponse>("POST", /^\/api\/trips\/t1\/places\/search$/, () => ({
+    provider: "synthetic",
     results: [place],
     attribution: "OpenStreetMap",
     attribution_url: "https://www.openstreetmap.org/copyright",
@@ -172,8 +199,15 @@ it("asks for at least two characters, then searches, lists results and keeps the
 });
 
 it("offers a linked photo's capture date and place as private suggestions", async () => {
-  api = fakeApi().collection("/api/trips/t1/media", [
+  api = fakeApi().collection<Api.MediaAssetResponse>("/api/trips/t1/media", [
     {
+      content_type: "synthetic",
+      created_at: "2054-01-01T00:00:00Z",
+      deleted_at: null,
+      camera_make: null,
+      camera_model: null,
+      file_url: "synthetic",
+      thumbnail_url: null,
       id: "m1",
       media_kind: "photo",
       original_filename: "kust.jpg",
@@ -183,8 +217,15 @@ it("offers a linked photo's capture date and place as private suggestions", asyn
       gps: { latitude: 25.04, longitude: 121.51 },
     },
   ]);
-  api.on("GET", /^\/api\/trips$/, () => trips);
-  api.on("POST", /^\/api\/trips\/t1\/places\/reverse$/, () => ({
+  api.on<Api.TripSummaryResponse[]>("GET", /^\/api\/trips$/, () =>
+    trips.map(({ travel_updates, ...fields }) => ({
+      ...fields,
+      travel_update_count: travel_updates.length,
+      last_update_at: null,
+    })),
+  );
+  api.on<Api.PlaceSearchResponse>("POST", /^\/api\/trips\/t1\/places\/reverse$/, () => ({
+    provider: "synthetic",
     results: [place],
     attribution: "OpenStreetMap",
     attribution_url: "https://www.openstreetmap.org/copyright",
@@ -252,7 +293,8 @@ it("keeps another tab's newer draft when a delayed server save succeeds", async 
     http.post("*/api/trips/t1/travel-updates", async () => {
       submitted = true;
       await pending;
-      return HttpResponse.json({
+      return HttpResponse.json<Api.TravelUpdateResponse>({
+        ...responseFixtures.TravelUpdateResponse,
         id: "saved",
         occurred_at: "2054-11-01T12:00:00Z",
         timezone: "UTC",
@@ -289,7 +331,8 @@ it("restores a locked trip's draft before allowing its initial empty form to per
   await waitFor(() => expect(readDraft("t1")?.title).toBe("Synthetic locked trip draft"));
 });
 
-const savedUpdate = (body: object) => ({
+const savedUpdate = (body: object): Api.TravelUpdateResponse => ({
+  ...responseFixtures.TravelUpdateResponse,
   id: "saved",
   occurred_at: "2054-11-20T10:15:00Z",
   timezone: "UTC",
@@ -311,8 +354,10 @@ const dialogFor = (candidate?: Parameters<typeof CaptureDialog>[0]["candidate"])
 
 it("sends the typed time as the wall clock at the place, not as the browser's instant", async () => {
   vi.stubEnv("TZ", "Pacific/Auckland");
-  api.collection("/api/trips/t1/travel-updates", []);
-  api.on("POST", /^\/api\/trips\/t1\/travel-updates$/, (body) => savedUpdate(body as object));
+  api.collection<Api.TravelUpdateResponse>("/api/trips/t1/travel-updates", []);
+  api.on<Api.TravelUpdateResponse>("POST", /^\/api\/trips\/t1\/travel-updates$/, (body) =>
+    savedUpdate(body as object),
+  );
   renderWithOwner(dialogFor());
   fireEvent.change(await screen.findByLabelText("Titel"), { target: { value: "Ontbijt" } });
   await openMore();
@@ -329,8 +374,10 @@ it("sends the typed time as the wall clock at the place, not as the browser's in
 
 it("keeps a photo's exact instant until the owner changes the time it seeded", async () => {
   vi.stubEnv("TZ", "Europe/Brussels");
-  api.collection("/api/trips/t1/travel-updates", []);
-  api.on("POST", /^\/api\/trips\/t1\/travel-updates$/, (body) => savedUpdate(body as object));
+  api.collection<Api.TravelUpdateResponse>("/api/trips/t1/travel-updates", []);
+  api.on<Api.TravelUpdateResponse>("POST", /^\/api\/trips\/t1\/travel-updates$/, (body) =>
+    savedUpdate(body as object),
+  );
   renderWithOwner(
     dialogFor({ tripId: "t1", mediaAssetIds: [], occurredAt: "2054-11-20T10:15:00Z" }),
   );

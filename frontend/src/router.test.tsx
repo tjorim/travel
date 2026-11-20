@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { RouterProvider } from "@tanstack/react-router";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
@@ -27,12 +29,12 @@ vi.mock("./trips/TripTaskManager", () => ({ TripTaskManager: () => null }));
 vi.mock("./trips/TripOverview", () => ({ TripOverview: () => null }));
 
 /** Serves the trips list and returns the requests it received. */
-function serveTrips(trips: unknown[]): Request[] {
+function serveTrips(trips: Api.TripSummaryResponse[]): Request[] {
   const requests: Request[] = [];
   server.use(
     http.get("/api/trips", ({ request }) => {
       requests.push(request);
-      return HttpResponse.json(trips);
+      return HttpResponse.json<Api.TripSummaryResponse[]>(trips);
     }),
   );
   return requests;
@@ -67,7 +69,9 @@ it("prefetches the trips list through tripsRoute's loader before Trips reads it"
     "travel-tracker-session",
     JSON.stringify({ accessToken: testToken("owner-1"), expiresAt: Date.now() + 60_000 }),
   );
-  const requests = serveTrips([{ id: "t1", title: "Exampleland" }]);
+  const requests = serveTrips([
+    { ...responseFixtures.TripSummaryResponse, id: "t1", title: "Exampleland" },
+  ]);
 
   const queryClient = createOwnerQueryClient();
   const routeTree = buildOwnerRouteTree(routeComponents);
@@ -88,7 +92,9 @@ it("prefetches the trips list through tripsRoute's loader before Trips reads it"
 });
 
 it("skips the prefetch (and any request) when there is no signed-in owner", async () => {
-  const requests = serveTrips([{ id: "t1", title: "Exampleland" }]);
+  const requests = serveTrips([
+    { ...responseFixtures.TripSummaryResponse, id: "t1", title: "Exampleland" },
+  ]);
 
   const queryClient = createOwnerQueryClient();
   const routeTree = buildOwnerRouteTree(routeComponents);
@@ -113,15 +119,15 @@ it("opens a trip workspace section directly without crashing (regression for #23
   );
   serveTrips([
     {
+      ...responseFixtures.TripSummaryResponse,
       id: "t1",
       title: "Exampleland",
       summary: null,
       starts_on: null,
       ends_on: null,
-      travel_updates: [],
     },
   ]);
-  server.use(http.get("/api/trips/:tripId/areas", () => HttpResponse.json([])));
+  server.use(http.get("/api/trips/:tripId/areas", () => HttpResponse.json<Api.AreaResponse[]>([])));
 
   const queryClient = createOwnerQueryClient();
   const routeTree = buildOwnerRouteTree(workspaceRouteComponents);

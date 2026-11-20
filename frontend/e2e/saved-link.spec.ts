@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi } from "./mock-api";
 
@@ -19,6 +20,9 @@ for (const locale of ["nl", "en"] as const) {
     await page.route(`**/api/shared/${sharedToken}{,?*}`, (route) =>
       route.fulfill({
         json: {
+          summary_html: null,
+          summary_text: null,
+          cover: null,
           schema_version: "travel/unlisted-trip@1",
           title: "Shared Exampleland",
           summary: "Synthetic summary",
@@ -30,7 +34,7 @@ for (const locale of ["nl", "en"] as const) {
           stays: [],
           routes: [],
           media: [],
-        },
+        } satisfies Api.ProjectionDocument,
       }),
     );
     await page.goto(`/share/${sharedToken}`);

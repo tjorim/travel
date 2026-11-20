@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -76,9 +77,9 @@ let api: FakeApi;
 const base = "/api/trips/trip/alternative-groups";
 function render(groups: AlternativeGroup[] = [], suggestions: AlternativeSuggestion[] = []) {
   api = fakeApi()
-    .collection(base, groups)
-    .collection(`${base}/suggestions`, suggestions as never)
-    .collection("/api/trips/trip/stays", hotels);
+    .collection<Api.AlternativeGroupResponse>(base, groups)
+    .value<Api.AlternativeSuggestion[]>(`${base}/suggestions`, suggestions)
+    .collection<Api.StayResponse>("/api/trips/trip/stays", hotels);
   const open = vi.fn();
   renderWithOwner(<AlternativesPanel tripId="trip" kind="stay" records={hotels} onOpen={open} />);
   return open;
@@ -93,7 +94,9 @@ afterEach(() => {
 });
 
 it("shows nothing when there is nothing to group", async () => {
-  api = fakeApi().collection(base, []).collection(`${base}/suggestions`, []);
+  api = fakeApi()
+    .collection<Api.AlternativeGroupResponse>(base, [])
+    .value<Api.AlternativeSuggestion[]>(`${base}/suggestions`, []);
   const { container } = renderWithOwner(
     <AlternativesPanel tripId="trip" kind="stay" records={[hotels[0]]} onOpen={() => {}} />,
   );
@@ -106,7 +109,9 @@ it("suggests a group from loose ideas and stores it only when the owner confirms
   const item = await screen.findByText("Overlappende nachten · 16 nov → 18 nov");
   expect(within(item.closest("li")!).getByText("Hotel A · Hotel B")).toBeTruthy();
   expect(api.count(`POST ${base}`)).toBe(0);
-  api.on("POST", /alternative-groups$/, () => groupOf([hotels[0], hotels[1]]));
+  api.on<Api.AlternativeGroupResponse>("POST", /alternative-groups$/, () =>
+    groupOf([hotels[0], hotels[1]]),
+  );
   fireEvent.click(screen.getByRole("button", { name: "Groepeer deze: Hotel A, Hotel B" }));
   await screen.findByText("Alternatieven gegroepeerd.");
   expect(api.lastBody(`POST ${base}`)).toEqual({
@@ -121,7 +126,7 @@ it("chooses one after a confirmation, tells what happens to the others, undoes i
   render([group]);
   const box = await screen.findByRole("group", { name: "Alternatieven · 16 nov → 18 nov" });
   expect(within(box).getByText("Nog niet gekozen")).toBeTruthy();
-  api.on("POST", /choose$/, () => ({
+  api.on<Api.AlternativeChoiceResponse>("POST", /choose$/, () => ({
     group: groupOf([hotels[0], hotels[1]], "b"),
     event_id: "event-1",
     chosen_id: "b",
@@ -129,7 +134,9 @@ it("chooses one after a confirmation, tells what happens to the others, undoes i
     removed_ids: [],
     undoable: true,
   }));
-  api.on("POST", /undo-choice$/, () => groupOf([hotels[0], hotels[1]]));
+  api.on<Api.AlternativeGroupResponse>("POST", /undo-choice$/, () =>
+    groupOf([hotels[0], hotels[1]]),
+  );
 
   fireEvent.click(within(box).getByRole("button", { name: "Kies deze: Hotel B" }));
   const dialog = await screen.findByRole("alertdialog");
@@ -153,7 +160,7 @@ it("chooses one after a confirmation, tells what happens to the others, undoes i
 
 it("warns that removing the others is permanent and offers no undo afterwards", async () => {
   render([groupOf([hotels[0], hotels[1]])]);
-  api.on("POST", /choose$/, () => ({
+  api.on<Api.AlternativeChoiceResponse>("POST", /choose$/, () => ({
     group: groupOf([hotels[0]], "a"),
     event_id: "event-2",
     chosen_id: "a",
@@ -173,7 +180,7 @@ it("warns that removing the others is permanent and offers no undo afterwards", 
 
 it("explains why an undo was refused, in the interface language", async () => {
   render([groupOf([hotels[0], hotels[1]])]);
-  api.on("POST", /choose$/, () => ({
+  api.on<Api.AlternativeChoiceResponse>("POST", /choose$/, () => ({
     group: groupOf([hotels[0], hotels[1]], "b"),
     event_id: "event-3",
     chosen_id: "b",
@@ -224,7 +231,7 @@ it("compares the members side by side, including the exact location and notes on
 
 it("changes the members of a group and dissolves it after a confirmation", async () => {
   render([groupOf([hotels[0], hotels[1]])]);
-  api.on("PATCH", /alternative-groups\/g1$/, () => groupOf(hotels));
+  api.on<Api.AlternativeGroupResponse>("PATCH", /alternative-groups\/g1$/, () => groupOf(hotels));
   fireEvent.click(await screen.findByRole("button", { name: "Leden bewerken" }));
   const dialog = await screen.findByRole("dialog");
   fireEvent.click(within(dialog).getByRole("checkbox", { name: "Hotel C" }));
@@ -236,7 +243,7 @@ it("changes the members of a group and dissolves it after a confirmation", async
     remove_member_ids: ["a"],
   });
 
-  api.on("DELETE", /alternative-groups\/g1$/, () => undefined);
+  api.on<undefined>("DELETE", /alternative-groups\/g1$/, () => undefined);
   fireEvent.click(screen.getByRole("button", { name: "Groep opheffen" }));
   const confirm = await screen.findByRole("alertdialog");
   expect(api.count(`DELETE ${base}/g1`)).toBe(0);
@@ -247,7 +254,9 @@ it("changes the members of a group and dissolves it after a confirmation", async
 
 it("builds a group by hand from loose records and needs two of them", async () => {
   render([]);
-  api.on("POST", /alternative-groups$/, () => groupOf([hotels[0], hotels[2]]));
+  api.on<Api.AlternativeGroupResponse>("POST", /alternative-groups$/, () =>
+    groupOf([hotels[0], hotels[2]]),
+  );
   fireEvent.click(await screen.findByRole("button", { name: "Alternatieven groeperen" }));
   const dialog = await screen.findByRole("dialog");
   const save = within(dialog).getByRole("button", { name: "Groep opslaan" });

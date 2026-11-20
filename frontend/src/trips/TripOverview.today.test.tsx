@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { createRootRoute, createRoute } from "@tanstack/react-router";
 import { cleanup, screen } from "@testing-library/react";
@@ -57,10 +58,10 @@ beforeEach(() => {
   auth.session = { accessToken: testToken() };
   vi.useFakeTimers({ toFake: ["Date"] });
   api = fakeApi()
-    .collection("/api/trips/trip/stays", [stay])
-    .collection("/api/trips/trip/routes", [])
-    .collection("/api/trips/trip/visits", [])
-    .collection("/api/trips/trip/trip-tasks", []);
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [stay])
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", [])
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", [])
+    .collection<Api.TripTaskResponse>("/api/trips/trip/trip-tasks", []);
 });
 afterEach(() => {
   cleanup();

@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
@@ -20,7 +21,7 @@ for (const locale of ["nl", "en"] as const) {
         if (new URL(request.url()).pathname.endsWith("/future-disclosure"))
           return route.fulfill({
             contentType: "application/json",
-            body: JSON.stringify({ transport: 0, day_dates: 0 }),
+            body: JSON.stringify({ transport: 0, day_dates: 0 } satisfies Api.FutureDisclosure),
           });
         writes.push(`${request.method()} ${new URL(request.url()).pathname}`);
         if (new URL(request.url()).pathname.endsWith("/preview")) {
@@ -28,6 +29,9 @@ for (const locale of ["nl", "en"] as const) {
           return route.fulfill({
             contentType: "application/json",
             body: JSON.stringify({
+              summary_html: null,
+              summary_text: null,
+              cover: null,
               schema_version: "travel/public-trip@1",
               numbers: { days: 0 },
               title: "Exampleland",
@@ -40,7 +44,7 @@ for (const locale of ["nl", "en"] as const) {
               media: [],
               routes: [],
               navigation: [],
-            }),
+            } satisfies Api.ProjectionDocument),
           });
         }
         return route.fulfill({ status: 500, contentType: "application/json", body: "{}" });

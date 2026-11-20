@@ -35,6 +35,7 @@ jobs:
             backend:
               - 'backend/**'
               - 'python-travel/**'
+              - 'frontend/openapi.json'
               - '.github/workflows/ci.yml'
             home-assistant:
               - 'custom_components/travel/**'

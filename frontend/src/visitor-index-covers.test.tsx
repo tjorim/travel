@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw/http";
@@ -11,8 +12,10 @@ it.each(["/", "/trips"])(
   async (path) => {
     server.use(
       http.get("/api/public/trips", () =>
-        HttpResponse.json([
+        HttpResponse.json<Api.PublicTripCard[]>([
           {
+            dates: null,
+            summary_text: null,
             slug: "coast",
             title: "Coast",
             summary: null,
@@ -25,7 +28,14 @@ it.each(["/", "/trips"])(
               focal_y: 70,
             },
           },
-          { slug: "hills", title: "Hills", summary: "A quiet walk", cover: null },
+          {
+            dates: null,
+            summary_text: null,
+            slug: "hills",
+            title: "Hills",
+            summary: "A quiet walk",
+            cover: null,
+          },
         ]),
       ),
     );
