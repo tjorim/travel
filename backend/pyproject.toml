@@ -15,7 +15,7 @@ dependencies = [
   "httpx==0.28.1",
   "markdown-it-py==4.3.0",
   "mdit-py-plugins==0.7.0",
-  "nh3==0.3.7",
+  "nh3==0.3.8",
   "pillow==13.0.0",
   "psycopg[binary]==3.3.8",
   "pydantic==2.14.3",
