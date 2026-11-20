@@ -3,6 +3,22 @@ import { resolve } from "node:path";
 import { parseSync, Visitor } from "oxc-parser";
 import { expect, it } from "vitest";
 
+/** A property's static name: `json`, `"json"` and `["json"]` name the same key; `[json]` names nothing. */
+function keyName(property: { key: unknown; computed?: boolean }): string | undefined {
+  const key = property.key as {
+    type: string;
+    name?: string;
+    value?: unknown;
+    expressions?: unknown[];
+    quasis?: { value: { cooked?: string | null } }[];
+  };
+  if (key.type === "Identifier" && !property.computed) return key.name;
+  if (key.type === "Literal" && typeof key.value === "string") return key.value;
+  if (key.type === "TemplateLiteral" && key.expressions?.length === 0)
+    return key.quasis?.[0]?.value.cooked ?? undefined;
+  return undefined;
+}
+
 /** A checked payload or a concrete explanation must be visible at the response boundary. */
 export function uncheckedFixtures(file: string, source: string): number[] {
   const unchecked: number[] = [];
@@ -32,15 +48,11 @@ export function uncheckedFixtures(file: string, source: string): number[] {
         const options = node.arguments[0];
         if (options?.type !== "ObjectExpression") return;
         const json = options.properties.find(
-          (prop) =>
-            prop.type === "Property" && prop.key.type === "Identifier" && prop.key.name === "json",
+          (prop) => prop.type === "Property" && keyName(prop) === "json",
         );
         if (!json || json.type !== "Property") {
           const body = options.properties.find(
-            (prop) =>
-              prop.type === "Property" &&
-              prop.key.type === "Identifier" &&
-              prop.key.name === "body",
+            (prop) => prop.type === "Property" && keyName(prop) === "body",
           );
           if (body?.type === "Property") {
             const serialized = source.slice(body.value.start, body.value.end);
@@ -93,9 +105,12 @@ it("rejects inferred or erased success fixtures while allowing explicit schema c
     HttpResponse.json<unknown>({ renamed: true });
     route.fulfill({ json: { renamed: true } });
     HttpResponse.json<Api.TripResponse>(record as never);
+    route.fulfill({ ["json"]: { renamed: true } });
+    route.fulfill({ "json": { renamed: true } });
+    route.fulfill({ [\`body\`]: JSON.stringify({ renamed: true }) });
   `,
     ),
-  ).toHaveLength(4);
+  ).toHaveLength(7);
   expect(
     uncheckedFixtures(
       "fixture.ts",
