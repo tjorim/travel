@@ -17,7 +17,7 @@ dependencies = [
   "mdit-py-plugins==0.7.0",
   "nh3==0.3.7",
   "pillow==13.0.0",
-  "psycopg[binary]==3.3.8",
+  "psycopg[binary]==3.3.9",
   "pydantic==2.14.3",
   "pydantic-settings==2.16.2",
   "pyjwt[crypto]==2.15.1",
