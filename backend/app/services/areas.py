@@ -21,6 +21,7 @@ from ..schemas import (
     AreaUpdate,
     Identifier,
     MergeRequest,
+    SuggestedArea,
 )
 from ..search_text import contains
 from ..visitor_changes import (
@@ -64,13 +65,13 @@ def suggest_area(
         distance, closest = min(candidates, key=lambda candidate: candidate[0])
         if distance <= AREA_SUGGESTION_RADIUS_KM:
             return AreaSuggestion(
-                existing_area_id=closest.id, area=AreaInput.model_validate(closest, from_attributes=True)
+                existing_area_id=closest.id, area=SuggestedArea.model_validate(closest, from_attributes=True)
             )
     result = search.reverse(payload.latitude, payload.longitude).results
     place = result[0] if result else None
     label = (payload.city or (place.locality or place.admin_area if place else None) or "").strip()
     return AreaSuggestion(
-        area=AreaInput(
+        area=SuggestedArea(
             label=label[:120] or None,
             country_code=place.country_code if place else None,
             region=place.admin_area if place else None,

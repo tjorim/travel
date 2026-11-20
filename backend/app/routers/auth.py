@@ -10,17 +10,17 @@ import logging
 
 import httpx
 from fastapi import APIRouter, status
-from pydantic import BaseModel
 
 from ..config import settings
 from ..errors import ApiException
+from ..schemas import ResponseModel
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-class OidcDiscoveryConfig(BaseModel):
+class OidcDiscoveryConfig(ResponseModel):
     """Public OIDC endpoints and the public PKCE client for Home Assistant."""
 
     issuer: str

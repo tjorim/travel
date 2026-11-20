@@ -1,26 +1,37 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 import { routeAgendaRecords } from "./agenda-records";
-import { choosePreferences, mockApi, signInOwner, summaryOf } from "./mock-api";
+import { choosePreferences, mockApi, signInOwner, ownerTrip, summaryOf } from "./mock-api";
 
 // Synthetic content only; the evidence images contain no owner trip data.
 const day = (offset: number) =>
   new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
-const update = (id: string, title: string, offset: number) => ({
-  id,
-  title,
-  occurred_at: new Date(Date.now() + offset * 3_600_000).toISOString(),
-  timezone: "UTC",
-  share_date_precision: "day",
-  body: "",
-  private_notes: null,
-  area_id: null,
-  location: null,
-  media_asset_ids: [],
-  visibility: "private",
-});
+const update = (id: string, title: string, offset: number) =>
+  ({
+    local_date: new Date(Date.now() + offset * 3_600_000).toISOString().slice(0, 10),
+    title_nl: null,
+    title_en: null,
+    body_nl: null,
+    body_en: null,
+    area: null,
+    body_html: null,
+    private_notes_html: null,
+    id,
+    title,
+    occurred_at: new Date(Date.now() + offset * 3_600_000).toISOString(),
+    timezone: "UTC",
+    share_date_precision: "day",
+    body: "",
+    private_notes: null,
+    area_id: null,
+    location: null,
+    media_asset_ids: [],
+    visibility: "private",
+  }) satisfies Api.TravelUpdateResponse;
 const trip = (id: string, title: string, starts: number | null, ends: number | null) => ({
+  ...ownerTrip,
   id,
   title,
   summary: null,
@@ -54,11 +65,13 @@ async function open(
 ) {
   await mockApi(page);
   await signInOwner(page);
-  await page.route("**/api/trips", (route) => route.fulfill({ json: trips.map(summaryOf) }));
+  await page.route("**/api/trips", (route) =>
+    route.fulfill({ json: trips.map(summaryOf) satisfies Api.TripSummaryResponse[] }),
+  );
   await page.route("**/api/trips/*/travel-updates", (route) =>
     route.fulfill({
-      json:
-        trips.find((item) => route.request().url().includes(`/${item.id}/`))?.travel_updates ?? [],
+      json: (trips.find((item) => route.request().url().includes(`/${item.id}/`))?.travel_updates ??
+        ([] satisfies Api.TravelUpdateResponse[] satisfies Api.TravelUpdateResponse[])) satisfies Api.TravelUpdateResponse[],
     }),
   );
   await page.route("**/api/trips/trip-active/task-alerts", (route) =>
@@ -76,17 +89,25 @@ async function open(
           email_attempts: 0,
           email_last_error: null,
         },
-      ],
+      ] satisfies Api.TripTaskAlertResponse[],
     }),
   );
   await page.route("**/api/trips/trip-active/public-projection", (route) =>
     route.fulfill({
       json: {
+        revision: 0,
+        applied_preset: null,
+        applied_preset_at: null,
+        preset_exceptions: null,
         trip_id: "trip-active",
-        scope: { schema_version: "travel/share-scope@1", trip: { title: true }, items: [] },
+        scope: {
+          schema_version: "travel/share-scope@1",
+          trip: { summary: true, dates: null, title: true },
+          items: [],
+        },
         surface_state: "published",
         slug: "slow-journey",
-      },
+      } satisfies Api.PublicProjectionStatusResponse,
     }),
   );
   await page.route(`**${coverPath}`, (route) =>
@@ -217,7 +238,9 @@ test("the workspace header states publication and keeps the tabs reachable on a 
 test("a lone trip keeps a reading-width card on a wide screen", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await open(page, "/admin/trips", "en", "light");
-  await page.route("**/api/trips", (route) => route.fulfill({ json: [summaryOf(trips[2])] }));
+  await page.route("**/api/trips", (route) =>
+    route.fulfill({ json: [summaryOf(trips[2])] satisfies Api.TripSummaryResponse[] }),
+  );
   await page.reload();
   const card = page.getByRole("link", { name: /Iceland/ });
   await expect(card).toBeVisible();
@@ -278,28 +301,32 @@ for (const locale of ["en", "nl"] as const) {
                   cover_url: variant.includes("cover") ? coverPath : null,
                   travel_updates: updates,
                 }),
-              ],
+              ] satisfies Api.TripSummaryResponse[],
             }),
           );
           await page.route("**/api/trips/trip-active/travel-updates", (route) =>
-            route.fulfill({ json: updates }),
+            route.fulfill({ json: updates satisfies Api.TravelUpdateResponse[] }),
           );
           await page.route("**/api/trips/trip-active/trip-tasks", (route) =>
             route.fulfill({
-              json:
-                variant === "empty"
-                  ? []
-                  : Array.from({ length: 32 }, (_, i) => ({
-                      id: `task-${i}`,
-                      title: `Synthetic preparation ${i}`,
-                      notes: null,
-                      due_date: null,
-                      remind_at: null,
-                      reminded_at: null,
-                      completed_at: null,
-                      links: [],
-                      created_at: "2054-10-01T12:00:00Z",
-                    })),
+              json: (variant === "empty"
+                ? []
+                : (Array.from(
+                    { length: 32 },
+                    (_, i) =>
+                      ({
+                        notes_html: null,
+                        id: `task-${i}`,
+                        title: `Synthetic preparation ${i}`,
+                        notes: null,
+                        due_date: null,
+                        remind_at: null,
+                        reminded_at: null,
+                        completed_at: null,
+                        links: [],
+                        created_at: "2054-10-01T12:00:00Z",
+                      }) satisfies Api.TripTaskResponse,
+                  ) satisfies Api.TripTaskResponse[] satisfies Api.TripTaskResponse[])) satisfies Api.TripTaskResponse[],
             }),
           );
           if (variant === "failed-cover")

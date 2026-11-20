@@ -1,3 +1,6 @@
+import { jsonResponse } from "@/mocks/response";
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -18,31 +21,52 @@ vi.mock("@tanstack/react-router", async (importOriginal) => ({
   ),
 }));
 
-const scope = (title = true) => ({
+const scope = (title = true): Api.ShareScope => ({
   schema_version: "travel/share-scope@1",
   trip: { title, summary: false, dates: null },
   items: [],
 });
 const soon = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
-const trips = [
+const trips: Api.TripSummaryResponse[] = [
   {
+    owner_subject: "synthetic",
+    content_language: "nl",
+    title_nl: null,
+    title_en: null,
+    summary_nl: null,
+    summary_en: null,
+    cover_derivative_id: null,
+    cover_url: null,
+    travel_update_count: 0,
+    last_update_at: null,
+    summary_html: null,
     id: "t1",
     title: "Alpha Coast",
     summary: null,
     starts_on: null,
     ends_on: null,
-    travel_updates: [],
   },
   {
+    owner_subject: "synthetic",
+    content_language: "nl",
+    title_nl: null,
+    title_en: null,
+    summary_nl: null,
+    summary_en: null,
+    cover_derivative_id: null,
+    cover_url: null,
+    travel_update_count: 0,
+    last_update_at: null,
+    summary_html: null,
     id: "t2",
     title: "Beta Hills",
     summary: null,
     starts_on: null,
     ends_on: null,
-    travel_updates: [],
   },
 ];
-const link = (state: string) => ({
+const link = (state: Api.LinkState): Api.ShareLinkResponse => ({
+  ...responseFixtures.ShareLinkResponse,
   revision: 1,
   id: "l1",
   series_id: "l1",
@@ -55,7 +79,10 @@ const link = (state: string) => ({
   activated_at: "2054-01-02T00:00:00Z",
   revoked_at: null,
 });
-const collection = {
+const collection: Api.CollectionResponse = {
+  content_language: "nl",
+  title_nl: null,
+  title_en: null,
   id: "c1",
   label: "Relatives",
   title: null,
@@ -69,6 +96,10 @@ const collection = {
   revoked_at: null,
   members: [
     {
+      exclusions: { excluded: [], also_hidden: {}, stale: 0 },
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       revision: 1,
       id: "m1",
       trip_id: "t1",
@@ -87,10 +118,13 @@ beforeEach(() => {
   calls = [];
   serveApi((url, init) => {
     calls.push(`${init.method} ${url}`);
-    const json = (value: unknown) => new Response(JSON.stringify(value));
-    if (url === "/api/trips") return json(trips);
+    const json = <T = never,>(value: NoInfer<T>) => new Response(JSON.stringify(value));
+    if (url === "/api/trips") return json<Api.TripSummaryResponse[]>(trips);
     if (url === "/api/trips/t1/public-projection")
-      return json({
+      return json<Api.PublicProjectionStatusResponse>({
+        applied_preset: null,
+        applied_preset_at: null,
+        preset_exceptions: null,
         revision: 1,
         trip_id: "t1",
         scope: scope(),
@@ -98,18 +132,21 @@ beforeEach(() => {
         slug: "alpha",
       });
     if (url === "/api/trips/t2/public-projection")
-      return json({
+      return json<Api.PublicProjectionStatusResponse>({
+        applied_preset: null,
+        applied_preset_at: null,
+        preset_exceptions: null,
         revision: 1,
         trip_id: "t2",
         scope: scope(),
         surface_state: "unpublished",
         slug: "beta",
       });
-    if (url === "/api/trips/t1/share-links") return json([link("active")]);
-    if (url === "/api/trips/t2/share-links") return json([]);
-    if (url === "/api/collections") return json([collection]);
+    if (url === "/api/trips/t1/share-links") return json<Api.ShareLinkResponse[]>([link("active")]);
+    if (url === "/api/trips/t2/share-links") return json<Api.ShareLinkResponse[]>([]);
+    if (url === "/api/collections") return json<Api.CollectionResponse[]>([collection]);
     if (url === "/api/collections/c1/revoke" && init.method === "POST")
-      return json({ ...collection, state: "revoked", token: null });
+      return json<Api.CollectionResponse>({ ...collection, state: "revoked", token: null });
     return undefined;
   });
 });
@@ -151,8 +188,8 @@ it("revokes a collection only after confirmation and shows it in Dutch", async (
 it("says so when nothing is shared", async () => {
   changeLocale("en");
   serveApi((url) => {
-    if (url === "/api/trips") return new Response("[]");
-    if (url === "/api/collections") return new Response("[]");
+    if (url === "/api/trips") return jsonResponse<never[]>([]);
+    if (url === "/api/collections") return jsonResponse<never[]>([]);
     return undefined;
   });
   renderWithOwner(<SharingOverview />);

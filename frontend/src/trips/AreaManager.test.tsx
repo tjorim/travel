@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -53,7 +55,12 @@ const savedLocation = {
 } as Location;
 // A created stay comes back with the area its location was filed under.
 const createdStay = {
-  create: (body: Record<string, unknown>, count: number) => ({ id: `new-${count}`, area, ...body }),
+  create: (body: Record<string, unknown>, count: number) => ({
+    ...responseFixtures.StayResponse,
+    id: `new-${count}`,
+    area,
+    ...body,
+  }),
 };
 const ticket = { id: "d1", title: "Hotelbevestiging" } as DocumentAsset;
 
@@ -74,19 +81,27 @@ const confirmDelete = () =>
 
 it("opens an area in detail before its editor, prefilled", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/locations", [])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/routes", [])
-    .collection("/api/trips/trip/visits", [])
-    .value("/api/trips/trip/public-projection", {
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", [])
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", [])
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "unpublished",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: null,
     })
-    .value("/api/trips/trip/share-links", []);
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
   expect(screen.getByRole("heading", { name: "Taipei" })).toBeTruthy();
@@ -100,19 +115,29 @@ it("opens an area in detail before its editor, prefilled", async () => {
 
 it("lists what belongs to an area in its detail, so areas need no separate overview", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/locations", [{ ...savedLocation, label: "Vliegveld" }])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/routes", [])
-    .collection("/api/trips/trip/visits", [])
-    .value("/api/trips/trip/public-projection", {
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [
+      { ...savedLocation, label: "Vliegveld" },
+    ])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", [])
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", [])
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "unpublished",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: null,
     })
-    .value("/api/trips/trip/share-links", []);
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
   await screen.findAllByText(/Vliegveld/);
@@ -121,19 +146,27 @@ it("lists what belongs to an area in its detail, so areas need no separate overv
 
 it("deletes an unused area", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/locations", [])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/routes", [])
-    .collection("/api/trips/trip/visits", [])
-    .value("/api/trips/trip/public-projection", {
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", [])
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", [])
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "unpublished",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: null,
     })
-    .value("/api/trips/trip/share-links", []);
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
@@ -147,19 +180,27 @@ it("deletes an unused area", async () => {
 
 it("shows an edited area at once and adds a new one to the list", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/locations", [])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/routes", [])
-    .collection("/api/trips/trip/visits", [])
-    .value("/api/trips/trip/public-projection", {
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", [])
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", [])
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "unpublished",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: null,
     })
-    .value("/api/trips/trip/share-links", []);
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
@@ -184,19 +225,27 @@ it("shows an edited area at once and adds a new one to the list", async () => {
 
 it("asks for both area coordinates or neither", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [])
-    .collection("/api/trips/trip/locations", [])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/routes", [])
-    .collection("/api/trips/trip/visits", [])
-    .value("/api/trips/trip/public-projection", {
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", [])
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", [])
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "unpublished",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: null,
     })
-    .value("/api/trips/trip/share-links", []);
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied toevoegen" }));
   fireEvent.change(screen.getByLabelText("Naam"), { target: { value: "Taipei" } });
@@ -208,24 +257,43 @@ it("asks for both area coordinates or neither", async () => {
 
 it("turns a place lookup into an editable, rounded area", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [])
-    .collection("/api/trips/trip/locations", [])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/routes", [])
-    .collection("/api/trips/trip/visits", [])
-    .value("/api/trips/trip/public-projection", {
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", [])
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", [])
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "unpublished",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: null,
     })
-    .value("/api/trips/trip/share-links", []);
-  api.on("POST", /\/places\/search$/, () => ({
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
+  api.on<Api.PlaceSearchResponse>("POST", /\/places\/search$/, () => ({
+    provider: "synthetic",
     attribution: "© OpenStreetMap contributors",
     attribution_url: "https://www.openstreetmap.org/copyright",
     results: [
       {
+        address_line1: null,
+        address_line2: null,
+        postal_code: null,
+        local_name: null,
+        name_nl: null,
+        name_en: null,
+        viewport_north: null,
+        viewport_south: null,
+        viewport_east: null,
+        viewport_west: null,
         osm_element_type: "relation",
         osm_element_id: "123",
         display_name: "Taipei, Exampleland",
@@ -256,21 +324,30 @@ it("turns a place lookup into an editable, rounded area", async () => {
 
 const emptyApi = () =>
   fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [])
-    .collection("/api/trips/trip/locations", [])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/routes", [])
-    .collection("/api/trips/trip/visits", [])
-    .value("/api/trips/trip/public-projection", {
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", [])
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", [])
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "unpublished",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: null,
     })
-    .value("/api/trips/trip/share-links", []);
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
 
-const searchResult = {
+const searchResult: Api.PlaceSearchResult = {
+  ...responseFixtures.PlaceSearchResult,
   osm_element_type: "relation",
   osm_element_id: "123",
   display_name: "Taipei, Taiwan",
@@ -286,7 +363,8 @@ const searchResult = {
 
 it("shows the local name beside a search result and offers its names without saving them", async () => {
   api = emptyApi();
-  api.on("POST", /\/places\/search$/, () => ({
+  api.on<Api.PlaceSearchResponse>("POST", /\/places\/search$/, () => ({
+    provider: "synthetic",
     attribution: "© OpenStreetMap contributors",
     attribution_url: "https://www.openstreetmap.org/copyright",
     results: [
@@ -329,7 +407,8 @@ it("shows the local name beside a search result and offers its names without sav
 
 it("takes no local name from a result that is only a place inside the city", async () => {
   api = emptyApi();
-  api.on("POST", /\/places\/search$/, () => ({
+  api.on<Api.PlaceSearchResponse>("POST", /\/places\/search$/, () => ({
+    provider: "synthetic",
     attribution: "© OpenStreetMap contributors",
     attribution_url: "https://www.openstreetmap.org/copyright",
     results: [
@@ -347,7 +426,9 @@ it("takes no local name from a result that is only a place inside the city", asy
 });
 
 it("edits and clears an area's local name, shown in its detail", async () => {
-  api = emptyApi().collection("/api/trips/trip/areas", [{ ...area, local_name: "臺北" }]);
+  api = emptyApi().collection<Api.AreaResponse>("/api/trips/trip/areas", [
+    { ...area, local_name: "臺北" },
+  ]);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
   expect(within(screen.getByRole("dialog")).getByText("臺北")).toBeTruthy();
@@ -362,19 +443,27 @@ it("edits and clears an area's local name, shown in its detail", async () => {
 
 it("reports a refused area delete inside the dialog, where the owner is looking", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/locations", [])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/routes", [])
-    .collection("/api/trips/trip/visits", [])
-    .value("/api/trips/trip/public-projection", {
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", [])
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", [])
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "unpublished",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: null,
     })
-    .value("/api/trips/trip/share-links", []);
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
   renderWithOwner(<AreaManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Gebied Taipei bekijken" }));
   api.failNext = {

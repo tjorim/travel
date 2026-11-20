@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi } from "./mock-api";
@@ -18,7 +19,7 @@ const index = {
     },
     { id: "member-2", title: null, summary_text: null, dates: null, cover: null },
   ],
-};
+} satisfies Api.CollectionIndexDocument;
 const trip = {
   schema_version: "travel/unlisted-trip@1",
   title: "Exampleland 2054",
@@ -34,7 +35,7 @@ const trip = {
   media: [],
   routes: [],
   navigation: [],
-};
+} satisfies Api.ProjectionDocument;
 
 const viewports = {
   laptop: { width: 1280, height: 800 },
@@ -52,9 +53,11 @@ for (const locale of ["nl", "en"] as const) {
         await page.setViewportSize(viewport);
         await mockApi(page);
         await choosePreferences(page, locale, theme);
-        await page.route(`**/api/shared/${token}`, (route) => route.fulfill({ json: index }));
+        await page.route(`**/api/shared/${token}`, (route) =>
+          route.fulfill({ json: index satisfies Api.CollectionIndexDocument }),
+        );
         await page.route(`**/api/shared/${token}/trips/member-1`, (route) =>
-          route.fulfill({ json: trip }),
+          route.fulfill({ json: trip satisfies Api.ProjectionDocument }),
         );
 
         await page.goto(`/share/${token}`);

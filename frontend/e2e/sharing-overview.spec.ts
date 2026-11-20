@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
@@ -7,9 +8,12 @@ const scope = {
   schema_version: "travel/share-scope@1",
   trip: { title: true, summary: false, dates: null },
   items: [],
-};
+} satisfies Api.ShareScope;
 const inTwoDays = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
-const collection = {
+const collection: Api.CollectionResponse = {
+  content_language: "nl",
+  title_nl: null,
+  title_en: null,
   id: "collection-1",
   label: "Relatives",
   title: null,
@@ -23,6 +27,10 @@ const collection = {
   revoked_at: null,
   members: [
     {
+      exclusions: { excluded: [], also_hidden: {}, stale: 0 },
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       revision: 1,
       id: "member-1",
       trip_id: ownerTrip.id,
@@ -50,22 +58,33 @@ for (const locale of ["nl", "en"] as const) {
         await signInOwner(page);
         await choosePreferences(page, locale, theme);
         await page.setViewportSize(viewport);
-        await page.route("**/api/collections", (route) => route.fulfill({ json: [collection] }));
+        await page.route("**/api/collections", (route) =>
+          route.fulfill({ json: [collection] satisfies Api.CollectionResponse[] }),
+        );
         await page.route(`**/api/trips/${ownerTrip.id}/public-projection`, (route) =>
           route.fulfill({
             json: {
+              applied_preset: null,
+              applied_preset_at: null,
+              preset_exceptions: null,
               revision: 1,
               trip_id: ownerTrip.id,
               scope,
               surface_state: "published",
               slug: "exampleland-2054",
-            },
+            } satisfies Api.PublicProjectionStatusResponse,
           }),
         );
         await page.route(`**/api/trips/${ownerTrip.id}/share-links`, (route) =>
           route.fulfill({
             json: [
               {
+                feed_token: null,
+                feed_expires_at: null,
+                exclusions: { excluded: [], also_hidden: {}, stale: 0 },
+                applied_preset: null,
+                applied_preset_at: null,
+                preset_exceptions: null,
                 revision: 1,
                 id: "link-1",
                 series_id: "link-1",
@@ -78,7 +97,7 @@ for (const locale of ["nl", "en"] as const) {
                 activated_at: "2054-01-02T00:00:00Z",
                 revoked_at: null,
               },
-            ],
+            ] satisfies Api.ShareLinkResponse[],
           }),
         );
 

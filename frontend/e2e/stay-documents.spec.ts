@@ -1,9 +1,13 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
 import { message } from "./messages";
 
 const area = {
+  label_nl: null,
+  label_en: null,
+  local_name: null,
   id: "area-kaohsiung",
   visibility: "private",
   label: "Kaohsiung",
@@ -12,7 +16,7 @@ const area = {
   latitude: null,
   longitude: null,
   timezone: null,
-};
+} satisfies Api.AreaResponse;
 const confirmation = {
   id: "document-confirmation",
   document_kind: "booking",
@@ -23,8 +27,10 @@ const confirmation = {
   trip_id: "trip-1",
   created_at: "2054-11-01T10:00:00Z",
   file_url: "/api/documents/document-confirmation/original",
-};
+} satisfies Api.DocumentResponse;
 const stay = {
+  notes_html: null,
+  contact_details_html: null,
   id: "stay-riverside",
   check_in_date: "2054-12-04",
   check_out_date: "2054-12-06",
@@ -41,7 +47,7 @@ const stay = {
   area,
   visibility: "private",
   share_date_precision: null,
-};
+} satisfies Api.StayResponse;
 
 for (const locale of ["nl", "en"] as const) {
   for (const theme of ["light", "dark"] as const) {
@@ -54,15 +60,19 @@ for (const locale of ["nl", "en"] as const) {
         await choosePreferences(page, locale, theme);
         await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
         const base = `**/api/trips/${ownerTrip.id}`;
-        await page.route(`${base}/areas`, (route) => route.fulfill({ json: [area] }));
-        await page.route(/\/api\/documents\?trip_id=/, (route) =>
-          route.fulfill({ json: [confirmation] }),
+        await page.route(`${base}/areas`, (route) =>
+          route.fulfill({ json: [area] satisfies Api.AreaResponse[] }),
         );
-        await page.route(`${base}/stays`, (route) => route.fulfill({ json: [stay] }));
+        await page.route(/\/api\/documents\?trip_id=/, (route) =>
+          route.fulfill({ json: [confirmation] satisfies Api.DocumentResponse[] }),
+        );
+        await page.route(`${base}/stays`, (route) =>
+          route.fulfill({ json: [stay] satisfies Api.StayResponse[] }),
+        );
         let patched: Record<string, unknown> | null = null;
         await page.route(`${base}/stays/${stay.id}`, (route) => {
           patched = route.request().postDataJSON() as Record<string, unknown>;
-          return route.fulfill({ json: { ...stay, ...patched } });
+          return route.fulfill({ json: { ...stay, ...patched } satisfies Api.StayResponse });
         });
         await page.goto(`/admin/trips/${ownerTrip.id}/plan#stays`);
 

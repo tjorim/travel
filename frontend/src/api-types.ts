@@ -1,5 +1,5 @@
 // The records the API sends and receives, named for the screens. Every one is the type FastAPI generated
-// for its response model in `api-schema.ts` (`pnpm api:generate`), so a field renamed or retyped in
+// for its response model in `api-schema/` (`pnpm api:generate`), so a field renamed or retyped in
 // `backend/app/schemas.py` stops `pnpm typecheck` here. Declare no API record by hand: add a response
 // model to the backend, regenerate, and alias it below.
 import type {
@@ -53,7 +53,7 @@ export type {
   ExclusionReview,
   ExclusionWideningDetail as ExclusionWidening,
   FollowAudienceAudience,
-  GeoJsonLineString,
+  GeoJsonLineStringOutput as GeoJsonLineString,
   FollowAudiencePrecisionResult as FollowAudienceResult,
   FutureDisclosure,
   ImportSessionCompleteResponse as ImportCompleteResult,

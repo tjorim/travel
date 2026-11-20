@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { createRootRoute, createRoute } from "@tanstack/react-router";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -116,7 +117,7 @@ const trip = (id: string, title: string, extra: Partial<Trip> = {}): Trip => ({
 let trips: Trip[];
 let requests: string[];
 let surfaceState: "published" | "unpublished";
-const json = (value: unknown, status = 200) =>
+const json = <T = never,>(value: NoInfer<T>, status = 200) =>
   Promise.resolve(new Response(JSON.stringify(value), { status }));
 
 beforeEach(() => {
@@ -133,7 +134,7 @@ beforeEach(() => {
       requests.push(`${method} ${url}`);
       const body = init.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
       if (url === "/api/trips" && method === "GET")
-        return json(
+        return json<Api.TripSummaryResponse[]>(
           trips.map(({ travel_updates, ...fields }) => ({
             ...fields,
             travel_update_count: travel_updates.length,
@@ -142,12 +143,14 @@ beforeEach(() => {
         );
       const updates = /^\/api\/trips\/([^/]+)\/travel-updates$/.exec(url);
       if (updates && method === "GET")
-        return json(trips.find((item) => item.id === updates[1])?.travel_updates ?? []);
+        return json<Api.TravelUpdateResponse[]>(
+          trips.find((item) => item.id === updates[1])?.travel_updates ?? [],
+        );
       if (url === "/api/trips" && method === "POST") {
         const created = trip("t3", String(body.title_nl));
         expect(body.content_language).toBe("nl");
         trips = [...trips, created];
-        return json(created, 201);
+        return json<Api.TripResponse>(created, 201);
       }
       const match = /^\/api\/trips\/([^/]+)$/.exec(url);
       if (match && method === "PATCH") {
@@ -162,15 +165,28 @@ beforeEach(() => {
               }
             : item,
         );
-        return json(trips.find((item) => item.id === match[1]));
+        return json<Api.TripResponse>(trips.find((item) => item.id === match[1])!);
       }
       if (match && method === "DELETE") {
         trips = trips.filter((item) => item.id !== match[1]);
         return Promise.resolve(new Response(null, { status: 204 }));
       }
-      if (url.endsWith("/areas")) return json([]);
+      if (url.endsWith("/areas")) return json<Api.AreaResponse[]>([]);
       if (url.endsWith("/public-projection"))
-        return json({ trip_id: "t1", scope: {}, surface_state: surfaceState, slug: null });
+        return json<Api.PublicProjectionStatusResponse>({
+          revision: 0,
+          applied_preset: null,
+          applied_preset_at: null,
+          preset_exceptions: null,
+          trip_id: "t1",
+          scope: {
+            schema_version: "travel/share-scope@1",
+            trip: { title: true, summary: true, dates: null },
+            items: [],
+          },
+          surface_state: surfaceState,
+          slug: null,
+        });
       throw new Error(`unexpected request ${method} ${url}`);
     }),
   );
@@ -423,7 +439,16 @@ it("says so when a workspace trip does not exist for this account", async () => 
 });
 
 it("explains a failed trip load without hiding the retry path", async () => {
-  serveApi(vi.fn(() => json({ detail: "Database niet bereikbaar." }, 400)));
+  serveApi(
+    vi.fn(() =>
+      json<unknown>(
+        /* Fixture exception: Error fixture preserves server diagnostics for failure handling. */ {
+          detail: "Database niet bereikbaar.",
+        },
+        400,
+      ),
+    ),
+  );
   renderTrips();
   expect(
     (await screen.findAllByText("Je reizen konden niet worden geladen.")).length,

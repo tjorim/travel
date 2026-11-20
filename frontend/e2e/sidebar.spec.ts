@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
@@ -11,22 +12,34 @@ for (const locale of ["en", "nl"] as const)
       await choosePreferences(page, locale, theme);
       await page.route("**/api/trips", (r) =>
         r.fulfill({
-          json: [{ ...ownerTrip, title: "Synthetic coastal railway journey ".repeat(8) }],
+          json: [
+            {
+              travel_update_count: 0,
+              last_update_at: null,
+              ...ownerTrip,
+              title: "Synthetic coastal railway journey ".repeat(8),
+            },
+          ] satisfies Api.TripSummaryResponse[],
         }),
       );
       await page.route("**/api/trips/trip-1/trip-tasks", (r) =>
         r.fulfill({
-          json: Array.from({ length: 32 }, (_, i) => ({
-            id: "task-" + i,
-            title: "Synthetic task " + i,
-            notes: null,
-            due_date: null,
-            remind_at: null,
-            reminded_at: null,
-            completed_at: null,
-            links: [],
-            created_at: "2054-10-01T12:00:00Z",
-          })),
+          json: Array.from(
+            { length: 32 },
+            (_, i) =>
+              ({
+                notes_html: null,
+                id: "task-" + i,
+                title: "Synthetic task " + i,
+                notes: null,
+                due_date: null,
+                remind_at: null,
+                reminded_at: null,
+                completed_at: null,
+                links: [],
+                created_at: "2054-10-01T12:00:00Z",
+              }) satisfies Api.TripTaskResponse,
+          ) satisfies Api.TripTaskResponse[],
         }),
       );
       await page.setViewportSize({ width: 1100, height: 600 });
@@ -103,6 +116,7 @@ for (const locale of ["en", "nl"] as const)
         r.fulfill({
           json: [
             {
+              notes_html: null,
               id: "task-1",
               title: "Synthetic preparation 24",
               notes: null,
@@ -113,7 +127,7 @@ for (const locale of ["en", "nl"] as const)
               links: [],
               created_at: "2054-10-01T12:00:00Z",
             },
-          ],
+          ] satisfies Api.TripTaskResponse[],
         }),
       );
       await page.goto("/admin/trips/trip-1/story");

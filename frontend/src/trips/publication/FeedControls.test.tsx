@@ -25,7 +25,9 @@ it.each(["en", "nl"] as const)(
     server.use(
       http.post("/api/trips/trip/share-links/link/feed/enable", async ({ request }) => {
         bodies.push(await request.json());
-        return HttpResponse.json({});
+        return HttpResponse.json(
+          /* Fixture exception: Mutation acknowledgement control sentinel; the test does not consume a response record. */ {},
+        );
       }),
     );
     renderWithOwner(

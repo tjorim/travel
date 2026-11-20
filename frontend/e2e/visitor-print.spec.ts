@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import { expect, test } from "@playwright/test";
 import { mockApi } from "./mock-api";
 
@@ -11,17 +12,43 @@ for (const audience of ["public", "share"] as const) {
       await page.route(`**${api}`, (route) =>
         route.fulfill({
           json: {
+            summary_html: null,
+            summary_text: null,
+            cover: null,
             schema_version:
               audience === "public" ? "travel/public-trip@1" : "travel/unlisted-trip@1",
             title: "Synthetic print trip",
             summary: null,
             dates: null,
             visits: [],
-            places: [{ id: "area", label: "Synthetic area", latitude: 25, longitude: 121 }],
-            updates: [{ id: "update", title: "Synthetic story", body: "Readable text." }],
+            places: [
+              {
+                country_code: null,
+                region: null,
+                id: "area",
+                label: "Synthetic area",
+                latitude: 25,
+                longitude: 121,
+              },
+            ],
+            updates: [
+              {
+                body_html: null,
+                date_precision: "day",
+                story_date: null,
+                place: null,
+                id: "update",
+                title: "Synthetic story",
+                body: "Readable text.",
+              },
+            ],
             stays: [],
             media: [
               {
+                caption: null,
+                caption_html: null,
+                focal_x: null,
+                focal_y: null,
                 id: "photo",
                 image: { id: "photo" },
                 update: "update",
@@ -32,7 +59,7 @@ for (const audience of ["public", "share"] as const) {
             ],
             routes: [],
             navigation: [],
-          },
+          } satisfies Api.ProjectionDocument,
         }),
       );
       await page.route(`**${api}/files/*`, (route) =>

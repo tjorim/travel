@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
@@ -6,7 +8,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { server } from "../mocks/server";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
-import type { ShareScope, Trip, TripSummary } from "../api-types";
+import type { ShareScope, TripSummary } from "../api-types";
 import type { Collection, CollectionMember } from "./collections";
 import { MemberScopeDialog } from "./MemberScopeDialog";
 
@@ -21,6 +23,7 @@ const scope = (exclude?: ShareScope["exclude"]): ShareScope => ({
   ...(exclude ? { exclude } : {}),
 });
 const trip = {
+  ...responseFixtures.TripSummaryResponse,
   id: "trip",
   title: "Exampleland",
   summary: null,
@@ -28,9 +31,10 @@ const trip = {
   ends_on: null,
   travel_updates: [
     {
+      ...responseFixtures.TravelUpdateResponse,
       id: "u2",
       occurred_at: "2054-11-16T10:00:00Z",
-      date_precision: "day",
+
       title: "Aankomst",
       body: "Geland",
       private_notes: null,
@@ -40,8 +44,9 @@ const trip = {
       visibility: "everyone",
     },
   ],
-} as unknown as TripSummary;
-const member = {
+} satisfies TripSummary & { travel_updates: Api.TravelUpdateResponse[] };
+const member: CollectionMember = {
+  ...responseFixtures.CollectionMemberResponse,
   revision: 3,
   id: "m1",
   trip_id: "trip",
@@ -50,24 +55,32 @@ const member = {
   delivered_records: 0,
   created_at: "2054-01-01T00:00:00Z",
   updated_at: "2054-01-01T00:00:00Z",
-} as CollectionMember;
+};
 const collection = (state: Collection["state"]) =>
-  ({ id: "c1", label: "Familie", state, members: [member] }) as unknown as Collection;
+  ({
+    ...responseFixtures.CollectionResponse,
+    id: "c1",
+    label: "Familie",
+    state,
+    members: [member],
+  }) satisfies Collection;
 
 let api: FakeApi;
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
   api = fakeApi();
-  api.collection("/api/trips/trip/travel-updates", (trip as unknown as Trip).travel_updates);
+  api.collection<Api.TravelUpdateResponse>("/api/trips/trip/travel-updates", trip.travel_updates);
   for (const resource of ["areas", "locations", "routes", "visits", "stays", "media"])
-    api.collection(`/api/trips/trip/${resource}`, []);
-  api.on("POST", /\/share-scope\/exclusion-review$/, () => ({
+    api.collection<never>(`/api/trips/trip/${resource}`, []);
+  api.on<Api.ExclusionReview>("POST", /\/share-scope\/exclusion-review$/, () => ({
     baseline: [{ kind: "travel_update", id: "u2" }],
     excluded: [],
     also_hidden: {},
     stale: 0,
   }));
-  api.on("PUT", /\/api\/collections\/c1\/members\/m1/, () => collection("active"));
+  api.on<Api.CollectionResponse>("PUT", /\/api\/collections\/c1\/members\/m1/, () =>
+    collection("active"),
+  );
   api.install();
 });
 afterEach(() => {
@@ -83,6 +96,7 @@ it("leaves a record out of a collection member and asks before an active collect
       () => {
         refused.calls += 1;
         return HttpResponse.json(
+          /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */
           {
             detail: {
               code: "exclusion_widening_needs_acknowledgement",
@@ -150,13 +164,15 @@ it("saves a narrower member scope straight away, without the acknowledgement", a
 });
 
 it("reviews and applies a preset to a collection member, then shows the scope the server answers with", async () => {
-  const review = {
+  const review: Api.SharingPresetReview = {
     schema_version: "travel/sharing-preset@1",
     preset: "story_only",
     audience: { id: "collection:m1", kind: "collection_member", label: "Familie", live: true },
     applicable: true,
     refusal: null,
-    changes: [{ kind: "travel_update", id: "u2", label: "Aankomst", action: "remove_exclusion" }],
+    changes: [
+      { day: null, kind: "travel_update", id: "u2", label: "Aankomst", action: "remove_exclusion" },
+    ],
     change_counts: { remove_exclusion: 1 },
     precision: { before: null, after: "month", changed: true, reads_coarser: {} },
     comparison: {
@@ -164,23 +180,37 @@ it("reviews and applies a preset to a collection member, then shows the scope th
       after: { travel_update: 1 },
       added: { travel_update: 1 },
       removed: {},
-      widened: [{ kind: "travel_update", id: "u2", label: "Aankomst" }],
+      widened: [{ day: null, kind: "travel_update", id: "u2", label: "Aankomst" }],
       narrowed: [],
     },
     left_as_is: [],
     needs_decision: [],
     replaces_exceptions: [
-      { kind: "travel_update", id: "u2", label: "Aankomst", reason: "exclusion_removed" },
+      {
+        day: null,
+        kind: "travel_update",
+        id: "u2",
+        label: "Aankomst",
+        reason: "exclusion_removed",
+      },
     ],
     requires_acknowledgement: true,
     fingerprint: "fp-member",
   };
-  api.on("POST", /\/api\/collections\/c1\/members\/m1\/preset\/review$/, () => review);
-  api.on("POST", /\/api\/collections\/c1\/members\/m1\/preset$/, () => ({
-    applied: true,
-    review,
-    audience: { ...member, revision: 4, scope: scope([]), applied_preset: "story_only" },
-  }));
+  api.on<Api.SharingPresetReview>(
+    "POST",
+    /\/api\/collections\/c1\/members\/m1\/preset\/review$/,
+    () => review,
+  );
+  api.on<Api.MemberPresetApplyResult>(
+    "POST",
+    /\/api\/collections\/c1\/members\/m1\/preset$/,
+    () => ({
+      applied: true,
+      review,
+      audience: { ...member, revision: 4, scope: scope([]), applied_preset: "story_only" },
+    }),
+  );
   renderWithOwner(
     <MemberScopeDialog
       collection={collection("active")}
@@ -217,14 +247,30 @@ it("reviews and applies a preset to a collection member, then shows the scope th
 });
 
 it("reviews what the previewed member scope shows of a trip that has not started, as a link preview does", async () => {
-  api.on("POST", /\/api\/collections\/c1\/members\/m1\/preview$/, () => ({
+  api.on<Api.ProjectionDocument>("POST", /\/api\/collections\/c1\/members\/m1\/preview$/, () => ({
+    summary: null,
+    dates: null,
+    visits: [],
+    places: [],
+    updates: [],
+    stays: [],
+    media: [],
+    routes: [],
+    navigation: [],
+    summary_html: null,
+    summary_text: null,
+    cover: null,
     schema_version: "travel/unlisted-trip@1",
     title: "Exampleland",
   }));
-  api.on("POST", /\/api\/collections\/c1\/members\/m1\/future-disclosure$/, () => ({
-    transport: 2,
-    day_dates: 1,
-  }));
+  api.on<Api.FutureDisclosure>(
+    "POST",
+    /\/api\/collections\/c1\/members\/m1\/future-disclosure$/,
+    () => ({
+      transport: 2,
+      day_dates: 1,
+    }),
+  );
   renderWithOwner(
     <MemberScopeDialog
       collection={collection("active")}
@@ -247,14 +293,34 @@ it("reviews what the previewed member scope shows of a trip that has not started
 });
 
 it("previews the member in the other language from the same candidate scope", async () => {
-  api.on("POST", /\/api\/collections\/c1\/members\/m1\/preview(\?lang=\w+)?$/, () => ({
-    schema_version: "travel/unlisted-trip@1",
-    title: "Exampleland",
-  }));
-  api.on("POST", /\/api\/collections\/c1\/members\/m1\/future-disclosure$/, () => ({
-    transport: 0,
-    day_dates: 0,
-  }));
+  api.on<Api.ProjectionDocument>(
+    "POST",
+    /\/api\/collections\/c1\/members\/m1\/preview(\?lang=\w+)?$/,
+    () => ({
+      summary: null,
+      dates: null,
+      visits: [],
+      places: [],
+      updates: [],
+      stays: [],
+      media: [],
+      routes: [],
+      navigation: [],
+      summary_html: null,
+      summary_text: null,
+      cover: null,
+      schema_version: "travel/unlisted-trip@1",
+      title: "Exampleland",
+    }),
+  );
+  api.on<Api.FutureDisclosure>(
+    "POST",
+    /\/api\/collections\/c1\/members\/m1\/future-disclosure$/,
+    () => ({
+      transport: 0,
+      day_dates: 0,
+    }),
+  );
   renderWithOwner(
     <MemberScopeDialog
       collection={collection("active")}
@@ -292,13 +358,21 @@ it("ignores a member preview that arrives after a newer one", async () => {
       asked.push(language);
       // The first English answer is the slow one.
       if (language === "en" && asked.filter((item) => item === "en").length === 1) await gate;
-      return HttpResponse.json({ schema_version: "travel/unlisted-trip@1", title: "Exampleland" });
+      return HttpResponse.json<Api.ProjectionDocument>({
+        ...responseFixtures.ProjectionDocument,
+        schema_version: "travel/unlisted-trip@1",
+        title: "Exampleland",
+      });
     }),
   );
-  api.on("POST", /\/api\/collections\/c1\/members\/m1\/future-disclosure$/, () => ({
-    transport: 0,
-    day_dates: 0,
-  }));
+  api.on<Api.FutureDisclosure>(
+    "POST",
+    /\/api\/collections\/c1\/members\/m1\/future-disclosure$/,
+    () => ({
+      transport: 0,
+      day_dates: 0,
+    }),
+  );
   renderWithOwner(
     <MemberScopeDialog
       collection={collection("active")}
@@ -330,14 +404,30 @@ it("ignores a member preview that arrives after a newer one", async () => {
 });
 
 it("shows no review when the previewed member scope shows nothing of the future", async () => {
-  api.on("POST", /\/api\/collections\/c1\/members\/m1\/preview$/, () => ({
+  api.on<Api.ProjectionDocument>("POST", /\/api\/collections\/c1\/members\/m1\/preview$/, () => ({
+    summary: null,
+    dates: null,
+    visits: [],
+    places: [],
+    updates: [],
+    stays: [],
+    media: [],
+    routes: [],
+    navigation: [],
+    summary_html: null,
+    summary_text: null,
+    cover: null,
     schema_version: "travel/unlisted-trip@1",
     title: "Exampleland",
   }));
-  api.on("POST", /\/api\/collections\/c1\/members\/m1\/future-disclosure$/, () => ({
-    transport: 0,
-    day_dates: 0,
-  }));
+  api.on<Api.FutureDisclosure>(
+    "POST",
+    /\/api\/collections\/c1\/members\/m1\/future-disclosure$/,
+    () => ({
+      transport: 0,
+      day_dates: 0,
+    }),
+  );
   renderWithOwner(
     <MemberScopeDialog
       collection={collection("active")}
@@ -356,21 +446,43 @@ it("shows no review when the previewed member scope shows nothing of the future"
 });
 
 it("says when the member review fails, never as an empty review, and retries it", async () => {
-  api.on("POST", /\/api\/collections\/c1\/members\/m1\/preview$/, () => ({
+  api.on<Api.ProjectionDocument>("POST", /\/api\/collections\/c1\/members\/m1\/preview$/, () => ({
+    summary: null,
+    dates: null,
+    visits: [],
+    places: [],
+    updates: [],
+    stays: [],
+    media: [],
+    routes: [],
+    navigation: [],
+    summary_html: null,
+    summary_text: null,
+    cover: null,
     schema_version: "travel/unlisted-trip@1",
     title: "Exampleland",
   }));
   server.use(
     http.post(
       "/api/collections/c1/members/m1/future-disclosure",
-      () => HttpResponse.json({ detail: "Boom" }, { status: 500 }),
+      () =>
+        HttpResponse.json(
+          /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+            detail: "Boom",
+          },
+          { status: 500 },
+        ),
       { once: true },
     ),
   );
-  api.on("POST", /\/api\/collections\/c1\/members\/m1\/future-disclosure$/, () => ({
-    transport: 1,
-    day_dates: 0,
-  }));
+  api.on<Api.FutureDisclosure>(
+    "POST",
+    /\/api\/collections\/c1\/members\/m1\/future-disclosure$/,
+    () => ({
+      transport: 1,
+      day_dates: 0,
+    }),
+  );
   renderWithOwner(
     <MemberScopeDialog
       collection={collection("active")}
@@ -390,15 +502,31 @@ it("says when the member review fails, never as an empty review, and retries it"
 });
 
 it("counts the review again for each preview, also when the scope did not change", async () => {
-  api.on("POST", /\/api\/collections\/c1\/members\/m1\/preview$/, () => ({
+  api.on<Api.ProjectionDocument>("POST", /\/api\/collections\/c1\/members\/m1\/preview$/, () => ({
+    summary: null,
+    dates: null,
+    visits: [],
+    places: [],
+    updates: [],
+    stays: [],
+    media: [],
+    routes: [],
+    navigation: [],
+    summary_html: null,
+    summary_text: null,
+    cover: null,
     schema_version: "travel/unlisted-trip@1",
     title: "Exampleland",
   }));
   let transport = 1;
-  api.on("POST", /\/api\/collections\/c1\/members\/m1\/future-disclosure$/, () => ({
-    transport: transport++,
-    day_dates: 0,
-  }));
+  api.on<Api.FutureDisclosure>(
+    "POST",
+    /\/api\/collections\/c1\/members\/m1\/future-disclosure$/,
+    () => ({
+      transport: transport++,
+      day_dates: 0,
+    }),
+  );
   renderWithOwner(
     <MemberScopeDialog
       collection={collection("active")}

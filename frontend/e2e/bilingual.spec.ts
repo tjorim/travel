@@ -1,13 +1,15 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 import { message, type Locale } from "./messages";
-import { choosePreferences, mockApi, signInOwner, summaryOf } from "./mock-api";
+import { choosePreferences, mockApi, signInOwner, ownerTrip, summaryOf } from "./mock-api";
 
 // Synthetic content only. A Dutch trip with an English title written already and an English summary still to write.
 const trip = {
+  ...ownerTrip,
   id: "trip-1",
-  content_language: "nl",
+  content_language: "nl" as const,
   title: "Rondreis Eilandland",
   title_nl: "Rondreis Eilandland",
   title_en: "Island tour",
@@ -25,15 +27,17 @@ async function openOwner(page: Page, locale: Locale, theme: "light" | "dark") {
   await mockApi(page);
   await signInOwner(page);
   const patches: Record<string, unknown>[] = [];
-  let current: Record<string, unknown> = trip;
+  let current: Api.TripResponse = trip;
   await page.route("**/api/trips", (route) =>
-    route.fulfill({ json: [summaryOf(current as typeof trip)] }),
+    route.fulfill({
+      json: [summaryOf({ ...ownerTrip, ...current })] satisfies Api.TripSummaryResponse[],
+    }),
   );
   await page.route("**/api/trips/trip-1", (route) => {
     const body = JSON.parse(route.request().postData() ?? "{}") as Record<string, unknown>;
     patches.push(body);
     current = { ...current, ...body };
-    return route.fulfill({ json: current });
+    return route.fulfill({ json: current satisfies Api.TripResponse });
   });
   await page.route("**/api/translation/drafts", (route) =>
     route.fulfill({
@@ -42,7 +46,7 @@ async function openOwner(page: Page, locale: Locale, theme: "light" | "dark") {
         source: "nl",
         target: "en",
         machine_translated: true,
-      },
+      } satisfies Api.TranslationDraftResponse,
     }),
   );
   await choosePreferences(page, locale, theme);
@@ -174,6 +178,9 @@ function delivered(language: "nl" | "en") {
     // Only English exists for this visit's title: the Dutch page gets it as delivered, marked as English.
     visits: [
       {
+        summary: null,
+        summary_html: null,
+        date_precision: "day",
         id: "visit-1",
         title: "Harbour walk",
         ...(dutch ? { title_lang: "en" } : {}),
@@ -196,7 +203,7 @@ function delivered(language: "nl" | "en") {
     media: [],
     routes: [],
     navigation: [],
-  };
+  } satisfies Api.ProjectionDocument;
 }
 
 async function openVisitor(
@@ -213,7 +220,7 @@ async function openVisitor(
     // With none asked it is the trip's own language, Dutch, and the response says so.
     const language = asked === "en" ? "en" : "nl";
     return route.fulfill({
-      json: delivered(language),
+      json: delivered(language) satisfies Api.ProjectionDocument,
       headers: { "Content-Language": language },
     });
   });

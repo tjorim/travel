@@ -1,3 +1,5 @@
+import type * as Api from "@/api-schema";
+import { jsonResponse, fixtureResponse } from "@/mocks/response";
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { stubViewport } from "./mocks/viewport";
@@ -34,6 +36,9 @@ afterEach(() => {
 
 function projection(schema_version = "travel/public-trip@1"): SparseProjection {
   return {
+    summary_html: null,
+    summary_text: null,
+    cover: null,
     schema_version,
     title: "Selected trip",
     summary: "Shared summary",
@@ -286,14 +291,25 @@ it("links map cards only to records supplied in the visitor projection", () => {
 });
 
 it("lists only server supplied public cards and opens their stable slugs", async () => {
-  const fetcher = vi.fn(
-    async (_input: RequestInfo | URL, _init?: RequestInit) =>
-      new Response(
-        JSON.stringify([
-          { slug: "safe-slug", title: "Visible journey", summary: null },
-          { slug: "hidden-title", title: null, summary: "Approved summary" },
-        ]),
-      ),
+  const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+    jsonResponse<Api.PublicTripCard[]>([
+      {
+        cover: null,
+        dates: null,
+        summary_text: null,
+        slug: "safe-slug",
+        title: "Visible journey",
+        summary: null,
+      },
+      {
+        cover: null,
+        dates: null,
+        summary_text: null,
+        slug: "hidden-title",
+        title: null,
+        summary: "Approved summary",
+      },
+    ]),
   );
   const sent = serveApi(fetcher);
   render(<VisitorRoutes initialEntries={["/"]} />);
@@ -314,7 +330,7 @@ it("lists only server supplied public cards and opens their stable slugs", async
 it("shows an empty index and retries a failed listing without using archive routes", async () => {
   let failed = true;
   const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
-    failed ? new Response(null, { status: 503 }) : new Response("[]"),
+    failed ? new Response(null, { status: 503 }) : jsonResponse<never[]>([]),
   );
   serveApi(fetcher);
   render(<VisitorRoutes initialEntries={["/trips/"]} />);
@@ -561,9 +577,14 @@ it("shows no local name where its label is not delivered", () => {
 
 it("requests a fresh scoped projection after navigation and shows live edits", async () => {
   let title = "Before edit";
-  const fetcher = vi.fn(
-    async (_input: RequestInfo | URL, _init?: RequestInit) =>
-      new Response(JSON.stringify({ ...projection(), title }), { status: 200 }),
+  const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+    fixtureResponse(
+      /* Fixture exception: Deliberately sparse visitor compatibility fixture; tests missing/unknown fields and old saved content. */ {
+        ...projection(),
+        title,
+      },
+      { status: 200 },
+    ),
   );
   const sent = serveApi(fetcher);
   const first = render(<VisitorRoutes initialEntries={["/trips/slug"]} />);
@@ -599,8 +620,10 @@ it("uses only the unlisted endpoint and a uniform unavailable state", async () =
 it("renders a successful unlisted response without requesting public or owner data", async () => {
   const data = projection("travel/unlisted-trip@1");
   data.updates = [{ id: "update-1", body: "Shared update text" }];
-  const fetcher = vi.fn(
-    async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify(data)),
+  const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+    fixtureResponse(
+      /* Fixture exception: Deliberately sparse visitor compatibility fixture; tests missing/unknown fields and old saved content. */ data,
+    ),
   );
   serveApi(fetcher);
   render(<VisitorRoutes initialEntries={["/share/token"]} />);
@@ -613,8 +636,11 @@ it("automatically saves a successfully visited hidden trip on this browser's hom
   const data = projection("travel/unlisted-trip@1");
   data.title = "Family trip";
   const fetcher = vi.fn(async (url: RequestInfo | URL) => {
-    if (String(url).startsWith(`/api/shared/${token}`)) return new Response(JSON.stringify(data));
-    return new Response("[]");
+    if (String(url).startsWith(`/api/shared/${token}`))
+      return fixtureResponse(
+        /* Fixture exception: Deliberately sparse visitor compatibility fixture; tests missing/unknown fields and old saved content. */ data,
+      );
+    return jsonResponse<never[]>([]);
   });
   serveApi(fetcher);
 
@@ -736,11 +762,11 @@ it("uses the visitor story renderer for an owner preview and requests only owner
   ];
   data.places = [{ id: "area-1", label: "Taipei" }];
   data.navigation = [{ id: "area-1" }];
-  const fetcher = vi.fn(
-    async (_input: RequestInfo | URL, _init?: RequestInit) =>
-      new Response(
-        JSON.stringify({ url: "https://www.google.com/maps/dir/?api=1&destination=Taipei" }),
-      ),
+  const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+    jsonResponse<Api.NavigationResponse>({
+      exact: false,
+      url: "https://www.google.com/maps/dir/?api=1&destination=Taipei",
+    }),
   );
   const sent = serveApi(fetcher);
   vi.spyOn(window, "open").mockImplementation(() => null);
@@ -923,18 +949,17 @@ it("shows the server's sanitized Markdown and falls back to plain source text", 
 
 it("shows a card's one-line plain-text summary instead of its Markdown", async () => {
   serveApi(
-    vi.fn(
-      async () =>
-        new Response(
-          JSON.stringify([
-            {
-              slug: "safe-slug",
-              title: "Journey",
-              summary: "# Exampleland\n\n**Two** weeks",
-              summary_text: "Exampleland Two weeks",
-            },
-          ]),
-        ),
+    vi.fn(async () =>
+      jsonResponse<Api.PublicTripCard[]>([
+        {
+          cover: null,
+          dates: null,
+          slug: "safe-slug",
+          title: "Journey",
+          summary: "# Exampleland\n\n**Two** weeks",
+          summary_text: "Exampleland Two weeks",
+        },
+      ]),
     ),
   );
   render(<VisitorRoutes initialEntries={["/"]} />);

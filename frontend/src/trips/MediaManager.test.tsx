@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto";
 import { createRootRoute } from "@tanstack/react-router";
@@ -106,23 +107,30 @@ const derivative = (
 });
 
 let api: FakeApi;
-let providers: { provider: string; available: boolean; connected: boolean }[];
+let providers: Api.ProviderConnectionStatus[];
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
   api = fakeApi()
-    .collection("/api/trips/trip/media", [photo("p1", "kust.jpg"), photo("p2", "markt.jpg")])
-    .collection("/api/trips/trip/media/p1/derivatives", [
+    .collection<Api.MediaAssetResponse>("/api/trips/trip/media", [
+      photo("p1", "kust.jpg"),
+      photo("p2", "markt.jpg"),
+    ])
+    .collection<Api.MediaDerivativeResponse>("/api/trips/trip/media/p1/derivatives", [
       derivative("x1", "pending", { caption: "Kust", caption_nl: "Kust" }),
     ])
-    .collection("/api/trips/trip/media/p2/derivatives", [])
-    .collection("/api/trips/trip/visits", []);
+    .collection<Api.MediaDerivativeResponse>("/api/trips/trip/media/p2/derivatives", [])
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", []);
   providers = [
     { provider: "google_photos_picker", available: true, connected: false },
     { provider: "gopro_cloud", available: true, connected: true },
   ];
-  api.on("GET", /^\/api\/provider-tokens$/, () => providers);
+  api.on<Api.ProviderConnectionStatus[]>("GET", /^\/api\/provider-tokens$/, () => providers);
   // The inline derivative preview and focal-point overlay fetch the derivative's file as a blob.
-  api.on("GET", /^\/files\//, () => ({}));
+  api.on<object | string>(
+    /* Fixture exception: File/thumbnail transport sentinel; no JSON API record. */ "GET",
+    /^\/files\//,
+    () => ({}),
+  );
 });
 afterEach(async () => {
   cleanup();
@@ -138,10 +146,10 @@ const routeTree = createRootRoute({
 const renderMedia = () => renderRoutesWithOwner(routeTree, ["/"]);
 
 it("lists a new upload straight away and opens its details", async () => {
-  api.on("POST", /\/media\/uploads$/, () =>
-    api.push("/api/trips/trip/media", photo("p3", "nieuw.jpg")),
+  api.on<Api.MediaAssetResponse>("POST", /\/media\/uploads$/, () =>
+    api.push<Api.MediaAssetResponse>("/api/trips/trip/media", photo("p3", "nieuw.jpg")),
   );
-  api.collection("/api/trips/trip/media/p3/derivatives", []);
+  api.collection<Api.MediaDerivativeResponse>("/api/trips/trip/media/p3/derivatives", []);
   renderMedia();
   await screen.findByText("kust.jpg");
   expect(document.querySelector('input[type="file"]')).toBeNull();
@@ -193,8 +201,8 @@ it("removes a deleted photo and its copies from the screen", async () => {
 });
 
 it("creates a copy within the allowed size and lists it", async () => {
-  api.on("POST", /\/media\/p1\/derivatives$/, () =>
-    api.push(
+  api.on<Api.MediaDerivativeResponse>("POST", /\/media\/p1\/derivatives$/, () =>
+    api.push<Api.MediaDerivativeResponse>(
       "/api/trips/trip/media/p1/derivatives",
       derivative("x2", "pending", { width: 800, height: 533 }),
     ),
@@ -226,8 +234,8 @@ it("returns to the photo without saving when a copy's form is cancelled", async 
 });
 
 it("shows an approved copy and drops a deleted one without a reload", async () => {
-  api.on("POST", /\/media\/p1\/derivatives\/x1\/approve$/, () => {
-    const rows = api.rows("/api/trips/trip/media/p1/derivatives");
+  api.on<Api.MediaDerivativeResponse>("POST", /\/media\/p1\/derivatives\/x1\/approve$/, () => {
+    const rows = api.rows<Api.MediaDerivativeResponse>("/api/trips/trip/media/p1/derivatives");
     rows[0].review_state = "approved";
     return rows[0];
   });
@@ -246,12 +254,27 @@ it("shows an approved copy and drops a deleted one without a reload", async () =
 
 it("chooses and removes a copy as the trip cover without publishing anything", async () => {
   const bodies: unknown[] = [];
-  api.on("PATCH", /^\/api\/trips\/trip$/, (payload) => {
+  api.on<Api.TripResponse>("PATCH", /^\/api\/trips\/trip$/, (payload) => {
     const body = payload as { cover_derivative_id: string | null };
     bodies.push(body);
-    api.rows("/api/trips/trip/media/p1/derivatives")[0].is_cover =
+    api.rows<Api.MediaDerivativeResponse>("/api/trips/trip/media/p1/derivatives")[0].is_cover =
       body.cover_derivative_id === "x1";
-    return {};
+    return {
+      id: "synthetic",
+      owner_subject: "synthetic",
+      content_language: "nl",
+      title: "synthetic",
+      title_nl: null,
+      title_en: null,
+      summary: null,
+      summary_nl: null,
+      summary_en: null,
+      starts_on: null,
+      ends_on: null,
+      cover_derivative_id: null,
+      cover_url: null,
+      summary_html: null,
+    };
   });
   renderMedia();
   fireEvent.click(await screen.findByRole("button", { name: "kust.jpg bekijken" }));
@@ -266,14 +289,18 @@ it("chooses and removes a copy as the trip cover without publishing anything", a
 });
 
 it("opens the presentation form with the saved values, saves it and keeps the saved caption", async () => {
-  api.on("PATCH", /\/media\/p1\/derivatives\/x1\/presentation$/, (body) => {
-    const rows = api.rows("/api/trips/trip/media/p1/derivatives");
-    Object.assign(rows[0], {
-      caption_nl: (body as { caption_nl: string }).caption_nl,
-      focal_x: (body as { focal_x: number }).focal_x,
-    });
-    return rows[0];
-  });
+  api.on<Api.MediaDerivativeResponse>(
+    "PATCH",
+    /\/media\/p1\/derivatives\/x1\/presentation$/,
+    (body) => {
+      const rows = api.rows<Api.MediaDerivativeResponse>("/api/trips/trip/media/p1/derivatives");
+      Object.assign(rows[0], {
+        caption_nl: (body as { caption_nl: string }).caption_nl,
+        focal_x: (body as { focal_x: number }).focal_x,
+      });
+      return rows[0];
+    },
+  );
   renderMedia();
   fireEvent.click(await screen.findByRole("button", { name: "kust.jpg bekijken" }));
   fireEvent.click(await screen.findByRole("button", { name: "Kopie Delen bekijken" }));
@@ -307,12 +334,20 @@ it("opens the presentation form with the saved values, saves it and keeps the sa
 });
 
 it("searches travel updates when linking a copy's presentation", async () => {
-  api.on("GET", /\/travel-updates\?q=Eerste&limit=50$/, () => trip.travel_updates);
-  api.on("PATCH", /\/media\/p1\/derivatives\/x1\/presentation$/, (body) => {
-    const rows = api.rows("/api/trips/trip/media/p1/derivatives");
-    Object.assign(rows[0], body);
-    return rows[0];
-  });
+  api.on<Api.TravelUpdateResponse[]>(
+    "GET",
+    /\/travel-updates\?q=Eerste&limit=50$/,
+    () => trip.travel_updates,
+  );
+  api.on<Api.MediaDerivativeResponse>(
+    "PATCH",
+    /\/media\/p1\/derivatives\/x1\/presentation$/,
+    (body) => {
+      const rows = api.rows<Api.MediaDerivativeResponse>("/api/trips/trip/media/p1/derivatives");
+      Object.assign(rows[0], body);
+      return rows[0];
+    },
+  );
   renderMedia();
   fireEvent.click(await screen.findByRole("button", { name: "kust.jpg bekijken" }));
   fireEvent.click(await screen.findByRole("button", { name: "Kopie Delen bekijken" }));
@@ -358,23 +393,52 @@ it("shows a thumbnail beside a photo, a readable purpose label, and an inline pr
 });
 
 it("reviews possible travel updates without storing them, and attaches media to an existing reisupdate", async () => {
-  api.on("POST", /\/media\/travel-update-candidates$/, () => ({
-    grouping_window_minutes: 120,
-    gps_agreement_metres: 500,
-    unavailable_media_asset_ids: [],
-    candidates: [
-      {
-        id: "c1",
-        media_asset_ids: ["p1"],
-        starts_at: null,
-        ends_at: null,
-        time_options: [],
-        location_options: [],
-      },
-    ],
+  api.on<Api.MediaTravelUpdateCandidatesResponse>(
+    "POST",
+    /\/media\/travel-update-candidates$/,
+    () => ({
+      grouping_window_minutes: 120,
+      gps_agreement_metres: 500,
+      unavailable_media_asset_ids: [],
+      candidates: [
+        {
+          captured_local: false,
+          id: "c1",
+          media_asset_ids: ["p1"],
+          starts_at: null,
+          ends_at: null,
+          time_options: [],
+          location_options: [],
+        },
+      ],
+    }),
+  );
+  api.on<Api.TravelUpdateResponse[]>(
+    "GET",
+    /\/travel-updates\?q=Eerste&limit=50$/,
+    () => trip.travel_updates,
+  );
+  api.on<Api.TravelUpdateResponse>("PATCH", /\/travel-updates\/e1$/, () => ({
+    occurred_at: "2054-01-01T00:00:00Z",
+    timezone: "synthetic",
+    local_date: "2054-01-01",
+    share_date_precision: "day",
+    title: "synthetic",
+    title_nl: null,
+    title_en: null,
+    body: "synthetic",
+    body_nl: null,
+    body_en: null,
+    private_notes: null,
+    area_id: null,
+    area: null,
+    location: null,
+    media_asset_ids: [],
+    visibility: "private",
+    body_html: null,
+    private_notes_html: null,
+    id: "e1",
   }));
-  api.on("GET", /\/travel-updates\?q=Eerste&limit=50$/, () => trip.travel_updates);
-  api.on("PATCH", /\/travel-updates\/e1$/, () => ({ id: "e1" }));
   renderMedia();
   await screen.findByText("kust.jpg");
   fireEvent.click(screen.getByRole("button", { name: "Geselecteerde media beoordelen" }));
@@ -400,18 +464,22 @@ it("reviews possible travel updates without storing them, and attaches media to 
 });
 
 it("starts an import and reports a selection that is not ready yet", async () => {
-  api.on("POST", /\/media\/imports\/gopro_cloud\/sessions$/, () => ({
+  api.on<Api.ImportSessionResponse>("POST", /\/media\/imports\/gopro_cloud\/sessions$/, () => ({
     id: "sess",
     provider: "gopro_cloud",
     state: "pending",
     picker_uri: "https://picker.example/x",
     expires_at: null,
   }));
-  api.on("POST", /\/media\/imports\/gopro_cloud\/sessions\/sess\/complete$/, () => ({
-    ready: false,
-    imported: [],
-    failed: [],
-  }));
+  api.on<Api.ImportSessionCompleteResponse>(
+    "POST",
+    /\/media\/imports\/gopro_cloud\/sessions\/sess\/complete$/,
+    () => ({
+      ready: false,
+      imported: [],
+      failed: [],
+    }),
+  );
   renderMedia();
   fireEvent.click(await screen.findByRole("button", { name: "Kies in GoPro Cloud" }));
   await screen.findByText("GoPro Cloud-selectie");

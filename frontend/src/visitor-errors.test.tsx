@@ -15,6 +15,7 @@ it("retains visitor error descriptors and reevaluates an already-visible failure
   server.use(
     http.all("*", () =>
       HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */
         {
           detail: "Private diagnostic",
           errors: [{ code: "database_unavailable", params: {}, path: [] }],
@@ -35,6 +36,7 @@ it("keeps 403 and 404 unavailable states uniform even if a server supplies disti
     server.use(
       http.all("*", () =>
         HttpResponse.json(
+          /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */
           {
             detail: "private reason",
             errors: [{ code: "unauthorized", params: {}, path: [] }],

@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -57,17 +58,29 @@ const taipei = {
 let api: FakeApi;
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
-  api = fakeApi().collection("/api/trips/trip/locations", [location], {
+  api = fakeApi().collection<Api.LocationResponse>("/api/trips/trip/locations", [location], {
     update: (row, body) => ({ ...row, ...body }),
   });
-  api.value("/api/trips/trip/public-projection", {
+  api.value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+    revision: 0,
+    applied_preset: null,
+    applied_preset_at: null,
+    preset_exceptions: null,
     trip_id: "trip",
     surface_state: "unpublished",
-    scope: { items: [] },
+    scope: {
+      schema_version: "travel/share-scope@1",
+      trip: { title: true, summary: true, dates: null },
+      items: [],
+    },
     slug: null,
   });
-  api.value("/api/trips/trip/share-links", []);
-  api.on("PUT", /\/visibility\/location\/e1$/, (body) => body);
+  api.value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
+  api.on<Api.VisibilityUpdate>(
+    "PUT",
+    /\/visibility\/location\/e1$/,
+    (body) => body as Api.VisibilityUpdate,
+  );
 });
 afterEach(() => {
   cleanup();
@@ -102,14 +115,22 @@ it("opens saved details and edits the address with an explicit save", async () =
 
 it("creates a manual location only after saving and keeps address sharing off", async () => {
   api = fakeApi()
-    .collection("/api/trips/trip/locations", [])
-    .value("/api/trips/trip/public-projection", {
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [])
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "unpublished",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: null,
     })
-    .value("/api/trips/trip/share-links", []);
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
   renderWithOwner(
     <LocationManager
       trip={trip}
@@ -140,23 +161,47 @@ it("creates a manual location only after saving and keeps address sharing off", 
 
 it("previews only projected address fields and names the live recipients", async () => {
   api = fakeApi()
-    .collection(
+    .collection<Api.LocationResponse>(
       "/api/trips/trip/locations",
       [{ ...location, visibility: "custom", share_address: true, notes: "Secret room" }],
       { update: (row, body) => ({ ...row, ...body }) },
     )
-    .value("/api/trips/trip/public-projection", {
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "published",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: "trip",
     })
-    .value("/api/trips/trip/share-links", [
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", [
       {
+        feed_token: null,
+        feed_expires_at: null,
+        revision: 0,
+        series_id: "synthetic",
+        token: null,
+        created_at: "2054-01-01T00:00:00Z",
+        activated_at: null,
+        revoked_at: null,
+        exclusions: { excluded: [], also_hidden: {}, stale: 0 },
+        applied_preset: null,
+        applied_preset_at: null,
+        preset_exceptions: null,
         id: "live",
         label: "Familie",
         state: "active",
-        scope: { items: [{ kind: "location", id: "e1" }] },
+        scope: {
+          schema_version: "travel/share-scope@1",
+          trip: { title: true, summary: true, dates: null },
+          items: [{ kind: "location", id: "e1" }],
+        },
         expires_at: null,
       },
     ]);
@@ -186,16 +231,24 @@ it("previews only projected address fields and names the live recipients", async
 
 it("blocks address sharing without address parts", async () => {
   api = fakeApi()
-    .collection("/api/trips/trip/locations", [
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [
       { ...location, address_line1: null, locality: null, country_code: "TW" },
     ])
-    .value("/api/trips/trip/public-projection", {
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "unpublished",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: null,
     })
-    .value("/api/trips/trip/share-links", []);
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
   renderWithOwner(
     <LocationManager
       trip={trip}
@@ -216,19 +269,35 @@ it("blocks address sharing without address parts", async () => {
 
 it("reviews and corrects an OSM snapshot without changing its saved point", async () => {
   api = fakeApi()
-    .collection("/api/trips/trip/locations", [])
-    .value("/api/trips/trip/public-projection", {
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [])
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "unpublished",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: null,
     })
-    .value("/api/trips/trip/share-links", []);
-  api.on("POST", /\/places\/search$/, () => ({
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
+  api.on<Api.PlaceSearchResponse>("POST", /\/places\/search$/, () => ({
+    provider: "synthetic",
     attribution: "© OpenStreetMap contributors",
     attribution_url: "https://www.openstreetmap.org/copyright",
     results: [
       {
+        local_name: null,
+        name_nl: null,
+        name_en: null,
+        viewport_north: null,
+        viewport_south: null,
+        viewport_east: null,
+        viewport_west: null,
         osm_element_type: "node",
         osm_element_id: "42",
         display_name: "Hotel Taipei",
@@ -351,16 +420,24 @@ const publicAudience = { id: "public", label: null };
 
 function shareEverywhere() {
   api = fakeApi()
-    .collection("/api/trips/trip/locations", [sharedLocation], {
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [sharedLocation], {
       update: (row, body) => ({ ...row, ...body }),
     })
-    .value("/api/trips/trip/public-projection", {
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "published",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: "slug",
     })
-    .value("/api/trips/trip/share-links", []);
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
 }
 async function editLabel(value: string) {
   renderWithOwner(
@@ -466,19 +543,36 @@ it("previews a changed local name like the public name, and the review names it"
 
 it("fills the local name from a search result and offers its Dutch and English names for the public name", async () => {
   api = fakeApi()
-    .collection("/api/trips/trip/locations", [])
-    .value("/api/trips/trip/public-projection", {
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [])
+    .value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+      revision: 0,
+      applied_preset: null,
+      applied_preset_at: null,
+      preset_exceptions: null,
       trip_id: "trip",
       surface_state: "unpublished",
-      scope: { items: [] },
+      scope: {
+        schema_version: "travel/share-scope@1",
+        trip: { title: true, summary: true, dates: null },
+        items: [],
+      },
       slug: null,
     })
-    .value("/api/trips/trip/share-links", []);
-  api.on("POST", /\/places\/search$/, () => ({
+    .value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
+  api.on<Api.PlaceSearchResponse>("POST", /\/places\/search$/, () => ({
+    provider: "synthetic",
     attribution: "© OpenStreetMap contributors",
     attribution_url: "https://www.openstreetmap.org/copyright",
     results: [
       {
+        address_line1: null,
+        address_line2: null,
+        admin_area: null,
+        postal_code: null,
+        viewport_north: null,
+        viewport_south: null,
+        viewport_east: null,
+        viewport_west: null,
         osm_element_type: "node",
         osm_element_id: "42",
         display_name: "Senso-ji, Asakusa, Tokyo, Japan",

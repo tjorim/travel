@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -45,38 +47,46 @@ let api: FakeApi;
 function embed(
   key: "travel_updates",
   path: string,
-  shape: (item: Record<string, unknown>) => Record<string, unknown> = (item) => resolveTexts(item),
+  shape: (item: Api.TravelUpdateResponse) => Api.TravelUpdateResponse = (item) =>
+    resolveTexts(item),
 ) {
-  const list = () => state.trip[key] as { id: string }[];
+  const list = () => state.trip[key];
   const set = (items: unknown[]) => {
     state.trip = { ...state.trip, [key]: items as TravelUpdate[] };
   };
-  api.on("POST", new RegExp(`^/api/trips/trip/${path}$`), (body) => {
+  api.on<Api.TravelUpdateResponse>("POST", new RegExp(`^/api/trips/trip/${path}$`), (body) => {
     const created = shape({
+      ...responseFixtures.TravelUpdateResponse,
       id: `new-${list().length}`,
-      position: list().length,
+
       media_asset_ids: [],
       ...(body as object),
     });
     set([...list(), created]);
     return created;
   });
-  api.on("PATCH", new RegExp(`^/api/trips/trip/${path}/([^/]+)$`), (body, match) => {
-    const move = (body as { position?: number }).position;
-    if (move !== undefined) {
-      const items = list().slice() as { id: string; position: number }[];
-      const from = items.findIndex((item) => item.id === match[1]);
-      const [moved] = items.splice(from, 1);
-      items.splice(move, 0, moved);
-      set(items.map((item, position) => ({ ...item, position })));
-      return moved;
-    }
-    set(
-      list().map((item) => (item.id === match[1] ? shape({ ...item, ...(body as object) }) : item)),
-    );
-    return list().find((item) => item.id === match[1]);
-  });
-  api.on("DELETE", new RegExp(`^/api/trips/trip/${path}/([^/]+)$`), (_body, match) => {
+  api.on<Api.TravelUpdateResponse>(
+    "PATCH",
+    new RegExp(`^/api/trips/trip/${path}/([^/]+)$`),
+    (body, match) => {
+      const move = (body as { position?: number }).position;
+      if (move !== undefined) {
+        const items = list().map((item, position) => ({ ...item, position }));
+        const from = items.findIndex((item) => item.id === match[1]);
+        const [moved] = items.splice(from, 1);
+        items.splice(move, 0, moved);
+        set(items.map((item, position) => ({ ...item, position })));
+        return { ...responseFixtures.TravelUpdateResponse, ...moved };
+      }
+      set(
+        list().map((item) =>
+          item.id === match[1] ? shape({ ...item, ...(body as object) }) : item,
+        ),
+      );
+      return list().find((item) => item.id === match[1]);
+    },
+  );
+  api.on<undefined>("DELETE", new RegExp(`^/api/trips/trip/${path}/([^/]+)$`), (_body, match) => {
     set(list().filter((item) => item.id !== match[1]));
     return undefined;
   });
@@ -109,18 +119,32 @@ beforeEach(() => {
     },
   };
   api = fakeApi();
-  api.collection("/api/trips/trip/locations", []);
+  api.collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   // The story rows read photos and the audiences that would receive an update.
-  api.collection("/api/trips/trip/media", []);
-  api.value("/api/trips/trip/public-projection", {
+  api.collection<Api.MediaAssetResponse>("/api/trips/trip/media", []);
+  api.value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+    trip_id: "synthetic",
+    applied_preset: null,
+    applied_preset_at: null,
+    preset_exceptions: null,
     surface_state: "unpublished",
-    scope: { items: [] },
+    scope: {
+      schema_version: "travel/share-scope@1",
+      trip: { title: true, summary: true, dates: null },
+      items: [],
+    },
     revision: 1,
     slug: null,
   });
-  api.value("/api/trips/trip/share-links", []);
-  api.on("GET", /^\/api\/trips$/, () => [state.trip]);
-  api.on("GET", /^\/api\/trips\/trip\/travel-updates$/, () => state.trip.travel_updates);
+  api.value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
+  api.on<Api.TripSummaryResponse[]>("GET", /^\/api\/trips$/, () => [
+    { ...state.trip, travel_update_count: state.trip.travel_updates.length, last_update_at: null },
+  ]);
+  api.on<Api.TravelUpdateResponse[]>(
+    "GET",
+    /^\/api\/trips\/trip\/travel-updates$/,
+    () => state.trip.travel_updates,
+  );
   embed("travel_updates", "travel-updates");
 });
 afterEach(() => {

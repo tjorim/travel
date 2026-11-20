@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { act, cleanup, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
@@ -83,7 +84,11 @@ it.each(["en", "nl"] as const)(
   "renders private audit details in %s and updates on locale changes",
   async (locale) => {
     changeLocale(locale);
-    server.use(http.get("/api/trips/trip/audit-events", () => HttpResponse.json(events)));
+    server.use(
+      http.get("/api/trips/trip/audit-events", () =>
+        HttpResponse.json<Api.AuditEventResponse[]>(events),
+      ),
+    );
     const { container } = renderWithOwner(<AuditList tripId="trip" />);
     expect(
       await screen.findByText(
@@ -189,14 +194,21 @@ it.each(["en", "nl"] as const)(
   },
 );
 it("shows an empty history", async () => {
-  server.use(http.get("/api/trips/trip/audit-events", () => HttpResponse.json([])));
+  server.use(
+    http.get("/api/trips/trip/audit-events", () => HttpResponse.json<Api.AuditEventResponse[]>([])),
+  );
   renderWithOwner(<AuditList tripId="trip" />);
   expect(await screen.findByText("Er zijn nog geen deelwijzigingen vastgelegd.")).toBeVisible();
 });
 it("uses a translated fallback without server prose", async () => {
   server.use(
     http.get("/api/trips/trip/audit-events", () =>
-      HttpResponse.json({ detail: "secret-server-text" }, { status: 500 }),
+      HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+          detail: "secret-server-text",
+        },
+        { status: 500 },
+      ),
     ),
   );
   renderWithOwner(<AuditList tripId="trip" />);

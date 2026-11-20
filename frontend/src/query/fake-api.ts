@@ -43,6 +43,8 @@ export function localized<T extends object>(record: T): T {
   return values as T;
 }
 
+// Type erasure is confined to this storage dispatcher. Each collection, value, handler and pushed
+// row must choose a wire type at registration; negative compile checks keep inference disabled.
 const json = (value: unknown, status = 200) => HttpResponse.json(value as never, { status });
 
 /**
@@ -64,12 +66,20 @@ export class FakeApi {
   private received: { key: string; headers: Headers }[] = [];
 
   /** Registers a collection at `path` (list and create) and `path/:id` (update and delete). */
-  collection<T extends Row>(
+  collection<T extends Row = never>(
     path: string,
-    rows: T[],
-    options: Pick<Collection, "create" | "update"> = {},
+    rows: NoInfer<T>[],
+    options: {
+      create?: (body: Body, count: number) => NoInfer<T>;
+      update?: (row: NoInfer<T>, body: Body) => NoInfer<T>;
+    } = {},
   ): this {
-    this.collections.set(path, { rows: rows.slice(), ...options });
+    this.collections.set(path, {
+      rows: rows.slice(),
+      create: options.create,
+      // The map erases each collection's type; only rows registered as T are handed back to this callback.
+      update: options.update ? (row, body) => options.update!(row as T, body) : undefined,
+    });
     return this;
   }
 
@@ -80,27 +90,31 @@ export class FakeApi {
   }
 
   /** Registers a read-only value. */
-  value(path: string, value: unknown): this {
+  value<T = never>(path: string, value: NoInfer<T>): this {
     this.singles.set(path, value);
     return this;
   }
 
   /** Registers a custom handler; its return value is sent as JSON, `undefined` as 204. A later handler wins over an earlier one. */
-  on(method: string, pattern: RegExp, handler: Handler): this {
+  on<T = never>(
+    method: string,
+    pattern: RegExp,
+    handler: (body: unknown, match: RegExpExecArray) => NoInfer<T> | undefined,
+  ): this {
     this.handlers.unshift({ method, pattern, handler });
     return this;
   }
 
   /** Adds a row to a registered collection, as a custom handler does after an upload. */
-  push<T extends Row>(path: string, row: T): T {
+  push<T extends Row = never>(path: string, row: NoInfer<T>): T {
     const target = this.collections.get(path);
     if (!target) throw new Error(`no collection at ${path}`);
     target.rows = [...target.rows, row];
     return row;
   }
 
-  rows(path: string): Row[] {
-    return this.collections.get(path)?.rows ?? [];
+  rows<T extends Row = Row>(path: string): T[] {
+    return (this.collections.get(path)?.rows ?? []) as T[];
   }
 
   /** The parsed JSON body (or `FormData`) of the last matching request. */

@@ -11,11 +11,13 @@ it("loads the dark default basemap with the same defensive filter handling", asy
   const fetchSpy = vi.spyOn(globalThis, "fetch");
   server.use(
     http.get("https://tiles.openfreemap.org/styles/dark", () => {
-      return HttpResponse.json({
-        version: 8,
-        sources: {},
-        layers: [{ id: "boundary_3", type: "line", filter: ["==", "admin_level", 3] }],
-      });
+      return HttpResponse.json(
+        /* Fixture exception: External MapLibre style document, outside the Travel API. */ {
+          version: 8,
+          sources: {},
+          layers: [{ id: "boundary_3", type: "line", filter: ["==", "admin_level", 3] }],
+        },
+      );
     }),
   );
   const style = await loadMapStyle(configuredMapStyleUrl, new AbortController().signal, "dark");

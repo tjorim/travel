@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi, ownerTrip, signInOwner, summaryOf } from "./mock-api";
 import { message } from "./messages";
@@ -12,6 +13,18 @@ for (const locale of ["nl", "en"] as const) {
         await page.setViewportSize({ width, height: 844 });
         const updates = [
           {
+            timezone: "UTC",
+            local_date: "2054-11-01",
+            share_date_precision: "day",
+            title_nl: null,
+            title_en: null,
+            body: "synthetic",
+            body_nl: null,
+            body_en: null,
+            area_id: null,
+            area: null,
+            body_html: null,
+            private_notes_html: null,
             id: "update-1",
             title: "Synthetic moment",
             occurred_at: "2054-11-01T18:30:00Z",
@@ -19,16 +32,24 @@ for (const locale of ["nl", "en"] as const) {
             visibility: "private",
             media_asset_ids: [],
             location: null,
-          },
+          } satisfies Api.TravelUpdateResponse,
         ];
         await page.route("**/api/trips", (route) =>
-          route.fulfill({ json: [summaryOf({ ...ownerTrip, travel_updates: updates })] }),
+          route.fulfill({
+            json: [
+              summaryOf({ ...ownerTrip, travel_updates: updates }),
+            ] satisfies Api.TripSummaryResponse[],
+          }),
         );
         let submitted: Record<string, unknown> | null = null;
         await page.route(`**/api/trips/${ownerTrip.id}/travel-updates`, (route) => {
-          if (route.request().method() === "GET") return route.fulfill({ json: updates });
+          if (route.request().method() === "GET")
+            return route.fulfill({ json: updates satisfies Api.TravelUpdateResponse[] });
           submitted = route.request().postDataJSON();
-          return route.fulfill({ status: 500, json: {} });
+          return route.fulfill({
+            status: 500,
+            json: /* Fixture exception: Error response exercises failure handling. */ {},
+          });
         });
         await page.goto(`/admin/trips/${ownerTrip.id}/sharing`);
         const group = page.locator("[data-disclosure]").first();

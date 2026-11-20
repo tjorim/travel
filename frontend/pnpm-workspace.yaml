@@ -1,2 +1,6 @@
+allowBuilds:
+  # Orval pulls in esbuild, whose install script only verifies a binary its platform package already ships.
+  esbuild: false
+
 # Keep the one-day quarantine for new dependency releases, including frozen installs.
 minimumReleaseAge: 1440

@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -25,7 +26,8 @@ it("cancel ignores a late response and never applies a draft", async () => {
       await new Promise<void>((resolve) => {
         release = resolve;
       });
-      return HttpResponse.json({
+      return HttpResponse.json<Api.GeoJsonLineStringOutput>({
+        type: "LineString",
         coordinates: [
           [1, 2],
           [3, 4],
@@ -55,7 +57,12 @@ it("cancel ignores a late response and never applies a draft", async () => {
 it("renders a translated fixed failure across locale changes without reflecting remote content", async () => {
   server.use(
     http.post("/api/trips/example/route-line-import", () =>
-      HttpResponse.json({ detail: "PRIVATE-TRACK-MARKER" }, { status: 422 }),
+      HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+          detail: "PRIVATE-TRACK-MARKER",
+        },
+        { status: 422 },
+      ),
     ),
   );
   const change = vi.fn();

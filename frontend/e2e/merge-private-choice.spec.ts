@@ -1,30 +1,63 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 import { message, locales } from "./messages";
 import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
 
-const area = (id: string, label: string) => ({
-  id,
-  label,
-  visibility: "private",
-  country_code: "TW",
-  region: null,
-  latitude: null,
-  longitude: null,
-  timezone: null,
-});
-const airport = (id: string, areaId: string) => ({
-  id,
-  area_id: areaId,
-  label: null,
-  visibility: "private",
-  share_address: false,
-  display_name: "Taoyuan Airport",
-  locality: "Taoyuan",
-  country_code: "TW",
-});
-const record = (kind: string, index: number, extra: object = {}) => ({
+const area = (id: string, label: string) =>
+  ({
+    label_nl: null,
+    label_en: null,
+    local_name: null,
+    id,
+    label,
+    visibility: "private",
+    country_code: "TW",
+    region: null,
+    latitude: null,
+    longitude: null,
+    timezone: null,
+  }) satisfies Api.AreaResponse;
+const airport = (id: string, areaId: string) =>
+  ({
+    osm_element_type: null,
+    osm_element_id: null,
+    address_line1: null,
+    address_line2: null,
+    admin_area: null,
+    postal_code: null,
+    viewport_north: null,
+    viewport_south: null,
+    viewport_east: null,
+    viewport_west: null,
+    navigation_provider: null,
+    navigation_provider_place_id: null,
+    notes: null,
+    osm_url: null,
+    notes_html: null,
+
+    label_nl: null,
+    label_en: null,
+    local_name: null,
+
+    latitude: null,
+    longitude: null,
+
+    id,
+    area_id: areaId,
+    label: null,
+    visibility: "private",
+    share_address: false,
+    display_name: "Taoyuan Airport",
+    locality: "Taoyuan",
+    country_code: "TW",
+  }) satisfies Api.LocationResponse;
+const record = (
+  kind: Api.MergeWidenedRecord["kind"],
+  index: number,
+  extra: Partial<Api.MergeWidenedRecord> = {},
+): Api.MergeWidenedRecord => ({
   kind,
   id: `${kind}-${index}`,
   label: kind === "stay" ? `Synthetic Inn ${index + 1}` : null,
@@ -84,16 +117,26 @@ for (const locale of locales) {
       const tripApi = `**/api/trips/${ownerTrip.id}`;
       await page.route(`${tripApi}/areas`, (route) =>
         route.fulfill({
-          json: [area("taoyuan", "Taoyuan"), area("taipei", "Taipei")],
+          json: [area("taoyuan", "Taoyuan"), area("taipei", "Taipei")] satisfies Api.AreaResponse[],
         }),
       );
       await page.route(`${tripApi}/locations`, (route) =>
-        route.fulfill({ json: [airport("air-1", "taoyuan"), airport("air-2", "taipei")] }),
+        route.fulfill({
+          json: [
+            airport("air-1", "taoyuan"),
+            airport("air-2", "taipei"),
+          ] satisfies Api.LocationResponse[],
+        }),
       );
       const bodies: { confirm: boolean; make_private?: unknown[] }[] = [];
       await page.route(`${tripApi}/locations/merge`, (route) => {
         bodies.push(route.request().postDataJSON());
-        return route.fulfill({ json: { ...preview, applied: bodies.at(-1)?.confirm ?? false } });
+        return route.fulfill({
+          json: {
+            ...preview,
+            applied: bodies.at(-1)?.confirm ?? false,
+          } satisfies Api.LocationMergeResult,
+        });
       });
 
       await page.goto(`/admin/trips/${ownerTrip.id}/plan`);

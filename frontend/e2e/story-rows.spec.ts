@@ -1,23 +1,35 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi, ownerTrip, signInOwner, summaryOf } from "./mock-api";
 import { message } from "./messages";
 
 const base = `/api/trips/${ownerTrip.id}`;
-const update = (id: string, title: string, visibility: string) => ({
-  id,
-  occurred_at: "2054-11-02T10:00:00Z",
-  date_precision: "day",
-  title,
-  body: `Text of ${title}`,
-  private_notes: null,
-  area_id: null,
-  area: null,
-  location: null,
-  media_asset_ids: [],
-  visibility,
-});
-const asset = (id: string) => ({
+const update = (id: string, title: string, visibility: Api.Visibility) =>
+  ({
+    timezone: "UTC",
+    local_date: "2054-11-02",
+    share_date_precision: "day",
+    title_nl: null,
+    title_en: null,
+    body_nl: null,
+    body_en: null,
+    body_html: null,
+    private_notes_html: null,
+    id,
+    occurred_at: "2054-11-02T10:00:00Z",
+
+    title,
+    body: `Text of ${title}`,
+    private_notes: null,
+    area_id: null,
+    area: null,
+    location: null,
+    media_asset_ids: [],
+    visibility,
+  }) satisfies Api.TravelUpdateResponse;
+const asset = (id: string): Api.MediaAssetResponse => ({
+  deleted_at: null,
   id,
   media_kind: "photo",
   byte_size: 100,
@@ -44,20 +56,45 @@ for (const locale of ["nl", "en"] as const) {
         await mockApi(page);
         await page.route("**/api/trips**", (route) => {
           const { pathname } = new URL(route.request().url());
-          const json = (body: unknown) =>
+          const json = <T = never>(body: NoInfer<T>) =>
             route.fulfill({ contentType: "application/json", body: JSON.stringify(body) });
           const updates = [
             update("u1", "Six photos", "everyone"),
             update("u2", "Only mine", "private"),
           ];
           if (pathname === "/api/trips")
-            return json([summaryOf({ ...ownerTrip, travel_updates: updates })]);
-          if (pathname === `${base}/travel-updates`) return json(updates);
-          if (pathname === `${base}/media`) return json(photos.map(asset));
+            return json<Api.TripSummaryResponse[]>([
+              summaryOf({ ...ownerTrip, travel_updates: updates }),
+            ]);
+          if (pathname === `${base}/travel-updates`)
+            return json<Api.TravelUpdateResponse[]>(updates);
+          if (pathname === `${base}/media`)
+            return json<Api.MediaAssetResponse[]>(photos.map(asset));
           const copies = /\/media\/(p\d)\/derivatives$/.exec(pathname);
           if (copies)
-            return json([
+            return json<Api.MediaDerivativeResponse[]>([
               {
+                processing_state: "ready",
+                media_kind: "photo",
+                content_type: null,
+                byte_size: null,
+                duration_seconds: null,
+                poster_url: null,
+                remove_audio: false,
+                metadata_stripped_at: null,
+                width: null,
+                height: null,
+                caption_nl: null,
+                caption_en: null,
+                alt_text_nl: null,
+                alt_text_en: null,
+                focal_x: null,
+                focal_y: null,
+                visibility: "private",
+                is_cover: false,
+                created_at: "2054-01-01T00:00:00Z",
+                file_url: "synthetic",
+                caption_html: null,
                 id: `c-${copies[1]}`,
                 media_asset_id: copies[1],
                 purpose: "share",
@@ -68,7 +105,10 @@ for (const locale of ["nl", "en"] as const) {
               },
             ]);
           if (pathname.endsWith("/public-projection/preview"))
-            return json({
+            return json<Api.ProjectionDocument>({
+              summary_html: null,
+              summary_text: null,
+              cover: null,
               schema_version: "travel/public-trip@1",
               title: "Exampleland",
               summary: null,
@@ -77,10 +117,12 @@ for (const locale of ["nl", "en"] as const) {
               places: [],
               updates: [
                 {
+                  place: null,
                   id: "update-1",
                   title: "Six photos",
                   body: "Text of Six photos",
                   body_html: "<p>Text of Six photos</p>",
+
                   date_precision: "day",
                   story_date: "2054-11-02",
                 },
@@ -89,9 +131,12 @@ for (const locale of ["nl", "en"] as const) {
               media: [],
               routes: [],
               navigation: [],
-            });
+            } satisfies Api.ProjectionDocument);
           if (pathname === `${base}/public-projection`)
-            return json({
+            return json<Api.PublicProjectionStatusResponse>({
+              applied_preset: null,
+              applied_preset_at: null,
+              preset_exceptions: null,
               revision: 1,
               trip_id: ownerTrip.id,
               scope: {
@@ -101,7 +146,7 @@ for (const locale of ["nl", "en"] as const) {
               },
               surface_state: "published",
               slug: "exampleland",
-            });
+            } satisfies Api.PublicProjectionStatusResponse);
           return route.fallback();
         });
         await signInOwner(page);

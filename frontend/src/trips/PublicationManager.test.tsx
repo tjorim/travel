@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -17,7 +19,6 @@ import type {
   Trip,
   TripOverview,
 } from "../api-types";
-import type { ProjectionDocument } from "../api-types";
 import { PublicationManager } from "./PublicationManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
@@ -152,12 +153,15 @@ const SECRET = "secret-token-123";
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
   status = {
+    applied_preset: null,
+    applied_preset_at: null,
+    preset_exceptions: null,
     revision: 1,
     trip_id: "trip",
     slug: "exampleland",
     surface_state: "unpublished",
     scope: scope(),
-  } as unknown as PublicProjectionStatus;
+  } satisfies Api.PublicProjectionStatusResponse;
   overview = {
     title: "Titel",
     starts_on: null,
@@ -169,42 +173,220 @@ beforeEach(() => {
     warnings: [],
   };
   api = fakeApi()
-    .collection("/api/trips/trip/share-links", [link("l1", "Familie")], {
+    .collection<Api.ShareLinkResponse>("/api/trips/trip/share-links", [link("l1", "Familie")], {
       create: (body, count) => link(`l${count + 1}`, String(body.label)),
     })
-    .collection("/api/trips/trip/areas", [{ id: "b1", label: "Taipei", visibility: "custom" }])
-    .collection("/api/trips/trip/locations", [
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [
       {
+        label_nl: null,
+        label_en: null,
+        local_name: null,
+        country_code: null,
+        region: null,
+        latitude: null,
+        longitude: null,
+        timezone: null,
+        id: "b1",
+        label: "Taipei",
+        visibility: "custom",
+      },
+    ])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [
+      {
+        osm_element_type: null,
+        osm_element_id: null,
+        address_line1: null,
+        address_line2: null,
+        locality: null,
+        admin_area: null,
+        postal_code: null,
+        country_code: null,
+        latitude: null,
+        longitude: null,
+        viewport_north: null,
+        viewport_south: null,
+        viewport_east: null,
+        viewport_west: null,
+        navigation_provider: null,
+        navigation_provider_place_id: null,
+        notes: null,
+        label_nl: null,
+        label_en: null,
+        local_name: null,
+        area_id: "synthetic",
+        share_address: false,
+        osm_url: null,
+        notes_html: null,
         id: "e1",
         label: "Warme bron van Beitou",
         display_name: "Beitou Hot Spring, 12 Guangming Road",
         visibility: "custom",
       },
-      { id: "e2", label: null, display_name: "Hotel, 1 Main Street", visibility: "private" },
-    ])
-    .collection("/api/trips/trip/visits", [
       {
+        osm_element_type: null,
+        osm_element_id: null,
+        address_line1: null,
+        address_line2: null,
+        locality: null,
+        admin_area: null,
+        postal_code: null,
+        country_code: null,
+        latitude: null,
+        longitude: null,
+        viewport_north: null,
+        viewport_south: null,
+        viewport_east: null,
+        viewport_west: null,
+        navigation_provider: null,
+        navigation_provider_place_id: null,
+        notes: null,
+        label_nl: null,
+        label_en: null,
+        local_name: null,
+        area_id: "synthetic",
+        share_address: false,
+        osm_url: null,
+        notes_html: null,
+        id: "e2",
+        label: null,
+        display_name: "Hotel, 1 Main Street",
+        visibility: "private",
+      },
+    ])
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", [
+      {
+        title_nl: null,
+        title_en: null,
+        kind: null,
+        status: "idea",
+        starts_on: null,
+        ends_on: null,
+        start_time: null,
+        end_time: null,
+        notes: null,
+        summary: null,
+        summary_nl: null,
+        summary_en: null,
+        share_time: false,
+        share_date_precision: null,
+        possible_route_duplicates: [],
+        notes_html: null,
+        summary_html: null,
         id: "v1",
         title: "Noordkust",
-        area: { label: "Taipei" },
+        area: {
+          label_nl: null,
+          label_en: null,
+          local_name: null,
+          country_code: null,
+          region: null,
+          latitude: null,
+          longitude: null,
+          timezone: null,
+          id: "synthetic",
+          visibility: "private",
+          label: "Taipei",
+        },
         location: null,
         visibility: "custom",
       },
     ])
-    .collection("/api/trips/trip/stays", [])
-    .collection("/api/trips/trip/routes", [
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [])
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", [
       {
+        status: "idea",
+        label_nl: null,
+        label_en: null,
+        departure_location: null,
+        arrival_location: null,
+        departs_on: null,
+        departs_at: null,
+        arrives_at: null,
+        departure_timezone: null,
+        arrival_timezone: null,
+        carrier: null,
+        service_reference: null,
+        travel_class: null,
+        booking_reference: null,
+        notes: null,
+        document_asset_ids: [],
+        geometry: null,
+        notes_html: null,
         id: "leg1",
         mode: "flight",
         label: null,
-        departure_area: { label: "Zaventem", country_code: "BE" },
-        arrival_area: { label: "Taoyuan", country_code: "TW" },
+        departure_area: {
+          label_nl: null,
+          label_en: null,
+          local_name: null,
+          region: null,
+          latitude: null,
+          longitude: null,
+          timezone: null,
+          id: "synthetic",
+          visibility: "private",
+          label: "Zaventem",
+          country_code: "BE",
+        },
+        arrival_area: {
+          label_nl: null,
+          label_en: null,
+          local_name: null,
+          region: null,
+          latitude: null,
+          longitude: null,
+          timezone: null,
+          id: "synthetic",
+          visibility: "private",
+          label: "Taoyuan",
+          country_code: "TW",
+        },
         visibility: "custom",
       },
     ])
-    .collection("/api/trips/trip/media", [{ id: "p1", original_filename: "kust.jpg" }])
-    .collection("/api/trips/trip/media/p1/derivatives", [
+    .collection<Api.MediaAssetResponse>("/api/trips/trip/media", [
       {
+        media_kind: "photo",
+        byte_size: 0,
+        content_type: "synthetic",
+        captured_at: null,
+        captured_local: false,
+        created_at: "2054-01-01T00:00:00Z",
+        deleted_at: null,
+        camera_make: null,
+        camera_model: null,
+        gps: null,
+        file_url: "synthetic",
+        thumbnail_url: null,
+        id: "p1",
+        original_filename: "kust.jpg",
+      },
+    ])
+    .collection<Api.MediaDerivativeResponse>("/api/trips/trip/media/p1/derivatives", [
+      {
+        media_asset_id: "synthetic",
+        processing_state: "ready",
+        media_kind: "photo",
+        content_type: null,
+        byte_size: null,
+        duration_seconds: null,
+        poster_url: null,
+        remove_audio: false,
+        metadata_stripped_at: null,
+        width: null,
+        height: null,
+        caption: null,
+        caption_nl: null,
+        caption_en: null,
+        alt_text: null,
+        alt_text_nl: null,
+        alt_text_en: null,
+        focal_x: null,
+        focal_y: null,
+        is_cover: false,
+        created_at: "2054-01-01T00:00:00Z",
+        file_url: "synthetic",
+        caption_html: null,
         id: "x1",
         review_state: "approved",
         purpose: "share",
@@ -212,6 +394,29 @@ beforeEach(() => {
         travel_update_id: null,
       },
       {
+        media_asset_id: "synthetic",
+        processing_state: "ready",
+        media_kind: "photo",
+        content_type: null,
+        byte_size: null,
+        duration_seconds: null,
+        poster_url: null,
+        remove_audio: false,
+        metadata_stripped_at: null,
+        width: null,
+        height: null,
+        caption: null,
+        caption_nl: null,
+        caption_en: null,
+        alt_text: null,
+        alt_text_nl: null,
+        alt_text_en: null,
+        focal_x: null,
+        focal_y: null,
+        is_cover: false,
+        created_at: "2054-01-01T00:00:00Z",
+        file_url: "synthetic",
+        caption_html: null,
         id: "x2",
         review_state: "pending",
         purpose: "share",
@@ -219,37 +424,67 @@ beforeEach(() => {
         travel_update_id: null,
       },
     ])
-    .collection("/api/documents?trip_id=trip", [])
-    .collection("/api/trips/trip/travel-updates", trip.travel_updates);
-  server.use(http.get("/api/trips/trip/audit-events", () => HttpResponse.json([])));
-  api.on("PUT", /\/visibility\/[^/]+\/[^/]+$/, (body) => body);
-  api.on("POST", /\/share-scope\/exclusion-review$/, () => ({
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [])
+    .collection<Api.TravelUpdateResponse>("/api/trips/trip/travel-updates", trip.travel_updates);
+  server.use(
+    http.get("/api/trips/trip/audit-events", () => HttpResponse.json<Api.AuditEventResponse[]>([])),
+  );
+  api.on<Api.VisibilityUpdate>(
+    "PUT",
+    /\/visibility\/[^/]+\/[^/]+$/,
+    (body) => body as Api.VisibilityUpdate,
+  );
+  api.on<Api.ExclusionReview>("POST", /\/share-scope\/exclusion-review$/, () => ({
     excluded: [],
     also_hidden: {},
     stale: 0,
     baseline: [],
   }));
-  api.on("GET", /^\/api\/trips\/trip\/public-projection$/, () => status);
-  api.on("GET", /^\/api\/trips\/trip\/overview$/, () => overview);
+  api.on<Api.PublicProjectionStatusResponse>(
+    "GET",
+    /^\/api\/trips\/trip\/public-projection$/,
+    () => status,
+  );
+  api.on<Api.TripOverviewResponse>("GET", /^\/api\/trips\/trip\/overview$/, () => overview);
   // Every preview asks what it shows of the future; a test that expects a line overrides this.
-  api.on("POST", /\/future-disclosure$/, () => ({ transport: 0, day_dates: 0 }));
-  api.on("PUT", /^\/api\/trips\/trip\/public-projection$/, (body) => {
-    status = { ...status, scope: body as ShareScope };
-    return status;
-  });
-  api.on("POST", /^\/api\/trips\/trip\/public-projection\/publish$/, () => {
-    status = { ...status, surface_state: "published" };
-    return status;
-  });
-  api.on("POST", /^\/api\/trips\/trip\/public-projection\/unpublish$/, () => {
-    status = { ...status, surface_state: "unpublished" };
-    return status;
-  });
-  api.on(
+  api.on<Api.FutureDisclosure>("POST", /\/future-disclosure$/, () => ({
+    transport: 0,
+    day_dates: 0,
+  }));
+  api.on<Api.PublicProjectionStatusResponse>(
+    "PUT",
+    /^\/api\/trips\/trip\/public-projection$/,
+    (body) => {
+      status = { ...status, scope: body as ShareScope };
+      return status;
+    },
+  );
+  api.on<Api.PublicProjectionStatusResponse>(
+    "POST",
+    /^\/api\/trips\/trip\/public-projection\/publish$/,
+    () => {
+      status = { ...status, surface_state: "published" };
+      return status;
+    },
+  );
+  api.on<Api.PublicProjectionStatusResponse>(
+    "POST",
+    /^\/api\/trips\/trip\/public-projection\/unpublish$/,
+    () => {
+      status = { ...status, surface_state: "unpublished" };
+      return status;
+    },
+  );
+  api.on<Api.ProjectionDocument>(
     "POST",
     /\/preview(\?lang=\w+)?$/,
     () =>
       ({
+        schema_version: "synthetic",
+        navigation: [],
+        summary_html: null,
+        summary_text: null,
+        cover: null,
         title: "Exampleland",
         summary: null,
         dates: null,
@@ -259,17 +494,23 @@ beforeEach(() => {
         stays: [],
         media: [],
         routes: [],
-      }) as unknown as ProjectionDocument,
+      }) satisfies Api.ProjectionDocument,
   );
-  api.on("POST", /\/share-links\/([^/]+)\/(activate|rotate)$/, (_body, match) => {
-    const rows = api.rows("/api/trips/trip/share-links");
-    const row = rows.find((item) => item.id === match[1])!;
-    row.state = "active";
-    row.token = SECRET;
-    return row;
-  });
-  api.on("POST", /\/share-links\/([^/]+)\/revoke$/, (_body, match) => {
-    const row = api.rows("/api/trips/trip/share-links").find((item) => item.id === match[1])!;
+  api.on<Api.ShareLinkResponse>(
+    "POST",
+    /\/share-links\/([^/]+)\/(activate|rotate)$/,
+    (_body, match) => {
+      const rows = api.rows<Api.ShareLinkResponse>("/api/trips/trip/share-links");
+      const row = rows.find((item) => item.id === match[1])!;
+      row.state = "active";
+      row.token = SECRET;
+      return row;
+    },
+  );
+  api.on<Api.ShareLinkResponse>("POST", /\/share-links\/([^/]+)\/revoke$/, (_body, match) => {
+    const row = api
+      .rows<Api.ShareLinkResponse>("/api/trips/trip/share-links")
+      .find((item) => item.id === match[1])!;
     row.state = "revoked";
     return row;
   });
@@ -434,7 +675,7 @@ it("chooses what it can when one record cannot be shared yet, and says which one
 });
 
 it("shows no link editor until a link is started or chosen, and says so when there are no links", async () => {
-  api.collection("/api/trips/trip/share-links", []);
+  api.collection<Api.ShareLinkResponse>("/api/trips/trip/share-links", []);
   renderWithOwner(<PublicationManager trip={trip} />);
   await screen.findByText(/Nog geen deellinks/);
   expect(screen.queryByLabelText("Naam van de link")).toBeNull();
@@ -444,7 +685,7 @@ it("shows no link editor until a link is started or chosen, and says so when the
 });
 
 it("groups a rotated URL under its current link instead of listing it as another link", async () => {
-  api.collection("/api/trips/trip/share-links", [
+  api.collection<Api.ShareLinkResponse>("/api/trips/trip/share-links", [
     { ...link("l2", "Familie", "active"), series_id: "l1", token: SECRET },
     link("l1", "Familie", "revoked"),
   ]);
@@ -520,7 +761,7 @@ it("keeps unsaved public scope edits when the server copy is refreshed", async (
 it("publishes and withdraws the public page", async () => {
   server.use(
     http.get("/api/trips/trip/audit-events", () =>
-      HttpResponse.json(
+      HttpResponse.json<Api.AuditEventResponse[]>(
         status.surface_state === "published"
           ? [
               {
@@ -617,7 +858,8 @@ it("ignores a language answer that arrives after a newer choice", async () => {
       const language = new URL(request.url).searchParams.get("lang");
       // The first English answer is the slow one.
       if (language === "en" && ++englishRequests === 1) await gate;
-      return HttpResponse.json({
+      return HttpResponse.json<Api.ProjectionDocument>({
+        ...responseFixtures.ProjectionDocument,
         title: language === "en" ? "Exampleland" : "Voorbeeldland",
         summary: null,
         dates: null,
@@ -659,7 +901,12 @@ it("reports a failed public preview and keeps the unsaved selection", async () =
   fireEvent.click(within(editor).getByRole("checkbox", { name: "Samenvatting" }));
   server.use(
     http.post("/api/trips/trip/public-projection/preview", () =>
-      HttpResponse.json({ detail: "x" }, { status: 503 }),
+      HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+          detail: "x",
+        },
+        { status: 503 },
+      ),
     ),
   );
   fireEvent.click(screen.getByRole("button", { name: "Bekijk als bezoeker" }));
@@ -685,7 +932,10 @@ it("previews an existing link's unsaved scope without saving it", async () => {
   expect(
     api.lastBody<ShareScope>("POST /api/trips/trip/share-links/l1/preview")?.trip.summary,
   ).toBe(false);
-  expect((api.rows("/api/trips/trip/share-links")[0].scope as ShareScope).trip.summary).toBe(true);
+  expect(
+    (api.rows<Api.ShareLinkResponse>("/api/trips/trip/share-links")[0].scope as ShareScope).trip
+      .summary,
+  ).toBe(true);
 });
 
 it("says a new draft link was saved when its first preview fails", async () => {
@@ -694,7 +944,12 @@ it("says a new draft link was saved when its first preview fails", async () => {
   fireEvent.change(screen.getByLabelText("Naam van de link"), { target: { value: "Vrienden" } });
   server.use(
     http.post("/api/trips/trip/share-links/l2/preview", () =>
-      HttpResponse.json({ detail: "x" }, { status: 503 }),
+      HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+          detail: "x",
+        },
+        { status: 503 },
+      ),
     ),
   );
   fireEvent.click(screen.getByRole("button", { name: "Voorbeeld bekijken" }));
@@ -759,7 +1014,7 @@ it("saves a new link as a draft, letting its owner preview it before activating 
 });
 
 it("revokes an active link and locks its editor", async () => {
-  api.rows("/api/trips/trip/share-links")[0].state = "active";
+  api.rows<Api.ShareLinkResponse>("/api/trips/trip/share-links")[0].state = "active";
   renderWithOwner(<PublicationManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: /Familie/ }));
   fireEvent.click(await screen.findByRole("button", { name: "Link intrekken" }));
@@ -885,10 +1140,14 @@ it("shows what each audience receives and words the review warnings in Dutch", a
 });
 
 it("previews the future transport and day dates of the unsaved public scope, in words", async () => {
-  api.on("POST", /^\/api\/trips\/trip\/public-projection\/future-disclosure$/, () => ({
-    transport: 2,
-    day_dates: 3,
-  }));
+  api.on<Api.FutureDisclosure>(
+    "POST",
+    /^\/api\/trips\/trip\/public-projection\/future-disclosure$/,
+    () => ({
+      transport: 2,
+      day_dates: 3,
+    }),
+  );
   renderWithOwner(<PublicationManager trip={trip} />);
   const editor = await screen.findByRole("group", { name: "Wat iedereen mag zien" });
   fireEvent.click(within(editor).getByRole("checkbox", { name: "Samenvatting" }));
@@ -915,14 +1174,24 @@ it("says when the review of the public preview fails, never as an empty review, 
   server.use(
     http.post(
       "/api/trips/trip/public-projection/future-disclosure",
-      () => HttpResponse.json({ detail: "Boom" }, { status: 500 }),
+      () =>
+        HttpResponse.json(
+          /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+            detail: "Boom",
+          },
+          { status: 500 },
+        ),
       { once: true },
     ),
   );
-  api.on("POST", /^\/api\/trips\/trip\/public-projection\/future-disclosure$/, () => ({
-    transport: 1,
-    day_dates: 0,
-  }));
+  api.on<Api.FutureDisclosure>(
+    "POST",
+    /^\/api\/trips\/trip\/public-projection\/future-disclosure$/,
+    () => ({
+      transport: 1,
+      day_dates: 0,
+    }),
+  );
   renderWithOwner(<PublicationManager trip={trip} />);
   const editor = await screen.findByRole("group", { name: "Wat iedereen mag zien" });
   fireEvent.click(within(editor).getByRole("checkbox", { name: "Samenvatting" }));
@@ -947,15 +1216,20 @@ it("retains a draft across a deferred scope conflict and retries with the chosen
   server.use(
     http.put("/api/trips/trip/public-projection", async ({ request }) => {
       headers.push(request.headers.get("If-Match"));
-      const candidate = await request.json();
+      const candidate = (await request.json()) as Api.ShareScope;
       if (headers.length === 1) {
         await pending;
         return HttpResponse.json(
+          /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */
           { detail: { code: "scope_revision_conflict", current: { ...status, revision: 2 } } },
           { status: 412 },
         );
       }
-      return HttpResponse.json({ ...status, scope: candidate, revision: 3 });
+      return HttpResponse.json<Api.PublicProjectionStatusResponse>({
+        ...status,
+        scope: candidate,
+        revision: 3,
+      });
     }),
   );
   renderWithOwner(<PublicationManager trip={trip} />);
@@ -1109,13 +1383,15 @@ it("sends no preset for a new link that starts as the public page", async () => 
 });
 
 it("applies a preset to the public page and loads the scope the server answers with", async () => {
-  const review = {
+  const review: Api.SharingPresetReview = {
     schema_version: "travel/sharing-preset@1",
     preset: "story_only",
     audience: { id: "public", kind: "public", label: null, live: false },
     applicable: true,
     refusal: null,
-    changes: [{ kind: "travel_update", id: "u1", label: "Privé dagboek", action: "promote" }],
+    changes: [
+      { day: null, kind: "travel_update", id: "u1", label: "Privé dagboek", action: "promote" },
+    ],
     change_counts: { promote: 1 },
     precision: { before: null, after: "month", changed: true, reads_coarser: {} },
     comparison: {
@@ -1123,7 +1399,7 @@ it("applies a preset to the public page and loads the scope the server answers w
       after: { travel_update: 1 },
       added: { travel_update: 1 },
       removed: {},
-      widened: [{ kind: "travel_update", id: "u1", label: "Privé dagboek" }],
+      widened: [{ day: null, kind: "travel_update", id: "u1", label: "Privé dagboek" }],
       narrowed: [],
     },
     left_as_is: [],
@@ -1132,8 +1408,8 @@ it("applies a preset to the public page and loads the scope the server answers w
     requires_acknowledgement: false,
     fingerprint: "fp",
   };
-  api.on("POST", /\/public-projection\/preset\/review$/, () => review);
-  api.on("POST", /\/public-projection\/preset$/, () => {
+  api.on<Api.SharingPresetReview>("POST", /\/public-projection\/preset\/review$/, () => review);
+  api.on<Api.PublicPresetApplyResult>("POST", /\/public-projection\/preset$/, () => {
     status = {
       ...status,
       revision: 2,
@@ -1268,10 +1544,14 @@ const followResult = (overrides = {}) => ({
 });
 
 it("lets visits and stays follow the audience after showing who will see more precise dates", async () => {
-  api.on("POST", /\/date-precision\/follow-audience$/, (body) => {
-    const request = body as { confirm: boolean };
-    return followResult({ applied: request.confirm });
-  });
+  api.on<Api.FollowAudiencePrecisionResult>(
+    "POST",
+    /\/date-precision\/follow-audience$/,
+    (body) => {
+      const request = body as { confirm: boolean };
+      return followResult({ applied: request.confirm });
+    },
+  );
   renderWithOwner(<PublicationManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: "Precisie van het publiek volgen…" }));
   const dialog = within(await screen.findByRole("alertdialog"));
@@ -1301,21 +1581,25 @@ it("lets visits and stays follow the audience after showing who will see more pr
 });
 
 it("follows the audience for one kind only, and needs no acknowledgement when nobody sees more", async () => {
-  api.on("POST", /\/date-precision\/follow-audience$/, (body) => {
-    const request = body as { confirm: boolean };
-    return followResult({
-      applied: request.confirm,
-      changed: { visits: 1, stays: 0 },
-      audiences: [
-        {
-          audience: "link:l1",
-          label: "Familie",
-          widened: { visits: 0, stays: 0 },
-          narrowed: { visits: 1, stays: 0 },
-        },
-      ],
-    });
-  });
+  api.on<Api.FollowAudiencePrecisionResult>(
+    "POST",
+    /\/date-precision\/follow-audience$/,
+    (body) => {
+      const request = body as { confirm: boolean };
+      return followResult({
+        applied: request.confirm,
+        changed: { visits: 1, stays: 0 },
+        audiences: [
+          {
+            audience: "link:l1",
+            label: "Familie",
+            widened: { visits: 0, stays: 0 },
+            narrowed: { visits: 1, stays: 0 },
+          },
+        ],
+      });
+    },
+  );
   renderWithOwner(<PublicationManager trip={trip} />);
   chooseOption("Toepassen op", "Bezoeken");
   fireEvent.click(await screen.findByRole("button", { name: "Precisie van het publiek volgen…" }));
@@ -1333,7 +1617,7 @@ it("follows the audience for one kind only, and needs no acknowledgement when no
 });
 
 it("says so when no visit or stay has its own date setting", async () => {
-  api.on("POST", /\/date-precision\/follow-audience$/, () =>
+  api.on<Api.FollowAudiencePrecisionResult>("POST", /\/date-precision\/follow-audience$/, () =>
     followResult({ changed: { visits: 0, stays: 0 }, audiences: [] }),
   );
   renderWithOwner(<PublicationManager trip={trip} />);
@@ -1353,29 +1637,33 @@ type ReviewBody = {
 };
 /** A server stand-in: the baseline reaches the update “Aankomst”; excluding it also hides its two photos. */
 function serveReview(stale = 0) {
-  api.on("POST", /\/share-scope\/exclusion-review$/, (body) => {
-    const exclude = (body as ReviewBody).exclude;
-    const left = exclude.some((item) => item.kind === "travel_update" && item.id === "u2");
-    return {
-      baseline: [{ kind: "travel_update", id: "u2" }],
-      excluded: left
-        ? [
-            {
-              kind: "travel_update",
-              id: "u2",
-              received: true,
-              hides: { media_derivative: 2 },
-              also_hides: [
-                { kind: "media_derivative", id: "x1" },
-                { kind: "media_derivative", id: "x2" },
-              ],
-            },
-          ]
-        : [],
-      also_hidden: left ? { media_derivative: 2 } : {},
-      stale,
-    };
-  });
+  api.on<Api.ExclusionReview>(
+    "POST",
+    /\/share-scope\/exclusion-review$/,
+    (body): Api.ExclusionReview => {
+      const exclude = (body as ReviewBody).exclude;
+      const left = exclude.some((item) => item.kind === "travel_update" && item.id === "u2");
+      return {
+        baseline: [{ kind: "travel_update", id: "u2" }],
+        excluded: left
+          ? [
+              {
+                kind: "travel_update",
+                id: "u2",
+                received: true,
+                hides: { media_derivative: 2 },
+                also_hides: [
+                  { kind: "media_derivative", id: "x1" },
+                  { kind: "media_derivative", id: "x2" },
+                ],
+              },
+            ]
+          : [],
+        also_hidden: left ? { media_derivative: 2 } : {},
+        stale,
+      };
+    },
+  );
 }
 /** The server refuses the next save of this link (409) until the owner has acknowledged what it would show. */
 function refuseOnce(linkId: string, counts: Record<string, number>) {
@@ -1387,6 +1675,7 @@ function refuseOnce(linkId: string, counts: Record<string, number>) {
         seen.calls += 1;
         seen.body = await request.json();
         return HttpResponse.json(
+          /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */
           { detail: { code: "exclusion_widening_needs_acknowledgement", revealed: [], counts } },
           { status: 409 },
         );
@@ -1429,7 +1718,7 @@ it("lists what a link receives from the public page, ticked, and leaves one reco
 
 it("shows every record again with one button, and previews the unsaved exclusions", async () => {
   serveReview();
-  api.rows("/api/trips/trip/share-links")[0]!.scope = {
+  api.rows<Api.ShareLinkResponse>("/api/trips/trip/share-links")[0]!.scope = {
     ...scope(),
     exclude: [{ kind: "travel_update", id: "u2" }],
   };
@@ -1457,12 +1746,12 @@ it("says how many stored exclusions no longer apply", async () => {
 
 it("does not send exclusions an older scope never had, and keeps stored ones when only the name changes", async () => {
   serveReview();
-  api.rows("/api/trips/trip/share-links")[0]!.scope = {
+  api.rows<Api.ShareLinkResponse>("/api/trips/trip/share-links")[0]!.scope = {
     ...scope(),
     exclude: [{ kind: "travel_update", id: "u2" }],
   };
-  api.collection("/api/trips/trip/share-links", [
-    ...api.rows("/api/trips/trip/share-links"),
+  api.collection<Api.ShareLinkResponse>("/api/trips/trip/share-links", [
+    ...api.rows<Api.ShareLinkResponse>("/api/trips/trip/share-links"),
     link("l9", "Oud", "draft"),
   ]);
   renderWithOwner(<PublicationManager trip={trip} />);
@@ -1480,7 +1769,7 @@ it("asks before an active link shows more because an exclusion was removed, and 
   serveReview();
   const active = link("l2", "Vrienden", "active");
   active.scope = { ...scope(), exclude: [{ kind: "travel_update", id: "u2" }] };
-  api.collection("/api/trips/trip/share-links", [active]);
+  api.collection<Api.ShareLinkResponse>("/api/trips/trip/share-links", [active]);
   renderWithOwner(<PublicationManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: /Vrienden/ }));
   fireEvent.click(
@@ -1520,7 +1809,7 @@ it("keeps the edit and sends nothing when the owner declines the widening", asyn
   serveReview();
   const active = link("l2", "Vrienden", "active");
   active.scope = { ...scope(), exclude: [{ kind: "travel_update", id: "u2" }] };
-  api.collection("/api/trips/trip/share-links", [active]);
+  api.collection<Api.ShareLinkResponse>("/api/trips/trip/share-links", [active]);
   renderWithOwner(<PublicationManager trip={trip} />);
   fireEvent.click(await screen.findByRole("button", { name: /Vrienden/ }));
   const checkbox = await exclusionSection().findByRole("checkbox", {
@@ -1568,7 +1857,7 @@ it("states in the sharing check how many records a link leaves out and what that
 });
 
 it("lists a link that leaves records out with how many", async () => {
-  api.rows("/api/trips/trip/share-links")[0]!.exclusions = {
+  api.rows<Api.ShareLinkResponse>("/api/trips/trip/share-links")[0]!.exclusions = {
     excluded: [{ kind: "area", id: "b1", received: true, hides: { visit: 1 }, also_hides: [] }],
     also_hidden: { visit: 1 },
     stale: 0,
@@ -1588,7 +1877,7 @@ it("offers no way to leave records out on the public page: it is the baseline", 
 
 it("says in a link's preview how it differs from the public page", async () => {
   serveReview();
-  api.rows("/api/trips/trip/share-links")[0]!.scope = {
+  api.rows<Api.ShareLinkResponse>("/api/trips/trip/share-links")[0]!.scope = {
     ...scope(),
     exclude: [{ kind: "travel_update", id: "u2" }],
   };

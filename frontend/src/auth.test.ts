@@ -30,7 +30,12 @@ function serveToken() {
         }),
     ),
     http.post("https://auth.tjor.im/realms/travel/protocol/openid-connect/token", () =>
-      HttpResponse.json({ access_token: "access", expires_in: 60 }),
+      HttpResponse.json(
+        /* Fixture exception: External OIDC token response, outside the Travel OpenAPI contract. */ {
+          access_token: "access",
+          expires_in: 60,
+        },
+      ),
     ),
   );
 }

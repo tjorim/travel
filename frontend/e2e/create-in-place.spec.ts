@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { locales, message } from "./messages";
@@ -5,6 +6,9 @@ import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
 
 // Synthetic content only. A stateful owner API: records created in the dialogs join the lists the agenda and the map read.
 const area = {
+  label_nl: null,
+  label_en: null,
+  local_name: null,
   id: "area-tainan",
   visibility: "private",
   label: "Tainan",
@@ -13,8 +17,10 @@ const area = {
   latitude: 22.99,
   longitude: 120.21,
   timezone: null,
-};
+} satisfies Api.AreaResponse;
 const stay = {
+  notes_html: null,
+  contact_details_html: null,
   id: "stay-seed",
   check_in_date: "2054-11-12",
   check_out_date: "2054-11-14",
@@ -31,21 +37,34 @@ const stay = {
   visibility: "private",
   share_date_precision: null,
   document_asset_ids: [],
-};
+} satisfies Api.StayResponse;
 
 async function openOwner(page: Page, locale: (typeof locales)[number], theme: "light" | "dark") {
   await mockApi(page);
   await signInOwner(page);
   await choosePreferences(page, locale, theme);
-  const created: Record<string, unknown>[] = [];
+  const created: Api.VisitResponse[] = [];
   const base = `**/api/trips/${ownerTrip.id}`;
-  await page.route(`${base}/areas`, (route) => route.fulfill({ json: [area] }));
-  await page.route(`${base}/stays`, (route) => route.fulfill({ json: [stay] }));
-  await page.route(`${base}/routes`, (route) => route.fulfill({ json: [] }));
+  await page.route(`${base}/areas`, (route) =>
+    route.fulfill({ json: [area] satisfies Api.AreaResponse[] }),
+  );
+  await page.route(`${base}/stays`, (route) =>
+    route.fulfill({ json: [stay] satisfies Api.StayResponse[] }),
+  );
+  await page.route(`${base}/routes`, (route) =>
+    route.fulfill({ json: [] satisfies Api.RouteResponse[] }),
+  );
   await page.route(`${base}/visits`, (route) => {
     if (route.request().method() === "POST") {
       const body = JSON.parse(route.request().postData() ?? "{}") as Record<string, unknown>;
       const visit = {
+        title_nl: null,
+        title_en: null,
+        summary_nl: null,
+        summary_en: null,
+        possible_route_duplicates: [],
+        notes_html: null,
+        summary_html: null,
         id: `visit-${created.length + 1}`,
         title: (body.title_nl as string | undefined) ?? null,
         kind: null,
@@ -62,11 +81,11 @@ async function openOwner(page: Page, locale: (typeof locales)[number], theme: "l
         location: null,
         area,
         ...body,
-      };
+      } satisfies Api.VisitResponse;
       created.push(visit);
-      return route.fulfill({ json: visit, status: 201 });
+      return route.fulfill({ json: visit satisfies Api.VisitResponse, status: 201 });
     }
-    return route.fulfill({ json: created });
+    return route.fulfill({ json: created satisfies Api.VisitResponse[] });
   });
   return created;
 }

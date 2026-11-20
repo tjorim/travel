@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { setDateTime, shownDateTime } from "../../test-dates";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -125,7 +126,7 @@ const ticket = { id: "d1", title: "Ticket" } as DocumentAsset;
 let api: FakeApi;
 function seed(routes: Route[] = [], locations: Location[] = [], areas: Area[] = [taipei, tainan]) {
   api = fakeApi()
-    .collection("/api/trips/trip/routes", routes, {
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", routes, {
       // The service answers with the areas the ends were filed under.
       create: (body, count) =>
         route(`new-${count}`, (body.label as string | null) ?? null, {
@@ -135,10 +136,13 @@ function seed(routes: Route[] = [], locations: Location[] = [], areas: Area[] = 
         }),
       update: (row, body) => ({ ...row, ...body }),
     })
-    .collection("/api/trips/trip/areas", areas)
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/locations", locations);
-  api.on("POST", /\/areas\/suggest$/, () => ({ existing_area_id: "taipei", area: taipei }));
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", areas)
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", locations);
+  api.on<Api.AreaSuggestion>("POST", /\/areas\/suggest$/, () => ({
+    existing_area_id: "taipei",
+    area: taipei,
+  }));
   ensurePlanApi(api);
 }
 beforeEach(() => {
@@ -167,7 +171,7 @@ it("lists a stored group of route ideas as alternatives and keeps them off the s
     route("r1", "Chosen train", { departs_on: "2054-12-01" }),
     route("i3", "Other day", { status: "idea", departs_on: "2054-12-02" }),
   ]);
-  api.collection("/api/trips/trip/alternative-groups", [
+  api.collection<Api.AlternativeGroupResponse>("/api/trips/trip/alternative-groups", [
     {
       id: "g1",
       kind: "route",
@@ -354,11 +358,23 @@ it("opens a route in detail before its editor, prefilled with its bookings and t
 
 it("files a new location under the chosen area", async () => {
   seed();
-  api.on("POST", /\/places\/search$/, () => ({
+  api.on<Api.PlaceSearchResponse>("POST", /\/places\/search$/, () => ({
+    provider: "synthetic",
     attribution: "© OpenStreetMap contributors",
     attribution_url: "https://www.openstreetmap.org/copyright",
     results: [
       {
+        address_line1: null,
+        address_line2: null,
+        admin_area: null,
+        postal_code: null,
+        local_name: null,
+        name_nl: null,
+        name_en: null,
+        viewport_north: null,
+        viewport_south: null,
+        viewport_east: null,
+        viewport_west: null,
         osm_element_type: "node",
         osm_element_id: "8",
         display_name: "Taipei Main Station",
@@ -395,11 +411,23 @@ it("files a new location under the chosen area", async () => {
 
 it("shows a nearby area suggestion before saving a new location", async () => {
   seed();
-  api.on("POST", /\/places\/search$/, () => ({
+  api.on<Api.PlaceSearchResponse>("POST", /\/places\/search$/, () => ({
+    provider: "synthetic",
     attribution: "Test",
     attribution_url: "https://example.test",
     results: [
       {
+        address_line1: null,
+        address_line2: null,
+        admin_area: null,
+        postal_code: null,
+        local_name: null,
+        name_nl: null,
+        name_en: null,
+        viewport_north: null,
+        viewport_south: null,
+        viewport_east: null,
+        viewport_west: null,
         osm_element_type: "node",
         osm_element_id: "8",
         display_name: "Taipei Main Station",

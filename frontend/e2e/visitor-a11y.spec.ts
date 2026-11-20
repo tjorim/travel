@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { message } from "./messages";
@@ -13,58 +14,107 @@ const area = (label: string, latitude: number, longitude: number) => ({
 });
 const body = (name: string) =>
   `<h5>Morning at ${name}</h5><p>Synthetic note.</p><h6>Afternoon</h6><p>More.</p>`;
-const photo = (index: number, update: string) => ({
-  id: `media-${index}`,
-  image: { id: `media-${index}` },
-  alt_text: `Synthetic photo ${index}`,
-  caption: `Caption ${index}`,
-  width: 1200,
-  height: 800,
-  update,
-});
-const trip = (schema: string) => ({
-  schema_version: schema,
-  title: "Exampleland 2054",
-  summary: "Three weeks.",
-  summary_html: "<h5>Overview heading</h5><p>Three weeks.</p>",
-  summary_text: "Three weeks.",
-  dates: { starts_on: "2054-11-01", ends_on: "2054-11-21", date_precision: "day" },
-  numbers: { days: 1, areas: 2, countries: 1, nights: 0 },
-  cover: null,
-  visits: [{ id: "visit-1", title: "Harbour", place: area("Keelung", 25.13, 121.74) }],
-  places: [],
-  updates: [
-    {
-      id: "update-a",
-      title: "Arrival",
-      body: "x",
-      body_html: body("the quay"),
-      story_date: "2054-11-01",
-      date_precision: "day",
-      place: area("Keelung", 25.13, 121.74),
-    },
-    { id: "update-b", title: "Market day", body: "x", body_html: body("the market") },
-    // Repeated and missing titles must still give each photo group its own name.
-    { id: "update-c", title: "Arrival", body: "x", body_html: body("the pier") },
-    { id: "update-d", body: "x", body_html: body("the station") },
-    { id: "update-e", body: "x", body_html: body("the hill") },
-  ],
-  stays: [],
-  media: [
-    photo(1, "update-a"),
-    photo(2, "update-a"),
-    photo(3, "update-b"),
-    photo(5, "update-c"),
-    photo(6, "update-c"),
-    photo(7, "update-d"),
-    photo(8, "update-d"),
-    photo(9, "update-e"),
-    photo(10, "update-e"),
-    { ...photo(4, ""), update: undefined },
-  ],
-  routes: [],
-  navigation: [],
-});
+const photo = (index: number, update: string) =>
+  ({
+    caption_html: null,
+    focal_x: null,
+    focal_y: null,
+    id: `media-${index}`,
+    image: { id: `media-${index}` },
+    alt_text: `Synthetic photo ${index}`,
+    caption: `Caption ${index}`,
+    width: 1200,
+    height: 800,
+    update,
+  }) satisfies Api.ProjectionMedia;
+const trip = (schema: string) =>
+  ({
+    schema_version: schema,
+    title: "Exampleland 2054",
+    summary: "Three weeks.",
+    summary_html: "<h5>Overview heading</h5><p>Three weeks.</p>",
+    summary_text: "Three weeks.",
+    dates: { starts_on: "2054-11-01", ends_on: "2054-11-21", date_precision: "day" },
+    numbers: { days: 1, areas: 2, countries: 1, nights: 0 },
+    cover: null,
+    visits: [
+      {
+        summary: null,
+        summary_html: null,
+        date_precision: "day",
+        id: "visit-1",
+        title: "Harbour",
+        place: area("Keelung", 25.13, 121.74),
+      },
+    ],
+    places: [],
+    updates: [
+      {
+        id: "update-a",
+        title: "Arrival",
+        body: "x",
+        body_html: body("the quay"),
+        story_date: "2054-11-01",
+        date_precision: "day",
+        place: area("Keelung", 25.13, 121.74),
+      },
+      {
+        date_precision: "day",
+        story_date: null,
+        place: null,
+        id: "update-b",
+        title: "Market day",
+        body: "x",
+        body_html: body("the market"),
+      },
+      // Repeated and missing titles must still give each photo group its own name.
+      {
+        date_precision: "day",
+        story_date: null,
+        place: null,
+        id: "update-c",
+        title: "Arrival",
+        body: "x",
+        body_html: body("the pier"),
+      },
+      {
+        title: "synthetic",
+        date_precision: "day",
+        story_date: null,
+        place: null,
+        id: "update-d",
+        body: "x",
+        body_html: body("the station"),
+      },
+      {
+        title: "synthetic",
+        date_precision: "day",
+        story_date: null,
+        place: null,
+        id: "update-e",
+        body: "x",
+        body_html: body("the hill"),
+      },
+    ],
+    stays: [],
+    media: [
+      photo(1, "update-a"),
+      photo(2, "update-a"),
+      photo(3, "update-b"),
+      photo(5, "update-c"),
+      photo(6, "update-c"),
+      photo(7, "update-d"),
+      photo(8, "update-d"),
+      photo(9, "update-e"),
+      photo(10, "update-e"),
+      {
+        ...photo(4, ""),
+        update: undefined,
+      },
+    ],
+    routes: [],
+    navigation: [],
+  }) satisfies Api.ProjectionDocument;
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><rect width="1200" height="800" fill="#6a8f7d"/></svg>`;
 
 const surfaces = {
@@ -83,7 +133,9 @@ async function open(
   await mockApi(page);
   await page.route(`**${api}`, (route) =>
     route.fulfill({
-      json: trip(audience === "public" ? "travel/public-trip@1" : "travel/unlisted-trip@1"),
+      json: trip(
+        audience === "public" ? "travel/public-trip@1" : "travel/unlisted-trip@1",
+      ) satisfies Api.ProjectionDocument,
     }),
   );
   await page.route(`**${api}/files/*`, (route) =>
@@ -94,7 +146,7 @@ async function open(
       ? route.abort()
       : route.fulfill({
           headers: { "access-control-allow-origin": "*" },
-          json: {
+          json: /* Fixture exception: External map style, outside the Travel OpenAPI contract. */ {
             version: 8,
             sources: {},
             glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",

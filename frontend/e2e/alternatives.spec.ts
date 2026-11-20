@@ -1,9 +1,13 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
 import { message } from "./messages";
 
 const area = {
+  label_nl: null,
+  label_en: null,
+  local_name: null,
   id: "area-tainan",
   visibility: "private",
   label: "Tainan",
@@ -12,25 +16,28 @@ const area = {
   latitude: null,
   longitude: null,
   timezone: null,
-};
-const idea = (id: string, name: string, notes: string | null) => ({
-  id,
-  check_in_date: "2054-11-12",
-  check_out_date: "2054-11-15",
-  check_in_time: null,
-  check_out_time: null,
-  status: "idea",
-  property_name: name,
-  website_url: null,
-  booking_reference: null,
-  contact_details: null,
-  notes,
-  location: null,
-  area,
-  visibility: "private",
-  share_date_precision: null,
-  document_asset_ids: [],
-});
+} satisfies Api.AreaResponse;
+const idea = (id: string, name: string, notes: string | null) =>
+  ({
+    notes_html: null,
+    contact_details_html: null,
+    id,
+    check_in_date: "2054-11-12",
+    check_out_date: "2054-11-15",
+    check_in_time: null,
+    check_out_time: null,
+    status: "idea",
+    property_name: name,
+    website_url: null,
+    booking_reference: null,
+    contact_details: null,
+    notes,
+    location: null,
+    area,
+    visibility: "private",
+    share_date_precision: null,
+    document_asset_ids: [],
+  }) satisfies Api.StayResponse;
 const stays = [
   idea("stay-a", "Hotel Aurora", "Quiet street"),
   idea("stay-b", "Hotel Borealis", null),
@@ -40,23 +47,26 @@ const group = {
   kind: "stay",
   label: null,
   chosen_id: null,
-  members: stays.map((stay) => ({
-    record_id: stay.id,
-    chosen: false,
-    stay,
-    visit: null,
-    route: null,
-  })),
+  members: stays.map(
+    (stay) =>
+      ({
+        record_id: stay.id,
+        chosen: false,
+        stay,
+        visit: null,
+        route: null,
+      }) satisfies Api.AlternativeMemberResponse,
+  ),
   created_at: "2054-01-01T00:00:00Z",
   updated_at: "2054-01-01T00:00:00Z",
-};
+} satisfies Api.AlternativeGroupResponse;
 const suggestion = {
   kind: "stay",
   member_ids: ["stay-c", "stay-d"],
   starts_on: "2054-11-18",
   ends_on: "2054-11-20",
   reason: "overlapping_nights",
-};
+} satisfies Api.AlternativeSuggestion;
 
 for (const locale of ["nl", "en"] as const) {
   for (const theme of ["light", "dark"] as const) {
@@ -70,11 +80,17 @@ for (const locale of ["nl", "en"] as const) {
         await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
         const extra = [idea("stay-c", "Hotel Cedar", null), idea("stay-d", "Hotel Dune", null)];
         const base = `**/api/trips/${ownerTrip.id}`;
-        await page.route(`${base}/areas`, (route) => route.fulfill({ json: [area] }));
-        await page.route(`${base}/stays`, (route) => route.fulfill({ json: [...stays, ...extra] }));
-        await page.route(`${base}/alternative-groups`, (route) => route.fulfill({ json: [group] }));
+        await page.route(`${base}/areas`, (route) =>
+          route.fulfill({ json: [area] satisfies Api.AreaResponse[] }),
+        );
+        await page.route(`${base}/stays`, (route) =>
+          route.fulfill({ json: [...stays, ...extra] satisfies Api.StayResponse[] }),
+        );
+        await page.route(`${base}/alternative-groups`, (route) =>
+          route.fulfill({ json: [group] satisfies Api.AlternativeGroupResponse[] }),
+        );
         await page.route(`${base}/alternative-groups/suggestions`, (route) =>
-          route.fulfill({ json: [suggestion] }),
+          route.fulfill({ json: [suggestion] satisfies Api.AlternativeSuggestion[] }),
         );
         await page.route(`${base}/alternative-groups/group-1/choose`, (route) =>
           route.fulfill({
@@ -85,7 +101,7 @@ for (const locale of ["nl", "en"] as const) {
               cancelled_ids: ["stay-a"],
               removed_ids: [],
               undoable: true,
-            },
+            } satisfies Api.AlternativeChoiceResponse,
           }),
         );
         await page.goto(`/admin/trips/${ownerTrip.id}/plan#stays`);

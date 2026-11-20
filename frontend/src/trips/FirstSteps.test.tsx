@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { createRootRoute } from "@tanstack/react-router";
 import { cleanup, screen } from "@testing-library/react";
@@ -36,11 +38,21 @@ const render = (areas: Area[] = []) =>
     ["/"],
   );
 
-function serve(records: { visits?: unknown[]; stays?: unknown[]; routes?: unknown[] }) {
+function serve(records: {
+  visits?: Api.VisitResponse[];
+  stays?: Api.StayResponse[];
+  routes?: Api.RouteResponse[];
+}) {
   server.use(
-    http.get("*/api/trips/trip/visits", () => HttpResponse.json(records.visits ?? [])),
-    http.get("*/api/trips/trip/stays", () => HttpResponse.json(records.stays ?? [])),
-    http.get("*/api/trips/trip/routes", () => HttpResponse.json(records.routes ?? [])),
+    http.get("*/api/trips/trip/visits", () =>
+      HttpResponse.json<Api.VisitResponse[]>(records.visits ?? []),
+    ),
+    http.get("*/api/trips/trip/stays", () =>
+      HttpResponse.json<Api.StayResponse[]>(records.stays ?? []),
+    ),
+    http.get("*/api/trips/trip/routes", () =>
+      HttpResponse.json<Api.RouteResponse[]>(records.routes ?? []),
+    ),
   );
 }
 
@@ -59,7 +71,7 @@ it("offers places, a stay and a route to a trip that has none of them", async ()
 });
 
 it("stays out of the way once the trip has any record", async () => {
-  serve({ stays: [{ id: "s" }] });
+  serve({ stays: [{ ...responseFixtures.StayResponse, id: "s" }] });
   render();
   // The lists load before the card could appear, so wait for them rather than for a heading.
   await new Promise((resolve) => setTimeout(resolve, 50));

@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { createRootRoute } from "@tanstack/react-router";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
@@ -18,7 +20,8 @@ beforeEach(() => {
 afterEach(cleanup);
 
 it("keeps source setup disabled and precision opt-in, with guarded edits and deletion", async () => {
-  const row = {
+  const row: Api.LiveSessionResponse = {
+    ...responseFixtures.LiveSessionResponse,
     id: "source-one",
     source: "person.synthetic",
     enabled: false,
@@ -28,14 +31,22 @@ it("keeps source setup disabled and precision opt-in, with guarded edits and del
   };
   const writes: unknown[] = [];
   server.use(
-    http.get("*/api/trips/trip-one/live-location", () => HttpResponse.json([row])),
+    http.get("*/api/trips/trip-one/live-location", () =>
+      HttpResponse.json<Api.LiveSessionResponse[]>([row]),
+    ),
     http.get("*/api/trips/trip-one/share-links", () =>
-      HttpResponse.json([{ id: "link-one", label: "Synthetic family" }]),
+      HttpResponse.json<Api.ShareLinkResponse[]>([
+        { ...responseFixtures.ShareLinkResponse, id: "link-one", label: "Synthetic family" },
+      ]),
     ),
     http.put("*/api/trips/trip-one/live-location/source-one", async ({ request }) => {
       const data = await request.json();
       writes.push(data);
-      return HttpResponse.json({ ...row, ...(data as object) });
+      return HttpResponse.json<Api.LiveSessionResponse>({
+        ...responseFixtures.LiveSessionResponse,
+        ...row,
+        ...(data as object),
+      });
     }),
     http.delete("*/api/trips/trip-one/live-location/source-one/tracks", () => {
       writes.push("delete");
@@ -68,7 +79,8 @@ it("keeps source setup disabled and precision opt-in, with guarded edits and del
 });
 
 it("keeps a new source draft when an earlier list toggle finishes", async () => {
-  const row = {
+  const row: Api.LiveSessionResponse = {
+    ...responseFixtures.LiveSessionResponse,
     id: "source-one",
     source: "person.synthetic",
     enabled: false,
@@ -84,12 +96,14 @@ it("keeps a new source draft when an earlier list toggle finishes", async () => 
   server.use(
     http.get("*/api/trips/trip-one/live-location", () => {
       reads += 1;
-      return HttpResponse.json([row]);
+      return HttpResponse.json<Api.LiveSessionResponse[]>([row]);
     }),
-    http.get("*/api/trips/trip-one/share-links", () => HttpResponse.json([])),
+    http.get("*/api/trips/trip-one/share-links", () =>
+      HttpResponse.json<Api.ShareLinkResponse[]>([]),
+    ),
     http.put("*/api/trips/trip-one/live-location/source-one", async () => {
       await pending;
-      return HttpResponse.json(row);
+      return HttpResponse.json<Api.LiveSessionResponse>(row);
     }),
   );
   renderRoutesWithOwner(createRootRoute({ component: () => <LiveLocation tripId="trip-one" /> }), [
@@ -112,8 +126,9 @@ it("keeps a new source draft when an earlier list toggle finishes", async () => 
 it("shows deletion failure inside the confirmation dialog", async () => {
   server.use(
     http.get("*/api/trips/trip-one/live-location", () =>
-      HttpResponse.json([
+      HttpResponse.json<Api.LiveSessionResponse[]>([
         {
+          ...responseFixtures.LiveSessionResponse,
           id: "source-one",
           source: "person.synthetic",
           enabled: false,
@@ -123,7 +138,9 @@ it("shows deletion failure inside the confirmation dialog", async () => {
         },
       ]),
     ),
-    http.get("*/api/trips/trip-one/share-links", () => HttpResponse.json([])),
+    http.get("*/api/trips/trip-one/share-links", () =>
+      HttpResponse.json<Api.ShareLinkResponse[]>([]),
+    ),
     http.delete(
       "*/api/trips/trip-one/live-location/source-one/tracks",
       () => new HttpResponse(null, { status: 500 }),
@@ -142,8 +159,9 @@ it("shows the owner's absolute observation time with its zone", async () => {
   const observedAt = "2026-11-09T12:00:00Z";
   server.use(
     http.get("*/api/trips/trip-one/live-location", () =>
-      HttpResponse.json([
+      HttpResponse.json<Api.LiveSessionResponse[]>([
         {
+          ...responseFixtures.LiveSessionResponse,
           id: "source-one",
           source: "person.synthetic",
           enabled: true,
@@ -153,9 +171,11 @@ it("shows the owner's absolute observation time with its zone", async () => {
         },
       ]),
     ),
-    http.get("*/api/trips/trip-one/share-links", () => HttpResponse.json([])),
+    http.get("*/api/trips/trip-one/share-links", () =>
+      HttpResponse.json<Api.ShareLinkResponse[]>([]),
+    ),
     http.get("*/api/trips/trip-one/live-location/source-one/tracks", () =>
-      HttpResponse.json({
+      HttpResponse.json<Api.LiveTrackPage>({
         points: [{ id: "p1", latitude: 12.35, longitude: 45.68, observed_at: observedAt }],
         next: null,
       }),
@@ -167,13 +187,14 @@ it("shows the owner's absolute observation time with its zone", async () => {
   fireEvent.click(await screen.findByRole("button", { name: m.live_title() }));
   const absolute = formatInstant(new Date(observedAt));
   expect(absolute).toMatch(/(UTC|GMT|[A-Z]{3,5}|[+-]\d)$/);
-  expect(await screen.findByText(new RegExp(absolute))).toBeInTheDocument();
+  expect(await screen.findByText(absolute, { exact: false })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: m.live_inspect() }));
-  await waitFor(() => expect(screen.getAllByText(new RegExp(absolute))).toHaveLength(2));
+  await waitFor(() => expect(screen.getAllByText(absolute, { exact: false })).toHaveLength(2));
 });
 
 it("keeps stop controls usable without the sharing overview", async () => {
-  const row = {
+  const row: Api.LiveSessionResponse = {
+    ...responseFixtures.LiveSessionResponse,
     id: "source-one",
     source: "person.synthetic",
     enabled: true,
@@ -185,11 +206,15 @@ it("keeps stop controls usable without the sharing overview", async () => {
   };
   let stopped = false;
   server.use(
-    http.get("*/api/trips/trip-one/live-location", () => HttpResponse.json([row])),
-    http.get("*/api/trips/trip-one/share-links", () => HttpResponse.json([])),
+    http.get("*/api/trips/trip-one/live-location", () =>
+      HttpResponse.json<Api.LiveSessionResponse[]>([row]),
+    ),
+    http.get("*/api/trips/trip-one/share-links", () =>
+      HttpResponse.json<Api.ShareLinkResponse[]>([]),
+    ),
     http.put("*/api/trips/trip-one/live-location/source-one", async ({ request }) => {
       stopped = ((await request.json()) as { enabled: boolean }).enabled === false;
-      return HttpResponse.json(row);
+      return HttpResponse.json<Api.LiveSessionResponse>(row);
     }),
   );
   renderRoutesWithOwner(

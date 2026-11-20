@@ -1,3 +1,5 @@
+import { jsonResponse, fixtureResponse } from "@/mocks/response";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -227,9 +229,8 @@ it("reports denied saved-link storage without losing the trip, and asks again in
       throw new Error("denied");
     },
   });
-  const fetcher = vi.fn(
-    async (_input: RequestInfo | URL) =>
-      new Response(JSON.stringify(projection()), { headers: { "Content-Language": "nl" } }),
+  const fetcher = vi.fn(async (_input: RequestInfo | URL) =>
+    jsonResponse<Api.ProjectionDocument>(projection(), { headers: { "Content-Language": "nl" } }),
   );
   serveApi(fetcher);
   render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
@@ -255,7 +256,7 @@ it("sets a long authored trip title in a smaller, looser heading than a short on
     [short, false],
     [long, true],
   ] as const) {
-    serveApi(vi.fn(async () => new Response(JSON.stringify(data))));
+    serveApi(vi.fn(async () => jsonResponse<Api.ProjectionDocument>(data)));
     const view = render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
     const heading = await screen.findByRole("heading", { level: 1, name: data.title ?? "" });
     expect(heading.classList.contains("text-travel-title-long")).toBe(looser);
@@ -298,18 +299,17 @@ it.each(["/", "/trips/"])(
   "translates public cards at %s without changing slug paths",
   async (path) => {
     serveApi(
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify([
-              {
-                slug: "authored-slug",
-                title: "Mijn reis",
-                summary: null,
-                dates: projection().dates,
-              },
-            ]),
-          ),
+      vi.fn(async () =>
+        jsonResponse<Api.PublicTripCard[]>([
+          {
+            cover: null,
+            summary_text: null,
+            slug: "authored-slug",
+            title: "Mijn reis",
+            summary: null,
+            dates: projection().dates,
+          },
+        ]),
       ),
     );
     render(<VisitorRoutes initialEntries={[path]} />);
@@ -323,11 +323,16 @@ it.each(["/", "/trips/"])(
 it.each(["invalid", "revoked", "expired"])(
   "keeps an unavailable %s share ambiguous in both languages",
   async (reason) => {
-    const fetcher = vi.fn(
-      async (_input: RequestInfo | URL, _init?: RequestInit) =>
-        new Response(JSON.stringify({ detail: reason, errors: [{ code: reason }] }), {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      fixtureResponse(
+        /* Fixture exception: Error or persistence-control fixture; no successful Travel record is consumed. */ {
+          detail: reason,
+          errors: [{ code: reason }],
+        },
+        {
           status: 404,
-        }),
+        },
+      ),
     );
     const sent = serveApi(fetcher);
     rememberSharedTrip(token, projection());
@@ -348,7 +353,7 @@ it.each(["invalid", "revoked", "expired"])(
 );
 
 it("retries a visitor network failure in the current locale", async () => {
-  const fetcher = vi.fn(async () => new Response(JSON.stringify(projection())));
+  const fetcher = vi.fn(async () => jsonResponse<Api.ProjectionDocument>(projection()));
   fetcher.mockRejectedValueOnce(new Error("private network diagnostic"));
   fetcher.mockRejectedValueOnce(new Error("private network diagnostic"));
   serveApi(fetcher);
@@ -372,8 +377,8 @@ it("keeps a saved shortcut visible when forgetting is denied and translates its 
     },
   });
   server.use(
-    http.get("/api/public/trips", () => HttpResponse.json([])),
-    http.get(`/api/shared/${token}`, () => HttpResponse.json(projection())),
+    http.get("/api/public/trips", () => HttpResponse.json<Api.PublicTripCard[]>([])),
+    http.get(`/api/shared/${token}`, () => HttpResponse.json<Api.ProjectionDocument>(projection())),
   );
   render(<VisitorRoutes initialEntries={["/"]} />);
   await screen.findByRole("heading", { name: "Authored reis" });

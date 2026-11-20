@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -66,7 +68,12 @@ const savedLocation = {
 } as Location;
 // A created stay comes back with the area its location was filed under.
 const createdStay = {
-  create: (body: Record<string, unknown>, count: number) => ({ id: `new-${count}`, area, ...body }),
+  create: (body: Record<string, unknown>, count: number) => ({
+    ...responseFixtures.StayResponse,
+    id: `new-${count}`,
+    area,
+    ...body,
+  }),
 };
 const stay = (id: string, name: string): Stay => ({
   notes_html: null,
@@ -118,15 +125,26 @@ const confirmDelete = () =>
 
 it("keeps an exact looked-up stay place private until the stay is saved", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/locations", []);
-  api.on("POST", /\/places\/search$/, () => ({
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
+  api.on<Api.PlaceSearchResponse>("POST", /\/places\/search$/, () => ({
+    provider: "synthetic",
     attribution: "© OpenStreetMap contributors",
     attribution_url: "https://www.openstreetmap.org/copyright",
     results: [
       {
+        address_line2: null,
+        admin_area: null,
+        postal_code: null,
+        local_name: null,
+        name_nl: null,
+        name_en: null,
+        viewport_north: null,
+        viewport_south: null,
+        viewport_east: null,
+        viewport_west: null,
         osm_element_type: "node",
         osm_element_id: "42",
         display_name: "Hotel Taipei",
@@ -166,11 +184,11 @@ it("keeps an exact looked-up stay place private until the stay is saved", async 
 
 it("reuses a saved location for a new stay instead of copying its address", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/locations", [savedLocation]);
-  api.on("GET", /\/locations\?q=Brussels&limit=50$/, () => [savedLocation]);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [savedLocation]);
+  api.on<Api.LocationResponse[]>("GET", /\/locations\?q=Brussels&limit=50$/, () => [savedLocation]);
   renderPlan();
   await startNew("Nieuw verblijf");
   fireEvent.change(await screen.findByLabelText("Gebruik een bestaande locatie"), {
@@ -190,12 +208,12 @@ it("reuses a saved location for a new stay instead of copying its address", asyn
 
 it("keeps a stay's saved location when a hotel detail is corrected", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [
       { ...stay("s1", "Airport hotel"), location: savedLocation },
     ])
-    .collection("/api/trips/trip/locations", [savedLocation]);
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [savedLocation]);
   renderPlan();
   fireEvent.click(await agendaRow("Verblijf: Airport hotel"));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
@@ -211,10 +229,10 @@ it("keeps a stay's saved location when a hotel detail is corrected", async () =>
 
 it("opens a stay in private detail before editing, prefilled", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [stay("s1", "Hotel")])
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [stay("s1", "Hotel")])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   fireEvent.click(await agendaRow("Verblijf: Hotel"));
   expect(screen.getByText("Boekingsreferentie: ABC")).toBeTruthy();
@@ -233,10 +251,13 @@ it("opens a stay in private detail before editing, prefilled", async () => {
 
 it("shows an edited stay and removes a deleted one without a reload", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [stay("s1", "Hotel"), stay("s2", "Hostel")])
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [
+      stay("s1", "Hotel"),
+      stay("s2", "Hostel"),
+    ])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   fireEvent.click(await agendaRow("Verblijf: Hotel"));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
@@ -264,11 +285,11 @@ it("lists a stored group of ideas as alternatives, never groups ideas by itself,
   });
   const ideas = [idea("i1", "Hotel A"), idea("i2", "Hotel B")];
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [...ideas, stay("s1", "Hotel C")])
-    .collection("/api/trips/trip/locations", [])
-    .collection("/api/trips/trip/alternative-groups", [
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [...ideas, stay("s1", "Hotel C")])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [])
+    .collection<Api.AlternativeGroupResponse>("/api/trips/trip/alternative-groups", [
       {
         id: "g1",
         kind: "stay",
@@ -301,14 +322,14 @@ it("lists a stored group of ideas as alternatives, never groups ideas by itself,
 it("offers to cancel the rejected ideas once a stay for the same nights is chosen", async () => {
   const idea = (id: string, name: string): Stay => ({ ...stay(id, name), status: "idea" });
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [
       idea("i1", "Hotel A"),
       idea("i2", "Hotel B"),
       stay("s1", "Hotel C"),
     ])
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   fireEvent.click(await agendaRow("Verblijf: Hotel C"));
   expect(screen.getByText("2 ideeën overlappen deze nachten.")).toBeTruthy();
@@ -324,10 +345,10 @@ it("offers to cancel the rejected ideas once a stay for the same nights is chose
 
 it("creates a stay idea without warning about overlapping stays", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [stay("s1", "Hotel")], createdStay)
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [stay("s1", "Hotel")], createdStay)
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   await startNew("Nieuw verblijf");
   expect(screen.getByText(/Deze nachten overlappen met/)).toBeTruthy();
@@ -348,10 +369,10 @@ it("creates a stay idea without warning about overlapping stays", async () => {
 
 it("rewrites a stay's place only when a place field changed", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [stay("s1", "Hotel")])
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [stay("s1", "Hotel")])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   fireEvent.click(await agendaRow("Verblijf: Hotel"));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
@@ -366,10 +387,10 @@ it("rewrites a stay's place only when a place field changed", async () => {
 
 it("keeps check-out after check-in and moves it along with the first night", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   await startNew("Nieuw verblijf");
   fireEvent.change(screen.getByLabelText("Eerste nacht (inchecken)"), {
@@ -390,11 +411,15 @@ it("keeps check-out after check-in and moves it along with the first night", asy
 
 it("sets who sees a stay from its own detail, with the same control as everywhere", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [stay("s1", "Hotel")])
-    .collection("/api/trips/trip/locations", []);
-  api.on("PUT", /\/visibility\/stay\/s1$/, (body) => body);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [stay("s1", "Hotel")])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
+  api.on<Api.VisibilityUpdate>(
+    "PUT",
+    /\/visibility\/stay\/s1$/,
+    (body) => body as Api.VisibilityUpdate,
+  );
   renderPlan();
   fireEvent.click(await agendaRow("Verblijf: Hotel"));
   expect(selectedOption("Zichtbaarheid van Hotel")).toBe("Privé — alleen ik");
@@ -408,10 +433,10 @@ it("sets who sees a stay from its own detail, with the same control as everywher
 
 it("lets the owner choose how precisely visitors see a stay's nights", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   await startNew("Nieuw verblijf");
   // A new stay follows the audience, which also limits its dates; the coarser choice applies.
@@ -429,10 +454,10 @@ it("lets the owner choose how precisely visitors see a stay's nights", async () 
 
 it("lets a stay follow the audience's date precision, sending null", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   await startNew("Nieuw verblijf");
   expect(
@@ -449,10 +474,10 @@ it("lets a stay follow the audience's date precision, sending null", async () =>
 
 it("refuses a stay with neither an area nor an accommodation, then files it under its area alone", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   await startNew("Nieuw verblijf");
   fireEvent.click(screen.getByRole("button", { name: "Verblijf toevoegen" }));
@@ -470,10 +495,10 @@ it("refuses a stay with neither an area nor an accommodation, then files it unde
 
 it("accepts a typed address without choosing an area, deriving the area from its city", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   await startNew("Nieuw verblijf");
   fireEvent.change(screen.getByLabelText("Adres (optioneel)"), {
@@ -491,11 +516,13 @@ it("accepts a typed address without choosing an area, deriving the area from its
 
 it("chooses the accommodation later and can go back to not having one", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [{ ...stay("s1", "Hotel"), property_name: null }])
-    .collection("/api/trips/trip/locations", [savedLocation]);
-  api.on("GET", /\/locations\?q=Brussels&limit=50$/, () => [savedLocation]);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [
+      { ...stay("s1", "Hotel"), property_name: null },
+    ])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [savedLocation]);
+  api.on<Api.LocationResponse[]>("GET", /\/locations\?q=Brussels&limit=50$/, () => [savedLocation]);
   renderPlan();
   fireEvent.click(await agendaRow("Verblijf: Nog te kiezen in Taipei"));
   expect(screen.getByText("Accommodatie nog niet gekozen · Taipei")).toBeTruthy();
@@ -518,15 +545,26 @@ it("chooses the accommodation later and can go back to not having one", async ()
 
 it("adds an exact location to an area-only stay by searching for its property name", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [stay("s1", "Hotel Idea")])
-    .collection("/api/trips/trip/locations", []);
-  api.on("POST", /\/places\/search$/, () => ({
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [stay("s1", "Hotel Idea")])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
+  api.on<Api.PlaceSearchResponse>("POST", /\/places\/search$/, () => ({
+    provider: "synthetic",
     attribution: "© OpenStreetMap contributors",
     attribution_url: "https://www.openstreetmap.org/copyright",
     results: [
       {
+        address_line2: null,
+        admin_area: null,
+        postal_code: null,
+        local_name: null,
+        name_nl: null,
+        name_en: null,
+        viewport_north: null,
+        viewport_south: null,
+        viewport_east: null,
+        viewport_west: null,
         osm_element_type: "node",
         osm_element_id: "7",
         display_name: "Hotel Idea",
@@ -557,12 +595,12 @@ it("adds an exact location to an area-only stay by searching for its property na
 
 it("returns a stay with an accommodation to its area alone", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [
       { ...stay("s1", "Airport hotel"), location: savedLocation },
     ])
-    .collection("/api/trips/trip/locations", [savedLocation]);
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [savedLocation]);
   renderPlan();
   fireEvent.click(await agendaRow("Verblijf: Airport hotel"));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
@@ -577,10 +615,10 @@ it("returns a stay with an accommodation to its area alone", async () => {
 
 it("warns, without blocking, when a stay's nights overlap another stay", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [stay("s1", "Hotel")], createdStay)
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [stay("s1", "Hotel")], createdStay)
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   await startNew("Nieuw verblijf");
   expect(screen.getByText(/Deze nachten overlappen met Hotel/)).toBeTruthy();
@@ -592,10 +630,12 @@ it("warns, without blocking, when a stay's nights overlap another stay", async (
 
 it("names the location a stay is already linked to when editing it", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [{ ...stay("s1", "Hotel"), location: savedLocation }])
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [
+      { ...stay("s1", "Hotel"), location: savedLocation },
+    ])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   fireEvent.click(await agendaRow("Verblijf: Hotel"));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
@@ -604,12 +644,12 @@ it("names the location a stay is already linked to when editing it", async () =>
 
 it("links a hotel confirmation to a stay, shows it in the detail and detaches it again", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [stay("s1", "Hotel")], {
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [stay("s1", "Hotel")], {
       update: (row, body) => ({ ...row, ...body }),
     })
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   fireEvent.click(await agendaRow("Verblijf: Hotel"));
   expect(screen.queryByText("Gekoppelde documenten")).toBeNull();
@@ -638,10 +678,10 @@ it("links a hotel confirmation to a stay, shows it in the detail and detaches it
 
 it("sends the documents chosen for a new stay", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [ticket])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [], createdStay)
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [ticket])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [], createdStay)
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   await startNew("Nieuw verblijf");
   await chooseArea("Taipei");
@@ -653,10 +693,10 @@ it("sends the documents chosen for a new stay", async () => {
 
 it("offers no document picker for a stay when the trip has no document", async () => {
   api = fakeApi()
-    .collection("/api/documents?trip_id=trip", [])
-    .collection("/api/trips/trip/areas", [area])
-    .collection("/api/trips/trip/stays", [stay("s1", "Hotel")])
-    .collection("/api/trips/trip/locations", []);
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [area])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [stay("s1", "Hotel")])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", []);
   renderPlan();
   fireEvent.click(await agendaRow("Verblijf: Hotel"));
   fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));

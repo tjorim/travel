@@ -1,3 +1,5 @@
+import { jsonResponse, fixtureResponse } from "@/mocks/response";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto";
 import { createRootRoute, createRoute } from "@tanstack/react-router";
@@ -74,8 +76,18 @@ const path = (resource: string) =>
   resource === "documents" ? "/api/documents?trip_id=trip" : `/api/trips/trip/${resource}`;
 
 let api: FakeApi;
-function seed(overrides: Record<string, unknown[]> = {}) {
-  const collections: Record<string, unknown[]> = {
+type SeedRecords = {
+  locations: Api.LocationResponse[];
+  areas: Api.AreaResponse[];
+  routes: Api.RouteResponse[];
+  stays: Api.StayResponse[];
+  visits: Api.VisitResponse[];
+  "trip-tasks": Api.TripTaskResponse[];
+  documents: Api.DocumentResponse[];
+  media: Api.MediaAssetResponse[];
+};
+function seed(overrides: Partial<SeedRecords> = {}) {
+  const collections: SeedRecords = {
     locations: [],
     areas: [],
     routes: [],
@@ -87,10 +99,12 @@ function seed(overrides: Record<string, unknown[]> = {}) {
     ...overrides,
   };
   api = fakeApi();
-  api.collection("/api/trips", [trip as never]);
-  api.collection("/api/trips/trip/travel-updates", trip.travel_updates);
+  api.collection<Api.TripSummaryResponse>("/api/trips", [
+    { ...trip, travel_update_count: trip.travel_updates.length, last_update_at: null },
+  ]);
+  api.collection<Api.TravelUpdateResponse>("/api/trips/trip/travel-updates", trip.travel_updates);
   for (const [resource, rows] of Object.entries(collections))
-    api.collection(path(resource), rows as never[]);
+    api.collection<SeedRecords[keyof SeedRecords][number]>(path(resource), rows);
 }
 const renderDetail = () => renderRoutesWithOwner(routeTree, ["/trips/trip/details"]);
 
@@ -108,18 +122,73 @@ it("shows the whole private trip once every read has arrived", async () => {
   seed({
     stays: [
       {
+        check_in_time: null,
+        check_out_time: null,
+        website_url: null,
+        contact_details: null,
+        notes: null,
+        document_asset_ids: [],
+        visibility: "private",
+        share_date_precision: null,
+        notes_html: null,
+        contact_details_html: null,
         id: "s1",
         check_in_date: "2054-11-16",
         check_out_date: "2054-11-18",
         status: "confirmed",
         property_name: "Hotel Royal",
-        location: {},
-        area: { label: "Taipei" },
+        location: {
+          osm_element_type: null,
+          osm_element_id: null,
+          display_name: null,
+          address_line1: null,
+          address_line2: null,
+          locality: null,
+          admin_area: null,
+          postal_code: null,
+          country_code: null,
+          latitude: null,
+          longitude: null,
+          viewport_north: null,
+          viewport_south: null,
+          viewport_east: null,
+          viewport_west: null,
+          navigation_provider: null,
+          navigation_provider_place_id: null,
+          notes: null,
+          label: null,
+          label_nl: null,
+          label_en: null,
+          local_name: null,
+          area_id: "synthetic",
+          share_address: false,
+          id: "synthetic",
+          visibility: "private",
+          osm_url: null,
+          notes_html: null,
+        },
+        area: {
+          label_nl: null,
+          label_en: null,
+          local_name: null,
+          country_code: null,
+          region: null,
+          latitude: null,
+          longitude: null,
+          timezone: null,
+          id: "synthetic",
+          visibility: "private",
+          label: "Taipei",
+        },
         booking_reference: "ABC",
       },
     ],
     "trip-tasks": [
       {
+        remind_at: null,
+        reminded_at: null,
+        created_at: "2054-01-01T00:00:00Z",
+        notes_html: null,
         id: "t1",
         title: "Visum regelen",
         due_date: null,
@@ -145,6 +214,29 @@ it("shows a saved location's own name instead of its repeated locality", async (
   seed({
     locations: [
       {
+        osm_element_type: null,
+        osm_element_id: null,
+        address_line1: null,
+        address_line2: null,
+        admin_area: null,
+        postal_code: null,
+        latitude: null,
+        longitude: null,
+        viewport_north: null,
+        viewport_south: null,
+        viewport_east: null,
+        viewport_west: null,
+        navigation_provider: null,
+        navigation_provider_place_id: null,
+        notes: null,
+        label_nl: null,
+        label_en: null,
+        local_name: null,
+        area_id: "synthetic",
+        share_address: false,
+        visibility: "private",
+        osm_url: null,
+        notes_html: null,
         id: "l1",
         label: "Longshan Temple",
         display_name: null,
@@ -163,6 +255,26 @@ it("shows saved travel context and update media in the private overview", async 
   seed({
     locations: [
       {
+        osm_element_type: null,
+        osm_element_id: null,
+        display_name: null,
+        latitude: null,
+        longitude: null,
+        viewport_north: null,
+        viewport_south: null,
+        viewport_east: null,
+        viewport_west: null,
+        navigation_provider: null,
+        navigation_provider_place_id: null,
+        notes: null,
+        label_nl: null,
+        label_en: null,
+        local_name: null,
+        area_id: "synthetic",
+        share_address: false,
+        visibility: "private",
+        osm_url: null,
+        notes_html: null,
         id: "l1",
         label: "Hotel",
         address_line1: "Main Street 1",
@@ -175,6 +287,15 @@ it("shows saved travel context and update media in the private overview", async 
     ],
     stays: [
       {
+        website_url: null,
+        booking_reference: null,
+        contact_details: null,
+        notes: null,
+        document_asset_ids: [],
+        visibility: "private",
+        share_date_precision: null,
+        notes_html: null,
+        contact_details_html: null,
         id: "s1",
         check_in_date: "2054-11-16",
         check_out_date: "2054-11-18",
@@ -182,18 +303,90 @@ it("shows saved travel context and update media in the private overview", async 
         check_out_time: "10:00:00",
         status: "confirmed",
         property_name: "Hotel Royal",
-        location: {},
-        area: { label: "Taipei", timezone: "Asia/Taipei" },
+        location: {
+          osm_element_type: null,
+          osm_element_id: null,
+          display_name: null,
+          address_line1: null,
+          address_line2: null,
+          locality: null,
+          admin_area: null,
+          postal_code: null,
+          country_code: null,
+          latitude: null,
+          longitude: null,
+          viewport_north: null,
+          viewport_south: null,
+          viewport_east: null,
+          viewport_west: null,
+          navigation_provider: null,
+          navigation_provider_place_id: null,
+          notes: null,
+          label: null,
+          label_nl: null,
+          label_en: null,
+          local_name: null,
+          area_id: "synthetic",
+          share_address: false,
+          id: "synthetic",
+          visibility: "private",
+          osm_url: null,
+          notes_html: null,
+        },
+        area: {
+          label_nl: null,
+          label_en: null,
+          local_name: null,
+          country_code: null,
+          region: null,
+          latitude: null,
+          longitude: null,
+          id: "synthetic",
+          visibility: "private",
+          label: "Taipei",
+          timezone: "Asia/Taipei",
+        },
       },
     ],
     routes: [
       {
+        label_nl: null,
+        label_en: null,
+        booking_reference: null,
+        notes: null,
+        document_asset_ids: [],
+        visibility: "private",
+        notes_html: null,
         id: "r1",
         mode: "flight",
         status: "confirmed",
         label: "BR76",
-        departure_area: { label: "Amsterdam" },
-        arrival_area: { label: "Taipei" },
+        departure_area: {
+          label_nl: null,
+          label_en: null,
+          local_name: null,
+          country_code: null,
+          region: null,
+          latitude: null,
+          longitude: null,
+          timezone: null,
+          id: "synthetic",
+          visibility: "private",
+          label: "Amsterdam",
+        },
+        arrival_area: {
+          label_nl: null,
+          label_en: null,
+          local_name: null,
+          country_code: null,
+          region: null,
+          latitude: null,
+          longitude: null,
+          timezone: null,
+          id: "synthetic",
+          visibility: "private",
+          label: "Taipei",
+        },
         departure_location: null,
         arrival_location: null,
         departs_on: "2054-11-16",
@@ -209,6 +402,9 @@ it("shows saved travel context and update media in the private overview", async 
     ],
     "trip-tasks": [
       {
+        reminded_at: null,
+        created_at: "2054-01-01T00:00:00Z",
+        notes_html: null,
         id: "t1",
         title: "Visum regelen",
         due_date: null,
@@ -220,6 +416,12 @@ it("shows saved travel context and update media in the private overview", async 
     ],
     media: [
       {
+        content_type: "synthetic",
+        captured_local: false,
+        created_at: "2054-01-01T00:00:00Z",
+        deleted_at: null,
+        camera_make: null,
+        camera_model: null,
         id: "p1",
         media_kind: "photo",
         byte_size: 200,
@@ -231,10 +433,14 @@ it("shows saved travel context and update media in the private overview", async 
       },
     ],
   });
-  api.collection("/api/trips/trip/travel-updates", [
+  api.collection<Api.TravelUpdateResponse>("/api/trips/trip/travel-updates", [
     { ...trip.travel_updates[0], media_asset_ids: ["p1"] },
   ]);
-  api.on("GET", /\/media\/p1\/thumbnail$/, () => "image");
+  api.on<object | string>(
+    /* Fixture exception: File/thumbnail transport sentinel; no JSON API record. */ "GET",
+    /\/media\/p1\/thumbnail$/,
+    () => "image",
+  );
   renderDetail();
   await screen.findByRole("heading", { name: "Exampleland" });
   expect(screen.getByText("Drie weken")).toBeTruthy();
@@ -271,10 +477,18 @@ it("shows a loading state, then an error rather than half a trip when one read f
     vi.fn((url: string) =>
       Promise.resolve(
         url === "/api/trips"
-          ? new Response(JSON.stringify([trip]), { status: 200 })
+          ? jsonResponse<Api.TripSummaryResponse[]>(
+              [{ ...trip, travel_update_count: trip.travel_updates.length, last_update_at: null }],
+              { status: 200 },
+            )
           : url.startsWith("/api/documents")
-            ? new Response(JSON.stringify({ detail: "kapot" }), { status: 500 })
-            : new Response("[]", { status: 200 }),
+            ? fixtureResponse(
+                /* Fixture exception: Error or persistence-control fixture; no successful Travel record is consumed. */ {
+                  detail: "kapot",
+                },
+                { status: 500 },
+              )
+            : jsonResponse<never[]>([], { status: 200 }),
       ),
     ),
   );
@@ -288,7 +502,7 @@ it("shows a loading state, then an error rather than half a trip when one read f
 
 it("says so when the trip does not exist, and reads nothing for it", async () => {
   seed();
-  api.collection("/api/trips", []);
+  api.collection<Api.TripSummaryResponse>("/api/trips", []);
   renderDetail();
   await screen.findByText("Reis niet gevonden");
   expect(api.requests.filter((request) => request.includes("/api/trips/trip/"))).toEqual([]);
@@ -300,6 +514,9 @@ it("opens a private document with the authenticated download", async () => {
   seed({
     documents: [
       {
+        content_type: "synthetic",
+        trip_id: null,
+        created_at: "2054-01-01T00:00:00Z",
         id: "d1",
         title: "Vliegticket",
         document_kind: "booking",
@@ -309,7 +526,11 @@ it("opens a private document with the authenticated download", async () => {
       },
     ],
   });
-  api.on("GET", /\/documents\/d1\/original$/, () => "pdf");
+  api.on<object | string>(
+    /* Fixture exception: File/thumbnail transport sentinel; no JSON API record. */ "GET",
+    /\/documents\/d1\/original$/,
+    () => "pdf",
+  );
   renderDetail();
   fireEvent.click(await screen.findByRole("button", { name: "Document openen" }));
   await waitFor(() => expect(open).toHaveBeenCalledWith("blob:doc", "_blank", "noopener"));
@@ -321,6 +542,9 @@ it("reports a document that cannot be opened without leaving the page", async ()
   seed({
     documents: [
       {
+        content_type: "synthetic",
+        trip_id: null,
+        created_at: "2054-01-01T00:00:00Z",
         id: "d1",
         title: "Vliegticket",
         document_kind: "booking",
@@ -330,13 +554,22 @@ it("reports a document that cannot be opened without leaving the page", async ()
       },
     ],
   });
-  api.on("GET", /\/documents\/d1\/original$/, () => {
-    throw new Error("unused");
-  });
+  api.on<object | string>(
+    /* Fixture exception: File/thumbnail transport sentinel; no JSON API record. */ "GET",
+    /\/documents\/d1\/original$/,
+    () => {
+      throw new Error("unused");
+    },
+  );
   // Layered over the default API: only the download fails, everything else falls through.
   serveApi((url) =>
     url.endsWith("/original")
-      ? new Response(JSON.stringify({ detail: "Bestand ontbreekt." }), { status: 404 })
+      ? fixtureResponse(
+          /* Fixture exception: Error or persistence-control fixture; no successful Travel record is consumed. */ {
+            detail: "Bestand ontbreekt.",
+          },
+          { status: 404 },
+        )
       : undefined,
   );
   renderDetail();

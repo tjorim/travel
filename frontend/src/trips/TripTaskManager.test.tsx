@@ -1,3 +1,5 @@
+import { jsonResponse } from "@/mocks/response";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { createRootRoute } from "@tanstack/react-router";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -51,7 +53,7 @@ type Api = {
 };
 let api: Api;
 
-function json(value: unknown, status = 200) {
+function json<T = never>(value: NoInfer<T>, status = 200) {
   return Promise.resolve(new Response(JSON.stringify(value), { status }));
 }
 
@@ -70,20 +72,24 @@ beforeEach(() => {
       if (method !== "GET" && api.failNext) {
         const failure = api.failNext;
         api.failNext = null;
-        return json(failure.body, failure.status);
+        return json<unknown>(
+          /* Fixture exception: Error fixture preserves server diagnostics for failure handling. */ failure.body,
+          failure.status,
+        );
       }
       const body = init.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
-      if (url.endsWith("/visits")) return json([]);
-      if (url.endsWith("/stays")) return json([] as Stay[]);
-      if (url.endsWith("/routes")) return json([] as Route[]);
-      if (url.endsWith("/task-alerts")) return json(api.alerts);
-      if (url.endsWith("/trip-tasks") && method === "GET") return json(api.tasks);
+      if (url.endsWith("/visits")) return json<Api.VisitResponse[]>([]);
+      if (url.endsWith("/stays")) return json<Api.StayResponse[]>([] as Stay[]);
+      if (url.endsWith("/routes")) return json<Api.RouteResponse[]>([] as Route[]);
+      if (url.endsWith("/task-alerts")) return json<Api.TripTaskAlertResponse[]>(api.alerts);
+      if (url.endsWith("/trip-tasks") && method === "GET")
+        return json<Api.TripTaskResponse[]>(api.tasks);
       if (url.endsWith("/trip-tasks") && method === "POST") {
         const created = task(`new-${api.tasks.length}`, String(body.title), {
           notes: (body.notes as string | null) ?? null,
         });
         api.tasks = [...api.tasks, created];
-        return json(created, 201);
+        return json<Api.TripTaskResponse>(created, 201);
       }
       const match = /trip-tasks\/([^/]+)$/.exec(url);
       if (match && method === "PATCH") {
@@ -98,7 +104,7 @@ beforeEach(() => {
               }
             : item,
         );
-        return json(api.tasks.find((item) => item.id === match[1]));
+        return json<Api.TripTaskResponse>(api.tasks.find((item) => item.id === match[1])!);
       }
       if (match && method === "DELETE") {
         api.tasks = api.tasks.filter((item) => item.id !== match[1]);
@@ -263,7 +269,7 @@ it("disables submit while saving and asks before discarding a dirty form", async
     init.method === "POST"
       ? new Promise<Response>((resolve) => {
           release = () =>
-            resolve(new Response(JSON.stringify(task("z", "Nieuw")), { status: 201 }));
+            resolve(jsonResponse<Api.TripTaskResponse>(task("z", "Nieuw"), { status: 201 }));
         })
       : undefined,
   );

@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
 import { message } from "./messages";
@@ -65,7 +66,12 @@ for (const fail of [false, true]) {
       await route.fulfill({
         status: fail ? 500 : 200,
         contentType: "application/json",
-        body: JSON.stringify(fail ? {} : { ...ownerTrip, title: "Synthetic submitted A" }),
+        body: fail
+          ? "{}"
+          : JSON.stringify({
+              ...ownerTrip,
+              title: "Synthetic submitted A",
+            } satisfies Api.TripResponse),
       });
     });
     await page.setViewportSize({ width: 390, height: 844 });

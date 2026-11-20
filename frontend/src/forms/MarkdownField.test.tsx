@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { useForm } from "@tanstack/react-form";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -68,7 +69,7 @@ it("previews the server's rendering of the current text", async () => {
   server.use(
     http.post("/api/markdown/render", async ({ request }) => {
       sent.push(await request.json());
-      return HttpResponse.json({
+      return HttpResponse.json<Api.MarkdownRenderResponse>({
         html: "<table><tbody><tr><td><strong>Day 1</strong></td></tr></tbody></table>",
         text: "Day 1",
       });
@@ -89,7 +90,14 @@ it("previews the server's rendering of the current text", async () => {
 
 it("says so when the preview cannot be rendered", async () => {
   server.use(
-    http.post("/api/markdown/render", () => HttpResponse.json({ detail: "Nope" }, { status: 422 })),
+    http.post("/api/markdown/render", () =>
+      HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+          detail: "Nope",
+        },
+        { status: 422 },
+      ),
+    ),
   );
   withOwner(<Editor initial="x" format="contact" />);
   fireEvent.click(screen.getByRole("button", { name: "Voorbeeld" }));
@@ -101,7 +109,10 @@ it("says so when the preview cannot be rendered", async () => {
 it("renders the preview in the language the field is written in", async () => {
   server.use(
     http.post("/api/markdown/render", () =>
-      HttpResponse.json({ html: "<p>It <strong>rained</strong></p>", text: "It rained" }),
+      HttpResponse.json<Api.MarkdownRenderResponse>({
+        html: "<p>It <strong>rained</strong></p>",
+        text: "It rained",
+      }),
     ),
   );
   const view = withOwner(<Editor initial="It **rained**" lang="en" />);

@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -7,7 +8,7 @@ import { fakeApi, type FakeApi } from "../query/fake-api";
 import { noticeMessage } from "../query/feedback";
 import type { MessageNotice, ErrorNotice } from "../query/feedback";
 import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils";
-import type { Area, Route, Stay, Trip, Visit } from "../api-types";
+import type { Area, Trip } from "../api-types";
 import { RouteEditor } from "./routes/RouteEditor";
 import { StayEditor } from "./stays/StayEditor";
 import { VisitEditor } from "./visits/VisitEditor";
@@ -68,8 +69,17 @@ const visit = {
   notes_html: null,
   summary_html: null,
   possible_route_duplicates: [],
-} as Visit;
+} satisfies Api.VisitResponse;
 const stay = {
+  check_in_time: null,
+  check_out_time: null,
+  website_url: null,
+  booking_reference: null,
+  contact_details: null,
+  notes: null,
+  share_date_precision: null,
+  notes_html: null,
+  contact_details_html: null,
   id: "s1",
   check_in_date: "2054-11-16",
   check_out_date: "2054-11-18",
@@ -79,8 +89,19 @@ const stay = {
   area: taipei,
   visibility: "private",
   document_asset_ids: [],
-} as unknown as Stay;
+} satisfies Api.StayResponse;
 const route = {
+  label_nl: null,
+  label_en: null,
+  departure_timezone: null,
+  arrival_timezone: null,
+  carrier: null,
+  service_reference: null,
+  travel_class: null,
+  booking_reference: null,
+  notes: null,
+  geometry: null,
+  notes_html: null,
   id: "r1",
   mode: "train",
   status: "planned",
@@ -94,20 +115,20 @@ const route = {
   arrival_location: null,
   visibility: "private",
   document_asset_ids: [],
-} as unknown as Route;
+} satisfies Api.RouteResponse;
 
 let api: FakeApi;
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
   api = fakeApi()
-    .collection("/api/trips/trip/visits", [visit])
-    .collection("/api/trips/trip/stays", [stay])
-    .collection("/api/trips/trip/routes", [route])
-    .collection("/api/trips/trip/areas", [taipei])
-    .collection("/api/trips/trip/locations", [])
-    .collection("/api/documents?trip_id=trip", [])
-    .collection("/api/trips/trip/alternative-groups", [])
-    .on("POST", /\/api\/trips\/trip\/visits\/route-check$/, () => []);
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", [visit])
+    .collection<Api.StayResponse>("/api/trips/trip/stays", [stay])
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", [route])
+    .collection<Api.AreaResponse>("/api/trips/trip/areas", [taipei])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [])
+    .collection<Api.DocumentResponse>("/api/documents?trip_id=trip", [])
+    .collection<Api.AlternativeGroupResponse>("/api/trips/trip/alternative-groups", [])
+    .on<Api.RouteReference[]>("POST", /\/api\/trips\/trip\/visits\/route-check$/, () => []);
 });
 afterEach(async () => {
   cleanup();

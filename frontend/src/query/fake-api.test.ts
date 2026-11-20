@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { expect, it } from "vitest";
 
@@ -12,7 +13,7 @@ it("reads a text in the content language of the record that carries it", () => {
 });
 
 it("resolves a collection's title in its content language when it is created or changed", async () => {
-  const api = fakeApi().collection("/api/collections", []).install();
+  const api = fakeApi().collection<Api.CollectionResponse>("/api/collections", []).install();
   const sent = (method: string, path: string, body: unknown) =>
     fetch(path, {
       method,
@@ -33,8 +34,24 @@ it("resolves a collection's title in its content language when it is created or 
 
 it("keeps a title cleared in both languages cleared", async () => {
   const api = fakeApi()
-    .collection("/api/collections", [
-      { id: "c1", label: "Family", title: "Old", title_nl: "Old", title_en: null },
+    .collection<Api.CollectionResponse>("/api/collections", [
+      {
+        content_language: "nl",
+        state: "draft",
+        token: null,
+        expires_at: null,
+        rotations: 0,
+        created_at: "2054-01-01T00:00:00Z",
+        updated_at: "2054-01-01T00:00:00Z",
+        activated_at: null,
+        revoked_at: null,
+        members: [],
+        id: "c1",
+        label: "Family",
+        title: "Old",
+        title_nl: "Old",
+        title_en: null,
+      },
     ])
     .install();
   const response = await fetch("/api/collections/c1", {

@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { message } from "./messages";
@@ -12,7 +13,7 @@ for (const locale of ["nl", "en"] as const) {
         await choosePreferences(page, locale, theme);
         await page.setViewportSize({ width, height: 900 });
         await page.route(`**/api/trips/${ownerTrip.id}/trip-tasks`, (route) =>
-          route.fulfill({ json: [overdueTask] }),
+          route.fulfill({ json: [overdueTask] satisfies Api.TripTaskResponse[] }),
         );
         await page.goto(`/admin/trips/${ownerTrip.id}/overview`);
         const overdue = page.getByRole("link", {

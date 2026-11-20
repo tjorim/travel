@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { choosePreferences, mockApi } from "./mock-api";
@@ -5,17 +6,19 @@ import { choosePreferences, mockApi } from "./mock-api";
 // Synthetic photos only: a landscape, a portrait and a very wide frame, repeated across updates of 1, 3 and 8 photos.
 const frame = (index: number) =>
   index === 2 ? [2400, 400] : index % 2 ? [600, 1200] : [1600, 900];
-const photo = (index: number, update: string) => ({
-  id: `media-${index}`,
-  image: { id: `media-${index}` },
-  alt_text: `Synthetic photo ${index}`,
-  caption: `Caption ${index}`,
-  width: frame(index)[0],
-  height: frame(index)[1],
-  focal_x: 50,
-  focal_y: 50,
-  update,
-});
+const photo = (index: number, update: string) =>
+  ({
+    caption_html: null,
+    id: `media-${index}`,
+    image: { id: `media-${index}` },
+    alt_text: `Synthetic photo ${index}`,
+    caption: `Caption ${index}`,
+    width: frame(index)[0],
+    height: frame(index)[1],
+    focal_x: 50,
+    focal_y: 50,
+    update,
+  }) satisfies Api.ProjectionMedia;
 const trip = {
   schema_version: "travel/public-trip@1",
   title: "Exampleland 2054",
@@ -27,9 +30,33 @@ const trip = {
   visits: [],
   places: [],
   updates: [
-    { id: "update-one", title: "One photo", body: "Note.", body_html: "<p>Note.</p>" },
-    { id: "update-three", title: "Three photos", body: "Note.", body_html: "<p>Note.</p>" },
-    { id: "update-eight", title: "Eight photos", body: "Note.", body_html: "<p>Note.</p>" },
+    {
+      date_precision: "day",
+      story_date: null,
+      place: null,
+      id: "update-one",
+      title: "One photo",
+      body: "Note.",
+      body_html: "<p>Note.</p>",
+    },
+    {
+      date_precision: "day",
+      story_date: null,
+      place: null,
+      id: "update-three",
+      title: "Three photos",
+      body: "Note.",
+      body_html: "<p>Note.</p>",
+    },
+    {
+      date_precision: "day",
+      story_date: null,
+      place: null,
+      id: "update-eight",
+      title: "Eight photos",
+      body: "Note.",
+      body_html: "<p>Note.</p>",
+    },
   ],
   stays: [],
   media: [
@@ -39,7 +66,7 @@ const trip = {
   ],
   routes: [],
   navigation: [],
-};
+} satisfies Api.ProjectionDocument;
 const svg = (index: number) => {
   const [width, height] = frame(index);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="${width}" height="${height}" fill="#6a8f7d"/></svg>`;
@@ -48,7 +75,7 @@ const svg = (index: number) => {
 async function open(page: Page, locale: "nl" | "en", theme: "light" | "dark") {
   await mockApi(page);
   await page.route("**/api/public/trips/exampleland-2054", (route) =>
-    route.fulfill({ json: trip }),
+    route.fulfill({ json: trip satisfies Api.ProjectionDocument }),
   );
   await page.route("**/api/public/trips/exampleland-2054/files/*", (route) => {
     const url = route.request().url();

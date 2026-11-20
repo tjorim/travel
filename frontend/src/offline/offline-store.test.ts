@@ -1,3 +1,4 @@
+import { fixtureResponse } from "@/mocks/response";
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -196,7 +197,14 @@ it("revalidateOfflineCopies removes a copy once the source resource 404s", async
 it("revalidateOfflineCopies extends the lease and keeps the copy on a 200", async () => {
   await pinOfflineCopy(pinInput());
   const before = (await listOfflineCopies(OWNER))[0];
-  const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
+  const fetchImpl = vi
+    .fn()
+    .mockResolvedValue(
+      fixtureResponse(
+        /* Fixture exception: Error or persistence-control fixture; no successful Travel record is consumed. */ {},
+        { status: 200 },
+      ),
+    );
 
   await revalidateOfflineCopies(OWNER, fetchImpl);
 

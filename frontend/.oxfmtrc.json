@@ -6,6 +6,6 @@
     "**/build",
     "**/coverage",
     "openapi.json",
-    "src/api-schema.ts"
+    "src/api-schema/**"
   ]
 }

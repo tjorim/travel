@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
@@ -146,7 +147,12 @@ beforeEach(() => {
   onError.mockReset();
   server.use(
     http.post("/api/trips/trip/share-scope/exclusion-review", () =>
-      HttpResponse.json({ baseline: [], excluded: [], also_hidden: {}, stale: 0 }),
+      HttpResponse.json<Api.ExclusionReview>({
+        baseline: [],
+        excluded: [],
+        also_hidden: {},
+        stale: 0,
+      }),
     ),
   );
 });
@@ -157,13 +163,21 @@ it("reviews a chosen preset, lists what changes and applies it with the review's
   server.use(
     http.post("/api/trips/trip/share-links/l1/preset/review", async ({ request }) => {
       expect(await request.json()).toEqual({ preset: "story_and_route" });
-      return HttpResponse.json(review());
+      return HttpResponse.json<Api.SharingPresetReview>(review());
     }),
     http.post("/api/trips/trip/share-links/l1/preset", async ({ request }) => {
       applied = { body: await request.json(), ifMatch: request.headers.get("If-Match") };
-      return HttpResponse.json({ applied: true, review: review(), audience: link() });
+      return HttpResponse.json<Api.LinkPresetApplyResult>({
+        applied: true,
+        review: review(),
+        audience: link(),
+      });
     }),
-    http.get("/api/trips/trip", () => HttpResponse.json({})),
+    http.get("/api/trips/trip", () =>
+      HttpResponse.json(
+        /* Fixture exception: Mutation acknowledgement control sentinel; the test does not consume a response record. */ {},
+      ),
+    ),
   );
   renderWithOwner(<Host />);
   const reviewButton = screen.getByRole("button", { name: "Voorinstelling bekijken" });
@@ -201,7 +215,7 @@ it("asks for the widening acknowledgement before it applies to a live audience",
   const bodies: unknown[] = [];
   server.use(
     http.post("/api/trips/trip/share-links/l1/preset/review", () =>
-      HttpResponse.json(
+      HttpResponse.json<Api.SharingPresetReview>(
         review({
           audience: { id: "link:l1", kind: "link", label: "Familie", live: true },
           requires_acknowledgement: true,
@@ -210,7 +224,11 @@ it("asks for the widening acknowledgement before it applies to a live audience",
     ),
     http.post("/api/trips/trip/share-links/l1/preset", async ({ request }) => {
       bodies.push(await request.json());
-      return HttpResponse.json({ applied: true, review: review(), audience: link() });
+      return HttpResponse.json<Api.LinkPresetApplyResult>({
+        applied: true,
+        review: review(),
+        audience: link(),
+      });
     }),
   );
   renderWithOwner(<Host />);
@@ -231,7 +249,7 @@ it("shows the fresh review and asks again when the records changed since the rev
   let calls = 0;
   server.use(
     http.post("/api/trips/trip/share-links/l1/preset/review", () =>
-      HttpResponse.json(
+      HttpResponse.json<Api.SharingPresetReview>(
         review({
           audience: { id: "link:l1", kind: "link", label: "Familie", live: true },
           requires_acknowledgement: true,
@@ -242,6 +260,7 @@ it("shows the fresh review and asks again when the records changed since the rev
       calls += 1;
       if (calls === 1)
         return HttpResponse.json(
+          /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */
           {
             detail: {
               code: "preset_preview_is_stale",
@@ -265,7 +284,11 @@ it("shows the fresh review and asks again when the records changed since the rev
           },
           { status: 409 },
         );
-      return HttpResponse.json({ applied: true, review: review(), audience: link() });
+      return HttpResponse.json<Api.LinkPresetApplyResult>({
+        applied: true,
+        review: review(),
+        audience: link(),
+      });
     }),
   );
   renderWithOwner(<Host />);
@@ -289,7 +312,7 @@ it("shows the fresh review and asks again when the records changed since the rev
 it("explains a preset that is too large and never offers to apply it", async () => {
   server.use(
     http.post("/api/trips/trip/share-links/l1/preset/review", () =>
-      HttpResponse.json(
+      HttpResponse.json<Api.SharingPresetReview>(
         review({
           applicable: false,
           comparison: null,
@@ -314,9 +337,12 @@ it("explains a preset that is too large and never offers to apply it", async () 
 
 it("turns a too-large refusal at apply time into the same explanation", async () => {
   server.use(
-    http.post("/api/trips/trip/share-links/l1/preset/review", () => HttpResponse.json(review())),
+    http.post("/api/trips/trip/share-links/l1/preset/review", () =>
+      HttpResponse.json<Api.SharingPresetReview>(review()),
+    ),
     http.post("/api/trips/trip/share-links/l1/preset", () =>
       HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */
         {
           detail: {
             code: "preset_too_large",
@@ -342,9 +368,16 @@ it("turns a too-large refusal at apply time into the same explanation", async ()
 it("offers to reload when the audience changed elsewhere", async () => {
   const current = link({ revision: 5 });
   server.use(
-    http.post("/api/trips/trip/share-links/l1/preset/review", () => HttpResponse.json(review())),
+    http.post("/api/trips/trip/share-links/l1/preset/review", () =>
+      HttpResponse.json<Api.SharingPresetReview>(review()),
+    ),
     http.post("/api/trips/trip/share-links/l1/preset", () =>
-      HttpResponse.json({ detail: { code: "scope_revision_conflict", current } }, { status: 412 }),
+      HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+          detail: { code: "scope_revision_conflict", current },
+        },
+        { status: 412 },
+      ),
     ),
   );
   renderWithOwner(<Host />);
@@ -363,7 +396,7 @@ it("offers to reload when the audience changed elsewhere", async () => {
 it("lists what is left as it is with the way out, and what needs a decision", async () => {
   server.use(
     http.post("/api/trips/trip/public-projection/preset/review", () =>
-      HttpResponse.json(
+      HttpResponse.json<Api.SharingPresetReview>(
         review({
           left_as_is: [
             { ...market, reason: "everyone_on_public_view", way_out: "change_visibility" },
@@ -396,7 +429,9 @@ it("blocks the review while the editor has unsaved edits", () => {
 
 it("returns focus to the review button when the dialog is cancelled", async () => {
   server.use(
-    http.post("/api/trips/trip/share-links/l1/preset/review", () => HttpResponse.json(review())),
+    http.post("/api/trips/trip/share-links/l1/preset/review", () =>
+      HttpResponse.json<Api.SharingPresetReview>(review()),
+    ),
   );
   renderWithOwner(<Host />);
   choose("story_only");
@@ -422,7 +457,7 @@ it("says which preset an audience carries, with its exceptions and the way to re
   server.use(
     http.put("/api/trips/trip/visibility/travel_update/u2", () => {
       promoted += 1;
-      return HttpResponse.json({ visibility: "custom" });
+      return HttpResponse.json<Api.VisibilityUpdate>({ visibility: "custom" });
     }),
   );
   renderWithOwner(

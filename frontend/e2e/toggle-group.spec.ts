@@ -1,3 +1,4 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi } from "./mock-api";
@@ -17,7 +18,16 @@ const trip = {
   summary_text: "S",
   dates: { starts_on: "2054-11-01", ends_on: "2054-11-21", date_precision: "day" },
   cover: null,
-  visits: [{ id: "visit-1", title: "Harbour", place: area("Keelung", 25.13, 121.74) }],
+  visits: [
+    {
+      summary: null,
+      summary_html: null,
+      date_precision: "day",
+      id: "visit-1",
+      title: "Harbour",
+      place: area("Keelung", 25.13, 121.74),
+    },
+  ],
   places: [],
   updates: [
     {
@@ -34,7 +44,7 @@ const trip = {
   media: [],
   routes: [],
   navigation: [],
-};
+} satisfies Api.ProjectionDocument;
 for (const locale of ["nl", "en"] as const)
   for (const theme of ["light", "dark"] as const)
     test(`map view toggles ${locale} ${theme}`, async ({ page }) => {
@@ -43,7 +53,7 @@ for (const locale of ["nl", "en"] as const)
       await page.route("https://tiles.openfreemap.org/styles/*", (route) =>
         route.fulfill({
           headers: { "access-control-allow-origin": "*" },
-          json: {
+          json: /* Fixture exception: External map style, outside the Travel OpenAPI contract. */ {
             version: 8,
             sources: {},
             glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
@@ -57,7 +67,7 @@ for (const locale of ["nl", "en"] as const)
         route.fulfill({ status: 404, headers: { "access-control-allow-origin": "*" }, body: "" }),
       );
       await page.route("**/api/public/trips/exampleland-2054", (route) =>
-        route.fulfill({ json: trip }),
+        route.fulfill({ json: trip satisfies Api.ProjectionDocument }),
       );
       await choosePreferences(page, locale, theme);
       await page.goto("/trips/exampleland-2054");

@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -38,7 +40,7 @@ const trip: Trip = {
   ends_on: null,
   travel_updates: [],
 };
-const scope = {
+const scope: Api.ShareScope = {
   schema_version: "travel/share-scope@1",
   trip: { title: true, summary: true, dates: null },
   items: [],
@@ -54,10 +56,11 @@ afterEach(async () => {
   act(() => changeLocale("nl"));
   await resetOfflineDb();
 });
-const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
+const json = <T = never,>(data: NoInfer<T>, status = 200) =>
+  new Response(JSON.stringify(data), { status });
 
 it("keeps a selected upload, authored title, focus and discard confirmation when switching", async () => {
-  serveApi(vi.fn(() => Promise.resolve(json([]))));
+  serveApi(vi.fn(() => Promise.resolve(json<never[]>([]))));
   renderWithOwner(<DocumentManager />);
   fireEvent.click(screen.getByRole("button", { name: "Nieuw document" }));
   const title = screen.getByRole("textbox", { name: "Titel" }) as HTMLInputElement;
@@ -83,16 +86,28 @@ it("preserves a dirty sharing editor and confirmation without changing its scope
   serveApi(
     vi.fn((url: string) =>
       Promise.resolve(
-        json(
+        json<
+          | Api.PublicProjectionStatusResponse
+          | Api.ShareLinkResponse[]
+          | Api.TripOverviewResponse
+          | Api.ExclusionReview
+        >(
           url.endsWith("public-projection")
-            ? { trip_id: "trip", slug: "eigen-reis", surface_state: "unpublished", scope }
+            ? {
+                ...responseFixtures.PublicProjectionStatusResponse,
+                trip_id: "trip",
+                slug: "eigen-reis",
+                surface_state: "unpublished",
+                scope,
+              }
             : url.endsWith("overview")
-              ? { audiences: [], warnings: [] }
+              ? { ...responseFixtures.TripOverviewResponse, audiences: [], warnings: [] }
               : url.endsWith("exclusion-review")
                 ? { excluded: [], also_hidden: {}, stale: 0, baseline: [] }
                 : url.endsWith("share-links")
                   ? [
                       {
+                        ...responseFixtures.ShareLinkResponse,
                         id: "link",
                         series_id: "link",
                         label: "Eigen publiek",
@@ -124,7 +139,8 @@ it("preserves a dirty sharing editor and confirmation without changing its scope
 
 it("keeps a pending packing toggle, retranslates its failure and submits canonical values", async () => {
   let rejectToggle!: (value: Response) => void;
-  const item = {
+  const item: Api.PackingItemResponse = {
+    list_id: "list",
     id: "item",
     label: "Eigen item",
     quantity: 1,
@@ -146,9 +162,16 @@ it("keeps a pending packing toggle, retranslates its failure and submits canonic
         rejectToggle = resolve;
       });
     return Promise.resolve(
-      json(
+      json<Api.PackingListResponse[] | Api.PackingItemResponse[]>(
         url.endsWith("packing-lists")
-          ? [{ id: "list", name: "Packing list" }]
+          ? [
+              {
+                id: "list",
+                name: "Packing list",
+                trip_id: "trip",
+                created_at: "2054-01-01T00:00:00Z",
+              },
+            ]
           : url.endsWith("/items")
             ? [item]
             : [],
@@ -166,7 +189,16 @@ it("keeps a pending packing toggle, retranslates its failure and submits canonic
   expect(toggle.getAttribute("aria-disabled")).toBe("true");
   const patch = request.mock.calls.find(([, init]) => init?.method === "PATCH")!;
   expect(JSON.parse(String(patch[1]?.body))).toEqual({ packed: true });
-  await act(async () => rejectToggle(json({ detail: "diagnostic only" }, 503)));
+  await act(async () =>
+    rejectToggle(
+      json<unknown>(
+        /* Fixture exception: Error fixture preserves server diagnostics for failure handling. */ {
+          detail: "diagnostic only",
+        },
+        503,
+      ),
+    ),
+  );
   await screen.findByText(/Checking off failed/);
   act(() => changeLocale("nl"));
   expect(screen.getByText(/Afvinken mislukt/)).toBeTruthy();
@@ -177,7 +209,7 @@ it("keeps a pending packing toggle, retranslates its failure and submits canonic
 
 it("reopens canonical packing data without merging authored categories with the fallback", async () => {
   const snapshot = {
-    list: { id: "list", name: "Packing list" },
+    list: { id: "list", name: "Packing list", trip_id: "trip", created_at: "2054-01-01T00:00:00Z" },
     bags: [],
     savedAt: Date.now(),
     items: [
@@ -299,7 +331,17 @@ it("clears an open packing view at lease expiry and retranslates the retained ex
 });
 
 it("hides an already decrypted emergency copy immediately when the authenticated subject changes", async () => {
-  serveApi(vi.fn(() => Promise.resolve(json({ id: "entry" }))));
+  serveApi(
+    vi.fn(() =>
+      Promise.resolve(
+        json<unknown>(
+          /* Fixture exception: Offline persistence revalidation sentinel; only identity is consumed. */ {
+            id: "entry",
+          },
+        ),
+      ),
+    ),
+  );
   await pinOfflineCopy({
     subject: "owner-1",
     resourceKind: "emergency_info",

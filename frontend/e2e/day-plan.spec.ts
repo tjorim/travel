@@ -44,6 +44,8 @@ const dayTrip = {
   cover: null,
   visits: [
     {
+      summary: null,
+      summary_html: null,
       id: "visit-harbour",
       title: "Harbour walk",
       place: keelung,
@@ -54,6 +56,8 @@ const dayTrip = {
     },
     // Two visits on one day stay two visits.
     {
+      summary: null,
+      summary_html: null,
       id: "visit-market",
       title: "Night market",
       place: tainan,
@@ -65,6 +69,8 @@ const dayTrip = {
       timezone: "Asia/Taipei",
     },
     {
+      summary: null,
+      summary_html: null,
       id: "visit-temple",
       title: "Temple morning",
       place: tainan,
@@ -73,6 +79,8 @@ const dayTrip = {
       ends_on: null,
     },
     {
+      summary: null,
+      summary_html: null,
       id: "visit-month",
       title: "Hot springs sometime",
       place: tainan,
@@ -80,7 +88,14 @@ const dayTrip = {
       starts_on: "2054-11",
       ends_on: null,
     },
-    { id: "visit-undated", title: "Tea tasting", place: tainan, date_precision: "day" },
+    {
+      summary: null,
+      summary_html: null,
+      id: "visit-undated",
+      title: "Tea tasting",
+      place: tainan,
+      date_precision: "day",
+    },
   ],
   places: [],
   updates: [],
@@ -92,6 +107,9 @@ const dayTrip = {
   media: [],
   routes: [
     {
+      label: null,
+      carrier: null,
+      service_reference: null,
       id: "route-night",
       mode: "train",
       status: "planned",
@@ -105,6 +123,8 @@ const dayTrip = {
       booking_reference: PRIVATE[1],
     },
     {
+      carrier: null,
+      service_reference: null,
       id: "route-sleeper",
       mode: "train",
       status: "planned",
@@ -118,6 +138,8 @@ const dayTrip = {
       arrival_timezone: "UTC",
     },
     {
+      carrier: null,
+      service_reference: null,
       id: "route-dayless",
       mode: "bus",
       status: "planned",
@@ -169,7 +191,11 @@ async function open(
   path: string,
 ) {
   await mockApi(page);
-  await page.route(`**/api${path}`, (route) => route.fulfill({ json: document }));
+  await page.route(`**/api${path}`, (route) =>
+    route.fulfill({
+      json: /* Deliberately malformed: injects private owner fields to verify visitor non-disclosure. */ document,
+    }),
+  );
   await choosePreferences(page, locale, theme);
   await page.setViewportSize({ width, height: 900 });
   await page.goto(path.replace("/public/trips", "/trips").replace("/shared", "/share"));

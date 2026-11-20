@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { cleanup, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -21,7 +22,11 @@ afterEach(() => {
 });
 
 it("offers the same three choices for every kind and saves the chosen one at once", async () => {
-  api.on("PUT", /\/visibility\/visit\/s1$/, (body) => body);
+  api.on<Api.VisibilityUpdate>(
+    "PUT",
+    /\/visibility\/visit\/s1$/,
+    (body) => body as Api.VisibilityUpdate,
+  );
   renderWithOwner(
     <VisibilityControl tripId="trip" kind="visit" id="s1" value="private" name="Noordkust" />,
   );
@@ -35,7 +40,11 @@ it("offers the same three choices for every kind and saves the chosen one at onc
 });
 
 it("shows the server's reason when a record cannot be shared yet", async () => {
-  api.on("PUT", /\/visibility\/location\/e1$/, (body) => body);
+  api.on<Api.VisibilityUpdate>(
+    "PUT",
+    /\/visibility\/location\/e1$/,
+    (body) => body as Api.VisibilityUpdate,
+  );
   api.failNext = {
     status: 422,
     body: {

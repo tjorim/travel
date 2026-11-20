@@ -1,3 +1,5 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import { createRootRoute } from "@tanstack/react-router";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
@@ -15,7 +17,15 @@ const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null
 vi.mock("../auth-context", () => ({ useAuth: () => ({ session: auth.session }) }));
 
 function trip(id: string, title: string, startsOn: string | null, endsOn: string | null) {
-  return { id, title, summary: null, starts_on: startsOn, ends_on: endsOn, travel_updates: [] };
+  return {
+    ...responseFixtures.TripSummaryResponse,
+    id,
+    title,
+    summary: null,
+    starts_on: startsOn,
+    ends_on: endsOn,
+    travel_updates: [],
+  };
 }
 
 beforeEach(() => {
@@ -36,9 +46,9 @@ it("shows active and planning-first trips with unread alerts", async () => {
     trip("planned", "IJsland", null, null),
   ];
   server.use(
-    http.get("/api/trips", () => HttpResponse.json(trips)),
+    http.get("/api/trips", () => HttpResponse.json<Api.TripSummaryResponse[]>(trips)),
     http.get("/api/trips/:tripId/task-alerts", ({ params }) =>
-      HttpResponse.json(
+      HttpResponse.json<Api.TripTaskAlertResponse[]>(
         params.tripId === "active"
           ? [
               {
@@ -57,9 +67,9 @@ it("shows active and planning-first trips with unread alerts", async () => {
           : [],
       ),
     ),
-    http.get("/api/trips/:tripId/trip-tasks", () => HttpResponse.json([])),
-    http.get("/api/trips/:tripId/stays", () => HttpResponse.json([])),
-    http.get("/api/trips/:tripId/routes", () => HttpResponse.json([])),
+    http.get("/api/trips/:tripId/trip-tasks", () => HttpResponse.json<Api.TripTaskResponse[]>([])),
+    http.get("/api/trips/:tripId/stays", () => HttpResponse.json<Api.StayResponse[]>([])),
+    http.get("/api/trips/:tripId/routes", () => HttpResponse.json<Api.RouteResponse[]>([])),
   );
 
   renderHome();
@@ -76,7 +86,7 @@ it("shows active and planning-first trips with unread alerts", async () => {
 });
 
 it("offers a first private trip when the owner has none", async () => {
-  server.use(http.get("/api/trips", () => HttpResponse.json([])));
+  server.use(http.get("/api/trips", () => HttpResponse.json<Api.TripSummaryResponse[]>([])));
   renderHome();
   await waitFor(() => expect(screen.getByText("Begin met je eerste reis")).toBeTruthy());
   expect(screen.getAllByRole("link", { name: "Nieuwe reis" }).length).toBeGreaterThan(0);
@@ -88,7 +98,7 @@ it("asks an inaccessible session to sign in", async () => {
   expect(await screen.findByText("Meld aan om je private reiswerkruimte te openen.")).toBeTruthy();
 });
 
-const alert = (now: Date) => ({
+const alert = (now: Date): Api.TripTaskAlertResponse => ({
   id: "alert",
   task_id: "task",
   kind: "reminder",
@@ -111,10 +121,14 @@ function serveInbox(patch: () => Response) {
     new Date(now.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
   server.use(
     http.get("/api/trips", () =>
-      HttpResponse.json([trip("active", "Exampleland", day(-1), day(1))]),
+      HttpResponse.json<Api.TripSummaryResponse[]>([
+        trip("active", "Exampleland", day(-1), day(1)),
+      ]),
     ),
-    http.get("/api/trips/:tripId/task-alerts", () => HttpResponse.json([current])),
-    http.get("/api/trips/:tripId/:resource", () => HttpResponse.json([])),
+    http.get("/api/trips/:tripId/task-alerts", () =>
+      HttpResponse.json<Api.TripTaskAlertResponse[]>([current]),
+    ),
+    http.get("/api/trips/:tripId/:resource", () => HttpResponse.json<never[]>([])),
     http.patch("/api/trips/:tripId/task-alerts/:alertId/read", ({ request }) => {
       patches.push(request);
       const response = patch();
@@ -126,7 +140,11 @@ function serveInbox(patch: () => Response) {
 }
 
 it("clears a reminder from the inbox at once and keeps it cleared once the server agrees", async () => {
-  const patches = serveInbox(() => HttpResponse.json({}));
+  const patches = serveInbox(() =>
+    HttpResponse.json(
+      /* Fixture exception: Mutation acknowledgement control sentinel; the test does not consume a response record. */ {},
+    ),
+  );
   renderHome();
   fireEvent.click(await screen.findByRole("button", { name: "Gelezen" }));
   await waitFor(() => expect(screen.queryByText("Check in")).toBeNull());
@@ -135,7 +153,14 @@ it("clears a reminder from the inbox at once and keeps it cleared once the serve
 });
 
 it("brings a reminder back with a message when marking it read fails", async () => {
-  serveInbox(() => HttpResponse.json({ detail: "Bijwerken mislukt." }, { status: 500 }));
+  serveInbox(() =>
+    HttpResponse.json(
+      /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {
+        detail: "Bijwerken mislukt.",
+      },
+      { status: 500 },
+    ),
+  );
   renderHome();
   fireEvent.click(await screen.findByRole("button", { name: "Gelezen" }));
   await screen.findByText(
@@ -151,7 +176,7 @@ it("explains that the workspace needs a connection instead of retrying offline",
   server.use(
     http.all("*", ({ request }) => {
       requests.push(request);
-      return HttpResponse.json([]);
+      return HttpResponse.json<never[]>([]);
     }),
   );
   renderHome();

@@ -1,3 +1,5 @@
+import type * as Api from "@/api-schema";
+import { jsonResponse } from "@/mocks/response";
 // @vitest-environment happy-dom
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -66,10 +68,10 @@ function serve() {
   serveApi(
     vi.fn(async (url: string) => {
       calls.push(url);
-      if (!url.startsWith(`/api/shared/${token}`)) return new Response("[]");
+      if (!url.startsWith(`/api/shared/${token}`)) return jsonResponse<never[]>([]);
       const asked = new URL(url, "http://localhost").searchParams.get("lang");
       const language = asked === "en" ? "en" : "nl";
-      return new Response(JSON.stringify(document(language)), {
+      return jsonResponse<Api.ProjectionDocument>(document(language), {
         headers: { "Content-Language": language },
       });
     }),
@@ -148,19 +150,18 @@ it("asks the public index for the interface language, and marks each card's text
     vi.fn(async (url: string) => {
       calls.push(url);
       if (url.startsWith("/api/public/trips"))
-        return new Response(
-          JSON.stringify([
-            {
-              slug: "taiwan",
-              title: "Taiwan tour",
-              title_lang: "en",
-              summary: "Een korte reis",
-              dates: null,
-              cover: null,
-            },
-          ]),
-        );
-      return new Response("[]");
+        return jsonResponse<Api.PublicTripCard[]>([
+          {
+            summary_text: null,
+            slug: "taiwan",
+            title: "Taiwan tour",
+            title_lang: "en",
+            summary: "Een korte reis",
+            dates: null,
+            cover: null,
+          },
+        ]);
+      return jsonResponse<never[]>([]);
     }),
   );
   render(<VisitorRoutes initialEntries={["/trips"]} />);

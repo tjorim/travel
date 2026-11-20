@@ -1,3 +1,4 @@
+import type * as Api from "@/api-schema";
 // @vitest-environment happy-dom
 import "fake-indexeddb/auto";
 import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
@@ -82,9 +83,9 @@ let api: FakeApi;
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
   api = fakeApi()
-    .collection("/api/trips/trip/routes", [route("r1", "Oostkust")])
-    .collection("/api/trips/trip/locations", [cafe])
-    .collection("/api/trips/trip/visits", []);
+    .collection<Api.RouteResponse>("/api/trips/trip/routes", [route("r1", "Oostkust")])
+    .collection<Api.LocationResponse>("/api/trips/trip/locations", [cafe])
+    .collection<Api.VisitResponse>("/api/trips/trip/visits", []);
 });
 afterEach(async () => {
   cleanup();
@@ -102,7 +103,7 @@ it("draws routes, areas and locations from the shared reads", async () => {
 });
 
 it("uses a location's saved name over the locality it repeats for other points", async () => {
-  api.collection("/api/trips/trip/locations", [cafe, pagoda]);
+  api.collection<Api.LocationResponse>("/api/trips/trip/locations", [cafe, pagoda]);
   renderWithOwner(<OwnerTripMap trip={trip} areas={[taipei]} />);
   await openLists();
   await screen.findByRole("button", { name: "Longshan Temple" });
@@ -113,7 +114,7 @@ it("shows a route added elsewhere as soon as its read is refreshed, with no revi
   const { client } = renderWithOwner(<OwnerTripMap trip={trip} areas={[]} />);
   await openLists();
   await screen.findByRole("button", { name: /Oostkust/ });
-  api.push("/api/trips/trip/routes", route("r2", "Westkust"));
+  api.push<Api.RouteResponse>("/api/trips/trip/routes", route("r2", "Westkust"));
   await act(async () => {
     await client.invalidateQueries({
       queryKey: ownerKeys.tripResource("owner-1", "trip", "routes"),
@@ -138,12 +139,13 @@ it("falls back to the pinned map copy when the live reads are refused", async ()
       }),
     ).buffer as ArrayBuffer,
   });
-  api.on("GET", /\/locations$/, () => {
+  api.on<Api.LocationResponse[]>("GET", /\/locations$/, () => {
     throw new Error("unused");
   });
   server.use(
     http.all("*", ({ request }) =>
       HttpResponse.json(
+        /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */
         { detail: "Niet beschikbaar" },
         { status: request.url.includes("/offline-map") ? 200 : 503 },
       ),
@@ -171,8 +173,13 @@ it("pins the current map data for offline use", async () => {
 
 it("offers a private derived area dot and stores it only on request", async () => {
   const unpointed = { ...taipei, latitude: null, longitude: null };
-  api.collection("/api/trips/trip/locations", [{ ...cafe, area_id: "taipei" }]);
-  api.on("PATCH", /\/areas\/taipei$/, (_url, body) => ({ ...unpointed, ...body }));
+  api.collection<Api.LocationResponse>("/api/trips/trip/locations", [
+    { ...cafe, area_id: "taipei" },
+  ]);
+  api.on<Api.AreaResponse>("PATCH", /\/areas\/taipei$/, (_url, body) => ({
+    ...unpointed,
+    ...body,
+  }));
   renderWithOwner(<OwnerTripMap trip={trip} areas={[unpointed]} />);
   await openLists();
   fireEvent.click(await screen.findByRole("button", { name: "Taipei" }));
@@ -202,7 +209,7 @@ it("lists the exact private point of every stay location, an idea stay's include
     latitude: 25.047,
     longitude: 121.51,
   } as Location;
-  api.collection("/api/trips/trip/locations", [cafe, idea]);
+  api.collection<Api.LocationResponse>("/api/trips/trip/locations", [cafe, idea]);
   renderWithOwner(<OwnerTripMap trip={trip} areas={[taipei]} />);
   await openLists();
   expect(await screen.findByRole("button", { name: "Hotel Idea" })).toBeTruthy();

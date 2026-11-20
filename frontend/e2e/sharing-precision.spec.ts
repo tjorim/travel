@@ -1,10 +1,15 @@
+import type * as Api from "../src/api-schema";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
 import { message } from "./messages";
 
 // Synthetic content only.
-const audience = {
+const audience: Api.OverviewAudience = {
+  excluded: 0,
+  excluded_also_hides: {},
+  preset: null,
+  preset_exceptions: 0,
   kind: "public",
   id: null,
   label: "public",
@@ -40,6 +45,9 @@ for (const locale of ["nl", "en"] as const) {
         if (request.method() !== "GET") return route.fallback();
         return route.fulfill({
           json: {
+            applied_preset: null,
+            applied_preset_at: null,
+            preset_exceptions: null,
             revision: 1,
             trip_id: ownerTrip.id,
             scope: {
@@ -50,18 +58,21 @@ for (const locale of ["nl", "en"] as const) {
             },
             surface_state: "published",
             slug: "exampleland-2054",
-          },
+          } satisfies Api.PublicProjectionStatusResponse,
         });
       });
       await page.route(`**/api/trips/${ownerTrip.id}/overview`, (route) =>
         route.fulfill({
           json: {
+            title: "synthetic",
+            starts_on: null,
+            ends_on: null,
             trip_id: ownerTrip.id,
             counts: {},
             visibility: {},
             audiences: [audience],
             warnings: [],
-          },
+          } satisfies Api.TripOverviewResponse,
         }),
       );
       await page.route(`**/api/trips/${ownerTrip.id}/date-precision/follow-audience`, (route) => {
@@ -78,7 +89,7 @@ for (const locale of ["nl", "en"] as const) {
                 narrowed: { visits: 0, stays: 0 },
               },
             ],
-          },
+          } satisfies Api.FollowAudiencePrecisionResult,
         });
       });
       await page.goto(`/admin/trips/${ownerTrip.id}/sharing`);
