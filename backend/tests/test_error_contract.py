@@ -86,7 +86,7 @@ def test_status_only_and_privacy_headers_survive():
     assert response.json()["errors"] == [{"code": "range_unsatisfiable", "params": {}, "path": []}]
     for key, value in headers.items():
         assert response.headers[key] == value
-    assert TestClient(app).get("/missing").json()["errors"][0]["code"] == "http_error"
+    assert TestClient(app).get("/missing").json()["errors"][0]["code"] == "not_found"
 
 
 def test_provider_diagnostics_never_expose_urls_or_tokens():
@@ -105,6 +105,48 @@ def test_provider_diagnostics_never_expose_urls_or_tokens():
         assert converted.detail == "Media provider request failed"
     else:
         raise AssertionError("Expected provider rejection")
+
+
+def test_framework_http_errors_get_a_stable_code_and_keep_their_detail_and_headers():
+    app = contract_app()
+
+    @app.get("/status/{code}")
+    def raise_status(code: int):
+        raise HTTPException(code, "Plain diagnostic", headers={"WWW-Authenticate": "Bearer", "Retry-After": "7"})
+
+    @app.get("/owned")
+    def owned():
+        raise ApiException(403, "Owned diagnostic", code="not_the_owner", params={"kind": "trip"})
+
+    client = TestClient(app)
+    for status, code in [
+        (400, "bad_request"),
+        (401, "unauthorized"),
+        (403, "forbidden"),
+        (404, "not_found"),
+        (405, "method_not_allowed"),
+        (418, "http_418"),
+        (503, "http_503"),
+    ]:
+        response = client.get(f"/status/{status}")
+        assert response.status_code == status
+        assert response.json() == {
+            "detail": "Plain diagnostic",
+            "code": code,
+            "errors": [{"code": code, "params": {}, "path": []}],
+        }
+        assert response.headers["WWW-Authenticate"] == "Bearer"
+        assert response.headers["Retry-After"] == "7"
+    # A code an application rule chose is never replaced by the one its status would get.
+    assert client.get("/owned").json() == {
+        "detail": "Owned diagnostic",
+        "code": "not_the_owner",
+        "errors": [{"code": "not_the_owner", "params": {"kind": "trip"}, "path": []}],
+    }
+    # An unmatched route and a wrong method come from the framework itself and keep Allow.
+    assert client.get("/nowhere").json()["detail"] == "Not Found"
+    wrong = client.post("/owned")
+    assert (wrong.status_code, wrong.json()["code"], wrong.headers["Allow"]) == (405, "method_not_allowed", "GET")
 
 
 def test_every_app_owned_http_failure_declares_a_code():
@@ -141,8 +183,9 @@ def test_malformed_provider_responses_have_a_safe_typed_failure():
 
 
 def assert_error_body(body: dict) -> None:
-    """The one error shape: ``detail`` plus ``errors`` entries of ``code``, ``params`` and ``path``."""
-    assert set(body) == {"detail", "errors"}
+    """The one error shape: ``detail``, a top-level ``code`` and ``errors`` entries of ``code``, ``params`` and ``path``."""
+    assert set(body) == {"detail", "code", "errors"}
+    assert body["code"] == body["errors"][0]["code"]
     assert body["errors"], body
     for entry in body["errors"]:
         assert set(entry) == {"code", "params", "path"}
@@ -154,8 +197,8 @@ def assert_error_body(body: dict) -> None:
 def test_the_assembled_app_answers_every_failure_in_one_shape_with_stable_codes():
     client = TestClient(travel_app, raise_server_exceptions=False)
     expected = [
-        (client.get("/api/does-not-exist"), 404, "http_error"),
-        (client.delete("/api/health"), 405, "http_error"),
+        (client.get("/api/does-not-exist"), 404, "not_found"),
+        (client.delete("/api/health"), 405, "method_not_allowed"),
         (client.get("/api/identity"), 401, "unauthorized"),
         (client.post("/api/trips", json={}), 401, "unauthorized"),
     ]

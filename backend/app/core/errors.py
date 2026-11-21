@@ -143,10 +143,35 @@ async def service_error_handler(request, error: Refusal) -> JSONResponse:
     return await http_error_handler(request, service_exception(error.status_code, error))
 
 
+# The stable code of a framework HTTP error (an unknown route, a wrong method) that no rule of this app raised.
+_STATUS_CODES = {
+    status.HTTP_400_BAD_REQUEST: "bad_request",
+    status.HTTP_401_UNAUTHORIZED: "unauthorized",
+    status.HTTP_403_FORBIDDEN: "forbidden",
+    status.HTTP_404_NOT_FOUND: "not_found",
+    status.HTTP_405_METHOD_NOT_ALLOWED: "method_not_allowed",
+}
+
+
+def status_code_name(status_code: int) -> str:
+    """The stable machine-readable code for an HTTP status that has no code of its own."""
+    return _STATUS_CODES.get(status_code, f"http_{status_code}")
+
+
 async def http_error_handler(_request, error: StarletteHTTPException) -> JSONResponse:
-    descriptor = getattr(error, "descriptor", {"code": "http_error", "params": {}, "path": []})
+    """Every HTTP error: ``detail`` and ``errors`` as before, plus the first descriptor's ``code`` at the top level.
+
+    An error an application rule raised keeps its own descriptor; a framework one (404, 405, a bare 401/403) gets a
+    code from its status. Headers such as ``WWW-Authenticate``, ``Retry-After`` and ``Allow`` travel unchanged."""
+    descriptor = getattr(error, "descriptor", None) or {
+        "code": status_code_name(error.status_code),
+        "params": {},
+        "path": [],
+    }
     return JSONResponse(
-        {"detail": error.detail, "errors": [descriptor]}, status_code=error.status_code, headers=error.headers
+        {"detail": error.detail, "code": descriptor["code"], "errors": [descriptor]},
+        status_code=error.status_code,
+        headers=error.headers,
     )
 
 
