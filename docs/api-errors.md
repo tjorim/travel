@@ -11,6 +11,11 @@ The application HTTP API adds `errors` alongside its existing diagnostic `detail
 }
 ```
 
+Every error body also has the first descriptor's `code` at the top level (`detail`, `code`, `errors`), so a client
+can read one stable string without looking inside the list. A request that fails validation answers 422 with
+`code: "validation_error"`; its `detail` stays FastAPI's list of `type`, `loc` and `msg` (never `input` or `ctx`) and
+`errors` carries each issue's own code.
+
 Codes are explicit literals at the rejection source, independent of diagnostic
 wording. `ApiException` preserves the HTTP status, diagnostic and headers;
 `service_exception` retains typed service and Pydantic custom causes. The MCP
@@ -84,7 +89,8 @@ bodies, codes and privacy headers. Byte-range rejections retain Content-Range.
 | `routers/link_preview.py` public trip shell | The built `public.html` is not mounted (`TRAVEL_VISITOR_SHELL_DIR`) | 503 with `shell_unavailable` and `no-store`; never a trip-specific page. Any slug, known or not, otherwise returns 200 HTML |
 | `ratelimit.py`, `routers/publication.py` delivery routes | Visitor rate limit | 429 with `rate_limited`, a fixed diagnostic that never names the route, slug or token, `Retry-After`, and the same `no-store` or unlisted privacy headers as the route's 404 |
 | `authlimit.py`, `auth.py`, `mcp_server/` | Too many failed bearer-token verifications from one client | 429 with `rate_limited`, a fixed diagnostic that never contains token data, `Retry-After` and `no-store` |
-| Framework HTTP errors | Unmatched routes and other framework rejections | http_error descriptor alongside the existing status/detail/headers |
+| Framework HTTP errors | Unmatched routes and other framework rejections | A code from the status (`bad_request`, `unauthorized`, `forbidden`, `not_found`, `method_not_allowed`, else `http_<status>`) alongside the existing status/detail/headers (`Allow`, `WWW-Authenticate`, `Retry-After`); an application rule's own code is never replaced |
+| Unhandled exceptions | Any exception no handler answers | 500 with `{"detail": "Internal server error", "code": "internal_error", "errors": [...]}` and `X-Request-ID`; the traceback is logged on the server (`app.core.errors`, with the request id), never sent |
 
 Tests reject bare HTTPException calls anywhere in the application-owned HTTP
 surface. Backend contract tests exercise validation redaction, typed helpers,
