@@ -23,7 +23,7 @@ different edit semantics. C9 is a qualified comparison, not exclusive capability
 **Travel today** was read from code, not from older documents: the owner routes
 in `frontend/src/router.tsx`, the workspace sections in
 `frontend/src/trips/workspace-sections.tsx`, the models in
-`backend/app/models.py`, the routers in `backend/app/routers/`, the MCP server
+`backend/app/models/`, the routers in `backend/app/routers/`, the MCP server
 in `backend/app/mcp_server/`, and the decisions under `docs/decisions/`. Where
 code and `PLAN.md` disagree, the code wins. For example, `PLAN.md`'s history
 still mentions an "explicit one-shot location action" and GPX track uploads;
@@ -229,7 +229,7 @@ would have to change if the owner ever reversed it.
 | C6 | Offline reading of what matters while travelling | Existing spots stay visible offline; Polarsteps documents no offline copy of booking documents or emergency information (**unverified**). | Opt-in, encrypted, device-scoped copies of documents, emergency info, media, itinerary, packing and route snapshots, with saved date, change flags on reconnect, a short revalidated lease and a wipe on sign-out. | [decision 261](261-packing-offline.md), `frontend/src/offline/` |
 | C7 | MCP access | No public API or MCP found (**unverified**). | About 100 typed owner tools on the same validation as the app, BM25 tool discovery, confirmation for deletes and externally visible changes. Production routing is still [apps#226](https://github.com/tjorim/apps/issues/226), so today this is verified locally only. | [decision 196](196-layered-mcp-tool-discovery.md), [decision 336](336-mcp-resource-audience.md) |
 | C8 | Languages | Interface languages: **unverified**. | Dutch and English across owner and visitor views, with an opt-in on-VPS draft translation of authored text. | [interface-translations.md](../interface-translations.md), [translation-drafts.md](../translation-drafts.md) |
-| C9 | Planning depth for a laptop session | Planned steps, a transport planner and web planning since June 2026 (N2, N3). | Areas, locations with OSM search, visits, stays, routes with eight travel modes and idea, planned, confirmed, cancelled status, alternatives, a read-only day agenda, tasks with reminders, documents, packing lists with bags and templates, and merge tools with widening checks. | `frontend/src/trips/workspace-sections.tsx`, `backend/app/models.py` |
+| C9 | Planning depth for a laptop session | Planned steps, a transport planner and web planning since June 2026 (N2, N3). | Areas, locations with OSM search, visits, stays, routes with eight travel modes and idea, planned, confirmed, cancelled status, alternatives, a read-only day agenda, tasks with reminders, documents, packing lists with bags and templates, and merge tools with widening checks. | `frontend/src/trips/workspace-sections.tsx`, `backend/app/models/` |
 | C10 | Map terrain | 3D maps are Plus (N1). | Optional terrain and satellite layers for the owner map at no charge, with the viewer disclosure documented. | [MAP-PROVIDER.md](../../frontend/MAP-PROVIDER.md) |
 | C11 | Cost and custody | Free core, Plus EUR 8.99 a month or EUR 29.99 a year (N1); ad-free and "we don't sell user data" (N1). | Single-owner, self-hosted, no tiers; data in the owner's database and object storage with backups in `tjorim/apps`. | [object-storage.md](../object-storage.md) |
 

@@ -14,19 +14,11 @@ from sqlalchemy.pool import StaticPool
 from app.core.auth import current_subject
 from app.core.config import settings
 from app.core.errors import Refusal, service_error_handler
+from app.db.base import Base
 from app.db.session import get_session
 from app.mcp_server import TravelMcpBackend
 from app.media.service import purge_deleted_media
-from app.models import (
-    Base,
-    DocumentAsset,
-    DocumentKind,
-    MediaAsset,
-    MediaKind,
-    ObjectState,
-    StoredObject,
-    Trip,
-)
+from app.models import DocumentAsset, DocumentKind, MediaAsset, MediaKind, ObjectState, StoredObject, Trip
 from app.routers import trips
 from app.storage import LocalObjectStorage
 

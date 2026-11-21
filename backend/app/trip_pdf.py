@@ -20,11 +20,8 @@ from sqlalchemy.orm import Session
 
 from app.core.content_language import resolve
 from app.core.update_day import update_day, zone_spans
-
-from .access import sharing_blocker
-from .export import ROUTE, STAY, TRAVEL_UPDATE, VISIT, _default, _record
-from .models import (
-    Base,
+from app.db.base import Base
+from app.models import (
     Collection,
     CollectionMember,
     MediaKind,
@@ -33,6 +30,9 @@ from .models import (
     Trip,
     travel_update_order_key,
 )
+
+from .access import sharing_blocker
+from .export import ROUTE, STAY, TRAVEL_UPDATE, VISIT, _default, _record
 from .projection import local_id, render_projection, scoped_file
 from .schemas import InputModel
 from .storage import ObjectStorage

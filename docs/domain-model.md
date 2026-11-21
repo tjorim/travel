@@ -257,7 +257,7 @@ name the sharing editor, presets and documents already use.
 
 ### Ordering
 
-Each record kind has one order, defined once on the server in `app/models.py` and shared by the `Trip`
+Each record kind has one order, defined once on the server in `app/models/` and shared by the `Trip`
 collection, the kind's own list endpoint, the export, the PDF and the visitor projection. A client never sorts a
 list to give it an order; it only chooses how to display one it already has.
 

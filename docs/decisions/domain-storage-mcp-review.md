@@ -313,5 +313,5 @@ unlisted or owner route behavior and no UI dependency/shared component.
 ## Mapped Field Inventory
 
 Removed: it predated later models and went stale. The mapped columns, types,
-enums and constraints are authoritative in `backend/app/models.py`; see
+enums and constraints are authoritative in `backend/app/models/`; see
 [domain-model.md](../domain-model.md) for what each record means.

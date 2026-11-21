@@ -219,7 +219,7 @@ Effort: S under a day, M a few days, L more.
 - Source: [PostgreSQL 18 UUID functions](https://www.postgresql.org/docs/18/functions-uuid.html)
   and the [SQLAlchemy 2.1 notes](https://docs.sqlalchemy.org/en/21/changelog/migration_21.html)
   (server-side `uuidv7()` in batched INSERTs).
-- `uuidv7()` exists and is time ordered. But `app/models.py:29` builds ids as
+- `uuidv7()` exists and is time ordered. But `app/models/:29` builds ids as
   `uuid.uuid4().hex` into `String(32)` primary keys (opaque capabilities and
   identifiers, not `uuid` columns), and these ids are exposed in URLs and are
   deliberately unguessable. A time-ordered id would leak creation time and
