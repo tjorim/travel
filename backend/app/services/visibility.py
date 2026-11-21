@@ -5,9 +5,10 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.errors import RecordNotFound, service_error
+
 from ..access import find_record, receivers, set_visibility
 from ..audit import delivering_audiences, record_visibility_change
-from ..errors import RecordNotFound, service_error
 from ..models import Trip, Visibility
 from ..schemas import Identifier
 from .trips import owned_trip

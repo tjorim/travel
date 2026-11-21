@@ -12,7 +12,8 @@ from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..errors import Refusal
+from app.core.errors import Refusal
+
 from ..media.service import MediaImportError, PendingPurge, _object_is_referenced, store_uploaded_object
 from ..models import DocumentAsset, DocumentKind, ObjectState, StoredObject
 from ..schemas import DocumentTitle

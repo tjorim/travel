@@ -11,7 +11,7 @@ import hashlib
 import hmac
 import secrets
 
-from .config import settings
+from app.core.config import settings
 
 
 def generate_token() -> str:

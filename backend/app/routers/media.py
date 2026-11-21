@@ -11,9 +11,11 @@ from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, sta
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from ..auth import current_subject
-from ..database import get_session
-from ..errors import ApiException, service_exception
+from app.core.auth import current_subject
+from app.core.errors import ApiException, service_exception
+from app.core.secrets import SecretStore, get_secret_store
+from app.db.session import get_session
+
 from ..media import oauth
 from ..media.providers import ProviderUnavailableError, get_provider_resolver, provider_available
 from ..media.ranges import media_response, private_original_headers
@@ -32,7 +34,6 @@ from ..schemas import (
     OAuthStartResponse,
     ProviderConnectionStatus,
 )
-from ..secrets import SecretStore, get_secret_store
 from ..services import media as service
 from ..storage import ObjectStorage, get_storage
 

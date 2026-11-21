@@ -3,10 +3,12 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.errors import Conflict, RecordNotFound, Refusal
+from app.core.search_text import contains
+
 from ..access import receivers, trip_audiences
 from ..audience import Audience
 from ..audit import live_audiences, record_audit_event
-from ..errors import Conflict, RecordNotFound, Refusal
 from ..live_scopes import scope_picks
 from ..models import (
     Area,
@@ -29,7 +31,6 @@ from ..schemas import (
     MergeRequest,
     NavigationResponse,
 )
-from ..search_text import contains
 from ..visitor_changes import (
     FieldChange,
     MovedRecord,

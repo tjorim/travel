@@ -9,8 +9,8 @@ from jwt.algorithms import RSAAlgorithm
 from pydantic import ValidationError
 from starlette.requests import Request
 
-from app.auth import DEV_BYPASS_SUBJECT, current_subject
-from app.config import Settings, settings
+from app.core.auth import DEV_BYPASS_SUBJECT, current_subject
+from app.core.config import Settings, settings
 
 ANONYMOUS = Request({"type": "http", "client": ("203.0.113.9", 1), "headers": []})
 
@@ -46,7 +46,7 @@ def token_for(private_key: rsa.RSAPrivateKey, audience: str) -> str:
 def test_current_subject_accepts_a_valid_travel_audience_token(monkeypatch: pytest.MonkeyPatch) -> None:
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     token = token_for(private_key, "travel-api")
-    monkeypatch.setattr("app.auth.signing_keys", lambda _: StaticJwksClient(private_key.public_key()))
+    monkeypatch.setattr("app.core.auth.signing_keys", lambda _: StaticJwksClient(private_key.public_key()))
     monkeypatch.setattr(settings, "environment", "production")
     monkeypatch.setattr(settings, "oidc_audience", "travel-api")
     monkeypatch.setattr(settings, "oidc_issuer_url", "https://auth.example.test/realms/travel")
@@ -62,7 +62,7 @@ def test_current_subject_accepts_a_valid_travel_audience_token(monkeypatch: pyte
 def test_current_subject_rejects_a_wrong_audience(monkeypatch: pytest.MonkeyPatch) -> None:
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     token = token_for(private_key, "another-api")
-    monkeypatch.setattr("app.auth.signing_keys", lambda _: StaticJwksClient(private_key.public_key()))
+    monkeypatch.setattr("app.core.auth.signing_keys", lambda _: StaticJwksClient(private_key.public_key()))
     monkeypatch.setattr(settings, "environment", "production")
     monkeypatch.setattr(settings, "oidc_audience", "travel-api")
     monkeypatch.setattr(settings, "oidc_issuer_url", "https://auth.example.test/realms/travel")
@@ -79,7 +79,7 @@ def test_current_subject_rejects_a_wrong_audience(monkeypatch: pytest.MonkeyPatc
 def test_current_subject_rejects_a_token_for_the_mcp_resource(monkeypatch: pytest.MonkeyPatch) -> None:
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     token = token_for(private_key, "https://travel.example.test/mcp")
-    monkeypatch.setattr("app.auth.signing_keys", lambda _: StaticJwksClient(private_key.public_key()))
+    monkeypatch.setattr("app.core.auth.signing_keys", lambda _: StaticJwksClient(private_key.public_key()))
     monkeypatch.setattr(settings, "environment", "production")
     monkeypatch.setattr(settings, "oidc_audience", "travel-api")
     monkeypatch.setattr(settings, "mcp_base_url", "https://travel.example.test/mcp")
@@ -137,7 +137,7 @@ def jwks_endpoint(monkeypatch: pytest.MonkeyPatch):
     import io
     import json
 
-    from app.auth import _cached_signing_keys
+    from app.core.auth import _cached_signing_keys
 
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     key = RSAAlgorithm.to_jwk(private_key.public_key(), as_dict=True)
@@ -158,7 +158,7 @@ def jwks_endpoint(monkeypatch: pytest.MonkeyPatch):
 
     _cached_signing_keys.cache_clear()
     monkeypatch.setattr("urllib.request.OpenerDirector.open", open_url)
-    monkeypatch.setattr("app.auth.time.monotonic", lambda: state["now"])
+    monkeypatch.setattr("app.core.auth.time.monotonic", lambda: state["now"])
     monkeypatch.setattr(settings, "oidc_audience", "travel-api")
     monkeypatch.setattr(settings, "oidc_issuer_url", "https://auth.example.test/realms/travel")
     monkeypatch.setattr(settings, "oidc_jwks_url", "https://auth.example.test/certs")

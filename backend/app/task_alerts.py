@@ -14,8 +14,9 @@ from email.message import EmailMessage
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .config import settings
-from .database import SessionLocal
+from app.core.config import settings
+from app.db.session import SessionLocal
+
 from .models import TaskAlertKind, Trip, TripTask, TripTaskAlert
 
 

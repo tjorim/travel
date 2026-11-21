@@ -6,8 +6,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.auth import current_subject
-from app.database import Base, get_session
+from app.core.auth import current_subject
+from app.db.base import Base
+from app.db.session import get_session
 from app.main import app
 from app.models import DocumentAsset, StoredObject
 from app.storage import LocalObjectStorage, get_storage
@@ -243,7 +244,7 @@ def test_the_trip_and_library_routes_are_aliases_of_the_same_documents(tmp_path:
 
 
 def test_oversized_or_empty_document_uploads_are_refused_with_a_readable_reason(tmp_path: Path, monkeypatch) -> None:
-    from app.config import settings
+    from app.core.config import settings
 
     monkeypatch.setattr(settings, "media_max_upload_bytes", 10)
     owner = client_for("owner-1", tmp_path)

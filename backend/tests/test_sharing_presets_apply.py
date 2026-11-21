@@ -613,7 +613,7 @@ def test_another_owner_cannot_apply_and_nothing_changes(world: World, kind: str)
 
 
 def test_every_apply_route_requires_the_owner(world: World) -> None:
-    from app.auth import current_subject
+    from app.core.auth import current_subject
     from app.main import app
 
     targets = [make_target(world, kind) for kind in KINDS]

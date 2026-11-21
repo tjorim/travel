@@ -91,8 +91,8 @@ SERVER = textwrap.dedent(
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy.pool import StaticPool
-    from app.config import settings
-    from app.database import Base
+    from app.core.config import settings
+    from app.db.base import Base
     from app.mcp_server import create_mcp_http_app, mount_mcp
     from app.mcp_server import core
     from app.storage import LocalObjectStorage

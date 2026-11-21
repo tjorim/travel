@@ -12,7 +12,8 @@ from typing import BinaryIO
 from fastapi import Request
 from fastapi.responses import Response, StreamingResponse
 
-from ..errors import ApiException
+from app.core.errors import ApiException
+
 from ..models import StoredObject
 from ..storage import ObjectStorage
 

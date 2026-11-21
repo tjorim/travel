@@ -6,8 +6,9 @@ from collections.abc import Sequence
 
 from sqlalchemy.orm import Session
 
+from app.core.errors import Conflict
+
 from ..audit import live_audiences, record_audit_event
-from ..errors import Conflict
 from ..models import AuditEventKind, AuditTargetType, Trip
 from ..precision import audience_precision, effective_precision, is_finer, own_value
 from ..projection import delivered

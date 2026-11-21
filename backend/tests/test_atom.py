@@ -2,8 +2,8 @@ from datetime import UTC, datetime, timedelta
 from xml.etree.ElementTree import fromstring
 
 from app.atom import atom_document
-from app.authlimit import failed_authentication
-from app.config import settings
+from app.core.authlimit import failed_authentication
+from app.core.config import settings
 from app.models import ShareLink
 from tests import test_publication as publication
 from tests.test_publication import (

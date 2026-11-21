@@ -7,8 +7,9 @@ import sys
 from collections.abc import Sequence
 from datetime import timedelta
 
+from app.db.session import SessionLocal
+
 from .audit import purge_expired_audit_events
-from .database import SessionLocal
 from .media.service import purge_deleted_media
 from .storage import get_storage
 from .storage_reconcile import remove_unreferenced_objects, unreferenced_objects

@@ -8,11 +8,11 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from app.core.update_day import ZoneSpan, at_wall_clock, fallback_zone, local_day, update_day, update_zone
 from app.main import app
 from app.models import Area, TravelUpdate
 from app.services.trips import owned_trip
 from app.trip_pdf import PdfRequest, pdf_data
-from app.update_day import ZoneSpan, at_wall_clock, fallback_zone, local_day, update_day, update_zone
 from tests import test_publication as publication
 from tests.test_publication import TestingSessionLocal, client_for, create_trip, item, scope
 

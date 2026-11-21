@@ -8,7 +8,8 @@ the MCP tools report them as data.
 import re
 from dataclasses import dataclass
 
-from ..errors import RecordNotFound
+from app.core.errors import RecordNotFound
+
 from ..models import StoredObject, Trip
 from ..projection import scoped_file, scoped_navigation_url
 from ..storage import ObjectStorage

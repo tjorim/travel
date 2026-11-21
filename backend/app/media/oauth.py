@@ -8,8 +8,9 @@ from urllib.parse import urlencode
 
 import httpx
 
-from ..config import settings
-from ..secrets import Credential, SecretStore
+from app.core.config import settings
+from app.core.secrets import Credential, SecretStore
+
 from .providers import ProviderUnavailableError
 
 GOOGLE = "google_photos_picker"

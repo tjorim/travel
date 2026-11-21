@@ -9,7 +9,7 @@ from urllib.parse import quote
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 
-from ..config import settings
+from app.core.config import settings
 
 
 def _without_html(value: Any) -> Any:

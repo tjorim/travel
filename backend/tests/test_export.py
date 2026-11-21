@@ -9,9 +9,10 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.auth import current_subject
-from app.capability import generate_token, verifier_for
-from app.database import Base, get_session
+from app.core.auth import current_subject
+from app.core.capability import generate_token, verifier_for
+from app.db.base import Base
+from app.db.session import get_session
 from app.export import EXPORT_AUDIT_ACTION, EXPORT_SCHEMA_VERSION
 from app.main import app
 from app.models import (

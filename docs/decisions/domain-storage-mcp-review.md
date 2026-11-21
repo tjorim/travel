@@ -95,7 +95,7 @@ entries as schema authority.
 
 - **Database:** canonical structured records, ownership/access policy, object
   inventory and lifecycle state. Current mapped fields are in the appendix.
-  Provider secrets have a separate storage abstraction (`app/secrets.py` and
+  Provider secrets have a separate storage abstraction (`app/core/secrets.py` and
   `ProviderSecret`); they are not trip content or export material.
 - **Application-controlled storage:** media/document originals, generated image
   and video copies/posters, and owner-library files. The database records keys,

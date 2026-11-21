@@ -11,10 +11,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 from starlette.requests import Request
 
-from app import authlimit
-from app.authlimit import FailedAuthenticationLimiter, failed_authentication
-from app.config import Settings, settings
-from app.database import Base, get_session
+from app.core import authlimit
+from app.core.authlimit import FailedAuthenticationLimiter, failed_authentication
+from app.core.config import Settings, settings
+from app.db.base import Base
+from app.db.session import get_session
 from app.main import app
 from tests.test_auth import StaticJwksClient, token_for
 
@@ -54,7 +55,7 @@ def identity(monkeypatch: pytest.MonkeyPatch) -> rsa.RSAPrivateKey:
     monkeypatch.setattr(settings, "oidc_audience", "travel-api")
     monkeypatch.setattr(settings, "oidc_issuer_url", ISSUER)
     monkeypatch.setattr(settings, "oidc_jwks_url", f"{ISSUER}/certs")
-    monkeypatch.setattr("app.auth.signing_keys", lambda _: StaticJwksClient(key.public_key()))
+    monkeypatch.setattr("app.core.auth.signing_keys", lambda _: StaticJwksClient(key.public_key()))
     return key
 
 
@@ -119,7 +120,7 @@ def test_identity_provider_outage_is_503_and_never_counted(
     visitor = client()
     valid = bearer(token_for(identity, "travel-api"))
     with monkeypatch.context() as outage:
-        outage.setattr("app.auth.signing_keys", lambda _: Offline())
+        outage.setattr("app.core.auth.signing_keys", lambda _: Offline())
         for _ in range(LIMIT * 3):
             response = visitor.get("/api/trips", headers=valid)
             assert response.status_code == 503

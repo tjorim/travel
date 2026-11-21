@@ -16,6 +16,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, aliased
 
+from app.core.update_day import fallback_zone, local_day, usable_zone
+
 from .models import (
     TRAVEL_UPDATE_ORDER,
     VISIT_ORDER,
@@ -45,7 +47,6 @@ from .models import (
     TripTask,
     Visit,
 )
-from .update_day import fallback_zone, local_day, usable_zone
 from .update_zones import trip_zone_spans
 
 logger = logging.getLogger("travel.export")

@@ -17,7 +17,7 @@ from test_media import (
     video_with_telemetry,
 )
 
-from app.config import settings
+from app.core.config import settings
 from app.media import service, worker
 from app.models import (
     DerivativeProcessingState,

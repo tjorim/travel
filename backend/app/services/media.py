@@ -18,7 +18,9 @@ from typing import BinaryIO
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..errors import BadGateway, Conflict, RecordNotFound, Refusal, service_error
+from app.core.errors import BadGateway, Conflict, RecordNotFound, Refusal, service_error
+from app.core.secrets import SecretStore
+
 from ..media.candidates import GPS_AGREEMENT_METRES, GROUPING_WINDOW, build_travel_update_candidates
 from ..media.providers import ProviderError, ProviderUnavailableError, provider_available
 from ..media.service import (
@@ -66,7 +68,6 @@ from ..schemas import (
     MediaTravelUpdateTimeOption,
     ProviderConnectionStatus,
 )
-from ..secrets import SecretStore
 from ..storage import ObjectStorage
 from .localized import text_keys, trip_language, write_texts
 from .trips import owned_trip

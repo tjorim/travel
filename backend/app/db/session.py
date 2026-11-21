@@ -1,14 +1,9 @@
 from collections.abc import Generator
 
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
-from .config import settings
-
-
-class Base(DeclarativeBase):
-    pass
-
+from app.core.config import settings
 
 engine = create_engine(settings.database_url, pool_pre_ping=True, hide_parameters=True)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)

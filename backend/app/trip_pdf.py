@@ -18,8 +18,10 @@ from pydantic import Field, model_validator
 from sqlalchemy import String, cast, event, func, select
 from sqlalchemy.orm import Session
 
+from app.core.content_language import resolve
+from app.core.update_day import update_day, zone_spans
+
 from .access import sharing_blocker
-from .content_language import resolve
 from .export import ROUTE, STAY, TRAVEL_UPDATE, VISIT, _default, _record
 from .models import (
     Base,
@@ -34,7 +36,6 @@ from .models import (
 from .projection import local_id, render_projection, scoped_file
 from .schemas import InputModel
 from .storage import ObjectStorage
-from .update_day import update_day, zone_spans
 
 MAX_ROWS = 1500
 MAX_TEXT = 500_000
@@ -124,7 +125,7 @@ def check_budget(session: Session, trip_id: str) -> None:
 
 
 def _read(row: Any, columns: tuple[str, ...], locale: str) -> dict[str, Any]:
-    """An owner record for the PDF: each text field in the PDF's language, else the other (``app.content_language``)."""
+    """An owner record for the PDF: each text field in the PDF's language, else the other (``app.core.content_language``)."""
     record = _record(row, columns)
     for key in [name for name in record if name.endswith("_nl")]:
         base = key.removesuffix("_nl")

@@ -10,10 +10,11 @@ from sqlalchemy.pool import StaticPool
 
 from app import schemas
 from app.atom import atom_document
-from app.auth import current_subject
-from app.config import settings
-from app.content_language import ContentLanguage, pick, resolve
-from app.database import Base, get_session
+from app.core.auth import current_subject
+from app.core.config import settings
+from app.core.content_language import ContentLanguage, pick, resolve
+from app.db.base import Base
+from app.db.session import get_session
 from app.main import app
 from app.mcp_server import TravelMcpBackend
 from app.models import Area, MediaDerivative, Trip, Visibility
@@ -618,7 +619,7 @@ def test_an_update_without_text_in_either_language_breaks_no_delivery(owner: Tes
 
 
 def test_an_owner_can_edit_a_suggested_area_name_on_an_english_trip(owner: TestClient) -> None:
-    from app.config import Settings
+    from app.core.config import Settings
     from app.places.search import CachedPlaceSearchService
     from app.routers.places import get_place_search_service
     from tests.test_places import FakePlaceSearchProvider

@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.config import Settings
+from app.core.config import Settings
 
 
 @pytest.mark.parametrize("environment", ["production", "test", "staging", "Development"])

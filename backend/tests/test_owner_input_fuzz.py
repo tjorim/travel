@@ -10,8 +10,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app.auth import current_subject
-from app.database import Base, get_session
+from app.core.auth import current_subject
+from app.db.base import Base
+from app.db.session import get_session
 from app.main import app
 
 

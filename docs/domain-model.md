@@ -302,7 +302,7 @@ documents and emergency information. A field that is ever shared joins the table
 - A trip (and a collection, which belongs to no trip) has `content_language` (`nl` or `en`, default `nl`; the web
   app sends the owner's interface language when it creates one). It is the language a write to the plain field name
   lands in, and the one a read prefers. A trip's records read it from their trip.
-- `app.content_language.resolve` is the one rule: the requested language, otherwise the other, otherwise nothing;
+- `app.core.content_language.resolve` is the one rule: the requested language, otherwise the other, otherwise nothing;
   an empty string counts as nothing. The owner API, MCP, the visitor document, the PDF, the Atom feed, the owner's
   search and the sharing checks all apply it.
 - A trip's and a travel update's `title` needs text in at least one language (a check constraint). Everything else
@@ -682,7 +682,7 @@ update's zone**: an update at 07:00 in Taipei stays on its Taipei day, not the U
 3. else UTC, only for a trip with no zoned area on any dated stay or visit.
 
 A zone name the server cannot resolve counts as no zone, and the derivation never fails.
-`backend/app/update_day.py` is the one place that derives it, and the visitor projection, the change summaries,
+`backend/app/core/update_day.py` is the one place that derives it, and the visitor projection, the change summaries,
 the owner's PDF and export (`local_date` and `timezone`), and the owner API (`local_date` and `timezone` on every
 update) all use it, so the owner and the visitor read the same day
 ([#357](https://github.com/tjorim/travel/issues/357), [#391](https://github.com/tjorim/travel/issues/391)).

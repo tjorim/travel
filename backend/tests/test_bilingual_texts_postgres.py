@@ -15,9 +15,9 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from alembic import command
-from app.config import settings
-from app.content_language import ContentLanguage
-from app.errors import Refusal
+from app.core.config import settings
+from app.core.content_language import ContentLanguage
+from app.core.errors import Refusal
 from app.models import Visit
 from app.schemas import AreaInput, TripCreate, TripUpdate, VisitCreate, VisitUpdate
 from app.services import areas as area_service

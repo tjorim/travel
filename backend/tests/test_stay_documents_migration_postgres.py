@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from alembic import command
-from app.config import settings
+from app.core.config import settings
 from app.models import Area, DocumentAsset, DocumentKind, ObjectState, Stay, StayDocumentAsset, StoredObject, Trip
 
 PREVIOUS = "022_sharing_preset_label"

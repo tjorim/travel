@@ -29,9 +29,10 @@ from starlette.middleware import Middleware as StarletteMiddleware
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from ..authlimit import THROTTLED_DETAIL, failed_authentication, throttled_headers
-from ..config import settings
-from ..database import SessionLocal
+from app.core.authlimit import THROTTLED_DETAIL, failed_authentication, throttled_headers
+from app.core.config import settings
+from app.db.session import SessionLocal
+
 from .backend import TOOL_FAMILIES, TravelMcpBackend
 from .core import _AUDITED, _REPORTED, ResponseValidationError, _reported, _request_id, _validation_fields, logger
 

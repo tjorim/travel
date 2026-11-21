@@ -13,11 +13,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.orm import Session
 
-from ..auth import current_subject
-from ..database import get_session
-from ..errors import ApiException
+from app.core.auth import current_subject
+from app.core.errors import ApiException
+from app.core.request_limits import RequestRateLimiter
+from app.db.session import get_session
+
 from ..models import Route
-from ..request_limits import RequestRateLimiter
 from ..schemas import GeoJsonLineString, Identifier, RouteCreate, RouteResponse, RouteUpdate
 from ..services import routes as service
 from ..services.trips import owned_trip

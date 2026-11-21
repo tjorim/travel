@@ -13,7 +13,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
 from alembic import command
-from app.config import settings
+from app.core.config import settings
 
 PREVIOUS = "030_update_share_date_precision"
 

@@ -23,8 +23,9 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from ..config import settings
-from ..database import SessionLocal
+from app.core.config import settings
+from app.db.session import SessionLocal
+
 from ..models import DerivativeProcessingState, MediaAsset, MediaDerivative, MediaWorkerJob, ObjectState, StoredObject
 from ..storage import ObjectStorage, get_storage, sha256_hex
 from . import service

@@ -11,7 +11,7 @@ from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import sessionmaker
 from test_media_worker import outputs
 
-from app.database import Base
+from app.db.base import Base
 from app.media import service, worker
 from app.models import DerivativePurpose, MediaDerivative, MediaWorkerJob, StoredObject, Trip
 from app.storage import LocalObjectStorage

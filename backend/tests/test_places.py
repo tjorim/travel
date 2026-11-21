@@ -4,8 +4,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from test_publication import activate, client_for, create_trip, engine, scope, share
 
-from app.config import Settings
-from app.database import Base
+from app.core.config import Settings
+from app.db.base import Base
 from app.main import app
 from app.models import TravelUpdate
 from app.places.search import CachedPlaceSearchService

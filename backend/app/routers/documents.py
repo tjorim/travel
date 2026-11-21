@@ -11,8 +11,9 @@ from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from ..auth import current_subject
-from ..database import get_session
+from app.core.auth import current_subject
+from app.db.session import get_session
+
 from ..media.ranges import private_original_headers
 from ..models import DocumentKind
 from ..schemas import DocumentResponse, DocumentTitle, DocumentUpdate, Identifier, LibraryDocumentUpdate

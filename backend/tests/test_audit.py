@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.audit import purge_expired_audit_events
-from app.auth import current_subject
-from app.database import Base, get_session
+from app.core.auth import current_subject
+from app.db.base import Base
+from app.db.session import get_session
 from app.main import app
 from app.models import AuditEvent, ShareLink
 

@@ -20,8 +20,8 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from .config import Settings, settings
-from .errors import ServiceError
+from app.core.config import Settings, settings
+from app.core.errors import ServiceError
 
 logger = logging.getLogger(__name__)
 

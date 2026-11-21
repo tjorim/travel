@@ -69,14 +69,14 @@ test needs more data.
 
 ```bash
 uv sync --all-groups --locked
-uv run uvicorn app.main:app --reload     # TRAVEL_ENVIRONMENT=development; SQLite file built by app.dev_schema
+uv run uvicorn app.main:app --reload     # TRAVEL_ENVIRONMENT=development; SQLite file built by app.db.dev_schema
 uv run pytest
 uv run ruff check .
 uv run ruff format --check .             # ruff format . to rewrite
 uv run ty check .
 uv run alembic upgrade head              # PostgreSQL; alembic check verifies migrations match the models
 uv run python -m app.openapi_export      # rewrites ../frontend/openapi.json
-uv run python -m app.dev_schema          # SQLite dev database from the models (--reset rebuilds it)
+uv run python -m app.db.dev_schema          # SQLite dev database from the models (--reset rebuilds it)
 ```
 
 Migration checks need a local PostgreSQL database:

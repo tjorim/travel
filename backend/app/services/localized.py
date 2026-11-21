@@ -1,4 +1,4 @@
-"""Writing authored text that exists in Dutch and English (#376; see ``app.content_language``).
+"""Writing authored text that exists in Dutch and English (#376; see ``app.core.content_language``).
 
 A payload names a text field three ways: ``title_nl``, ``title_en`` and the plain ``title``. Alone, the plain name
 is a write to the record's content language, so a client that knows one language (the Home Assistant integration, an
@@ -14,8 +14,9 @@ from typing import Any
 from sqlalchemy import case, select, update
 from sqlalchemy.orm import Session
 
-from ..content_language import DEFAULT_LANGUAGE, LANGUAGE_VALUES, ContentLanguage, resolve
-from ..errors import Refusal
+from app.core.content_language import DEFAULT_LANGUAGE, LANGUAGE_VALUES, ContentLanguage, resolve
+from app.core.errors import Refusal
+
 from ..models import Area, Location, MediaDerivative, Route, TravelUpdate, Trip, Visit
 
 

@@ -8,10 +8,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 from starlette.requests import Request
 
-from app.config import Settings, settings
-from app.database import Base, get_session
+from app.core.config import Settings, settings
+from app.core.ratelimit import get_client_ip, limiter
+from app.db.base import Base
+from app.db.session import get_session
 from app.main import app
-from app.ratelimit import get_client_ip, limiter
 
 TOKEN = "probe-token-that-must-not-be-echoed"
 UNLISTED_PRIVACY = {"cache-control": "no-store, private", "x-robots-tag": "noindex, noarchive"}

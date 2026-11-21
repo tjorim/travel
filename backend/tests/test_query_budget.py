@@ -7,8 +7,9 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.auth import current_subject
-from app.database import Base, get_session
+from app.core.auth import current_subject
+from app.db.base import Base
+from app.db.session import get_session
 from app.main import app
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)

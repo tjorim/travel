@@ -21,7 +21,7 @@ from test_publication import (  # noqa: F401
     teardown_function,
 )
 
-from app.database import get_session  # noqa: F401
+from app.db.session import get_session  # noqa: F401
 from app.main import app
 from app.models import (
     Area,

@@ -17,10 +17,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app import schemas
-from app.auth import current_subject
-from app.config import settings
-from app.database import Base, get_session
-from app.errors import Refusal, ServiceError
+from app.core.auth import current_subject
+from app.core.config import settings
+from app.core.errors import Refusal, ServiceError
+from app.db.base import Base
+from app.db.session import get_session
 from app.main import app
 from app.mcp_server import MCP_TOOL_CAPABILITIES, BinaryUpload, TravelMcpBackend, create_mcp_server
 from app.mcp_server import core as mcp_core

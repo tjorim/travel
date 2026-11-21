@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app import maintenance
-from app.database import Base
+from app.db.base import Base
 from app.models import ObjectState, StoredObject, Trip
 from app.storage import LocalObjectStorage, lock_object_deletion
 from app.storage_reconcile import remove_unreferenced_objects, unreferenced_objects

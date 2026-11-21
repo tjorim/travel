@@ -21,8 +21,9 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from ..config import Settings, settings
-from ..errors import ServiceError
+from app.core.config import Settings, settings
+from app.core.errors import ServiceError
+
 from ..schemas import PlaceSearchResponse, PlaceSearchResult
 
 NOMINATIM_ATTRIBUTION = "© OpenStreetMap contributors"

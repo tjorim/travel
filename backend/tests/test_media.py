@@ -12,9 +12,11 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.auth import current_subject
-from app.config import settings
-from app.database import Base, get_session
+from app.core.auth import current_subject
+from app.core.config import settings
+from app.core.secrets import Credential, InMemorySecretStore, get_secret_store
+from app.db.base import Base
+from app.db.session import get_session
 from app.main import app
 from app.media import oauth
 from app.media.providers import (
@@ -26,7 +28,6 @@ from app.media.providers import (
 )
 from app.media.service import delete_media_asset, delete_media_derivative, direct_upload, purge_deleted_media
 from app.models import ImportProvider, ImportSession, MediaAsset, ObjectState, StoredObject
-from app.secrets import Credential, InMemorySecretStore, get_secret_store
 from app.storage import LocalObjectStorage, get_storage
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -460,7 +461,7 @@ def test_direct_upload_is_idempotent_and_never_duplicates_a_media_record(tmp_pat
 
 
 def test_upload_over_the_configured_size_limit_is_rejected(tmp_path: Path, monkeypatch) -> None:
-    from app.config import settings
+    from app.core.config import settings
 
     monkeypatch.setattr(settings, "media_max_upload_bytes", 10)
     owner = client_for("owner-1", tmp_path)
@@ -660,7 +661,7 @@ def test_a_raw_access_token_can_no_longer_be_stored_through_the_api(tmp_path: Pa
 
 
 def test_provider_availability_requires_oauth_configuration(tmp_path: Path, monkeypatch) -> None:
-    from app.config import settings
+    from app.core.config import settings
 
     owner = client_for("owner-1", tmp_path)
     assert {row["provider"]: row["available"] for row in owner.get("/api/provider-tokens").json()} == {
@@ -912,7 +913,7 @@ def test_gopro_cloud_import_is_unavailable_without_beta_access_while_direct_uplo
     trip = create_trip(owner)
     secret_store.set_credential(subject="owner-1", provider="gopro_cloud", credential=Credential("gopro-token"))
 
-    from app.config import settings
+    from app.core.config import settings
 
     assert settings.gopro_cloud_enabled is False
     response = owner.post(f"/api/trips/{trip['id']}/media/imports/gopro_cloud/sessions")

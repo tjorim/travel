@@ -8,9 +8,9 @@ from typing import Protocol
 from cryptography.fernet import Fernet
 from sqlalchemy import select
 
-from .config import settings
-from .database import SessionLocal
-from .models import ProviderSecret
+from app.core.config import settings
+from app.db.session import SessionLocal
+from app.models import ProviderSecret
 
 
 @dataclass

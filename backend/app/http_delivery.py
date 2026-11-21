@@ -11,8 +11,9 @@ from fastapi import Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from .content_language import LANGUAGE_VALUES, ContentLanguage
-from .errors import ApiException, RecordNotFound
+from app.core.content_language import LANGUAGE_VALUES, ContentLanguage
+from app.core.errors import ApiException, RecordNotFound
+
 from .media.ranges import media_response
 from .models import Trip
 from .schemas import SafeText

@@ -1,16 +1,17 @@
 """Read a trip's zoned stay and visit days from the database, for the surfaces that do not load the whole trip.
 
-The rule itself lives in ``app.update_day``; this module only feeds it with two small queries."""
+The rule itself lives in ``app.core.update_day``; this module only feeds it with two small queries."""
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.update_day import ZoneSpan, collect_spans, stay_span, zone_span
+
 from .models import Area, Stay, Visit
-from .update_day import ZoneSpan, collect_spans, stay_span, zone_span
 
 
 def trip_zone_spans(session: Session, trip_id: str) -> tuple[ZoneSpan, ...]:
-    """The zoned days of one trip's stays and visits (see ``app.update_day.update_zone``)."""
+    """The zoned days of one trip's stays and visits (see ``app.core.update_day.update_zone``)."""
     stays = session.execute(
         select(Stay.check_in_date, Stay.check_out_date, Area.timezone)
         .join(Area, Area.id == Stay.area_id)

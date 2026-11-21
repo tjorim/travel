@@ -4,7 +4,7 @@ from threading import Event
 import pytest
 from test_publication import client_for, create_trip, engine
 
-from app.database import Base
+from app.db.base import Base
 from app.main import app
 from app.places.search import CachedPlaceSearchService, PlaceSearchBusy, PlaceSearchError, get_place_search_service
 

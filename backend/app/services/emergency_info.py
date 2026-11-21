@@ -7,7 +7,8 @@ hold emergency contacts. Never projected onto a public/unlisted trip response. L
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..errors import RecordNotFound
+from app.core.errors import RecordNotFound
+
 from ..models import EmergencyInfoEntry
 from ..schemas import EmergencyInfoEntryCreate, EmergencyInfoEntryUpdate, Identifier
 

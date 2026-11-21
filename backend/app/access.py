@@ -13,8 +13,9 @@ from typing import Any
 from sqlalchemy import event, inspect
 from sqlalchemy.orm import Session, object_session
 
+from app.core.errors import ServiceError
+
 from .audience import Reach, audiences_of_trip
-from .errors import ServiceError
 from .live_scopes import remove_from_live_scopes
 from .models import (
     Area,

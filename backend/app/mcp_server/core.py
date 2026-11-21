@@ -19,10 +19,11 @@ from fastmcp.server.dependencies import get_access_token, get_context
 from pydantic import Field, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.core.config import settings
+from app.core.errors import Refusal
+from app.db.session import SessionLocal
+
 from .. import schemas
-from ..config import settings
-from ..database import SessionLocal
-from ..errors import Refusal
 from ..models import ActivityTransport, OwnerActivityEvent
 from ..storage import ObjectStorage, get_storage
 

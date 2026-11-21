@@ -5,12 +5,13 @@ from datetime import UTC, datetime
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.errors import RecordNotFound, Refusal, service_error
+from app.core.update_day import at_wall_clock, update_zone
+
 from ..access import apply_visibility, receivers
 from ..audit import delivering_audiences, record_visibility_change
-from ..errors import RecordNotFound, Refusal, service_error
 from ..models import TRAVEL_UPDATE_ORDER, Location, MediaAsset, TravelUpdate, TravelUpdateMediaAsset, Trip, Visibility
 from ..schemas import Identifier, TravelUpdateCreate, TravelUpdatePatch
-from ..update_day import at_wall_clock, update_zone
 from ..update_zones import trip_zone_spans
 from .localized import write_texts
 from .placement import location_from_input, selected_area
@@ -85,7 +86,7 @@ def _stored_placeholder(value: datetime) -> tuple[datetime, datetime | None]:
 
 
 def _read_wall_clock(session: Session, trip: Trip, update: TravelUpdate, wall_clock: datetime) -> None:
-    """Store the instant at which the update's own zone reads ``wall_clock`` (see ``app.update_day``)."""
+    """Store the instant at which the update's own zone reads ``wall_clock`` (see ``app.core.update_day``)."""
     session.flush()
     session.expire(update, ["chosen_area"])
     update.occurred_at = at_wall_clock(wall_clock, update_zone(update, trip_zone_spans(session, trip.id)))

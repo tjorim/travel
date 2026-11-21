@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 
-from app.database import get_session
+from app.db.session import get_session
 from app.main import app
 from app.services.delivery import UNLISTED_HEADERS
 

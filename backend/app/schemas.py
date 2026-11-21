@@ -19,8 +19,9 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
-from .content_language import ContentLanguage
-from .markdown import markdown_text, render_contact, render_inline, render_markdown
+from app.core.content_language import ContentLanguage
+from app.core.markdown import markdown_text, render_contact, render_inline, render_markdown
+
 from .models import (
     INTEGER_MAX,
     AlternativeGroupKind,
@@ -88,7 +89,7 @@ def blank_to_none(value: str | None) -> str | None:
 
 
 def _html(source: str | None) -> str | None:
-    """The owner app's sanitized HTML for one Markdown field (see ``app.markdown``)."""
+    """The owner app's sanitized HTML for one Markdown field (see ``app.core.markdown``)."""
     return render_markdown(source, "owner")
 
 

@@ -6,8 +6,8 @@ import pytest
 # deliberately refuses the public development share-link secret.
 os.environ["TRAVEL_ENVIRONMENT"] = "development"
 
-from app.authlimit import failed_authentication  # noqa: E402
-from app.ratelimit import limiter  # noqa: E402
+from app.core.authlimit import failed_authentication  # noqa: E402
+from app.core.ratelimit import limiter  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

@@ -8,9 +8,9 @@ import jwt
 from fastapi import Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from .authlimit import failed_authentication, refuse_throttled_client
-from .config import settings
-from .errors import ApiException
+from app.core.authlimit import failed_authentication, refuse_throttled_client
+from app.core.config import settings
+from app.core.errors import ApiException
 
 bearer_scheme = HTTPBearer(auto_error=False)
 

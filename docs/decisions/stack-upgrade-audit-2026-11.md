@@ -251,7 +251,7 @@ Effort: S under a day, M a few days, L more.
 - Relevant removals and behaviour changes: Python 3.10 dropped (we require
   3.15), psycopg 3 is the default driver (we pin `psycopg[binary]` 3.3.6 and
   `postgresql+psycopg`), autoflush now also runs for Core and `text()`
-  statements, `Select.filter_by()` searches all FROM entities. `app/database.py:14`
+  statements, `Select.filter_by()` searches all FROM entities. `app/db/session.py`
   sets `autoflush=False`; `autoflush`, `filter_by`, `exclude_properties` and
   `inherit_schema` are otherwise not used in `app/`. `alembic check` is already
   clean (audit table). New features (typed `Table` columns, `CreateView`,

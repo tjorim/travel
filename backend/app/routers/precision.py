@@ -5,8 +5,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from ..auth import current_subject
-from ..database import get_session
+from app.core.auth import current_subject
+from app.db.session import get_session
+
 from ..schemas import FollowAudiencePrecisionRequest, FollowAudiencePrecisionResult, Identifier
 from ..services import precision as service
 

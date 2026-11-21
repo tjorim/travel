@@ -9,8 +9,9 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.auth import current_subject
-from app.database import Base, get_session
+from app.core.auth import current_subject
+from app.db.base import Base
+from app.db.session import get_session
 from app.main import app
 from app.models import ShareLink
 from app.storage import LocalObjectStorage, get_storage
@@ -1497,7 +1498,7 @@ def test_scope_revisions_reject_stale_owner_writes() -> None:
 
 def test_concurrent_scope_claims_use_database_revision() -> None:
     from app.audience import PublicAudience
-    from app.errors import RevisionConflict
+    from app.core.errors import RevisionConflict
     from app.models import PublicSurface
     from app.services.audiences import claim_revision
 

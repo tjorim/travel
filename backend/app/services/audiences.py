@@ -16,6 +16,9 @@ from datetime import UTC, datetime
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from app.core.content_language import ContentLanguage
+from app.core.errors import Conflict, InvalidRevision, RecordNotFound, RevisionConflict, service_error
+
 from ..audience import (
     PUBLIC_KEY,
     UNLISTED_SCHEMA,
@@ -26,8 +29,6 @@ from ..audience import (
     capability_editable,
 )
 from ..audit import record_audience_event, scope_fingerprint
-from ..content_language import ContentLanguage
-from ..errors import Conflict, InvalidRevision, RecordNotFound, RevisionConflict, service_error
 from ..exclusion_review import exclusion_changes, widening
 from ..models import Collection, CollectionMember, PublicSurface, ShareLink, Trip
 from ..overview import future_counts

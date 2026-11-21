@@ -16,9 +16,9 @@ from threading import Lock
 from fastapi import status
 from starlette.requests import Request
 
-from .config import settings
-from .errors import ApiException
-from .ratelimit import get_client_ip
+from app.core.config import settings
+from app.core.errors import ApiException
+from app.core.ratelimit import get_client_ip
 
 # Distinct clients tracked at once. When full, expired windows go first, then the oldest window.
 MAX_CLIENTS = 10_000

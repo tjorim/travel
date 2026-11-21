@@ -16,10 +16,11 @@ from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.auth import current_subject
-from app.database import Base, get_session
+from app.core.auth import current_subject
+from app.core.errors import Refusal
+from app.db.base import Base
+from app.db.session import get_session
 from app.document.service import trip_documents
-from app.errors import Refusal
 from app.main import app
 from app.media.service import store_uploaded_object
 from app.models import DocumentAsset, ObjectState, StayDocumentAsset, StoredObject

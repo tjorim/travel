@@ -4,8 +4,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, status
 
-from ..auth import current_subject
-from ..errors import ApiException, service_exception
+from app.core.auth import current_subject
+from app.core.errors import ApiException, service_exception
+
 from ..schemas import TranslationDraftRequest, TranslationDraftResponse
 from ..translation import TranslationCancelled, TranslationError, TranslationService, get_translation_service
 

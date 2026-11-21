@@ -7,8 +7,9 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from ..auth import current_subject
-from ..database import get_session
+from app.core.auth import current_subject
+from app.db.session import get_session
+
 from ..export import EXPORT_SCHEMA_VERSION, record_export, stream_trip_export
 from ..models import ActivityTransport, OwnerActivityEvent, TravelUpdate
 from ..schemas import (

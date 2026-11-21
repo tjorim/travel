@@ -18,7 +18,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from alembic import command
-from app.config import settings
+from app.core.config import settings
 from app.models import PublicSurface, Visibility
 from tests import legacy_rows
 

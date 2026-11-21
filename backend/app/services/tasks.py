@@ -5,7 +5,8 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..errors import RecordNotFound, Refusal
+from app.core.errors import RecordNotFound, Refusal
+
 from ..models import TASK_ORDER, Trip, TripTask, TripTaskAlert
 from ..schemas import Identifier, TripTaskCreate, TripTaskUpdate
 from .trips import owned_trip

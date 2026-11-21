@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from alembic import command
-from app.config import settings
+from app.core.config import settings
 from app.models import LinkState, ShareLink
 from tests import legacy_rows
 

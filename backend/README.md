@@ -25,7 +25,7 @@ built from the models instead of the migrations:
 ```bash
 export TRAVEL_ENVIRONMENT=development
 export TRAVEL_DEV_AUTH_BYPASS_TOKEN=dev   # any string; send it as `Authorization: Bearer dev`
-uv run python -m app.dev_schema           # create the tables (--reset rebuilds the file after a model change)
+uv run python -m app.db.dev_schema           # create the tables (--reset rebuilds the file after a model change)
 uv run uvicorn app.main:app --reload
 ```
 
@@ -299,7 +299,7 @@ counters and bounded memory are described in
 ### Visitor rate limits
 
 The anonymous delivery routes are rate limited per client with FastAPI dependencies and `limits`
-(`app/ratelimit.py`, #189). All `/public/*` routes share one counter
+(`app/core/ratelimit.py`, #189). All `/public/*` routes share one counter
 (`TRAVEL_RATE_LIMIT_DEFAULT`) and all `/shared/{token}*` routes another, with a
 stricter limit (`TRAVEL_RATE_LIMIT_SHARED`), so probing different tokens, files
 or navigation targets counts together. Owner routes are not limited. A throttled

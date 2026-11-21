@@ -9,8 +9,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
-from ..auth import current_subject
-from ..database import get_session
+from app.core.auth import current_subject
+from app.db.session import get_session
+
 from ..models import EmergencyInfoEntry
 from ..schemas import (
     EmergencyInfoEntryCreate,

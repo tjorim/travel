@@ -15,9 +15,9 @@ from starlette.responses import PlainTextResponse
 from starlette.routing import Route
 from starlette.types import Message, Receive, Scope, Send
 
-from app import request_timing
 from app.main import app as travel_app
-from app.request_timing import RequestTimingMiddleware
+from app.middleware import request_timing
+from app.middleware.request_timing import RequestTimingMiddleware
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TIMING = re.compile(r'^app;dur=\d+\.\d, db;desc="(\d+) queries";dur=\d+\.\d$')

@@ -18,7 +18,7 @@ from typing import BinaryIO, Protocol
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from .config import settings
+from app.core.config import settings
 
 # PostgreSQL advisory lock held by every removal of a stored object's bytes,
 # and by the apps backup while it pins a database snapshot and hardlinks the

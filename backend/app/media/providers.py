@@ -18,8 +18,9 @@ from typing import Protocol
 
 import httpx
 
-from ..config import settings
-from ..errors import ServiceError
+from app.core.config import settings
+from app.core.errors import ServiceError
+
 from ..models import ImportProvider
 from ..storage import CHUNK_SIZE, StagedUpload
 

@@ -14,7 +14,7 @@ application side ([#336](https://github.com/tjorim/travel-private/issues/336)).
   client-audience mapping instead. Startup refuses an MCP audience equal to
   `TRAVEL_OIDC_AUDIENCE`.
 - **API audience**: unchanged, `TRAVEL_OIDC_AUDIENCE` (`travel-api`), checked
-  only by `app.auth.current_subject` for `/api/*`. An MCP token does not
+  only by `app.core.auth.current_subject` for `/api/*`. An MCP token does not
   authenticate the API and an API token does not authenticate MCP.
 - **No proxy**: FastMCP's `KeycloakAuthProvider` is a `RemoteAuthProvider`. It
   serves RFC 9728 metadata naming Keycloak as the authorization server and

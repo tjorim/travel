@@ -25,9 +25,9 @@ from sqlalchemy.pool import StaticPool
 
 from app import main as app_main
 from app import schemas
-from app.authlimit import failed_authentication
-from app.config import Settings, settings
-from app.database import Base
+from app.core.authlimit import failed_authentication
+from app.core.config import Settings, settings
+from app.db.base import Base
 from app.mcp_server import (
     MCP_TOOL_CAPABILITIES,
     BatchCreate,
@@ -650,7 +650,7 @@ def test_mcp_client_recovers_when_its_window_ends(
     mcp_limited: tuple[FastAPI, RSAKeyPair], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     now = [1000.0]
-    monkeypatch.setattr("app.authlimit.time.monotonic", lambda: now[0])
+    monkeypatch.setattr("app.core.authlimit.time.monotonic", lambda: now[0])
     application, pair = mcp_limited
     with _mcp_client(application) as visitor:
         _forge_until_limited(visitor)

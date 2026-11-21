@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     oidc_home_assistant_client_id: str = "travel-home-assistant"
     # Local-development-only shortcut that skips OIDC/JWKS verification: a
     # request whose bearer token equals this value is the fixed development
-    # owner (app.auth.DEV_BYPASS_SUBJECT). Empty by default; startup refuses
+    # owner (app.core.auth.DEV_BYPASS_SUBJECT). Empty by default; startup refuses
     # it outside environment == "development". Same contract as the
     # DEV_AUTH_BYPASS_TOKEN of champagnefestival and worktime.
     dev_auth_bypass_token: str = ""
@@ -106,13 +106,13 @@ class Settings(BaseSettings):
     # Per-client limits on the unauthenticated visitor delivery endpoints (#370), in "limits" notation such as
     # "300/minute" or "30/minute;300/hour". A published trip page fetches its files and map links one by one, so
     # these allow a busy page while still bounding bulk requests; an unlisted link, whose token can be probed,
-    # gets the stricter default. Counters are in-process (see app.ratelimit).
+    # gets the stricter default. Counters are in-process (see app.core.ratelimit).
     rate_limit_enabled: bool = True
     rate_limit_default: str = "300/minute"
     rate_limit_shared: str = "120/minute"
 
     # Failed bearer-token verifications one client may make on the owner API and the MCP route before it is refused
-    # with 429 until the window ends (#46). Counters are in-process (see app.authlimit).
+    # with 429 until the window ends (#46). Counters are in-process (see app.core.authlimit).
     auth_failure_limit: int = Field(default=20, ge=1)
     auth_failure_window_seconds: int = Field(default=60, ge=1)
 

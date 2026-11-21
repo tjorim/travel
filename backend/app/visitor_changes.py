@@ -12,12 +12,13 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
+from app.core.errors import Conflict
+from app.core.update_day import update_day
+
 from .access import receivers
 from .audience import Audience
-from .errors import Conflict
 from .models import Area, Location
 from .schemas import MergeAudience, MergeRecordRef, MergeWidenedRecord
-from .update_day import update_day
 
 # Location fields a visitor can read, in display order. The address parts are
 # published only while the owner shares the address; ``locality`` is the region

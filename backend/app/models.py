@@ -25,9 +25,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.types import JSON
 
-from .content_language import DEFAULT_LANGUAGE, Localized
-from .database import Base
-from .update_day import ZoneSpan, update_day, update_zone
+from app.core.content_language import DEFAULT_LANGUAGE, Localized
+from app.core.update_day import ZoneSpan, update_day, update_zone
+from app.db.base import Base
 
 
 def opaque_id() -> str:
@@ -296,7 +296,7 @@ def _visibility_column():
 
 
 def _content_language_column():
-    """The language a write to a plain text field name lands in (``nl`` or ``en``); see ``app.content_language``."""
+    """The language a write to a plain text field name lands in (``nl`` or ``en``); see ``app.core.content_language``."""
     return mapped_column(
         String(2), default=DEFAULT_LANGUAGE.value, server_default=DEFAULT_LANGUAGE.value, nullable=False
     )
@@ -336,7 +336,7 @@ class Area(Base):
     visibility: Mapped[Visibility] = _visibility_column()
     # Both ``None`` marks an unnamed area: the owner gave no name, so the interface
     # shows its own translated fallback and nothing language-bound is stored. ``label`` is the plain name over
-    # the two languages (``app.content_language``).
+    # the two languages (``app.core.content_language``).
     label_nl: Mapped[str | None] = mapped_column(String(120), nullable=True)
     label_en: Mapped[str | None] = mapped_column(String(120), nullable=True)
     label = Localized()
@@ -600,7 +600,7 @@ class TravelUpdate(Base):
         return (self.location.area if self.location is not None else None) or self.chosen_area
 
     # The trip's zoned stay and visit days, set by the service that lists updates so that reading each one does not
-    # reload them; without them the update reads them from its trip (see ``app.update_day``).
+    # reload them; without them the update reads them from its trip (see ``app.core.update_day``).
     zone_spans: tuple[ZoneSpan, ...] | None = None
 
     @property
@@ -1414,7 +1414,7 @@ class ImportRecord(Base):
     import session idempotent: retrying it after a partial failure only
     (re)fetches items that do not already have a `completed` row. A provider
     access token is never stored here; it lives only in the secret store
-    (`app.secrets`) for the lifetime the owner allows."""
+    (`app.core.secrets`) for the lifetime the owner allows."""
 
     __tablename__ = "import_records"
     __table_args__ = (

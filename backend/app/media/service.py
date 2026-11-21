@@ -27,8 +27,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..config import settings
-from ..errors import ServiceError
+from app.core.config import settings
+from app.core.errors import ServiceError
+from app.core.secrets import SecretStore
+
 from ..models import (
     DerivativeProcessingBackend,
     DerivativeProcessingState,
@@ -47,7 +49,6 @@ from ..models import (
     StoredObject,
     opaque_id,
 )
-from ..secrets import SecretStore
 from ..storage import (
     CHUNK_SIZE,
     ObjectStorage,

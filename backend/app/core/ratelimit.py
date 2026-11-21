@@ -3,9 +3,9 @@
 from limits import parse_many
 from starlette.requests import Request
 
-from .config import settings
-from .request_limits import RateLimitExceeded, RequestRateLimiter
-from .request_limits import get_client_ip as get_client_ip
+from app.core.config import settings
+from app.core.request_limits import RateLimitExceeded, RequestRateLimiter
+from app.core.request_limits import get_client_ip as get_client_ip
 
 limiter = RequestRateLimiter(settings.rate_limit_default, enabled=settings.rate_limit_enabled)
 

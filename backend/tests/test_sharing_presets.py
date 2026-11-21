@@ -26,8 +26,8 @@ from app import sharing_presets
 from app.access import COLLECTIONS
 from app.audience import Audience, LinkAudience, PublicAudience
 from app.audit import scope_fingerprint
-from app.database import Base
-from app.errors import ServiceError
+from app.core.errors import ServiceError
+from app.db.base import Base
 from app.main import app
 from app.models import AuditEvent, PublicSurface, ShareLink, Trip, Visibility
 from app.precision import audience_precision, effective_precision, is_finer, own_value
@@ -730,7 +730,7 @@ def test_a_revoked_link_has_nothing_to_review(world: World) -> None:
 def test_every_preset_route_requires_the_owner() -> None:
     from fastapi.routing import APIRoute
 
-    from app.auth import current_subject
+    from app.core.auth import current_subject
 
     found = []
     pending = list(app.routes)
@@ -756,7 +756,7 @@ def test_a_review_is_not_part_of_any_visitor_response(world: World) -> None:
         for word in ("preset", "left_as_is", "requires_acknowledgement"):
             assert word not in text
     # Without the owner's identity (the test override removed) every preset route is refused.
-    from app.auth import current_subject
+    from app.core.auth import current_subject
 
     app.dependency_overrides.pop(current_subject)
     for path in ("public-projection", f"share-links/{link['id']}"):

@@ -3,7 +3,8 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..errors import RecordNotFound, Refusal
+from app.core.errors import RecordNotFound, Refusal
+
 from ..models import PackingBag, PackingItem, PackingList, PackingTemplate, Trip
 from ..schemas import (
     Identifier,

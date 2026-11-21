@@ -13,8 +13,8 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 
 from app.audit import record_audit_event
-from app.database import Base
-from app.errors import RecordNotFound
+from app.core.errors import RecordNotFound
+from app.db.base import Base
 from app.models import AuditEvent, AuditEventKind, AuditTargetType, Trip
 from app.services.trips import delete_trip, lock_trip
 

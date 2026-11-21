@@ -14,6 +14,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.capability import generate_token, verifier_for
+from app.core.content_language import ContentLanguage, pick
+
 from ..audience import (
     Audience,
     LinkAudience,
@@ -23,8 +26,6 @@ from ..audience import (
     has_expired,
 )
 from ..audit import SYSTEM_ACTOR, record_audit_event, record_collection_event
-from ..capability import generate_token, verifier_for
-from ..content_language import ContentLanguage, pick
 from ..exclusion_review import scope_exclusions
 from ..models import (
     AuditEventKind,

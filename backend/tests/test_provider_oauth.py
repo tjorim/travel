@@ -8,12 +8,12 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from app.auth import current_subject
-from app.config import settings
-from app.database import Base
+from app.core.auth import current_subject
+from app.core.config import settings
+from app.core.secrets import Credential, DatabaseSecretStore, InMemorySecretStore, get_secret_store
+from app.db.base import Base
 from app.main import app
 from app.media import oauth
-from app.secrets import Credential, DatabaseSecretStore, InMemorySecretStore, get_secret_store
 
 
 def configure(monkeypatch) -> None:

@@ -14,11 +14,13 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from app.core.content_language import DEFAULT_LANGUAGE, ContentLanguage, pick
+from app.core.errors import ServiceError
+from app.core.markdown import markdown_text, render_inline, render_markdown
+from app.core.update_day import update_day, zone_spans
+
 from .access import COLLECTIONS, find_record, is_delivered, sharing_blocker
-from .content_language import DEFAULT_LANGUAGE, ContentLanguage, pick
-from .errors import ServiceError
 from .exclusions import EXCLUDE_KEY, hidden_records, is_excludable, stored_exclusions
-from .markdown import markdown_text, render_inline, render_markdown
 from .models import (
     Area,
     DatePrecision,
@@ -49,7 +51,6 @@ from .schemas import (
     ProjectionUpdate,
     ProjectionVisit,
 )
-from .update_day import update_day, zone_spans
 
 
 class ScopeError(ServiceError):
@@ -69,7 +70,7 @@ def _utc_instant(value: datetime) -> datetime:
 
 def visitor_text(record: Any, field: str, language: ContentLanguage | str) -> dict[str, Any]:
     """One authored text as a visitor reads it: ``{field: text}``, plus ``{field_lang: code}`` when the text is in
-    the other language because the requested one is empty (``app.content_language``). Both keys are left to the
+    the other language because the requested one is empty (``app.core.content_language``). Both keys are left to the
     projection model as set values, so a text in the requested language carries no marker at all."""
     text, found = pick(getattr(record, f"{field}_nl"), getattr(record, f"{field}_en"), language)
     return {field: text} | ({f"{field}_lang": found.value} if found is not None and found != language else {})
