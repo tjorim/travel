@@ -28,7 +28,7 @@ from app import schemas
 from app.core.authlimit import failed_authentication
 from app.core.config import Settings, settings
 from app.db.base import Base
-from app.mcp_server import (
+from app.mcp import (
     MCP_TOOL_CAPABILITIES,
     BatchCreate,
     OutageAwareJWTVerifier,
@@ -41,9 +41,9 @@ from app.mcp_server import (
     mcp_http_enabled,
     mount_mcp,
 )
-from app.mcp_server import core as mcp_core
-from app.mcp_server.core import BinaryUpload
-from app.mcp_server.server import MCP_MAX_REQUEST_BODY_BYTES, TravelStreamableHTTPSessionManager
+from app.mcp import core as mcp_core
+from app.mcp.core import BinaryUpload
+from app.mcp.server import MCP_MAX_REQUEST_BODY_BYTES, TravelStreamableHTTPSessionManager
 from app.models import (
     AuditEvent,
     AuditEventKind,
@@ -532,7 +532,7 @@ def test_mcp_http_accepts_a_declared_body_up_to_the_request_limit(mcp_resource: 
 
 def test_the_session_manager_applies_the_request_limit_instead_of_the_sdk_default() -> None:
     # FastMCP builds its session manager without ``max_request_body_size``; if an upgrade renames what we override,
-    # or stops building it by the name ``app.mcp_server.server`` replaces, the SDK's 4 MiB default returns and this fails.
+    # or stops building it by the name ``app.mcp.server`` replaces, the SDK's 4 MiB default returns and this fails.
     assert MCP_MAX_REQUEST_BODY_BYTES > DEFAULT_MAX_REQUEST_BODY_SIZE
     assert fastmcp_http.FastMCPStreamableHTTPSessionManager is TravelStreamableHTTPSessionManager
     manager = TravelStreamableHTTPSessionManager(app=FastMCP("limits")._mcp_server)
@@ -1008,7 +1008,7 @@ def test_capability_manifest_reports_contract_version_when_mcp_is_disabled(
 
 
 def test_write_tool_destructive_hints_reflect_overwrites() -> None:
-    from app.mcp_server import _ADDITIVE_WRITE_TOOLS, _tool_annotations
+    from app.mcp import _ADDITIVE_WRITE_TOOLS, _tool_annotations
 
     write_tools = {name for name, cap in MCP_TOOL_CAPABILITIES.items() if cap["effect"] == "write"}
     assert write_tools >= _ADDITIVE_WRITE_TOOLS
@@ -1030,7 +1030,7 @@ def test_write_tool_destructive_hints_reflect_overwrites() -> None:
 
 
 def test_preview_file_inspection_tools_are_read_only() -> None:
-    from app.mcp_server import _tool_annotations
+    from app.mcp import _tool_annotations
 
     for name in ("inspect_public_preview_file", "inspect_share_preview_file"):
         assert MCP_TOOL_CAPABILITIES[name]["effect"] == "read", name
@@ -1040,7 +1040,7 @@ def test_preview_file_inspection_tools_are_read_only() -> None:
 
 
 def test_external_provider_tools_are_open_world() -> None:
-    from app.mcp_server import _tool_annotations
+    from app.mcp import _tool_annotations
 
     for name in (
         "search_places",
@@ -1122,7 +1122,7 @@ def test_list_tools_are_compact_by_default_and_areas_can_be_found_by_name(backen
 
 
 def test_batch_create_adds_everything_or_nothing(backend: TravelMcpBackend) -> None:
-    from app.mcp_server import BatchCreate
+    from app.mcp import BatchCreate
 
     trip = backend.create_trip(schemas.TripCreate(title="Batch"))
     taipei = backend.save_area(trip["id"], schemas.AreaInput(label="Taipei"))
@@ -1172,7 +1172,7 @@ def test_batch_create_adds_everything_or_nothing(backend: TravelMcpBackend) -> N
 
 
 def test_batch_created_visits_are_listed_by_day_then_time_then_creation(backend: TravelMcpBackend) -> None:
-    from app.mcp_server import BatchCreate
+    from app.mcp import BatchCreate
 
     trip = backend.create_trip(schemas.TripCreate(title="Batch order"))
     area = backend.save_area(trip["id"], schemas.AreaInput(label="Tainan"))

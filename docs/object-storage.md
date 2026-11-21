@@ -122,7 +122,7 @@ Clients handling large files should use the multipart upload API; eliminating
 the encoded JSON allocation requires a different MCP binary transport (tracked in tjorim/travel#84).
 
 Over HTTP the MCP transport caps every request body at 48 MiB (`MCP_MAX_REQUEST_BODY_BYTES`
-in `app/mcp_server/server.py`), so a base64 upload holds about 36 MiB of file (a body of exactly the
+in `app/mcp/server.py`), so a base64 upload holds about 36 MiB of file (a body of exactly the
 limit decodes to just under it, after the call's JSON framing). That covers phone photos,
 scanned PDFs and short clips; anything larger uses the multipart API or, later, the upload
 handle in #84. The MCP SDK's own default is 4 MiB and FastMCP does not pass the setting on, so

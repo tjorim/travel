@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from .. import schemas
-from ..services import alternatives as alternative_service
-from .core import McpTools
-from .rendering import _compact, _model
+from app import schemas
+from app.mcp.core import McpTools
+from app.mcp.rendering import _compact, _model
+from app.services import alternatives as alternative_service
 
 
 def _alternative_group(value: Any, compact: bool) -> dict[str, Any]:

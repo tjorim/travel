@@ -6,13 +6,13 @@ from typing import Annotated, Any
 
 from pydantic import Field
 
-from .. import schemas
-from ..services import routes as route_service
-from ..services import stays as stay_service
-from ..services import travel_updates as update_service
-from ..services import visits as visit_service
-from .core import McpTools
-from .rendering import _listed, _model, _models
+from app import schemas
+from app.mcp.core import McpTools
+from app.mcp.rendering import _listed, _model, _models
+from app.services import routes as route_service
+from app.services import stays as stay_service
+from app.services import travel_updates as update_service
+from app.services import visits as visit_service
 
 
 class ItineraryTools(McpTools):

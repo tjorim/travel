@@ -19,13 +19,12 @@ from fastmcp.server.dependencies import get_access_token, get_context
 from pydantic import Field, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
+from app import schemas
 from app.core.config import settings
 from app.core.errors import Refusal
 from app.db.session import SessionLocal
+from app.models import ActivityTransport, OwnerActivityEvent
 from app.services.storage import ObjectStorage, get_storage
-
-from .. import schemas
-from ..models import ActivityTransport, OwnerActivityEvent
 
 Result = TypeVar("Result")
 

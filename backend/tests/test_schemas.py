@@ -7,7 +7,7 @@ from pydantic import BaseModel, ValidationError
 
 from app import schemas
 from app.main import app
-from app.mcp_server import TravelMcpBackend
+from app.mcp import TravelMcpBackend
 
 
 def _models_in(annotation: object) -> typing.Iterator[type[BaseModel]]:

@@ -4,15 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from app import schemas
+from app.mcp.core import McpTools
+from app.mcp.rendering import _listed, _model
+from app.models import Visibility
+from app.services import areas as area_service
+from app.services import locations as location_service
 from app.services.places import service as place_service
 from app.services.sharing import visibility as visibility_service
-
-from .. import schemas
-from ..models import Visibility
-from ..services import areas as area_service
-from ..services import locations as location_service
-from .core import McpTools
-from .rendering import _listed, _model
 
 
 class PlaceTools(McpTools):

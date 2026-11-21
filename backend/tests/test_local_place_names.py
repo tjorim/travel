@@ -22,7 +22,7 @@ from test_publication import (  # noqa: F401
 from app import schemas
 from app.core.config import settings
 from app.main import app
-from app.mcp_server import TravelMcpBackend
+from app.mcp import TravelMcpBackend
 from app.models import Area, Location
 from app.services.places.navigation import area_navigation_url, location_navigation_url
 from app.services.places.search import NominatimSearchProvider

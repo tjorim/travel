@@ -13,9 +13,9 @@ supports local stdio use and integration testing now, while refusing a caller
 without an OIDC subject (except the explicitly configured development subject).
 """
 
-from .backend import TOOL_FAMILIES, TravelMcpBackend
-from .core import BinaryUpload, ResponseValidationError
-from .server import (
+from app.mcp.backend import TOOL_FAMILIES, TravelMcpBackend
+from app.mcp.core import BinaryUpload, ResponseValidationError
+from app.mcp.server import (
     _ADDITIVE_WRITE_TOOLS,
     MCP_CAPABILITY_CONTRACT_VERSION,
     MCP_TOOL_CAPABILITIES,
@@ -30,7 +30,7 @@ from .server import (
     mcp_http_enabled,
     mount_mcp,
 )
-from .trips import BatchCreate
+from app.mcp.trips import BatchCreate
 
 __all__ = [
     "MCP_CAPABILITY_CONTRACT_VERSION",

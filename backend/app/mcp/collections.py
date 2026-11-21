@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from .. import schemas
-from ..services import collections as collection_service
-from .core import McpTools
-from .rendering import _model, _share_url
+from app import schemas
+from app.mcp.core import McpTools
+from app.mcp.rendering import _model, _share_url
+from app.services import collections as collection_service
 
 
 def _mcp_collection(value: Any) -> dict[str, Any]:

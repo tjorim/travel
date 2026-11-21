@@ -32,9 +32,16 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from app.core.authlimit import THROTTLED_DETAIL, failed_authentication, throttled_headers
 from app.core.config import settings
 from app.db.session import SessionLocal
-
-from .backend import TOOL_FAMILIES, TravelMcpBackend
-from .core import _AUDITED, _REPORTED, ResponseValidationError, _reported, _request_id, _validation_fields, logger
+from app.mcp.backend import TOOL_FAMILIES, TravelMcpBackend
+from app.mcp.core import (
+    _AUDITED,
+    _REPORTED,
+    ResponseValidationError,
+    _reported,
+    _request_id,
+    _validation_fields,
+    logger,
+)
 
 # Clients list only these tools plus the two below; every other tool is found
 # with ``search_tools`` and run through ``call_tool`` (layered discovery, #196).

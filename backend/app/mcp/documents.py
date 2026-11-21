@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from app import schemas
+from app.mcp.core import BinaryUpload, McpTools, storage
+from app.mcp.rendering import _model, _models
+from app.models import DocumentKind
+from app.services import emergency_info as emergency_service
 from app.services.documents import service as document_service
-
-from .. import schemas
-from ..models import DocumentKind
-from ..services import emergency_info as emergency_service
-from .core import BinaryUpload, McpTools, storage
-from .rendering import _model, _models
 
 
 class DocumentTools(McpTools):

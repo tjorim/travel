@@ -16,7 +16,7 @@ from app.core.config import settings
 from app.core.errors import Refusal, service_error_handler
 from app.db.base import Base
 from app.db.session import get_session
-from app.mcp_server import TravelMcpBackend
+from app.mcp import TravelMcpBackend
 from app.models import DocumentAsset, DocumentKind, MediaAsset, MediaKind, ObjectState, StoredObject, Trip
 from app.routers import trips
 from app.services.media.ingest import purge_deleted_media

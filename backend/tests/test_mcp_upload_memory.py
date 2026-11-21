@@ -15,12 +15,12 @@ from pathlib import Path
 
 import httpx
 
-from app.mcp_server.server import MCP_MAX_REQUEST_BODY_BYTES
+from app.mcp.server import MCP_MAX_REQUEST_BODY_BYTES
 
 SCRIPT = """
 import base64, json, tempfile
 from pathlib import Path
-from app.mcp_server.core import BinaryUpload
+from app.mcp.core import BinaryUpload
 from app.services.media.ingest import read_bounded_upload
 from app.services.storage import LocalObjectStorage, sha256_hex, verify_object
 
@@ -93,8 +93,8 @@ SERVER = textwrap.dedent(
     from sqlalchemy.pool import StaticPool
     from app.core.config import settings
     from app.db.base import Base
-    from app.mcp_server import create_mcp_http_app, mount_mcp
-    from app.mcp_server import core
+    from app.mcp import create_mcp_http_app, mount_mcp
+    from app.mcp import core
     from app.services.storage import LocalObjectStorage
 
     issuer, url = "https://identity.example.test/realms/travel", "https://travel.example.test/mcp"

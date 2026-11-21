@@ -7,9 +7,9 @@ from typing import Any
 from pydantic import Field
 from sqlalchemy import select
 
-from ..models import OwnerActivityEvent
-from .core import McpTools
-from .rendering import _model
+from app.mcp.core import McpTools
+from app.mcp.rendering import _model
+from app.models import OwnerActivityEvent
 
 
 class IdentityTools(McpTools):

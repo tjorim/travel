@@ -34,7 +34,7 @@ original trip-only ownership rule.
   deletion lock (rules 3 and 4), and a provider import commits each finished item through the transport's
   `checkpoint`. The statements below about MCP calling router functions describe the reviewed baseline, not the
   code. No module outside `routers/` imports a router except `main.py`, `test_service_transports.py` fails for a
-  service that commits, and the MCP tools live in `backend/app/mcp_server/`, one module per tool family.
+  service that commits, and the MCP tools live in `backend/app/mcp/`, one module per tool family.
   Historical source evidence below describes the reviewed baseline.
 - #116 resolved with owner approval on 2026-11-01: MCP audit retention is 730
   days, matching sharing audits. `purge-expired-audit-events` now purges both

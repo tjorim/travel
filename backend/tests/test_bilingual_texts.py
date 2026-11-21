@@ -15,7 +15,7 @@ from app.core.content_language import ContentLanguage, pick, resolve
 from app.db.base import Base
 from app.db.session import get_session
 from app.main import app
-from app.mcp_server import TravelMcpBackend
+from app.mcp import TravelMcpBackend
 from app.models import Area, MediaDerivative, Trip, Visibility
 from app.services.sharing.atom import atom_document
 

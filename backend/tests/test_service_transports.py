@@ -23,8 +23,8 @@ from app.core.errors import Refusal, ServiceError
 from app.db.base import Base
 from app.db.session import get_session
 from app.main import app
-from app.mcp_server import MCP_TOOL_CAPABILITIES, BinaryUpload, TravelMcpBackend, create_mcp_server
-from app.mcp_server import core as mcp_core
+from app.mcp import MCP_TOOL_CAPABILITIES, BinaryUpload, TravelMcpBackend, create_mcp_server
+from app.mcp import core as mcp_core
 from app.models import (
     Collection,
     CollectionAuditEvent,

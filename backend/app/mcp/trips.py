@@ -8,17 +8,16 @@ from typing import Any
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app import schemas
 from app.core.errors import Refusal, ServiceError
-
-from .. import schemas
-from ..services import routes as route_service
-from ..services import stays as stay_service
-from ..services import tasks as task_service
-from ..services import travel_updates as update_service
-from ..services import trips as trip_service
-from ..services import visits as visit_service
-from .core import McpTools
-from .rendering import _compact, _model, _models
+from app.mcp.core import McpTools
+from app.mcp.rendering import _compact, _model, _models
+from app.services import routes as route_service
+from app.services import stays as stay_service
+from app.services import tasks as task_service
+from app.services import travel_updates as update_service
+from app.services import trips as trip_service
+from app.services import visits as visit_service
 
 
 class BatchCreate(schemas.InputModel):

@@ -23,7 +23,7 @@ from test_publication import (  # noqa: F401
 from app import schemas
 from app.core.config import settings
 from app.main import app
-from app.mcp_server import BatchCreate, TravelMcpBackend
+from app.mcp import BatchCreate, TravelMcpBackend
 from app.models import Stay
 
 NIGHTS = {"check_in_date": "2054-04-01", "check_out_date": "2054-04-03"}
