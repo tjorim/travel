@@ -12,6 +12,7 @@ from pydantic_core import PydanticCustomError
 from starlette.exceptions import HTTPException
 
 from app.core.errors import ApiException, http_error_handler, service_exception, validation_error_handler
+from app.main import app as travel_app
 from app.schemas import require_visit_times
 from app.services.media.providers import GooglePhotosPickerProvider, ProviderError
 
@@ -128,3 +129,57 @@ def test_malformed_provider_responses_have_a_safe_typed_failure():
             assert str(error) == "Media provider returned an invalid response"
         else:
             raise AssertionError("Expected invalid provider response")
+
+
+def assert_error_body(body: dict) -> None:
+    """The one error shape: ``detail`` plus ``errors`` entries of ``code``, ``params`` and ``path``."""
+    assert set(body) == {"detail", "errors"}
+    assert body["errors"], body
+    for entry in body["errors"]:
+        assert set(entry) == {"code", "params", "path"}
+        assert isinstance(entry["code"], str) and entry["code"]
+        assert isinstance(entry["params"], dict)
+        assert isinstance(entry["path"], list)
+
+
+def test_the_assembled_app_answers_every_failure_in_one_shape_with_stable_codes():
+    client = TestClient(travel_app, raise_server_exceptions=False)
+    expected = [
+        (client.get("/api/does-not-exist"), 404, "http_error"),
+        (client.delete("/api/health"), 405, "http_error"),
+        (client.get("/api/identity"), 401, "unauthorized"),
+        (client.post("/api/trips", json={}), 401, "unauthorized"),
+    ]
+    for response, status, code in expected:
+        assert response.status_code == status
+        assert response.headers["content-type"] == "application/json"
+        body = response.json()
+        assert_error_body(body)
+        assert body["errors"][0]["code"] == code
+
+
+def test_failures_never_carry_a_stack_trace_or_a_secret():
+    client = TestClient(travel_app, raise_server_exceptions=False)
+    for response in (
+        client.get("/api/does-not-exist"),
+        client.get("/api/identity", headers={"Authorization": "Bearer secret-token"}),
+    ):
+        assert "secret-token" not in response.text
+        for marker in ("Traceback", 'File "', "site-packages", "/app/", "sqlalchemy"):
+            assert marker not in response.text
+
+
+def test_an_unhandled_exception_answers_500_without_leaking_its_cause():
+    # Starlette's outermost handler answers this one, before the application's error handlers; its plain-text body is
+    # recorded as a follow-up in the alignment notes (a JSON body with a stable code would match the rest).
+    application = FastAPI()
+
+    @application.get("/boom")
+    def boom():
+        raise RuntimeError("secret-token postgresql://user:password@db/travel")
+
+    response = TestClient(application, raise_server_exceptions=False).get("/boom")
+    assert response.status_code == 500
+    assert "secret-token" not in response.text
+    assert "password" not in response.text
+    assert "Traceback" not in response.text
