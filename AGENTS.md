@@ -18,7 +18,11 @@ versions live in `frontend/.node-version`, the `packageManager` field of `fronte
   `hooks/`, `lib/`, `i18n/`, `mocks/` and `styles/`, plus the two entry points `main.tsx` (owner app) and
   `visitor-main.tsx` (public and share app); `tests/` mirrors `src/`. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
   for the rules and where new code goes
-- `backend/` contains the FastAPI service (`app/`, `alembic/`, `tests/`)
+- `backend/` contains the FastAPI service: `app/` is `main.py`, `core/`, `db/`, `models/`, `schemas/`, `routers/`,
+  `services/` (with `sharing/`, `media/`, `documents/` and `places/` sub-packages), `mcp/` and `middleware/`, plus
+  `openapi_export.py`, `version.py` and the thin entry points `mcp_server.py`, `maintenance.py`, `task_alerts.py` and
+  `media/worker.py`; `alembic/` holds the migrations and `tests/` mirrors `app/`. See
+  [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the rules and where new code goes
 - `custom_components/travel/` is the Home Assistant integration, `home-assistant/` its tests and packaging, and
   `python-travel/` the PyPI client library
 - `docs/` holds contracts, decisions and maintenance guides; `scripts/` the release tooling
@@ -76,7 +80,7 @@ uv run ruff format --check .             # ruff format . to rewrite
 uv run ty check .
 uv run alembic upgrade head              # PostgreSQL; alembic check verifies migrations match the models
 uv run python -m app.openapi_export      # rewrites ../frontend/openapi.json
-uv run python -m app.db.dev_schema          # SQLite dev database from the models (--reset rebuilds it)
+uv run python -m app.db.dev_schema       # SQLite dev database from the models (--reset rebuilds it)
 ```
 
 Migration checks need a local PostgreSQL database:

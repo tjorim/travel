@@ -41,6 +41,10 @@ Most of the suite uses SQLite and needs no services. The `*_postgres.py` tests s
 configured, and the media tests need `ffmpeg` on `PATH`. `tests/test_openapi_snapshot.py` fails when
 `../frontend/openapi.json` is stale (see [API contract](#api-contract)).
 
+The tests mirror `app/` (`tests/routers`, `tests/services`, `tests/core`, `tests/db`, `tests/middleware`, `tests/schemas`,
+`tests/mcp`); migration, golden-file and cross-cutting tests stay at the top of `tests/`. The package layout of `app/` and
+where new code goes are described in [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#backend-backendapp).
+
 ## Lint and type-check
 
 ```bash

@@ -64,7 +64,7 @@ uv run alembic upgrade head
 
 - `frontend/` — React source for the owner `/admin/` PWA and live public and unlisted trip views; the source layout is described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - `frontend/MAP-PROVIDER.md` — app map provider, attribution, privacy and failure policy
-- `backend/` — application service, FastAPI routes and future owner MCP workflows
+- `backend/` — application service, FastAPI routes and the owner MCP server; `app/` is `core/`, `db/`, `models/`, `schemas/`, `routers/`, `services/`, `mcp/` and `middleware/`, described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#backend-backendapp)
 - `compose.yaml` — local Caddy, `travel-api` and PostgreSQL stack
 - `Caddyfile.example` — local copy of the production owner, public and unlisted routes
 - `custom_components/travel/`, `home-assistant/`, `python-travel/` — Home Assistant integration, its tests and the PyPI client

@@ -98,7 +98,72 @@ Rules:
 
 ## Backend (`backend/app/`)
 
-The backend keeps its current layout for now (flat modules such as `models.py` and `schemas.py` next to `routers/`,
-`services/`, `mcp_server/`, `media/` and `places/`). The shared target,
-applied to all four apps in a later step, is `main.py`, `core/`, `db/`, `models/`, `schemas/`, `routers/`, `services/`,
-`mcp/` and `middleware/`.
+```
+main.py                 app assembly: middleware, router registration, lifespan; nothing else
+mcp_server.py           the stdio MCP entry point (`python -m app.mcp_server`): re-exports `app.mcp`, see "Entry points"
+openapi_export.py      writes frontend/openapi.json (`uv run python -m app.openapi_export`)
+version.py              the release version read from /VERSION
+routers/                the HTTP layer, one module per domain; thin: validate, call a service, return a response model
+services/               business logic shared by the routers and the MCP tools; a service never commits (the transport does)
+  sharing/              what each audience receives: audience, audiences, access, exclusions, precision, projection,
+                        publication, hidden-link service, presets, delivery, link preview, overview, visitor changes
+  media/                owner media service, ingestion pipeline, providers, OAuth, range delivery, the apps media worker
+  documents/            owner document service and ingestion
+  places/               owner place-search service, OSM search, navigation targets, country names
+  audit, export, maintenance, pdf_renderer, route_overlap, storage, storage_reconcile, task_alerts, track_import,
+  translation, trip_pdf, update_zones   single-module domains; the other `<domain>.py` files are the owner operations
+                        per record kind (trips, areas, locations, stays, routes, visits, alternatives, packing, tasks, ...)
+models/                 SQLAlchemy models, one module per domain; `enums.py` has every closed vocabulary, `base.py` the
+                        opaque id and column factories; `__init__` imports every module (Alembic needs them all)
+schemas/                Pydantic request and response models, one module per domain; `base.py` has InputModel/ResponseModel
+core/                   settings, errors, bearer auth, failed-auth and visitor rate limits, request limits, capability
+                        tokens, provider secrets, content-language and update-day rules, markdown and search helpers
+db/                     engine and session (`session.py`), the declarative base (`base.py`), the SQLite dev schema helper
+mcp/                    the owner MCP server: one module per tool family (trips, itinerary, places, sharing, collections,
+                        media, documents, packing, tasks, alternatives) plus the backend, rendering and server assembly
+middleware/             ASGI middleware (Server-Timing and slow-request log)
+```
+
+Tests live in `backend/tests/` and mirror this tree (`tests/routers`, `tests/services`, `tests/core`, `tests/db`,
+`tests/middleware`, `tests/schemas`, `tests/mcp`); `conftest.py`, `golden/` and `legacy_rows.py` are shared. The
+`*_postgres` and migration tests (they find `alembic/` relative to `tests/`), the golden-file tests and the cross-cutting
+tests (error contract, OpenAPI snapshot, architecture scans, the Python client) stay at the top. Sibling-test imports are
+package imports (`from tests.routers.test_publication import ...`).
+
+Rules: every JSON route declares a response model; routers do not touch the database directly and do not import each
+other; a service never imports a router; code used by one domain stays in that domain's modules. Dependencies point
+downwards: `routers` and `mcp` -> `services` -> `schemas`, `models` -> `core`, `db`. `core` and `db` never import
+`services`, `schemas`, `routers` or `mcp`; the two upward edges are `core/secrets.py` (reads the provider secrets table
+through `models`) and `db/dev_schema.py` (imports `models` to register every table), and `models` imports only `core`
+and `db`. Package `__init__` files in `services/` are docstring-only, so importing one module never loads a sibling.
+
+Naming: inside a sub-package, `service.py` is the owner-facing service of the domain (the old `services/<name>.py`) and
+`ingest.py` the copy-verify-record pipeline. Schemas and models are named after the domain, not the record
+(`schemas/stays.py`, `models/stays.py`). `from app.models import X` and `from app.schemas import X` keep working through
+the package re-exports (explicit `__all__`); new code may import the submodule. Models that refer to each other only in
+annotations import each other under `TYPE_CHECKING` (the module files use `from __future__ import annotations`).
+
+### Where does new backend code go?
+
+- A new endpoint: `routers/<domain>.py` (thin), its operation in `services/<domain>.py` (or the domain's sub-package),
+  request/response models in `schemas/<domain>.py`, tables in `models/<domain>.py` plus an Alembic revision; add the
+  new model module to `models/__init__.py`, the schemas to `schemas/__init__.py`.
+- An MCP tool: `mcp/<family>.py`, calling the same service the router calls; never a second implementation.
+- Something every domain needs and that knows nothing of a domain (settings, errors, limits, auth): `core/`.
+- Something that reads or writes the engine, session or dev schema: `db/`. ASGI plumbing: `middleware/`.
+
+### Entry points kept at their old path
+
+These modules only forward to the code in the new layout, because commands documented for operators and MCP clients start
+them by name. Each can go once the units that call them have moved to the new module path.
+
+| Old path | Forwards to | Used by | Removal |
+| --- | --- | --- | --- |
+| `app/mcp_server.py` | `app.mcp` | `python -m app.mcp_server` (docs, MCP client configs), `from app.mcp_server import ...` | when MCP client configs use `python -m app.mcp` |
+| `app/maintenance.py` | `app.services.maintenance` | `python -m app.maintenance` (docs/object-storage.md, systemd timers) | when the timers use the new path |
+| `app/task_alerts.py` | `app.services.task_alerts` | `python -m app.task_alerts` (VPS scheduler, backend/README.md) | when the scheduler uses the new path |
+| `app/media/worker.py` | `app.services.media.worker` | `python -m app.media.worker` (supervised dispatcher, docs/media-worker.md) | when the service unit uses the new path; delete `app/media/` with it |
+
+`python -m app.dev_schema` is now `python -m app.db.dev_schema` (a development-only command, no shim). Logger names that
+come from `__name__` follow the module (for example `app.middleware.request_timing`, `app.services.translation`); the
+literal logger `app.mcp_server` is unchanged.
