@@ -16,6 +16,7 @@ from app.core.errors import (
     service_exception,
     validation_error_handler,
 )
+from app.core.logging import configure_logging
 from app.core.request_limits import RateLimitExceeded, RateLimitHeadersMiddleware
 from app.mcp import (
     MCP_CAPABILITY_CONTRACT_VERSION,
@@ -25,6 +26,7 @@ from app.mcp import (
     mcp_http_enabled,
     mount_mcp,
 )
+from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.request_timing import RequestTimingMiddleware
 from app.services.places.search import PlaceSearchError
 
@@ -79,6 +81,8 @@ _lifespan = (
     combine_lifespans(_application_lifespan, _mcp_app.lifespan) if _mcp_app is not None else _application_lifespan
 )
 
+configure_logging()
+
 app = FastAPI(
     title="Travel API",
     description="Private-by-default API for trips, reisupdates and what visitors may read of them.",
@@ -103,6 +107,8 @@ app.add_exception_handler(RequestValidationError, validation_error_handler)  # t
 app.add_exception_handler(RateLimitExceeded, delivery_rate_limit_handler)  # ty: ignore[invalid-argument-type]
 # Outermost, so its timing covers everything below it (apps#246).
 app.add_middleware(RequestTimingMiddleware)
+# Outermost of all, so every response (errors and rate-limit refusals included) carries the id.
+app.add_middleware(RequestIdMiddleware)
 
 app.include_router(live_location_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
