@@ -475,7 +475,7 @@ class LocationResponse(LocationFields):
     id: str
     visibility: Visibility
     # Every stored location belongs to an area (derived from its city when it was created).
-    area_id: str  # ty: ignore[invalid-mutable-override]
+    area_id: str  # ty: ignore[incompatible-mutable-override]
     osm_url: str | None
     # A response is read from stored data, not sent by a client.
     model_config = ConfigDict(from_attributes=True, extra="ignore", json_schema_serialization_defaults_required=True)

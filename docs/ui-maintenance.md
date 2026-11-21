@@ -119,7 +119,7 @@ pnpm typecheck
 pnpm test --maxWorkers=2
 pnpm build
 pnpm bundle:check
-pnpm e2e
+pnpm test:e2e
 ```
 
 Use the existing E2E/auth setup documented in the repository; do not bypass
@@ -192,7 +192,7 @@ It does not execute fetched registry code or replace interaction testing.
 
 Use each package's exact `packageManager` declaration and committed
 `.node-version` as the frontend tooling sources of truth. The app packages use
-pnpm 12.16.1; CI must read the package declaration rather than keeping a second
+pnpm 12.21.0; CI must read the package declaration rather than keeping a second
 hard-coded pnpm version. Frontend Node setup reads `.node-version`. Keep tool
 changes in reviewable PRs and preserve runtime-version/bundle investigations as
 separate work.

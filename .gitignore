@@ -9,6 +9,7 @@ backend/media-storage/
 backend/**/__pycache__/
 backend/**/*.pyc
 frontend/dist/
+frontend/coverage/
 frontend/node_modules/
 frontend/*.tsbuildinfo
 frontend/src/paraglide/

@@ -177,7 +177,10 @@ function stubObserver(visible = true) {
   vi.stubGlobal(
     "IntersectionObserver",
     class {
-      constructor(private callback: (entries: { isIntersecting: boolean }[]) => void) {}
+      private callback: (entries: { isIntersecting: boolean }[]) => void;
+      constructor(callback: (entries: { isIntersecting: boolean }[]) => void) {
+        this.callback = callback;
+      }
       observe() {
         if (visible) this.callback([{ isIntersecting: true }]);
       }

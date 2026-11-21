@@ -48,7 +48,9 @@ vi.mock("maplibre-gl", () => ({
     visibility?: string;
     filter?: unknown;
     camera = { center: { lng: 121, lat: 25 }, zoom: 5, pitch: 0, bearing: 0 };
-    constructor(public options: Record<string, unknown>) {
+    options: Record<string, unknown>;
+    constructor(options: Record<string, unknown>) {
+      this.options = options;
       maps.push(this);
     }
     getCenter() {

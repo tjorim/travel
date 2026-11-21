@@ -5,17 +5,79 @@ owner-authenticated MCP server. MCP tools use the application's typed owner
 handlers and storage services; they do not read the static archive's JSON,
 documents, or protected files directly.
 
-## Video processing
+## Setup
 
-Video derivatives are encoded by the private apps media worker (`travel-video-v1`);
-the API image has no encoder. The adapter uses a database outbox and a separately
-supervised `python -m app.media.worker` dispatcher; it never polls inside a request.
-Without a configured worker a new video derivative stays `processing`.
-See [configuration, retry/privacy and rollback](../docs/media-worker.md) and
-[the configuration example](media-worker.env.example). Migration 011 is required;
-VPS activation is tracked in [apps#275](https://github.com/tjorim/apps/issues/275).
+Requirements: [uv](https://docs.astral.sh/uv/) (it installs the Python version from `.python-version`).
+
+```bash
+cd backend
+uv sync --all-groups --locked   # creates .venv with the runtime and dev dependencies
+```
+
+Configuration comes from `TRAVEL_*` environment variables (see [Configuration](#configuration)). The video work needs
+`ffmpeg`/`ffprobe`; CI installs the pinned binaries named in the `Dockerfile`.
+
+## Run
+
+With `TRAVEL_ENVIRONMENT=development` and no `TRAVEL_DATABASE_URL` the backend uses a SQLite file, `travel-api.db`,
+built from the models instead of the migrations:
+
+```bash
+export TRAVEL_ENVIRONMENT=development
+export TRAVEL_DEV_AUTH_BYPASS_TOKEN=dev   # any string; send it as `Authorization: Bearer dev`
+uv run python -m app.dev_schema           # create the tables (--reset rebuilds the file after a model change)
+uv run uvicorn app.main:app --reload
+```
+
+For PostgreSQL, Keycloak and Caddy start the local stack from the repository root with `docker compose up`.
+
+## Test
+
+```bash
+uv run pytest
+```
+
+Most of the suite uses SQLite and needs no services. The `*_postgres.py` tests skip unless a PostgreSQL database is
+configured, and the media tests need `ffmpeg` on `PATH`. `tests/test_openapi_snapshot.py` fails when
+`../frontend/openapi.json` is stale (see [API contract](#api-contract)).
+
+## Lint and type-check
+
+```bash
+uv run ruff check .
+uv run ruff format --check .     # `uv run ruff format .` to rewrite
+uv run ty check .
+```
+
+## Migrations
+
+Alembic revisions live in `alembic/versions/`; never edit an applied revision. Production runs on PostgreSQL, so verify
+schema changes there rather than on the SQLite development database:
+
+```bash
+# Local migration checks use development mode, as CI does. Production supplies its secret.
+export TRAVEL_ENVIRONMENT=development
+export TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel
+uv run alembic upgrade head      # apply migrations
+uv run alembic check             # fail when the models and migrations disagree
+uv run alembic downgrade base    # the cycle CI runs against PostgreSQL
+uv run alembic revision --autogenerate -m "describe the change"
+```
+
+See [Deployment and rollback](#deployment-and-rollback) for how production upgrades run.
 
 ## API contract
+
+The response models are the source of truth for the frontend's API types:
+
+```bash
+uv run python -m app.openapi_export   # writes ../frontend/openapi.json (run `pnpm api:generate` in frontend/ for the types)
+```
+
+See "API contract" in the repository's [AGENTS.md](../AGENTS.md) for the full workflow. The route reference and the
+behaviour behind each group of routes follow in [API reference](#api-reference).
+
+## API reference
 
 Owner-only translation drafts use the configured private
 `TRAVEL_TRANSLATION_API_BASE`. In production,
@@ -405,7 +467,17 @@ GoPro Cloud remains hidden until its beta OAuth/token contract is available;
 Production credential injection and key backup are tracked in
 [tjorim/apps#240](https://github.com/tjorim/apps/issues/240).
 
-## Configuration and local checks
+## Video processing
+
+Video derivatives are encoded by the private apps media worker (`travel-video-v1`);
+the API image has no encoder. The adapter uses a database outbox and a separately
+supervised `python -m app.media.worker` dispatcher; it never polls inside a request.
+Without a configured worker a new video derivative stays `processing`.
+See [configuration, retry/privacy and rollback](../docs/media-worker.md) and
+[the configuration example](media-worker.env.example). Migration 011 is required;
+VPS activation is tracked in [apps#275](https://github.com/tjorim/apps/issues/275).
+
+## Configuration
 
 | Variable | Purpose |
 |---|---|
@@ -493,20 +565,9 @@ for the contract and reconnect steps. Caddy routing, production Keycloak
 configuration and endpoint exposure remain `tjorim/apps#226` and
 `tjorim/apps#265` work.
 
-```bash
-uv sync --all-groups --frozen
-uv run ruff check .
-uv run pytest
-# Local migration checks use development mode, as CI does. Production supplies its secret.
-export TRAVEL_ENVIRONMENT=development
-# Requires a PostgreSQL database, as the CI migration check does.
-TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel \
-  uv run alembic upgrade head
-TRAVEL_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel \
-  uv run alembic downgrade base
-```
+### Deployment and rollback
 
-GitHub Actions runs these API checks, including the upgrade/downgrade cycle
+GitHub Actions runs the checks above, including the upgrade/downgrade cycle
 against PostgreSQL, on changes to `backend/` and on every push to `main`.
 The initial migration can be reversed with `uv run alembic downgrade base`.
 The central upgrade (`scripts/upgrade-apps.sh travel` in the `apps`
@@ -515,7 +576,6 @@ the latest encrypted Restic snapshot covers the database and media together
 (apps#220). Rollback is: stop `travel-api`, restore the database and media from
 that snapshot using the `apps` recovery guide, then deploy the previous API
 image. Never run `alembic downgrade base` against a database with content.
-
 
 ## Pydantic boundary conventions
 

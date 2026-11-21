@@ -1,4 +1,5 @@
 import os
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -19,7 +20,7 @@ FRESH = (NOW - timedelta(minutes=5)).timestamp()
 
 
 @pytest.fixture
-def session() -> Session:
+def session() -> Iterator[Session]:
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     with sessionmaker(bind=engine)() as session:

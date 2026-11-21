@@ -126,7 +126,7 @@ export function tripBadges(
 /** The trip's destination zone and when to evaluate it: the first stay with
  * a zone, else the first flight's arrival zone. */
 export function tripZone(
-  trip: Pick<Trip, "starts_on">,
+  _trip: Pick<Trip, "starts_on">,
   stays: Stay[],
   routes: Route[],
 ): { zone: string; at: string } | null {

@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { configure } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll } from "vitest";
 
-import { server } from "./mocks/server";
+import { server } from "@/mocks/server";
 
 // Each test file runs in its own worker; on a busy machine the default one second is too tight for async UI.
 configure({ asyncUtilTimeout: 5000 });

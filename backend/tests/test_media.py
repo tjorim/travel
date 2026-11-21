@@ -1153,7 +1153,7 @@ def test_derivative_deletion_failure_leaves_retryable_object(tmp_path: Path) -> 
         key = derivative.object.object_key
 
         class FailingStorage(LocalObjectStorage):
-            def delete(self, _key: str) -> None:
+            def delete(self, key: str) -> None:
                 raise OSError("simulated storage failure")
 
         purge = delete_media_derivative(session, derivative=derivative)

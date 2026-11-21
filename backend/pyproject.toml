@@ -3,28 +3,30 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "travel-api"
+name = "travel-backend"
+# Packaging metadata only; the project runs from source (uv run / the Docker image) and is never
+# installed as a distributable wheel. The release version lives in /VERSION.
 version = "0.0.0"
 description = "Privacy-first FastAPI backend for Travel"
 requires-python = ">=3.15"
 dependencies = [
   "alembic==1.20.1",
   "cryptography==50.0.2",
-  "fastapi==0.162.4",
+  "fastapi==0.162.5",
   "fastmcp==4.1.8",
   "httpx==0.28.1",
   "markdown-it-py==4.3.0",
   "mdit-py-plugins==0.7.0",
   "nh3==0.3.7",
   "pillow==13.0.0",
-  "psycopg[binary]==3.3.8",
+  "psycopg[binary]==3.3.9",
   "pydantic==2.14.3",
-  "pydantic-settings==2.16.2",
+  "pydantic-settings==2.16.3",
   "pyjwt[crypto]==2.15.1",
   "python-multipart==0.0.33",
   "limits==5.8.0",
   "reportlab==5.1.0",
-  "sqlalchemy==2.1.8",
+  "sqlalchemy==2.1.9",
   "timezonefinder==9.2.0",
   "uvicorn[standard]==0.54.0",
   "weasyprint==70.0",
@@ -36,7 +38,7 @@ dev = [
   "pytest==9.2.0",
   "python-travel",
   "ruff==0.17.5",
-  "ty==0.0.99",
+  "ty==0.0.105",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -44,6 +46,12 @@ packages = ["app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Third-party deprecations we cannot fix here; each entry is scoped to the emitting
+# module. Drop an entry once its upstream release stops warning.
+filterwarnings = [
+  # fastmcp's py-key-value-aio protocol is checked by beartype without @runtime_checkable.
+  "ignore:.*isn't explicitly decorated with @runtime_checkable:DeprecationWarning:beartype",
+]
 
 [tool.ruff]
 target-version = "py315"
@@ -56,6 +64,9 @@ ignore = ["E501", "B008"]
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
 
+[tool.ty.environment]
+python-version = "3.15"
+
 # Applied migrations are history and are not edited to satisfy a type checker.
 [tool.ty.src]
 exclude = ["alembic"]
@@ -66,14 +77,15 @@ exclude = ["alembic"]
 include = ["tests/**"]
 
 [tool.ty.overrides.rules]
-unresolved-attribute = "ignore"
+missing-attribute = "ignore"
+missing-union-attribute = "ignore"
 invalid-assignment = "ignore"
 not-subscriptable = "ignore"
 unsupported-operator = "ignore"
 not-iterable = "ignore"
 invalid-argument-type = "ignore"
-invalid-return-type = "ignore"
-invalid-method-override = "ignore"
+invalid-explicit-return = "ignore"
+incompatible-method-override = "ignore"
 no-matching-overload = "ignore"
 
 [tool.uv.sources]
