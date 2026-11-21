@@ -16,7 +16,7 @@ build-backend = "hatchling.build"
 packages = ["src/travel_client"]
 
 [dependency-groups]
-dev = ["pytest==9.2.0", "ruff==0.17.5", "ty==0.0.105"]
+dev = ["pytest==9.2.0", "ruff==0.17.5", "ty==0.0.106"]
 
 [tool.ruff]
 target-version = "py314"
