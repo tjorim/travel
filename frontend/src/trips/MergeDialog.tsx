@@ -25,7 +25,7 @@ import type {
 } from "../api-types";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
-import { audienceName } from "./locations/model";
+import { audienceName } from "@/features/trips/locations/model";
 import { MergeRecordChoices, recordKey } from "./MergeRecordChoices";
 import { parseAudience, type DuplicateGroup, type DuplicateReason } from "./merge-candidates";
 

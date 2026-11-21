@@ -3,10 +3,10 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import type { Stay, Trip } from "../../api-types";
-import { StaysBlock } from "./StaysBlock";
+import { StaysBlock } from "@/features/trips/detail/StaysBlock";
 
-vi.mock("./shared", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./shared")>()),
+vi.mock("@/features/trips/detail/shared", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/trips/detail/shared")>()),
   RecordHeading: ({ children }: { children: React.ReactNode }) => <h4>{children}</h4>,
 }));
 

@@ -12,9 +12,9 @@ import {
   isUndated,
   withTripDays,
 } from "./agenda-items";
-import { routeLine } from "./routes/model";
-import { stayLine } from "./stays/model";
-import { visitLine } from "./visits/model";
+import { routeLine } from "@/features/trips/routes/model";
+import { stayLine } from "@/features/trips/stays/model";
+import { visitLine } from "@/features/trips/visits/model";
 
 const taipei = { id: "taipei", label: "Taipei", timezone: "Asia/Taipei" } as Area;
 const tainan = { id: "tainan", label: "Tainan", timezone: "Asia/Taipei" } as Area;

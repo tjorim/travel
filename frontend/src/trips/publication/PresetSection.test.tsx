@@ -15,9 +15,9 @@ import type {
   SharingPresetId,
   SharingPresetReview,
 } from "../../api-types";
-import type { CatalogItem } from "./catalog";
-import type { ScopePreset } from "./PresetSection";
-import { ScopeEditor } from "./ScopeEditor";
+import type { CatalogItem } from "@/features/trips/publication/catalog";
+import type { ScopePreset } from "@/features/trips/publication/PresetSection";
+import { ScopeEditor } from "@/features/trips/publication/ScopeEditor";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

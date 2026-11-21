@@ -2,9 +2,9 @@ import { m } from "../paraglide/messages.js";
 import { addDays, daysBetween, localDate, wallClock } from "@/lib/dates";
 import { areaName, routeTitle, stayInPlan, stayLabel, visitTitle } from "@/lib/records";
 import type { PlanningStatus, Route, Stay, Visibility, Visit } from "../api-types";
-import { routeLine } from "./routes/model";
-import { stayLine } from "./stays/model";
-import { visitLine } from "./visits/model";
+import { routeLine } from "@/features/trips/routes/model";
+import { stayLine } from "@/features/trips/stays/model";
+import { visitLine } from "@/features/trips/visits/model";
 
 export type AgendaRecordKind = "stay" | "route" | "visit";
 

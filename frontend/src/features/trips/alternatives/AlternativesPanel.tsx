@@ -1,0 +1,488 @@
+import { Button } from "@/components/ui/button";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
+import { useEffect, useId, useMemo, useState } from "react";
+
+import { useLocale } from "@/i18n/locale";
+import { m } from "@/paraglide/messages.js";
+import { errorMessage } from "@/lib/api/api";
+import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
+import { formatDay } from "@/lib/dates";
+import {
+  type AlternativeGroup,
+  type AlternativeKind,
+  type AlternativeSuggestion,
+} from "@/api-types";
+import {
+  groupedIds,
+  groupTitle,
+  membersOf,
+  recordDetail,
+  recordTitle,
+  type AlternativeRecord,
+} from "./model";
+import { CompareTable } from "./CompareTable";
+import { useAlternativeMutations, useAlternativeQueries } from "./use-alternatives";
+
+type Others = "cancel" | "remove";
+type Notice = { text: string; undo?: { groupId: string; eventId: string } } | { text: string };
+
+const REASONS: Record<AlternativeSuggestion["reason"], () => string> = {
+  overlapping_nights: () => m.alternatives_reason_nights(),
+  overlapping_days: () => m.alternatives_reason_days(),
+  same_journey: () => m.alternatives_reason_journey(),
+};
+
+/** Whether a kind has something to show: a group, a suggestion, or loose records enough to make a group. */
+export const hasAlternatives = (
+  records: readonly AlternativeRecord[],
+  groups: readonly AlternativeGroup[],
+  suggestions: readonly AlternativeSuggestion[],
+) =>
+  groups.length > 0 ||
+  suggestions.length > 0 ||
+  records.filter((record) => !groupedIds(groups).has(record.id)).length >= 2;
+
+/**
+ * The owner's alternative groups of one kind and the groups the app suggests from loose ideas.
+ * A suggestion is stored only when the owner confirms it. Groups are private planning state.
+ * `heading` names the kind when several panels share one area (`AlternativesArea`): the area then carries the
+ * title, the help text and a failed load, and the panel only its own kind.
+ */
+export function AlternativesPanel({
+  tripId,
+  kind,
+  records,
+  onOpen,
+  heading,
+}: {
+  tripId: string;
+  kind: AlternativeKind;
+  /** Every record of this kind on the trip, to name members and to offer loose ones for a new group. */
+  records: AlternativeRecord[];
+  onOpen: (id: string) => void;
+  heading?: string;
+}) {
+  useLocale();
+  const { groups: groupsQuery, suggestions: suggestionsQuery } = useAlternativeQueries(tripId);
+  const { create, update, dissolve, choose, undo } = useAlternativeMutations(tripId, kind);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [choosing, setChoosing] = useState<{ group: AlternativeGroup; id: string } | null>(null);
+  const [others, setOthers] = useState<Others>("cancel");
+  const [comparing, setComparing] = useState<AlternativeGroup | null>(null);
+  const [editing, setEditing] = useState<AlternativeGroup | "new" | null>(null);
+  const [dissolving, setDissolving] = useState<AlternativeGroup | null>(null);
+  const [focusGroup, setFocusGroup] = useState<string | null>(null);
+
+  // After a choice the dialog closes and its trigger may be a disabled button: land on the group instead.
+  useEffect(() => {
+    if (!focusGroup) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(`alternative-group-${focusGroup}`)?.focus();
+      setFocusGroup(null);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [focusGroup]);
+
+  const groups = (groupsQuery.data ?? []).filter((group) => group.kind === kind);
+  const suggestions = (suggestionsQuery.data ?? []).filter((item) => item.kind === kind);
+  const byId = useMemo(() => new Map(records.map((record) => [record.id, record])), [records]);
+  const loose = records.filter((record) => !groupedIds(groups).has(record.id));
+  const failed = groupsQuery.error ?? suggestionsQuery.error;
+
+  if (!hasAlternatives(records, groups, suggestions) && (heading || !failed)) return null;
+
+  const names = (ids: string[]) =>
+    ids.map((id) => (byId.get(id) ? recordTitle(kind, byId.get(id)!) : "")).filter(Boolean);
+
+  async function confirmSuggestion(suggestion: AlternativeSuggestion) {
+    setError(null);
+    try {
+      const group = await create.mutateAsync({ memberIds: suggestion.member_ids });
+      setNotice({ text: m.alternatives_grouped() });
+      setFocusGroup(group.id);
+    } catch (problem) {
+      setError(errorMessage(problem, m.alternatives_the_alternatives_could_not_be_saved));
+    }
+  }
+
+  async function confirmChoice() {
+    if (!choosing) return;
+    const { group, id } = choosing;
+    const name = recordTitle(kind, byId.get(id)!);
+    setError(null);
+    try {
+      const result = await choose.mutateAsync({ id: group.id, memberId: id, others });
+      setChoosing(null);
+      setNotice({
+        text:
+          others === "remove"
+            ? m.alternatives_chosen_removed({ name })
+            : m.alternatives_chosen_cancelled({ name }),
+        ...(result.undoable ? { undo: { groupId: group.id, eventId: result.event_id } } : {}),
+      });
+      setFocusGroup(group.id);
+    } catch (problem) {
+      setChoosing(null);
+      setError(errorMessage(problem, m.alternatives_the_choice_could_not_be_made));
+    }
+  }
+
+  async function undoChoice(groupId: string, eventId: string) {
+    setError(null);
+    try {
+      await undo.mutateAsync({ id: groupId, eventId });
+      setNotice({ text: m.alternatives_undone() });
+      setFocusGroup(groupId);
+    } catch (problem) {
+      setNotice(null);
+      setError(errorMessage(problem, m.alternatives_the_choice_could_not_be_undone));
+    }
+  }
+
+  async function confirmDissolve() {
+    if (!dissolving) return;
+    const group = dissolving;
+    setError(null);
+    try {
+      await dissolve.mutateAsync(group);
+      setDissolving(null);
+      setNotice({ text: m.alternatives_dissolved() });
+    } catch (problem) {
+      setDissolving(null);
+      setError(errorMessage(problem, m.alternatives_the_group_could_not_be_dissolved));
+    }
+  }
+
+  // Alone it is a region of its own; in the shared area it is a labelled group, so the kinds are not landmarks that
+  // repeat the names of the blocks below.
+  const Wrapper = heading ? "div" : "section";
+  const busy = choose.isPending || undo.isPending || create.isPending || dissolve.isPending;
+  const choosingName = choosing ? recordTitle(kind, byId.get(choosing.id)!) : "";
+
+  return (
+    <Wrapper
+      className="grid gap-2"
+      aria-labelledby={`alternatives-${kind}-title`}
+      {...(heading ? { role: "group" } : {})}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {heading ? (
+          <h5 id={`alternatives-${kind}-title`} className="m-0">
+            {heading}
+          </h5>
+        ) : (
+          <h4 id={`alternatives-${kind}-title`} className="m-0">
+            {m.alternatives_heading()}
+          </h4>
+        )}
+        {loose.length >= 2 && (
+          <Button
+            className="secondary compact"
+            type="button"
+            disabled={busy}
+            aria-label={heading ? m.alternatives_new_group_of({ kind: heading }) : undefined}
+            onClick={() => setEditing("new")}
+          >
+            {m.alternatives_new_group()}
+          </Button>
+        )}
+      </div>
+      {!heading && <p className="help">{m.alternatives_help()}</p>}
+      {failed && !heading && (
+        <p role="alert">
+          {errorMessage(failed, m.alternatives_your_alternatives_could_not_be_loaded)}
+        </p>
+      )}
+      <div role="status" className="grid gap-1 empty:hidden">
+        {notice && (
+          <p className="m-0 flex flex-wrap items-center gap-2">
+            <span>{notice.text}</span>
+            {"undo" in notice && notice.undo && (
+              <Button
+                className="secondary compact"
+                type="button"
+                disabled={busy}
+                onClick={() => void undoChoice(notice.undo!.groupId, notice.undo!.eventId)}
+              >
+                {m.alternatives_undo()}
+              </Button>
+            )}
+          </p>
+        )}
+      </div>
+      {error && (
+        <p className="form-error m-0" role="alert">
+          {error}
+        </p>
+      )}
+      {suggestions.length > 0 && (
+        <ul className="m-0 grid list-none gap-2 p-0" aria-label={m.alternatives_suggestions()}>
+          {suggestions.map((suggestion) => {
+            const listed = names(suggestion.member_ids);
+            const dates = spanText(suggestion);
+            return (
+              <li
+                key={suggestion.member_ids.join("|")}
+                className="grid gap-1 rounded-xl border border-dashed border-travel-border p-2.5"
+              >
+                <strong>{[REASONS[suggestion.reason](), dates].filter(Boolean).join(" · ")}</strong>
+                <span className="wrap-anywhere">{listed.join(" · ")}</span>
+                <div className="button-row">
+                  <Button
+                    className="secondary compact"
+                    type="button"
+                    disabled={busy}
+                    aria-label={m.alternatives_group_these_label({
+                      names: listed.join(", "),
+                    })}
+                    onClick={() => void confirmSuggestion(suggestion)}
+                  >
+                    {m.alternatives_group_these()}
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {groups.map((group) => {
+        const members = membersOf(group);
+        const title = groupTitle(group);
+        const chosen = members.find((member) => member.chosen);
+        return (
+          <div
+            key={group.id}
+            id={`alternative-group-${group.id}`}
+            role="group"
+            aria-label={title}
+            tabIndex={-1}
+            className="grid gap-2 border-l-2 border-travel-border pl-2 outline-offset-4"
+          >
+            <p className="m-0 font-bold">{title}</p>
+            <p className="help m-0">
+              {chosen
+                ? m.alternatives_chosen({ name: recordTitle(kind, chosen.record) })
+                : m.alternatives_undecided()}
+            </p>
+            {members.map((member) => {
+              const name = recordTitle(kind, member.record);
+              return (
+                <article className="excerpt-row" key={member.id} data-stacked="">
+                  <Button
+                    className="document-select"
+                    type="button"
+                    onClick={() => onOpen(member.id)}
+                  >
+                    <strong>{name}</strong>
+                    <span>{recordDetail(kind, member.record)}</span>
+                  </Button>
+                  <div className="button-row">
+                    <Button
+                      className="secondary compact"
+                      type="button"
+                      disabled={busy || member.chosen}
+                      aria-label={member.chosen ? undefined : m.alternatives_choose_label({ name })}
+                      onClick={() => {
+                        setOthers("cancel");
+                        setChoosing({ group, id: member.id });
+                      }}
+                    >
+                      {member.chosen ? m.alternatives_is_chosen() : m.alternatives_choose()}
+                    </Button>
+                  </div>
+                </article>
+              );
+            })}
+            <div className="button-row">
+              <Button
+                className="secondary compact"
+                type="button"
+                onClick={() => setComparing(group)}
+              >
+                {m.alternatives_compare()}
+              </Button>
+              <Button className="secondary compact" type="button" onClick={() => setEditing(group)}>
+                {m.alternatives_edit_members()}
+              </Button>
+              <Button
+                className="secondary compact"
+                type="button"
+                disabled={busy}
+                onClick={() => setDissolving(group)}
+              >
+                {m.alternatives_dissolve()}
+              </Button>
+            </div>
+          </div>
+        );
+      })}
+      {choosing && (
+        <DeleteConfirmation
+          title={m.alternatives_choose_title({ name: choosingName })}
+          description={m.alternatives_choose_description({ name: choosingName })}
+          confirmLabel={m.alternatives_choose()}
+          confirmDisabled={choose.isPending}
+          onCancel={() => setChoosing(null)}
+          onConfirm={() => void confirmChoice()}
+        >
+          <ChoiceGroup<Others>
+            label={m.alternatives_others_label()}
+            value={others}
+            choices={[
+              { value: "cancel", label: m.alternatives_others_cancel() },
+              { value: "remove", label: m.alternatives_others_remove() },
+            ]}
+            onChange={setOthers}
+          />
+          <p className="help m-0">
+            {others === "remove" ? m.alternatives_remove_warning() : m.alternatives_cancel_note()}
+          </p>
+        </DeleteConfirmation>
+      )}
+      {dissolving && (
+        <DeleteConfirmation
+          title={m.alternatives_dissolve_title()}
+          description={m.alternatives_dissolve_description()}
+          confirmLabel={m.alternatives_dissolve()}
+          confirmDisabled={dissolve.isPending}
+          onCancel={() => setDissolving(null)}
+          onConfirm={() => void confirmDissolve()}
+        />
+      )}
+      <RecordDialog
+        open={comparing !== null}
+        title={m.alternatives_compare_title()}
+        localeControl={false}
+        onDismiss={() => setComparing(null)}
+      >
+        {comparing && <CompareTable kind={kind} group={comparing} />}
+      </RecordDialog>
+      {editing && (
+        <MembersDialog
+          kind={kind}
+          group={editing === "new" ? null : editing}
+          records={records}
+          loose={loose}
+          pending={create.isPending || update.isPending}
+          onDismiss={() => setEditing(null)}
+          onSave={async (ids) => {
+            setError(null);
+            try {
+              if (editing === "new") {
+                const group = await create.mutateAsync({ memberIds: ids });
+                setNotice({ text: m.alternatives_grouped() });
+                setFocusGroup(group.id);
+              } else {
+                const current = editing.members.map((member) => member.record_id);
+                await update.mutateAsync({
+                  id: editing.id,
+                  add: ids.filter((id) => !current.includes(id)),
+                  remove: current.filter((id) => !ids.includes(id)),
+                });
+                setNotice({ text: m.alternatives_members_saved() });
+                setFocusGroup(editing.id);
+              }
+              setEditing(null);
+            } catch (problem) {
+              setEditing(null);
+              setError(errorMessage(problem, m.alternatives_the_alternatives_could_not_be_saved));
+            }
+          }}
+        />
+      )}
+    </Wrapper>
+  );
+}
+
+function spanText(suggestion: AlternativeSuggestion): string {
+  const { starts_on: first, ends_on: last } = suggestion;
+  if (!first) return "";
+  return !last || last === first ? formatDay(first) : `${formatDay(first)} → ${formatDay(last)}`;
+}
+
+/** Choose which records are alternatives of each other: the group's own and the loose ones. */
+function MembersDialog({
+  kind,
+  group,
+  records,
+  loose,
+  pending,
+  onDismiss,
+  onSave,
+}: {
+  kind: AlternativeKind;
+  group: AlternativeGroup | null;
+  records: AlternativeRecord[];
+  loose: AlternativeRecord[];
+  pending: boolean;
+  onDismiss: () => void;
+  onSave: (ids: string[]) => void | Promise<void>;
+}) {
+  useLocale();
+  const own = useMemo(
+    () => (group ? group.members.map((member) => member.record_id) : []),
+    [group],
+  );
+  const [picked, setPicked] = useState<string[]>(own);
+  const legendId = useId();
+  const choices = [
+    ...records.filter((record) => own.includes(record.id)),
+    ...loose.filter((record) => !own.includes(record.id)),
+  ];
+  const changed = picked.length !== own.length || picked.some((id) => !own.includes(id));
+  return (
+    <RecordDialog
+      open
+      title={group ? m.alternatives_edit_members() : m.alternatives_new_group()}
+      localeControl={false}
+      dirty={changed}
+      onDismiss={onDismiss}
+    >
+      <FieldSet className="grid gap-2">
+        <FieldLegend id={legendId} className="font-semibold">
+          {m.alternatives_pick_members()}
+        </FieldLegend>
+        <ul className="m-0 grid max-h-72 list-none gap-1.5 overflow-y-auto p-0 pr-1">
+          {choices.map((record) => (
+            <li key={record.id} className="min-w-0">
+              <Field className="contents">
+                <FieldLabel className="flex items-start gap-2 rounded-lg border border-travel-divider bg-travel-surface px-2.75 py-2.5 font-semibold">
+                  <TravelCheckbox
+                    className="mt-0.5 shrink-0"
+                    aria-label={recordTitle(kind, record)}
+                    checked={picked.includes(record.id)}
+                    onCheckedChange={(next) =>
+                      setPicked((current) =>
+                        next ? [...current, record.id] : current.filter((id) => id !== record.id),
+                      )
+                    }
+                  />
+                  <span className="grid min-w-0 gap-0.5">
+                    <span className="wrap-anywhere">{recordTitle(kind, record)}</span>
+                    <span className="text-sm font-normal wrap-anywhere">
+                      {recordDetail(kind, record)}
+                    </span>
+                  </span>
+                </FieldLabel>
+              </Field>
+            </li>
+          ))}
+        </ul>
+        {!group && picked.length < 2 && <p className="help m-0">{m.alternatives_pick_two()}</p>}
+        <div className="button-row">
+          <Button
+            className="compact"
+            type="button"
+            disabled={pending || !changed || (!group && picked.length < 2)}
+            onClick={() => void onSave(picked)}
+          >
+            {m.alternatives_save_members()}
+          </Button>
+        </div>
+      </FieldSet>
+    </RecordDialog>
+  );
+}

@@ -11,8 +11,8 @@ import type {
   Trip,
   PublicProjectionStatus,
 } from "../api-types";
-import { PreviewDialog, type Preview } from "./publication/PreviewDialog";
-import { usePublicationMutations } from "./publication/use-publication-mutations";
+import { PreviewDialog, type Preview } from "@/features/trips/publication/PreviewDialog";
+import { usePublicationMutations } from "@/features/trips/publication/use-publication-mutations";
 
 type Audience = { kind: "public" } | { kind: "link"; link: ShareLink };
 

@@ -8,7 +8,7 @@ import { m } from "../../paraglide/messages.js";
 import { server } from "../../mocks/server";
 import { renderWithOwner, testToken } from "../../query/test-utils";
 import type { ShareLink } from "../../api-types";
-import { FeedControls } from "./FeedControls";
+import { FeedControls } from "@/features/trips/publication/FeedControls";
 vi.mock("@/app/providers/auth-context", () => ({
   useAuth: () => ({ session: { accessToken: testToken() } }),
 }));

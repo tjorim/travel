@@ -7,7 +7,7 @@ import type { MergeRecordKind } from "../api-types";
 import type { MergeRecordRef, MergeWidenedRecord } from "../api-types";
 import { Field, FieldLabel, FieldSet, FieldLegend } from "@/components/ui/field";
 import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
-import { audienceName } from "./locations/model";
+import { audienceName } from "@/features/trips/locations/model";
 
 /** The identity of a moved record: ids are only unique within a kind. */
 export const recordKey = (record: MergeRecordRef) => `${record.kind}:${record.id}`;

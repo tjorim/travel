@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeApi, type FakeApi } from "../../query/fake-api";
 import { renderWithOwner, testToken } from "../../query/test-utils";
 import type { AlternativeGroup, AlternativeSuggestion, Area, Stay } from "../../api-types";
-import { AlternativesPanel } from "./AlternativesPanel";
+import { AlternativesPanel } from "@/features/trips/alternatives/AlternativesPanel";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

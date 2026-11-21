@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it } from "vitest";
 
 import { changeLocale } from "@/i18n/locale";
 import type { OverviewWarning, TripOverview } from "../../api-types";
-import { futureDisclosureLines, SharingReview } from "./SharingReview";
+import { futureDisclosureLines, SharingReview } from "@/features/trips/publication/SharingReview";
 
 const warning = (overrides: Partial<OverviewWarning>): OverviewWarning => ({
   code: "future_transport_times",

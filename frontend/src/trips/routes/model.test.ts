@@ -10,7 +10,7 @@ import {
   editableCoordinates,
   parseCoordinates,
   validCoordinates,
-} from "./model";
+} from "@/features/trips/routes/model";
 
 it("reads a drawn line and explains why a text is not one", () => {
   expect(parseCoordinates("[[121.5,25],[121.6,25.1]]")).toEqual([

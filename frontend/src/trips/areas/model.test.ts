@@ -10,7 +10,7 @@ import {
   knownTimeZone,
   latitudeRange,
   longitudeRange,
-} from "./model";
+} from "@/features/trips/areas/model";
 
 it("loads an area into editor values and back to blanks", () => {
   const values = fromArea({

@@ -4,9 +4,9 @@ import type { Trip } from "../api-types";
 import type { AgendaRecordKind } from "./agenda-items";
 import { type CreateRequest } from "./create-request";
 import { focusFor, useFocusRequest, type RecordFocus } from "./record-focus";
-import { RouteEditor } from "./routes/RouteEditor";
-import { StayEditor } from "./stays/StayEditor";
-import { VisitEditor } from "./visits/VisitEditor";
+import { RouteEditor } from "@/features/trips/routes/RouteEditor";
+import { StayEditor } from "@/features/trips/stays/StayEditor";
+import { VisitEditor } from "@/features/trips/visits/VisitEditor";
 
 /**
  * What the plan tab shares between the agenda and the three record dialogs: the one dialog per kind of record, how to

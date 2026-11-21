@@ -9,9 +9,9 @@ import { noticeMessage } from "@/lib/api/feedback";
 import type { MessageNotice, ErrorNotice } from "@/lib/api/feedback";
 import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils";
 import type { Area, Trip } from "../api-types";
-import { RouteEditor } from "./routes/RouteEditor";
-import { StayEditor } from "./stays/StayEditor";
-import { VisitEditor } from "./visits/VisitEditor";
+import { RouteEditor } from "@/features/trips/routes/RouteEditor";
+import { StayEditor } from "@/features/trips/stays/StayEditor";
+import { VisitEditor } from "@/features/trips/visits/VisitEditor";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

@@ -3,9 +3,9 @@ import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { changeLocale } from "@/i18n/locale";
 import { VisitorNumbers } from "@/components/projection/VisitorNumbers";
-import { ScopeEditor } from "./trips/publication/ScopeEditor";
+import { ScopeEditor } from "@/features/trips/publication/ScopeEditor";
 import { m } from "./paraglide/messages.js";
-import { cloneScope, emptyScope } from "./trips/publication/catalog";
+import { cloneScope, emptyScope } from "@/features/trips/publication/catalog";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => ({ session: null }) }));

@@ -13,8 +13,8 @@ import type { Area, Location, LocationInput, Trip } from "../api-types";
 import { duplicateLocations } from "./merge-candidates";
 import type { SuggestedNames } from "./place-result";
 import { mergedNotice, type MergeRequest } from "./MergeDialog";
-import { LocationDetails } from "./locations/LocationDetails";
-import { LocationForm } from "./locations/LocationForm";
+import { LocationDetails } from "@/features/trips/locations/LocationDetails";
+import { LocationForm } from "@/features/trips/locations/LocationForm";
 import {
   addressProjection,
   blank,
@@ -28,9 +28,9 @@ import {
   type RecipientState,
   type Values,
   type VisitorChange,
-} from "./locations/model";
-import { VisitorChangeDialog } from "./locations/VisitorChangeDialog";
-import { useLocationMutations } from "./locations/use-location-mutations";
+} from "@/features/trips/locations/model";
+import { VisitorChangeDialog } from "@/features/trips/locations/VisitorChangeDialog";
+import { useLocationMutations } from "@/features/trips/locations/use-location-mutations";
 
 /** The only location detail and editor, shared by the area inventory and record-focus links. */
 export function LocationManager({

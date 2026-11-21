@@ -37,17 +37,17 @@ import {
   type TravelUpdate,
   type TripSummary,
 } from "../api-types";
-import { CapturePhotos } from "./capture/CapturePhotos";
-import { captureTripOrder } from "./capture/default-trip";
-import { LocationSearch } from "./capture/LocationSearch";
-import { PhotoLinks } from "./capture/PhotoLinks";
-import { SavedUpdates } from "./capture/SavedUpdates";
-import { TripChoice } from "./capture/TripChoice";
-import { useCaptureMedia } from "./capture/use-capture-media";
-import { SAVE_FALLBACK, useCaptureMutations } from "./capture/use-capture-mutations";
-import { useCaptureUploads } from "./capture/use-capture-uploads";
-import { usePlaceSearch } from "./capture/use-place-search";
-import { useVisualViewportFit } from "./capture/use-visual-viewport";
+import { CapturePhotos } from "@/features/trips/capture/CapturePhotos";
+import { captureTripOrder } from "@/features/trips/capture/default-trip";
+import { LocationSearch } from "@/features/trips/capture/LocationSearch";
+import { PhotoLinks } from "@/features/trips/capture/PhotoLinks";
+import { SavedUpdates } from "@/features/trips/capture/SavedUpdates";
+import { TripChoice } from "@/features/trips/capture/TripChoice";
+import { useCaptureMedia } from "@/features/trips/capture/use-capture-media";
+import { SAVE_FALLBACK, useCaptureMutations } from "@/features/trips/capture/use-capture-mutations";
+import { useCaptureUploads } from "@/features/trips/capture/use-capture-uploads";
+import { usePlaceSearch } from "@/features/trips/capture/use-place-search";
+import { useVisualViewportFit } from "@/features/trips/capture/use-visual-viewport";
 import { today } from "./trip-state";
 
 export type CaptureDialogProps = {

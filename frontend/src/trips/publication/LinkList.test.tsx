@@ -3,7 +3,7 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import { changeLocale } from "@/i18n/locale";
 import type { ShareLink } from "../../api-types";
-import { LinkList } from "./LinkList";
+import { LinkList } from "@/features/trips/publication/LinkList";
 
 const link = (id: string): ShareLink => ({
   revision: 1,

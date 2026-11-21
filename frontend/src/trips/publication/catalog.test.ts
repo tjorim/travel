@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { cloneScope, emptyScope, isExcluded, kindCountsText, setShown } from "./catalog";
+import { cloneScope, emptyScope, isExcluded, kindCountsText, setShown } from "@/features/trips/publication/catalog";
 
 it("starts a new audience at months", () => {
   expect(emptyScope().defaults).toEqual({ date_precision: "month" });

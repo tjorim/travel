@@ -7,7 +7,7 @@ import { AuthProvider } from "@/app/providers/auth-context";
 import { server } from "../../mocks/server";
 import { testToken } from "../../query/test-utils";
 import { __resetOfflineStoreForTests, pinOfflineCopy } from "@/lib/offline-store";
-import { PackingTripOffline } from "./PackingTripOffline";
+import { PackingTripOffline } from "@/features/trips/packing/PackingTripOffline";
 
 afterEach(async () => {
   cleanup();

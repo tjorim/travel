@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
 import type { AlternativeGroup, Stay } from "../../api-types";
-import { comparisonRows, groupedIds, groupTitle, membersOf, spanLabel } from "./model";
+import { comparisonRows, groupedIds, groupTitle, membersOf, spanLabel } from "@/features/trips/alternatives/model";
 
 const area = { id: "a1", label: "Tainan" } as Stay["area"];
 const stay = (id: string, fields: Partial<Stay> = {}) =>

@@ -21,8 +21,8 @@ import {
 } from "@/lib/query/owner-queries";
 import type { ShareLink, TripSummary } from "@/api-types";
 import { sectionPath } from "@/trips/workspace-sections";
-import { dateLabel, LINK_STATE_LABELS, publicUrl, shareUrl } from "@/trips/publication/catalog";
-import { RevealedLinkDialog } from "@/trips/publication/RevealedLinkDialog";
+import { dateLabel, LINK_STATE_LABELS, publicUrl, shareUrl } from "@/features/trips/publication/catalog";
+import { RevealedLinkDialog } from "@/features/trips/publication/RevealedLinkDialog";
 import { CollectionEditor } from "./CollectionEditor";
 import {
   collectionUrl,

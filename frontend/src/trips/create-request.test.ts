@@ -3,9 +3,9 @@ import { expect, it } from "vitest";
 import type { Location, Stay, Trip } from "../api-types";
 import { prefillForLocation, stayOnDay } from "./create-request";
 import { emptyPlace, placeOfPrefill } from "./PlacePicker";
-import { routeFromPrefill } from "./routes/model";
-import { stayFromPrefill } from "./stays/model";
-import { visitFromPrefill } from "./visits/model";
+import { routeFromPrefill } from "@/features/trips/routes/model";
+import { stayFromPrefill } from "@/features/trips/stays/model";
+import { visitFromPrefill } from "@/features/trips/visits/model";
 
 const trip = { starts_on: "2054-11-16", ends_on: "2054-11-26" } as Trip;
 const stay = (id: string, from: string, to: string, status = "planned", areaId = "taipei") =>

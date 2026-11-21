@@ -1,0 +1,187 @@
+import { useState } from "react";
+
+import type { OwnerSession } from "@/lib/auth";
+import { LocalizedField } from "@/components/forms/LocalizedField";
+import { AsyncSearchSelect, TextField } from "@/components/forms/fields";
+import type { useRecordForm } from "@/hooks/useRecordForm";
+import { useLocale } from "@/i18n/locale";
+import { m } from "@/paraglide/messages.js";
+import { useTravelUpdateSearch } from "@/lib/query/owner-queries";
+import type { MediaDerivative, TravelUpdate } from "@/api-types";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { OwnerImage } from "@/trips/OwnerImage";
+
+export type DerivativeValues = {
+  purpose: MediaDerivative["purpose"];
+  maxDimension: string;
+  removeAudio: boolean;
+};
+export const blankDerivative = (): DerivativeValues => ({
+  purpose: "share",
+  maxDimension: "1600",
+  removeAudio: false,
+});
+export const dimensionInRange = ({ value }: { value: string }) => {
+  const size = Number(value);
+  return value.trim() && Number.isInteger(size) && size >= 64 && size <= 4000
+    ? undefined
+    : m.media_choose_a_maximum_side_between_64_and_4000_px;
+};
+
+export type PresentationValues = {
+  travelUpdateId: string;
+  captionNl: string;
+  captionEn: string;
+  altTextNl: string;
+  altTextEn: string;
+  focalX: string;
+  focalY: string;
+};
+export const blankPresentation = (): PresentationValues => ({
+  travelUpdateId: "",
+  captionNl: "",
+  captionEn: "",
+  altTextNl: "",
+  altTextEn: "",
+  focalX: "",
+  focalY: "",
+});
+export const fromDerivative = (derivative: MediaDerivative): PresentationValues => ({
+  travelUpdateId: derivative.travel_update_id ?? "",
+  captionNl: derivative.caption_nl ?? "",
+  captionEn: derivative.caption_en ?? "",
+  altTextNl: derivative.alt_text_nl ?? "",
+  altTextEn: derivative.alt_text_en ?? "",
+  focalX: derivative.focal_x?.toString() ?? "",
+  focalY: derivative.focal_y?.toString() ?? "",
+});
+const percentage = ({ value }: { value: string }) =>
+  value === "" || (Number(value) >= 0 && Number(value) <= 100)
+    ? undefined
+    : m.media_value_range_error;
+
+/** The copy's presentation fields, with a live focal-point preview when the copy can be shown inline. */
+export function PresentationFields({
+  record,
+  tripId,
+  updates,
+  previewUrl,
+  session,
+}: {
+  record: ReturnType<typeof useRecordForm<PresentationValues>>;
+  tripId: string;
+  updates: TravelUpdate[];
+  previewUrl: string | null;
+  session: OwnerSession | null;
+}) {
+  useLocale();
+  const focalX = record.values.focalX === "" ? 50 : Number(record.values.focalX);
+  const focalY = record.values.focalY === "" ? 50 : Number(record.values.focalY);
+  const searchUpdates = useTravelUpdateSearch(tripId);
+  const [foundTitles, setFoundTitles] = useState<Record<string, string>>({});
+  return (
+    <>
+      {previewUrl && session && (
+        <div className="relative mb-2.5 inline-block max-w-55">
+          <OwnerImage
+            session={session}
+            url={previewUrl}
+            alt={m.media_preview_of_the_copy()}
+            className="block max-h-55 w-full rounded-travel-media bg-travel-media-bg object-contain"
+          />
+          <span
+            data-focal-point-marker=""
+            className="pointer-events-none absolute -mt-2.25 -ml-2.25 size-4.5 rounded-full border-2 border-travel-surface bg-travel-focal-marker shadow-md"
+            style={{ left: `${focalX}%`, top: `${focalY}%` }}
+            aria-hidden="true"
+          />
+        </div>
+      )}
+      <record.form.Field name="travelUpdateId">
+        {(field) => (
+          <Field>
+            <FieldLabel>{m.media_with_travel_update()}</FieldLabel>
+            <AsyncSearchSelect
+              ariaLabel={m.media_with_travel_update()}
+              value={field.state.value}
+              selectedOption={
+                field.state.value
+                  ? {
+                      value: field.state.value,
+                      label:
+                        foundTitles[field.state.value] ??
+                        updates.find((update) => update.id === field.state.value)?.title ??
+                        field.state.value,
+                    }
+                  : null
+              }
+              defaultOptions={[
+                { value: "", label: m.media_standalone_gallery_photo() },
+                ...updates
+                  .slice(0, 50)
+                  .map((update) => ({ value: update.id, label: update.title })),
+              ]}
+              onChange={field.handleChange}
+              loadOptions={async (q) => {
+                const matches = await searchUpdates(q);
+                setFoundTitles((current) => ({
+                  ...current,
+                  ...Object.fromEntries(matches.map((update) => [update.id, update.title])),
+                }));
+                return [
+                  { value: "", label: m.media_standalone_gallery_photo() },
+                  ...matches.map((update) => ({ value: update.id, label: update.title })),
+                ];
+              }}
+            />
+          </Field>
+        )}
+      </record.form.Field>
+      <LocalizedField
+        form={record.form}
+        name="caption"
+        kind="markdown"
+        format="inline"
+        label={m.media_caption()}
+        maxLength={500}
+        rows={2}
+      />
+      <LocalizedField
+        form={record.form}
+        name="altText"
+        label={m.media_alternative_text()}
+        maxLength={300}
+      />
+      <div className="field-row">
+        <record.form.Field
+          name="focalX"
+          validators={{ onChange: percentage, onSubmit: percentage }}
+        >
+          {(field) => (
+            <TextField
+              field={field}
+              label={m.media_horizontal_focus()}
+              type="number"
+              min="0"
+              max="100"
+            />
+          )}
+        </record.form.Field>
+        <record.form.Field
+          name="focalY"
+          validators={{ onChange: percentage, onSubmit: percentage }}
+        >
+          {(field) => (
+            <TextField
+              field={field}
+              label={m.media_vertical_focus()}
+              type="number"
+              min="0"
+              max="100"
+            />
+          )}
+        </record.form.Field>
+      </div>
+    </>
+  );
+}

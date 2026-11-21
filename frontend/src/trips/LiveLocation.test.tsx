@@ -10,7 +10,7 @@ import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import { formatInstant } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { LiveLocation } from "./LiveLocation";
-import { SharingReview } from "./publication/SharingReview";
+import { SharingReview } from "@/features/trips/publication/SharingReview";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

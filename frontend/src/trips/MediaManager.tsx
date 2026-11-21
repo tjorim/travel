@@ -15,8 +15,8 @@ import { RecordDialog } from "@/components/RecordDialog";
 import type { ImportSession, MediaAsset, MediaDerivative, Trip } from "../api-types";
 import type { TravelUpdateCandidateIntent } from "../capture-draft";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { AssetView } from "./media/AssetView";
-import { CandidateReview } from "./media/CandidateReview";
+import { AssetView } from "@/features/trips/media/AssetView";
+import { CandidateReview } from "@/features/trips/media/CandidateReview";
 import {
   blankDerivative,
   blankPresentation,
@@ -24,13 +24,13 @@ import {
   PresentationFields,
   type DerivativeValues,
   type PresentationValues,
-} from "./media/copy-form";
-import { CopyCreateFields } from "./media/CopyCreateFields";
-import { CopyView } from "./media/CopyView";
-import { providerLabel } from "./media/labels";
-import { MediaAssetList } from "./media/MediaAssetList";
-import { MediaImport } from "./media/MediaImport";
-import { useMediaMutations } from "./media/use-media-mutations";
+} from "@/features/trips/media/copy-form";
+import { CopyCreateFields } from "@/features/trips/media/CopyCreateFields";
+import { CopyView } from "@/features/trips/media/CopyView";
+import { providerLabel } from "@/features/trips/media/labels";
+import { MediaAssetList } from "@/features/trips/media/MediaAssetList";
+import { MediaImport } from "@/features/trips/media/MediaImport";
+import { useMediaMutations } from "@/features/trips/media/use-media-mutations";
 
 /** Which part of the asset dialog is showing: the asset with its copies, a new copy's form, or one copy's detail/edit. */
 type CopyView =

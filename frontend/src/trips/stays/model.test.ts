@@ -12,7 +12,7 @@ import {
   overlaps,
   placeChanged,
   stayPlaceFields,
-} from "./model";
+} from "@/features/trips/stays/model";
 
 const stay = (id: string, fields: Partial<Stay> = {}) =>
   ({

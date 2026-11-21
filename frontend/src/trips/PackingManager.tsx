@@ -11,11 +11,11 @@ import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
 import { tripPath, useOwner } from "@/lib/query/owner-queries";
 import type { Trip } from "../api-types";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { BagDialog } from "./packing/BagDialog";
-import { BagSummaries } from "./packing/BagSummaries";
-import { DepartureCheck } from "./packing/DepartureCheck";
-import { ItemDialog } from "./packing/ItemDialog";
-import { ItemSections } from "./packing/ItemSections";
+import { BagDialog } from "@/features/trips/packing/BagDialog";
+import { BagSummaries } from "@/features/trips/packing/BagSummaries";
+import { DepartureCheck } from "@/features/trips/packing/DepartureCheck";
+import { ItemDialog } from "@/features/trips/packing/ItemDialog";
+import { ItemSections } from "@/features/trips/packing/ItemSections";
 import {
   count,
   emptyBag,
@@ -29,13 +29,13 @@ import {
   type ItemDraft,
   type PackingList,
   type PendingDelete,
-} from "./packing/model";
-import { PackingOfflineFallback } from "./packing/PackingOfflineFallback";
-import { PackingProgress } from "./packing/PackingProgress";
-import { ReuseDialog } from "./packing/ReuseDialog";
-import { Suggestions } from "./packing/Suggestions";
-import { TemplateDialog } from "./packing/TemplateDialog";
-import { Toolbar } from "./packing/Toolbar";
+} from "@/features/trips/packing/model";
+import { PackingOfflineFallback } from "@/features/trips/packing/PackingOfflineFallback";
+import { PackingProgress } from "@/features/trips/packing/PackingProgress";
+import { ReuseDialog } from "@/features/trips/packing/ReuseDialog";
+import { Suggestions } from "@/features/trips/packing/Suggestions";
+import { TemplateDialog } from "@/features/trips/packing/TemplateDialog";
+import { Toolbar } from "@/features/trips/packing/Toolbar";
 import type { PackingSnapshot } from "./PackingOfflineView";
 
 export function PackingManager({ trip }: { trip: Trip }) {

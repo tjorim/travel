@@ -20,21 +20,21 @@ import type {
   Trip,
 } from "../api-types";
 import type { ProjectionDocument } from "../api-types";
-import { cloneScope, emptyScope, publicUrl, shareUrl } from "./publication/catalog";
-import { ExclusionWideningDialog, exclusionWidening } from "./publication/ExclusionWideningDialog";
-import { FollowAudiencePrecision } from "./publication/FollowAudiencePrecision";
-import { LinkLifecycle } from "./publication/LinkLifecycle";
-import { LinkList, type LinkSeries } from "./publication/LinkList";
-import type { ScopePreset } from "./publication/PresetSection";
-import { PreviewDialog, type Preview } from "./publication/PreviewDialog";
-import { PublicSection, type PublicValues } from "./publication/PublicSection";
-import { RevealedLinkDialog } from "./publication/RevealedLinkDialog";
-import { ScopeEditor } from "./publication/ScopeEditor";
-import { SharingReview, VisibilityOverview } from "./publication/SharingReview";
-import { usePublicationCatalog } from "./publication/use-publication-catalog";
-import { usePublicationMutations } from "./publication/use-publication-mutations";
+import { cloneScope, emptyScope, publicUrl, shareUrl } from "@/features/trips/publication/catalog";
+import { ExclusionWideningDialog, exclusionWidening } from "@/features/trips/publication/ExclusionWideningDialog";
+import { FollowAudiencePrecision } from "@/features/trips/publication/FollowAudiencePrecision";
+import { LinkLifecycle } from "@/features/trips/publication/LinkLifecycle";
+import { LinkList, type LinkSeries } from "@/features/trips/publication/LinkList";
+import type { ScopePreset } from "@/features/trips/publication/PresetSection";
+import { PreviewDialog, type Preview } from "@/features/trips/publication/PreviewDialog";
+import { PublicSection, type PublicValues } from "@/features/trips/publication/PublicSection";
+import { RevealedLinkDialog } from "@/features/trips/publication/RevealedLinkDialog";
+import { ScopeEditor } from "@/features/trips/publication/ScopeEditor";
+import { SharingReview, VisibilityOverview } from "@/features/trips/publication/SharingReview";
+import { usePublicationCatalog } from "@/features/trips/publication/use-publication-catalog";
+import { usePublicationMutations } from "@/features/trips/publication/use-publication-mutations";
 
-import { AuditList } from "./publication/AuditList";
+import { AuditList } from "@/features/trips/publication/AuditList";
 
 type LinkValues = { label: string; scope: ShareScope };
 

@@ -2,7 +2,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 
-import { useVisualViewportFit } from "./use-visual-viewport";
+import { useVisualViewportFit } from "@/features/trips/capture/use-visual-viewport";
 
 class FakeViewport extends EventTarget {
   height = 800;

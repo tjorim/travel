@@ -6,7 +6,7 @@ import { http, HttpResponse } from "msw/http";
 import { server } from "../../mocks/server";
 import { changeLocale, LocaleBoundary } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { FinishedTrackImport } from "./FinishedTrackImport";
+import { FinishedTrackImport } from "@/features/trips/routes/FinishedTrackImport";
 
 vi.mock("@/app/providers/auth-context", () => ({
   useAuth: () => ({ session: { accessToken: "synthetic", expiresAt: Date.now() + 60000 } }),

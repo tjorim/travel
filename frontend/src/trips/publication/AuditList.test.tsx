@@ -7,7 +7,7 @@ import { changeLocale, formatDate } from "@/i18n/locale";
 import { server } from "../../mocks/server";
 import { renderWithOwner, testToken } from "../../query/test-utils";
 import type { AuditEvent } from "../../api-types";
-import { AuditList } from "./AuditList";
+import { AuditList } from "@/features/trips/publication/AuditList";
 
 vi.mock("@/app/providers/auth-context", () => ({
   useAuth: () => ({ session: { accessToken: testToken() } }),

@@ -1,0 +1,77 @@
+import { Button } from "@/components/ui/button";
+import type { UseQueryResult } from "@tanstack/react-query";
+
+import { SearchSelect } from "@/components/forms/fields";
+import { useLocale } from "@/i18n/locale";
+import type { useOfflineCopies } from "@/hooks/useOfflineCopies";
+import { m } from "@/paraglide/messages.js";
+import { errorMessage } from "@/lib/api/api";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { PackingOfflineView } from "@/trips/PackingOfflineView";
+import type { Bag, Item, PackingList } from "./model";
+
+type Offline = ReturnType<typeof useOfflineCopies>;
+
+/** What the packing tab shows while offline or when the lists cannot be read: the saved view-only copy, if any. */
+export function PackingOfflineFallback({
+  offline,
+  savedCopies,
+  savedCopy,
+  listsQuery,
+  bagsQuery,
+  itemsQuery,
+  onChoose,
+  onRetry,
+}: {
+  offline: Offline;
+  savedCopies: Offline["copies"];
+  savedCopy: Offline["copies"][number] | undefined;
+  listsQuery: UseQueryResult<PackingList[]>;
+  bagsQuery: UseQueryResult<Bag[]>;
+  itemsQuery: UseQueryResult<Item[]>;
+  onChoose: (id: string) => void;
+  onRetry: () => void;
+}) {
+  useLocale();
+  return (
+    <section className="space-y-4" aria-labelledby="packing-title">
+      <h3 id="packing-title" className="text-2xl font-semibold">
+        {m.packing_packing()}
+      </h3>
+      {savedCopies.length > 1 && (
+        <Field>
+          <FieldLabel className="block">{m.offline_packing_list()} </FieldLabel>
+          <SearchSelect
+            ariaLabel={m.offline_packing_list()}
+            value={savedCopy?.resourceId ?? ""}
+            onChange={onChoose}
+          >
+            {savedCopies.map((copy) => (
+              <option key={copy.id} value={copy.resourceId}>
+                {copy.title}
+              </option>
+            ))}
+          </SearchSelect>
+        </Field>
+      )}
+      {savedCopy ? (
+        <PackingOfflineView copy={savedCopy} open={offline.open} />
+      ) : (
+        <p role={offline.online ? "alert" : "status"}>
+          {offline.online && listsQuery.isError
+            ? errorMessage(listsQuery.error, m.packing_loading_packing_lists_failed)
+            : offline.online && (bagsQuery.isError || itemsQuery.isError)
+              ? m.packing_list_load_error_inline()
+              : offline.loaded
+                ? m.offline_packing_missing_notice()
+                : m.offline_loading_offline_packing_lists()}
+        </p>
+      )}
+      {offline.online && (
+        <Button type="button" onClick={onRetry}>
+          {m.retry()}
+        </Button>
+      )}
+    </section>
+  );
+}

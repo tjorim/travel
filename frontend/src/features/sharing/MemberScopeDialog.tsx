@@ -12,19 +12,19 @@ import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
 import { RecordDialog } from "@/components/RecordDialog";
 import type { ExclusionWidening, ShareScope, TripSummary } from "@/api-types";
 import { RenderedPreview } from "@/components/projection/RenderedPreview";
-import { cloneScope } from "@/trips/publication/catalog";
+import { cloneScope } from "@/features/trips/publication/catalog";
 import {
   ExclusionWideningDialog,
   exclusionWidening,
-} from "@/trips/publication/ExclusionWideningDialog";
-import { ScopeEditor } from "@/trips/publication/ScopeEditor";
-import { FutureDisclosureReview } from "@/trips/publication/SharingReview";
+} from "@/features/trips/publication/ExclusionWideningDialog";
+import { ScopeEditor } from "@/features/trips/publication/ScopeEditor";
+import { FutureDisclosureReview } from "@/features/trips/publication/SharingReview";
 import {
   useFutureDisclosure,
   useRefreshFutureDisclosure,
-} from "@/trips/publication/use-future-disclosure";
-import type { PresetAppliedAudience } from "@/trips/publication/use-sharing-presets";
-import { usePublicationCatalog } from "@/trips/publication/use-publication-catalog";
+} from "@/features/trips/publication/use-future-disclosure";
+import type { PresetAppliedAudience } from "@/features/trips/publication/use-sharing-presets";
+import { usePublicationCatalog } from "@/features/trips/publication/use-publication-catalog";
 import {
   collectionsPath,
   useCollectionMutations,

@@ -13,9 +13,9 @@ import { m } from "@/paraglide/messages.js";
 import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
 import { RecordDialog } from "@/components/RecordDialog";
 import type { TripSummary } from "@/api-types";
-import { emptyScope } from "@/trips/publication/catalog";
-import { LinkLifecycle } from "@/trips/publication/LinkLifecycle";
-import { RevealedLinkDialog } from "@/trips/publication/RevealedLinkDialog";
+import { emptyScope } from "@/features/trips/publication/catalog";
+import { LinkLifecycle } from "@/features/trips/publication/LinkLifecycle";
+import { RevealedLinkDialog } from "@/features/trips/publication/RevealedLinkDialog";
 import {
   collectionUrl,
   useCollectionMutations,

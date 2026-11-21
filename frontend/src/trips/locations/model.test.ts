@@ -13,7 +13,7 @@ import {
   recipients,
   shareableAddress,
   visitorReview,
-} from "./model";
+} from "@/features/trips/locations/model";
 import { ApiError } from "@/lib/api/api";
 
 const place = (fields: Partial<Location> = {}) =>

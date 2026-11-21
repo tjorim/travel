@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { captureTripOrder } from "./default-trip";
+import { captureTripOrder } from "@/features/trips/capture/default-trip";
 
 const trip = (
   id: string,

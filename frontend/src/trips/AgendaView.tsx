@@ -42,8 +42,8 @@ import {
 } from "./agenda-items";
 import { stayLabel } from "@/lib/records";
 import { PLANNING_STATUS_LABELS } from "@/lib/labels";
-import { canAdjustNights } from "./stays/model";
-import { Overnight } from "./visits/Overnight";
+import { canAdjustNights } from "@/features/trips/stays/model";
+import { Overnight } from "@/features/trips/visits/Overnight";
 import { visibilityLabel } from "./visibility";
 import { RestatedRoutesNote } from "./VisitRouteHint";
 import type { DialogFocusAction } from "@/hooks/useRecordDialog";
