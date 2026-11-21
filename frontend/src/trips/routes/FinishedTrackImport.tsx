@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
-import { useAuth } from "../../auth-context";
+import { useAuth } from "@/app/providers/auth-context";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import type { GeoJsonLineString } from "../../api-types";

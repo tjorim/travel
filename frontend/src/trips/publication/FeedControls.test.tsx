@@ -9,7 +9,7 @@ import { server } from "../../mocks/server";
 import { renderWithOwner, testToken } from "../../query/test-utils";
 import type { ShareLink } from "../../api-types";
 import { FeedControls } from "./FeedControls";
-vi.mock("../../auth-context", () => ({
+vi.mock("@/app/providers/auth-context", () => ({
   useAuth: () => ({ session: { accessToken: testToken() } }),
 }));
 afterEach(() => {

@@ -20,7 +20,7 @@ const routeTree = createRootRoute({ component: Capture });
 const auth = vi.hoisted(() => ({
   session: null as { accessToken: string; expiresAt: number } | null,
 }));
-vi.mock("../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 
 const update = (id: string, title: string): TravelUpdate => ({
   area: null,

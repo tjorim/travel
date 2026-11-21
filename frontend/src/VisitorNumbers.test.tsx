@@ -8,7 +8,7 @@ import { m } from "./paraglide/messages.js";
 import { cloneScope, emptyScope } from "./trips/publication/catalog";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-vi.mock("./auth-context", () => ({ useAuth: () => ({ session: null }) }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => ({ session: null }) }));
 
 afterEach(() => {
   cleanup();

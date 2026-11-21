@@ -8,7 +8,7 @@ import { changeLocale, LocaleBoundary } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { FinishedTrackImport } from "./FinishedTrackImport";
 
-vi.mock("../../auth-context", () => ({
+vi.mock("@/app/providers/auth-context", () => ({
   useAuth: () => ({ session: { accessToken: "synthetic", expiresAt: Date.now() + 60000 } }),
 }));
 vi.mock("../RouteGeometryEditor", () => ({

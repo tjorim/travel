@@ -2,10 +2,10 @@ import { Navigate, useLocation, useNavigate, useParams } from "@tanstack/react-r
 import { useContext, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ContentLanguageProvider } from "@/i18n/content-language";
-import { OwnerHeaderContext } from "../owner-header-context";
+import { OwnerHeaderContext } from "@/app/providers/owner-header-context";
 import { PackingTripOffline } from "../trips/packing/PackingTripOffline";
-import { useAuth } from "../auth-context";
-import { useCapture } from "../capture-context";
+import { useAuth } from "@/app/providers/auth-context";
+import { useCapture } from "@/app/providers/capture-context";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { useFeedback } from "@/lib/api/feedback";

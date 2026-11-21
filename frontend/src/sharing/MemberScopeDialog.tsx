@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { useRef, useState } from "react";
 
-import { useAuth } from "../auth-context";
+import { useAuth } from "@/app/providers/auth-context";
 import type { ContentLanguage } from "@/i18n/content-language";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";

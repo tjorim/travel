@@ -3,26 +3,26 @@ import { RouterProvider } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import { renewSession } from "@/lib/auth";
-import { AuthProvider, useAuth } from "./auth-context";
+import { AuthProvider, useAuth } from "@/app/providers/auth-context";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/i18n/locale";
-import { m } from "./paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { lazyNamed } from "@/components/lazy-view";
-import { Callback } from "./pages/Callback";
-import { OwnerHome } from "./pages/OwnerHome";
+import { Callback } from "@/pages/Callback";
+import { OwnerHome } from "@/pages/OwnerHome";
 import { createOwnerQueryClient } from "@/lib/query/client";
-import { OwnerQueryProvider } from "./query/OwnerQueryProvider";
-import { buildOwnerRouteTree, createOwnerRouter } from "./router";
+import { OwnerQueryProvider } from "@/app/providers/OwnerQueryProvider";
+import { buildOwnerRouteTree, createOwnerRouter } from "@/app/router/router";
 
 // The sign-in callback and the home page load with the shell. Every other page is fetched when its route is first
 // visited; the router, its loaders and the query client stay here, so route state never depends on a page's chunk.
-const Trips = lazyNamed(() => import("./pages/Trips"), "Trips");
-const TripWorkspace = lazyNamed(() => import("./pages/TripWorkspace"), "TripWorkspace");
-const TripDetail = lazyNamed(() => import("./pages/TripDetail"), "TripDetail");
-const Capture = lazyNamed(() => import("./pages/Capture"), "Capture");
-const Library = lazyNamed(() => import("./pages/Library"), "Library");
-const Sharing = lazyNamed(() => import("./pages/Sharing"), "Sharing");
-const Settings = lazyNamed(() => import("./pages/Settings"), "Settings");
+const Trips = lazyNamed(() => import("@/pages/Trips"), "Trips");
+const TripWorkspace = lazyNamed(() => import("@/pages/TripWorkspace"), "TripWorkspace");
+const TripDetail = lazyNamed(() => import("@/pages/TripDetail"), "TripDetail");
+const Capture = lazyNamed(() => import("@/pages/Capture"), "Capture");
+const Library = lazyNamed(() => import("@/pages/Library"), "Library");
+const Sharing = lazyNamed(() => import("@/pages/Sharing"), "Sharing");
+const Settings = lazyNamed(() => import("@/pages/Settings"), "Settings");
 
 const routeTree = buildOwnerRouteTree({
   Callback,

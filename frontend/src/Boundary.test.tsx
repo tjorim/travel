@@ -3,15 +3,15 @@ import { createRootRoute, createRoute, Outlet } from "@tanstack/react-router";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { Boundary } from "./Boundary";
-import { useCapture } from "./capture-context";
+import { Boundary } from "@/app/layout/Boundary";
+import { useCapture } from "@/app/providers/capture-context";
 import { renderRoutesWithOwner, testToken } from "./query/test-utils";
 
 const auth = vi.hoisted(() => ({
   session: null as { accessToken: string; expiresAt: number } | null,
   setSession: () => undefined,
 }));
-vi.mock("./auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 vi.mock("@/components/preferences/Preferences", () => ({ Preferences: () => null }));
 vi.mock("./trips/CaptureDialog", () => ({
   CaptureDialog: ({

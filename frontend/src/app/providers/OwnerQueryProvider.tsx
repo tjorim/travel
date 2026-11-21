@@ -2,7 +2,7 @@ import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 
 import { decodeSubject } from "@/lib/auth";
-import { useAuth } from "../auth-context";
+import { useAuth } from "./auth-context";
 import { createOwnerQueryClient } from "@/lib/query/client";
 
 // Diagnostics are opt-in and exist only in the dev server (`VITE_QUERY_DEVTOOLS=1`):

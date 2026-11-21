@@ -5,7 +5,7 @@ import { http, HttpResponse } from "msw/http";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { server } from "../mocks/server";
-import { OwnerQueryProvider } from "./OwnerQueryProvider";
+import { OwnerQueryProvider } from "@/app/providers/OwnerQueryProvider";
 import { createOwnerQueryClient } from "@/lib/query/client";
 import { useOwnerMutation, useTripResource, useTripsQuery } from "@/lib/query/owner-queries";
 import { renderWithOwner, testClient, testToken } from "./test-utils";
@@ -14,7 +14,7 @@ const auth = vi.hoisted(() => ({
   session: null as { accessToken: string; expiresAt: number } | null,
   setSession: vi.fn(),
 }));
-vi.mock("../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 
 const TASKS = "/api/trips/trip/trip-tasks";
 

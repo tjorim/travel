@@ -11,7 +11,7 @@ import type { Trip } from "../api-types";
 import { TripEditor } from "./TripEditor";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
-vi.mock("../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 
 const trip = (overrides: Partial<Trip> = {}): Trip => ({
   owner_subject: "owner-1",

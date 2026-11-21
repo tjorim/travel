@@ -8,7 +8,7 @@ import { chooseOption, renderWithOwner, selectedOption, testToken } from "../que
 import { VisibilityControl } from "./visibility";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
-vi.mock("../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 
 let api: FakeApi;
 beforeEach(() => {

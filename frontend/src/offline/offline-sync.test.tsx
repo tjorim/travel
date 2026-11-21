@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 
-import { AuthProvider } from "../auth-context";
+import { AuthProvider } from "@/app/providers/auth-context";
 import { changeLocale } from "@/i18n/locale";
 import { DocumentManager } from "../documents/DocumentManager";
 import { EmergencyInfoManager } from "../library/EmergencyInfoManager";

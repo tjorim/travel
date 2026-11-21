@@ -20,7 +20,7 @@ import type { ScopePreset } from "./PresetSection";
 import { ScopeEditor } from "./ScopeEditor";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
-vi.mock("../../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 
 const scope = (extra: Partial<ShareScope> = {}): ShareScope => ({
   schema_version: "travel/share-scope@1",

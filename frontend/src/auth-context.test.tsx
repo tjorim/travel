@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { AuthProvider } from "./auth-context";
+import { AuthProvider } from "@/app/providers/auth-context";
 import { renewSession } from "@/lib/auth";
 
 vi.mock("@/lib/auth", async (importOriginal) => ({

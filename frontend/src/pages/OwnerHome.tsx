@@ -8,7 +8,7 @@ import { useQueries } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 
-import { useAuth } from "../auth-context";
+import { useAuth } from "@/app/providers/auth-context";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { HomeTripCard } from "../trips/OwnerTripCard";
 import { orderedTrips, today, tripState } from "../trips/trip-state";

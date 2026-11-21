@@ -7,11 +7,11 @@ import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { server } from "./mocks/server";
-import { AuthProvider } from "./auth-context";
+import { AuthProvider } from "@/app/providers/auth-context";
 import { createOwnerQueryClient } from "@/lib/query/client";
-import { OwnerQueryProvider } from "./query/OwnerQueryProvider";
+import { OwnerQueryProvider } from "@/app/providers/OwnerQueryProvider";
 import { testToken } from "./query/test-utils";
-import { buildOwnerRouteTree, createOwnerRouter } from "./router";
+import { buildOwnerRouteTree, createOwnerRouter } from "@/app/router/router";
 import { Trips } from "./pages/Trips";
 import { TripWorkspace } from "./pages/TripWorkspace";
 

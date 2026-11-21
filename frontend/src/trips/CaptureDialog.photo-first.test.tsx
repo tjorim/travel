@@ -16,7 +16,7 @@ import { CaptureDialog } from "./CaptureDialog";
 const auth = vi.hoisted(() => ({
   session: null as { accessToken: string; expiresAt: number } | null,
 }));
-vi.mock("../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 
 const day = (offset: number) => dayjs().add(offset, "day").format("YYYY-MM-DD");
 const trip = (

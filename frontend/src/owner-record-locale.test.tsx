@@ -18,7 +18,7 @@ import { completeSignIn } from "@/lib/auth";
 import { mapMessages } from "@/lib/map/map-messages";
 
 const auth = vi.hoisted(() => ({ session: { accessToken: "" } }));
-vi.mock("./auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 beforeEach(() => {
   auth.session = { accessToken: testToken() };
   act(() => changeLocale("nl"));

@@ -11,7 +11,7 @@ import { changeLocale } from "@/i18n/locale";
 import { LocationManager } from "./LocationManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
-vi.mock("../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 
 const trip: Trip = {
   owner_subject: "owner-1",

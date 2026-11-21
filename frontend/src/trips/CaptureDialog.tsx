@@ -7,7 +7,7 @@ import { authoredLanguage, type ContentLanguage } from "@/i18n/content-language"
 import { flushSync } from "react-dom";
 
 import { decodeSubject } from "@/lib/auth";
-import { useAuth } from "../auth-context";
+import { useAuth } from "@/app/providers/auth-context";
 import { requiredText, TextField } from "@/components/forms/fields";
 import { DateTimeField } from "../forms/DateTimeFields";
 import { MarkdownField } from "@/components/forms/MarkdownField";

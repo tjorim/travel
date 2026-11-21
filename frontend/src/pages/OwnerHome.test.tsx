@@ -14,7 +14,7 @@ const routeTree = createRootRoute({ component: OwnerHome });
 const renderHome = () => renderRoutesWithOwner(routeTree, ["/"]);
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
-vi.mock("../auth-context", () => ({ useAuth: () => ({ session: auth.session }) }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => ({ session: auth.session }) }));
 
 function trip(id: string, title: string, startsOn: string | null, endsOn: string | null) {
   return {

@@ -1,6 +1,6 @@
 import { cn } from "cn";
 
-import { useAuth } from "../auth-context";
+import { useAuth } from "@/app/providers/auth-context";
 import type { Trip } from "../api-types";
 import { OwnerImage } from "./OwnerImage";
 

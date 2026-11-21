@@ -5,7 +5,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it } from "vitest";
 
-import { AuthProvider } from "../auth-context";
+import { AuthProvider } from "@/app/providers/auth-context";
 import { ContentLanguageProvider, type ContentLanguage } from "@/i18n/content-language";
 import { server } from "../mocks/server";
 import { testToken } from "../query/test-utils";

@@ -3,7 +3,7 @@ import "fake-indexeddb/auto";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
-import { AuthProvider } from "../../auth-context";
+import { AuthProvider } from "@/app/providers/auth-context";
 import { server } from "../../mocks/server";
 import { testToken } from "../../query/test-utils";
 import { __resetOfflineStoreForTests, pinOfflineCopy } from "@/lib/offline-store";

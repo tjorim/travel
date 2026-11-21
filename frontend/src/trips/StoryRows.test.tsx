@@ -10,7 +10,7 @@ import type { ShareScope, TravelUpdate, Trip } from "../api-types";
 import { TravelUpdateManager } from "./TravelUpdateManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
-vi.mock("../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 vi.mock("@/components/projection/RenderedPreview", () => ({
   RenderedPreview: ({ focusId }: { focusId?: string }) => <p>Weergegeven preview {focusId}</p>,
 }));

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
-import { parseFlagParam } from "../router/search-params";
+import { parseFlagParam } from "@/app/router/search-params";
 import type { Trip } from "../api-types";
 import { TripWorkspace, TripWorkspaceView } from "./TripWorkspace";
 import { changeLocale } from "@/i18n/locale";
@@ -35,7 +35,7 @@ const tripSectionRoute = createRoute({
 const routeTree = rootRoute.addChildren([tripsListRoute, tripRoute, tripSectionRoute]);
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
-vi.mock("../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 // The managers and map have their own tests; this file covers trip selection and the trip editor.
 vi.mock("../documents/DocumentManager", () => ({ DocumentManager: () => null }));
 vi.mock("../trips/AreaManager", () => ({ AreaManager: () => null }));

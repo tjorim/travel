@@ -5,7 +5,7 @@ import "fake-indexeddb/auto";
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 
-import { AuthProvider } from "../auth-context";
+import { AuthProvider } from "@/app/providers/auth-context";
 import { renderWithOwner, resetOfflineDb } from "../query/test-utils";
 import type { EmergencyInfoEntry } from "../api-types";
 import { EmergencyInfoManager } from "./EmergencyInfoManager";

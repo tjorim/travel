@@ -1,5 +1,5 @@
 import { cn } from "cn";
-import { m } from "./paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { useLocale } from "@/i18n/locale";
 import { PreferencesPanel } from "@/components/preferences/PreferencesPanel";
 import { VisitorTopBar } from "@/components/VisitorTopBar";
@@ -17,13 +17,13 @@ import {
 } from "lucide-react";
 
 import { beginSignIn, beginSignOut, decodeSubject } from "@/lib/auth";
-import { useAuth } from "./auth-context";
-import { CaptureProvider, useCapture } from "./capture-context";
+import { useAuth } from "@/app/providers/auth-context";
+import { CaptureProvider, useCapture } from "@/app/providers/capture-context";
 import { wipeOfflineData } from "@/lib/offline-store";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
 
-const PublicationState = lazy(() => import("./trips/PublicationState"));
-import { OwnerHeaderContext } from "./owner-header-context";
+const PublicationState = lazy(() => import("@/trips/PublicationState"));
+import { OwnerHeaderContext } from "@/app/providers/owner-header-context";
 
 /**
  * Capture is an action, not a place, so it is a button that is always at hand rather than a nav item. Inside a trip it

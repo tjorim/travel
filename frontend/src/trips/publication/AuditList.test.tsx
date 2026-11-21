@@ -9,7 +9,7 @@ import { renderWithOwner, testToken } from "../../query/test-utils";
 import type { AuditEvent } from "../../api-types";
 import { AuditList } from "./AuditList";
 
-vi.mock("../../auth-context", () => ({
+vi.mock("@/app/providers/auth-context", () => ({
   useAuth: () => ({ session: { accessToken: testToken() } }),
 }));
 afterEach(() => {

@@ -11,7 +11,7 @@ import { serveApi } from "../query/serve-api";
 import { SharingOverview } from "./SharingOverview";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
-vi.mock("../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@tanstack/react-router")>()),
   Link: ({ to, children, ...props }: { to: string; children: React.ReactNode }) => (

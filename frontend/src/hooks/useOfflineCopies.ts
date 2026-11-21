@@ -3,7 +3,7 @@ import { m } from "@/paraglide/messages.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { decodeSubject } from "@/lib/auth";
-import { useAuth } from "@/auth-context";
+import { useAuth } from "@/app/providers/auth-context";
 import { ApiError, ownerRequest } from "@/lib/api/api";
 import {
   clearOfflineCopies,

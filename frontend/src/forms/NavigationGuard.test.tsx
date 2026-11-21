@@ -11,7 +11,7 @@ import {
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
-import { NavigationGuard } from "./NavigationGuard";
+import { NavigationGuard } from "@/app/router/NavigationGuard";
 import { RecordDialog } from "@/components/RecordDialog";
 import { RecordForm, TextField } from "@/components/forms/fields";
 import { useRecordForm } from "@/hooks/useRecordForm";

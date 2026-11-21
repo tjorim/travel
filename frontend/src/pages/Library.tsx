@@ -1,6 +1,6 @@
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "@/i18n/locale";
-import { useAuth } from "../auth-context";
+import { useAuth } from "@/app/providers/auth-context";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DocumentManager } from "../documents/DocumentManager";
 import { EmergencyInfoManager } from "../library/EmergencyInfoManager";

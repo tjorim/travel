@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { beginSignIn, completeSignIn } from "@/lib/auth";
-import { useAuth } from "../auth-context";
+import { useAuth } from "@/app/providers/auth-context";
 
 export function Callback() {
   useLocale();

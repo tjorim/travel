@@ -6,7 +6,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { changeLocale } from "@/i18n/locale";
 import { formatInstant } from "@/lib/dates";
 import * as api from "@/lib/api/api";
-import { AuthProvider } from "../auth-context";
+import { AuthProvider } from "@/app/providers/auth-context";
 import { answerConfirmation } from "../test-confirm";
 import { OfflineManager } from "./OfflineManager";
 import {

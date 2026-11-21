@@ -9,7 +9,7 @@ import type { AlternativeGroup, AlternativeSuggestion, Area, Stay } from "../../
 import { AlternativesPanel } from "./AlternativesPanel";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
-vi.mock("../../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 
 const area: Area = {
   id: "area-1",

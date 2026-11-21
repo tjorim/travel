@@ -14,7 +14,7 @@ import type { Area, Route, Location, Trip } from "../api-types";
 import { OwnerTripMap } from "./OwnerTripMap";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
-vi.mock("../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 
 const trip: Trip = {
   owner_subject: "owner-1",

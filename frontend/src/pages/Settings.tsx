@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { accountUrl, decodeSubject } from "@/lib/auth";
-import { useAuth } from "../auth-context";
+import { useAuth } from "@/app/providers/auth-context";
 import { useConfirmation } from "@/hooks/useConfirmation";
 import { ownerRequest } from "@/lib/api/api";
 import { ownerKeys } from "@/lib/query/keys";

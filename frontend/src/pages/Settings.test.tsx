@@ -10,7 +10,7 @@ import { changeLocale } from "@/i18n/locale";
 import { Settings } from "./Settings";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
-vi.mock("../auth-context", () => ({ useAuth: () => auth }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 
 let api: FakeApi;
 let providers: Api.ProviderConnectionStatus[];
