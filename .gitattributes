@@ -1,0 +1,16 @@
+# Normalise text to LF on commit and checkout; no tracked file has CRLF, so this changes no existing file.
+* text=auto eol=lf
+
+# Binary assets (listed one per pattern: .gitattributes has no brace expansion).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.ttf binary
+*.otf binary
+*.pdf binary

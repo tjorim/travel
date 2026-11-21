@@ -1,0 +1,22 @@
+# The backend image builds from the repository root (compose.yaml: context `.`, dockerfile `backend/Dockerfile`)
+# because it copies /VERSION and python-travel/. Keep the context to what the Dockerfile copies.
+.git/
+.github/
+.venv/
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.ruff_cache/
+**/node_modules/
+frontend/
+docs/
+home-assistant/
+custom_components/
+backend/tests/
+backend/media-storage/
+**/*.db
+**/.env
+**/*.env
+**/.coverage
+**/coverage/
