@@ -34,7 +34,7 @@ def flag_route_overlaps(session: Session, trip: Trip, *visits: Visit) -> None:
     # An undated visit restates no route, so the routes are read only when some visit has a date.
     routes = trip_routes(session, trip) if any(visit.starts_on for visit in visits) else []
     for visit in visits:
-        visit.possible_route_duplicates = [  # ty: ignore[unresolved-attribute]
+        visit.possible_route_duplicates = [  # ty: ignore[missing-attribute]
             {"id": route.id, "title": route_title(route)} for route in overlapping_routes(visit, routes)
         ]
 

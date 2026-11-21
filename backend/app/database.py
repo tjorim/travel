@@ -19,7 +19,7 @@ if engine.dialect.name == "sqlite":
     # they are switched on for every connection.
     @event.listens_for(engine, "connect")
     def _enable_sqlite_foreign_keys(dbapi_connection: object, _: object) -> None:
-        dbapi_connection.execute("PRAGMA foreign_keys=ON")  # ty: ignore[unresolved-attribute]
+        dbapi_connection.execute("PRAGMA foreign_keys=ON")  # ty: ignore[missing-attribute]
 
 
 def get_session() -> Generator[Session]:
