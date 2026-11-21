@@ -20,6 +20,7 @@ from test_publication import (  # noqa: F401
 
 from app import schemas
 from app.main import app
+from app.models import DatePrecision
 from app.storage import LocalObjectStorage, get_storage
 
 RECORDS = {
@@ -101,7 +102,7 @@ def test_an_optional_field_is_absent_unless_it_was_set_and_null_when_it_was_set_
         summary=None,
         summary_html=None,
         place=None,
-        date_precision=schemas.DatePrecision.DAY,
+        date_precision=DatePrecision.DAY,
         starts_on="2054-04-04",
         ends_on=None,
     )

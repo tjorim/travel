@@ -28,7 +28,7 @@ not feature release dates. “Unverified” never means “absent”.
 | TW | Travel local Vite/API with the synthetic SQLite database reused from the mobile pass, development authentication supplied by Vite. Created the matched fixture and local public/named-link scopes on 2026-10-31. On 2026-11-01 restarted our own API on :8000 and Vite on :5173 after the earlier processes had ended; stopped no existing process. Used `TRAVEL_ENVIRONMENT=development`, a local bypass token and the reused SQLite/media paths. `uv sync --all-groups --frozen` passed. Browser owner Plan/Story, record editors and standalone visitor routes; DOM dimensions at actual 1280 × 800 and 390 × 844. English sampled; this follow-up does not repeat the full locale/theme matrix. |
 | TN | Same physical phone, Chrome over LAN HTTP to the synthetic Vite instance on 2026-11-01. Inspected owner Plan/Agenda and scrolled the real public trip through map fallback, story, visit, areas, generalized stays and train/flight blocks. English, automatic appearance rendered dark. Android's web accessibility snapshot omitted the page controls, so current screenshots and coordinate swipes supplied display evidence. This is neither installed-PWA nor TalkBack evidence. |
 | H | Local HTTP GETs of owner and public/unlisted projections on 2026-10-31 and rechecked 2026-11-01. Confirmed counts and absence of synthetic property/booking canaries. PW's private fixture opened logged out in an incognito browser on 2026-11-01: unavailable private-trip/profile shell, no fixture itinerary. No audience widened to obtain a positive Polarsteps visitor sample. |
-| C | Current source and contracts read 2026-11-01: [domain model](../domain-model.md), [decision 36](36-privacy-sharing-offline-policy.md), `backend/app/schemas.py`, `projection.py`, `frontend/src/ProjectionView.tsx`, and owner files referenced below. Source is distinguished from interaction evidence. |
+| C | Current source and contracts read 2026-11-01: [domain model](../domain-model.md), [decision 36](36-privacy-sharing-offline-policy.md), `backend/app/schemas/`, `projection.py`, `frontend/src/ProjectionView.tsx`, and owner files referenced below. Source is distinguished from interaction evidence. |
 
 Evidence, local state and capability values stay outside Git. The resumed
 session's state is under the user's local review directory; temporary evidence
@@ -194,7 +194,7 @@ Owner Plan displayed **10:00–12:00**. Both local visitor projections returned
 offset**. The Europe/Brussels browser and physical phone displayed
 **08:00–10:00**. The flight showed the same discrepancy (TW/TN/H).
 
-`RouteResponse.mark_utc` in `backend/app/schemas.py` explicitly repairs naive
+`RouteResponse.mark_utc` in `backend/app/schemas/routes.py` explicitly repairs naive
 SQLite UTC values for owner responses; `backend/app/projection.py` directly
 calls `isoformat()` on them. `ProjectionView.tsx` parses the resulting naive
 string with `dayjs(value).tz(timeZone)`. This supports a local serialization

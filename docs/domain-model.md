@@ -430,7 +430,7 @@ each counts the candidate scope as `FutureDisclosure` and stores nothing
 
 Each kind has a fixed allowlist. Nothing is redacted on the fly, and nothing
 outside the allowlist can be selected. The allowlist is the set of fields of
-the kind's `Projection*` model in `backend/app/schemas.py`: the renderers in
+the kind's `Projection*` model in `backend/app/schemas/projection.py`: the renderers in
 `projection.py` build those models and nothing else, a field they add without
 declaring it is refused, and the models are what the OpenAPI schema publishes
 (the web app's mirror is `frontend/src/projection-types.ts`).

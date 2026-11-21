@@ -208,7 +208,7 @@ backend response models -> uv run python -m app.openapi_export (pnpm api:generat
   `"snapshot"`, so a release bump never stales it. `frontend/src/api-schema/` is generated from it, one file per
   schema. Never hand-edit either, and do not declare an API record type anywhere else in the frontend.
 - To add or change an endpoint: give the route a `response_model` (a test enforces it; a response model derives from
-  `ResponseModel` in `backend/app/schemas.py` so a field with a default is required in the generated type), run
+  `ResponseModel` in `backend/app/schemas/base.py` so a field with a default is required in the generated type), run
   `pnpm api:generate` in `frontend/` (it needs `uv`), commit `openapi.json` and `src/api-schema/`, and alias the
   generated record for the screens in `frontend/src/api-types.ts`.
 - `pnpm typecheck` runs `pnpm api:check` and fails when `src/api-schema/` is stale; the backend test
