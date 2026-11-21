@@ -12235,6 +12235,58 @@
         }
       }
     },
+    "/api/health/liveness": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Liveness",
+        "operationId": "liveness_api_health_liveness_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LivenessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health/readiness": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Readiness",
+        "operationId": "readiness_api_health_readiness_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "tags": [
@@ -15174,13 +15226,23 @@
           "commit": {
             "type": "string",
             "title": "Commit"
+          },
+          "liveness_endpoint": {
+            "type": "string",
+            "title": "Liveness Endpoint"
+          },
+          "readiness_endpoint": {
+            "type": "string",
+            "title": "Readiness Endpoint"
           }
         },
         "type": "object",
         "required": [
           "status",
           "version",
-          "commit"
+          "commit",
+          "liveness_endpoint",
+          "readiness_endpoint"
         ],
         "title": "HealthResponse"
       },
@@ -15624,6 +15686,21 @@
           "next"
         ],
         "title": "LiveTrackPage"
+      },
+      "LivenessResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "alive",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "LivenessResponse",
+        "description": "Process-level alive signal; never touches a dependency."
       },
       "LocationInput": {
         "properties": {
@@ -21695,6 +21772,24 @@
           "focal_y"
         ],
         "title": "PublicTripCover"
+      },
+      "ReadinessResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "not_ready"
+            ],
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ReadinessResponse",
+        "description": "Result of the dependency checks, sent with HTTP 200 (``ready``) or 503 (``not_ready``)."
       },
       "RouteCreate": {
         "properties": {
