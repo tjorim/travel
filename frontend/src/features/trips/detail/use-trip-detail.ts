@@ -1,0 +1,42 @@
+import { useTripResource, useTripWithUpdates } from "@/lib/query/owner-queries";
+
+/** Every read behind the owner's complete trip overview; nothing is read for a trip that does not exist. */
+export function useTripDetail(tripId: string | undefined) {
+  const { tripsQuery, updatesQuery, trip } = useTripWithUpdates(tripId);
+  const id = trip ? trip.id : null;
+  const placesQuery = useTripResource(id, "locations");
+  const areasQuery = useTripResource(id, "areas");
+  const routesQuery = useTripResource(id, "routes");
+  const staysQuery = useTripResource(id, "stays");
+  const visitsQuery = useTripResource(id, "visits");
+  const tasksQuery = useTripResource(id, "trip-tasks");
+  const documentsQuery = useTripResource(id, "documents");
+  const mediaQuery = useTripResource(id, "media");
+
+  const readError = [
+    tripsQuery,
+    updatesQuery,
+    placesQuery,
+    areasQuery,
+    routesQuery,
+    staysQuery,
+    visitsQuery,
+    tasksQuery,
+    documentsQuery,
+    mediaQuery,
+  ].find((query) => query.isError)?.error;
+
+  return {
+    tripsLoaded: tripsQuery.isSuccess,
+    trip,
+    places: placesQuery.data,
+    areas: areasQuery.data,
+    routes: routesQuery.data,
+    stays: staysQuery.data,
+    visits: visitsQuery.data,
+    tasks: tasksQuery.data,
+    documents: documentsQuery.data,
+    media: mediaQuery.data,
+    readError,
+  };
+}

@@ -1,0 +1,175 @@
+import { useQuery } from "@tanstack/react-query";
+import { formatDate, formatNumber, useLocale } from "@/i18n/locale";
+import { m } from "@/paraglide/messages.js";
+import { ownerRequest } from "@/lib/api/api";
+import { ownerKeys } from "@/lib/query/keys";
+import { tripPath, useOwner } from "@/lib/query/owner-queries";
+import type { AuditEvent } from "@/api-types";
+import { isVisitorField, visitorFieldLabel } from "../locations/model";
+import { kindCountsText } from "./catalog";
+
+function eventMessage(event: AuditEvent) {
+  const messages: Partial<Record<AuditEvent["kind"], () => string>> = {
+    "public_projection.publish": m.audit_publish,
+    "public_projection.unpublish": m.audit_unpublish,
+    "public_projection.scope_change": m.audit_public_scope,
+    "feed.enable": m.feed_enable,
+    "feed.rotate": m.feed_rotate,
+    "feed.revoke": m.feed_revoke,
+    "share_link.create": m.audit_create,
+    "share_link.activate": m.audit_activate,
+    "share_link.revoke": m.audit_revoke,
+    "share_link.rotate": m.audit_rotate,
+    "share_link.expire": m.audit_expire,
+    "share_link.scope_change": m.audit_link_scope,
+    "location.merge": m.audit_location_merge,
+    "area.merge": m.audit_area_merge,
+    "record.precision_follow_audience": m.audit_precision_follow,
+    "public_projection.preset_apply": m.audit_preset_apply,
+    "share_link.preset_apply": m.audit_preset_apply,
+  };
+  if (event.kind === "location.update")
+    return m.audit_location_update({
+      fields: changedFields(event).filter(isVisitorField).map(visitorFieldLabel).join(", "),
+    });
+  if (event.kind === "alternative_group.choose")
+    return event.details.others === "remove"
+      ? m.audit_alternative_choose_removed()
+      : m.audit_alternative_choose();
+  if (event.kind === "alternative_group.undo_choice") return m.audit_alternative_undo();
+  if (event.kind !== "record.visibility_change")
+    return messages[event.kind]?.() ?? m.audit_unknown();
+  const { record_kind, from, to } = event.details;
+  const records = {
+    area: m.audit_area,
+    location: m.audit_location,
+    visit: m.audit_visit,
+    route: m.audit_route,
+    stay: m.audit_stay,
+    travel_update: m.audit_travel_update,
+    media_derivative: m.audit_media_derivative,
+  };
+  const visibility = {
+    private: m.audit_private,
+    everyone: m.audit_everyone,
+    custom: m.audit_custom,
+  };
+  if (!from || !to || !visibility[from] || !visibility[to]) return m.audit_unknown();
+  return m.audit_visibility({
+    record: ((record_kind && records[record_kind]) || m.audit_record)(),
+    before: visibility[from](),
+    after: visibility[to](),
+  });
+}
+
+/** A location update lists its changed fields; a preset's apply counts its changes per action instead. */
+const locationChanges = (event: AuditEvent) =>
+  Array.isArray(event.details.changes) ? event.details.changes : [];
+const changedFields = (event: AuditEvent) => locationChanges(event).map((change) => change.field);
+
+/** The audiences that started to read finer dates when visits and stays followed the audience. */
+const precisionWidened = (event: AuditEvent) =>
+  (event.details.audiences ?? [])
+    .filter((entry) => entry.widened.visits + entry.widened.stays > 0)
+    .map((entry) => entry.audience);
+
+/** The audiences a merge newly showed the kept record to, each counted once. */
+const mergeWidened = (event: AuditEvent) => [
+  ...new Set(
+    (event.details.merged ?? []).flatMap((duplicate) =>
+      (duplicate.widened ?? []).map((entry) => entry.audience),
+    ),
+  ),
+];
+
+function audienceCounts(audiences: string[]) {
+  return {
+    publicCount: formatNumber(audiences.filter((audience) => audience === "public").length),
+    linkCount: formatNumber(audiences.filter((audience) => audience.startsWith("link:")).length),
+  };
+}
+
+export function AuditList({ tripId }: { tripId: string }) {
+  useLocale();
+  const owner = useOwner();
+  const query = useQuery({
+    queryKey: [...ownerKeys.trip(owner?.subject ?? "", tripId), "audit-events"],
+    enabled: owner !== null,
+    queryFn: ({ signal }) =>
+      ownerRequest<AuditEvent[]>(owner!.session, tripPath(tripId, "audit-events"), m.audit_error, {
+        signal,
+      }),
+  });
+  return (
+    <section className="grid gap-3" aria-labelledby="sharing-audit-heading">
+      <h3 id="sharing-audit-heading">{m.audit_heading()}</h3>
+      {query.isPending ? (
+        <p role="status">{m.audit_loading()}</p>
+      ) : query.isError ? (
+        <p role="alert">{m.audit_error()}</p>
+      ) : !query.data.length ? (
+        <p>{m.audit_empty()}</p>
+      ) : (
+        <ol className="grid gap-3">
+          {query.data.map((event) => (
+            <li key={event.id} className="grid gap-1">
+              <time dateTime={event.occurred_at}>
+                {formatDate(new Date(event.occurred_at), {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </time>
+              <p>{eventMessage(event)}</p>
+              {event.kind === "location.update" && (
+                <p>
+                  {m.audit_location_update_audiences(
+                    audienceCounts([
+                      ...new Set(locationChanges(event).flatMap((change) => change.audiences)),
+                    ]),
+                  )}
+                </p>
+              )}
+              {(event.kind === "location.merge" || event.kind === "area.merge") &&
+                !!mergeWidened(event).length && (
+                  <p>{m.audit_merge_widened(audienceCounts(mergeWidened(event)))}</p>
+                )}
+              {event.kind === "record.precision_follow_audience" &&
+                !!precisionWidened(event).length && (
+                  <p>
+                    {m.audit_precision_follow_audiences(audienceCounts(precisionWidened(event)))}
+                  </p>
+                )}
+              {event.kind === "share_link.scope_change" && !!event.details.exclusions && (
+                <>
+                  <p>
+                    {m.audit_exclusions_changed({
+                      added: formatNumber(event.details.exclusions.added.length),
+                      removed: formatNumber(event.details.exclusions.removed.length),
+                    })}
+                  </p>
+                  {!!Object.keys(event.details.exclusions.widened).length && (
+                    <p>
+                      {m.audit_exclusions_widened({
+                        counts: kindCountsText(event.details.exclusions.widened),
+                      })}
+                    </p>
+                  )}
+                </>
+              )}
+              {event.kind === "record.visibility_change" && (
+                <>
+                  {!!event.details.newly_reached?.length && (
+                    <p>{m.audit_reached(audienceCounts(event.details.newly_reached))}</p>
+                  )}
+                  {!!event.details.no_longer_reached?.length && (
+                    <p>{m.audit_withdrawn(audienceCounts(event.details.no_longer_reached))}</p>
+                  )}
+                </>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}

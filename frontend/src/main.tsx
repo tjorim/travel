@@ -1,10 +1,10 @@
-import { LocaleBoundary } from "./locale";
+import { LocaleBoundary } from "@/i18n/locale";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import { App } from "./App";
-import "./styles.css";
-import "./tailwind.css";
+import { App } from "@/app/App";
+import "@/styles/app.css";
+import "@/styles/tailwind.css";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () =>

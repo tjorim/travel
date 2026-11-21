@@ -62,7 +62,7 @@ uv run alembic upgrade head
 
 ## Project layout
 
-- `frontend/` — React source for the owner `/admin/` PWA and live public and unlisted trip views
+- `frontend/` — React source for the owner `/admin/` PWA and live public and unlisted trip views; the source layout is described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - `frontend/MAP-PROVIDER.md` — app map provider, attribution, privacy and failure policy
 - `backend/` — application service, FastAPI routes and future owner MCP workflows
 - `compose.yaml` — local Caddy, `travel-api` and PostgreSQL stack
@@ -143,7 +143,7 @@ docker compose exec travel-api alembic upgrade head
 
 Then open `https://localhost`. Public and unlisted views work immediately.
 This stack serves the built PWA, which always signs in through the production
-`travel` realm configured in `frontend/src/auth.ts`, so owner sign-in succeeds
+`travel` realm configured in `frontend/src/lib/auth.ts`, so owner sign-in succeeds
 only if that Keycloak client accepts the local callback origin. For owner work
 run `pnpm dev` and the API directly as described above.
 

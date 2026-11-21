@@ -1,0 +1,351 @@
+import { Spinner } from "@/components/ui/spinner";
+import { Alert } from "@/components/ui/alert";
+import { errorNotice, useFeedback } from "@/lib/api/feedback";
+import { m } from "@/paraglide/messages.js";
+import { useLocale } from "@/i18n/locale";
+import { Button } from "@/components/ui/button";
+import { useQueries } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
+
+import { useAuth } from "@/app/providers/auth-context";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { HomeTripCard } from "./OwnerTripCard";
+import { orderedTrips, today, tripState } from "./trip-state";
+
+import { errorMessage } from "@/lib/api/api";
+import {
+  recentUpdatesQueryOptions,
+  tripResourceQueryOptions,
+  useMarkAlertRead,
+  useOwner,
+  useTripsQuery,
+} from "@/lib/query/owner-queries";
+import { addDays, daysBetween, formatDay, formatInstant, formatUpdateInstant } from "@/lib/dates";
+import { routeInPlan, stayCoversNight } from "@/lib/records";
+import {
+  type Stay,
+  type Route,
+  type TravelUpdate,
+  type TripSummary,
+  type TripTask,
+  type TripTaskAlert,
+} from "@/api-types";
+
+type TripSnapshot = {
+  stays: Stay[];
+  routes: Route[];
+  tasks: TripTask[];
+  alerts: TripTaskAlert[];
+  updates: TravelUpdate[];
+};
+
+function nextAction(trip: TripSummary, snapshot: TripSnapshot): string {
+  if (!trip.starts_on) return m.home_first_trip_hint();
+  const openTasks = snapshot.tasks
+    .filter((task) => !task.completed_at)
+    .sort((left, right) =>
+      (left.due_date ?? "9999-12-31").localeCompare(right.due_date ?? "9999-12-31"),
+    );
+  if (openTasks[0])
+    return openTasks[0].due_date
+      ? m.home_task_due({ title: openTasks[0].title, due: formatDay(openTasks[0].due_date) })
+      : m.home_task_named({ title: openTasks[0].title });
+
+  if (trip.starts_on && trip.ends_on && trip.ends_on > trip.starts_on) {
+    const nights = Array.from({ length: daysBetween(trip.starts_on, trip.ends_on) }, (_, index) =>
+      addDays(trip.starts_on!, index),
+    );
+    const missing = nights.filter(
+      (night) => !snapshot.stays.some((stay) => stayCoversNight(stay, night)),
+    ).length;
+    if (missing) return m.home_missing_nights({ count: missing });
+  }
+
+  const unbookedRoute = snapshot.routes.find(
+    (route) => routeInPlan(route) && route.status !== "confirmed",
+  );
+  if (unbookedRoute) return m.home_transport_still_needs_to_be_booked_or_confirmed();
+  if (!trip.travel_update_count) return m.home_capture_your_first_travel_update();
+  return m.home_open_your_trip_overview();
+}
+
+export function OwnerHome() {
+  useLocale();
+  const { session } = useAuth();
+  const owner = useOwner();
+  const tripsQuery = useTripsQuery();
+  const trips = useMemo(() => tripsQuery.data ?? [], [tripsQuery.data]);
+  const resourceQueries = useQueries({
+    queries: trips.flatMap((trip) => [
+      ...(["stays", "routes", "trip-tasks", "task-alerts"] as const).map((resource) =>
+        tripResourceQueryOptions(owner, trip.id, resource),
+      ),
+      recentUpdatesQueryOptions(owner, trip.id, trip.travel_update_count > 0),
+    ]),
+  });
+  const markAlertRead = useMarkAlertRead();
+  const [notice, setNotice] = useFeedback<string | null>(null);
+  const [online, setOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const updateConnection = () => setOnline(navigator.onLine);
+    window.addEventListener("online", updateConnection);
+    window.addEventListener("offline", updateConnection);
+    return () => {
+      window.removeEventListener("online", updateConnection);
+      window.removeEventListener("offline", updateConnection);
+    };
+  }, []);
+
+  // Each trip owns five consecutive queries, in the order requested above.
+  const snapshots = useMemo(
+    () =>
+      Object.fromEntries(
+        trips.map((trip, index): [string, TripSnapshot] => {
+          const [stays, routes, tasks, alerts, updates] = resourceQueries
+            .slice(index * 5, index * 5 + 5)
+            .map((query) => query.data ?? []);
+          return [
+            trip.id,
+            {
+              stays: stays as Stay[],
+              routes: routes as Route[],
+              tasks: tasks as TripTask[],
+              alerts: alerts as TripTaskAlert[],
+              updates: updates as TravelUpdate[],
+            },
+          ];
+        }),
+      ),
+    [trips, resourceQueries],
+  );
+  const partial = resourceQueries.some((query) => query.isError);
+
+  const state: "loading" | "ready" | "error" = tripsQuery.data
+    ? "ready"
+    : !online || tripsQuery.isError
+      ? "error"
+      : "loading";
+  const message =
+    notice ??
+    (state === "error"
+      ? !online
+        ? m.home_offline()
+        : errorMessage(tripsQuery.error, m.home_load_error)
+      : state === "loading"
+        ? m.workspace_loading()
+        : partial
+          ? m.workspace_partial()
+          : trips.length
+            ? ""
+            : m.home_no_trips());
+
+  const day = today();
+  const visibleTrips = useMemo(
+    () => orderedTrips(trips, day).filter((trip) => tripState(trip, day) !== "past"),
+    [trips, day],
+  );
+  const unreadAlerts = useMemo(
+    () =>
+      trips.flatMap((trip) =>
+        (snapshots[trip.id]?.alerts ?? [])
+          .filter((alert) => !alert.read_at)
+          .map((alert) => ({ ...alert, trip })),
+      ),
+    [snapshots, trips],
+  );
+  const recentUpdates = useMemo(
+    () =>
+      trips
+        .flatMap((trip) =>
+          (snapshots[trip.id]?.updates ?? []).map((update) => ({ ...update, trip })),
+        )
+        .sort((left, right) => right.occurred_at.localeCompare(left.occurred_at))
+        .slice(0, 3),
+    [snapshots, trips],
+  );
+
+  if (!session) return <EmptyState title={m.your_trips()}>{m.sign_in_workspace()}</EmptyState>;
+  if (state === "loading")
+    return (
+      <Alert className="travel-card" role="status">
+        <h1 className="max-w-none text-2xl tracking-normal min-[680px]:max-w-none">
+          {m.your_trips()}
+        </h1>
+        <p className="flex items-center gap-2">
+          <Spinner />
+          {message}
+        </p>
+      </Alert>
+    );
+  if (state === "error")
+    return (
+      <Alert className="travel-card" variant="error" role="alert">
+        <h1 className="max-w-none text-2xl tracking-normal min-[680px]:max-w-none">
+          {m.home_your_travel_workspace_is_unavailable()}
+        </h1>
+        <p>{message}</p>
+        <Button type="button" onClick={() => window.location.reload()}>
+          {m.retry()}
+        </Button>
+      </Alert>
+    );
+
+  const [featured, ...others] = visibleTrips;
+  const nextStepOf = (trip: TripSummary) =>
+    nextAction(
+      trip,
+      snapshots[trip.id] ?? { stays: [], routes: [], tasks: [], alerts: [], updates: [] },
+    );
+
+  return (
+    <main className="grid grid-cols-1 gap-travel-section" aria-labelledby="owner-home-title">
+      <header className="capture-heading max-[620px]:flex-col max-[620px]:items-start">
+        <div>
+          <p className="travel-eyebrow">{m.home_private_travel_workspace()}</p>
+          <h1
+            className="text-travel-title-long leading-travel-title-long tracking-travel-title-long min-[680px]:max-w-travel-reading"
+            id="owner-home-title"
+          >
+            {m.home_where_would_you_like_to_continue()}
+          </h1>
+          <p className="max-w-travel-reading leading-relaxed text-travel-muted">
+            {m.home_tagline()}
+          </p>
+        </div>
+        <div className="button-row">
+          <a className="secondary action-link" href="/">
+            {m.home_view_public_trips()}
+          </a>
+        </div>
+      </header>
+      {!online && (
+        <p className="connection offline" role="status">
+          {m.home_offline_stale_notice()}
+        </p>
+      )}
+      <div className="travel-main-split">
+        <section
+          className="grid min-w-0 gap-4 min-[1100px]:col-start-1 min-[1100px]:row-span-2 min-[1100px]:row-start-1"
+          aria-labelledby="trip-list-title"
+        >
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="m-0" id="trip-list-title">
+              {m.common_now_and_soon()}
+            </h2>
+            <Link className="font-bold text-travel-forest" to="/trips">
+              {m.home_manage_all_trips()}
+            </Link>
+          </div>
+          {featured ? (
+            <>
+              <HomeTripCard
+                trip={featured}
+                state={tripState(featured, day)}
+                nextStep={nextStepOf(featured)}
+                featured
+              />
+              {others.length > 0 && (
+                <div className="grid gap-travel-grid-gap min-[680px]:grid-cols-2">
+                  {others.map((trip) => (
+                    <HomeTripCard
+                      key={trip.id}
+                      trip={trip}
+                      state={tripState(trip, day)}
+                      nextStep={nextStepOf(trip)}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <section className="travel-card grid gap-3">
+              <h3 className="m-0">
+                {trips.length
+                  ? m.home_no_active_or_upcoming_trips()
+                  : m.home_start_your_first_trip()}
+              </h3>
+              <p className="m-0">
+                {trips.length ? m.home_past_trips_remain_available_under_manage() : message}
+              </p>
+              <Link className="action-link w-fit" to="/trips" search={{ new: "1" }}>
+                {m.trips_new_trip()}
+              </Link>
+            </section>
+          )}
+        </section>
+        {unreadAlerts.length > 0 && (
+          <section
+            className="travel-card grid min-w-0 gap-3 min-[1100px]:col-start-2 min-[1100px]:row-start-1"
+            aria-labelledby="inbox-title"
+          >
+            <h2 className="m-0" id="inbox-title">
+              {m.home_inbox()}
+            </h2>
+            <p>{m.home_reminder_count({ count: unreadAlerts.length })}</p>
+            <div className="saved-records">
+              {unreadAlerts.map((alert) => (
+                <article className="excerpt-row" key={alert.id}>
+                  <div className="grid gap-0.5">
+                    <strong>{alert.title}</strong>
+                    <span>
+                      {m.home_reminder_scheduled({
+                        trip: alert.trip.title,
+                        time: formatInstant(alert.scheduled_for),
+                      })}
+                    </span>
+                  </div>
+                  <Button
+                    className="secondary compact"
+                    type="button"
+                    onClick={() =>
+                      markAlertRead
+                        .mutateAsync({ tripId: alert.trip.id, alertId: alert.id })
+                        .catch((error: unknown) =>
+                          setNotice(
+                            errorNotice(error, m.common_the_notification_could_not_be_updated),
+                          ),
+                        )
+                    }
+                  >
+                    {m.common_read()}
+                  </Button>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+        {recentUpdates.length > 0 && (
+          <section
+            className="grid min-w-0 gap-3 min-[1100px]:col-start-2"
+            aria-labelledby="activity-title"
+          >
+            <h2 className="m-0" id="activity-title">
+              {m.home_recently_captured()}
+            </h2>
+            <div className="saved-records">
+              {recentUpdates.map((update) => (
+                <Link
+                  className="grid gap-1 rounded-travel-media bg-travel-surface p-3.5 text-travel-ink no-underline shadow-travel-card hover:bg-travel-hover [&_span]:text-sm [&_span]:text-travel-muted"
+                  key={update.id}
+                  to={`/trips/${encodeURIComponent(update.trip.id)}`}
+                >
+                  <strong>{update.title}</strong>
+                  <span>
+                    {update.trip.title} · {formatUpdateInstant(update)}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+      {message && (
+        <p className="help max-w-travel-reading" role="status">
+          {message}
+        </p>
+      )}
+    </main>
+  );
+}

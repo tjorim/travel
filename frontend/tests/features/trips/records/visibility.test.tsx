@@ -1,0 +1,82 @@
+import type * as Api from "@/api-schema";
+// @vitest-environment happy-dom
+import { cleanup, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+
+import { fakeApi, type FakeApi } from "../../../utils/fake-api";
+import {
+  chooseOption,
+  renderWithOwner,
+  selectedOption,
+  testToken,
+} from "../../../utils/query-test-utils";
+import { VisibilityControl } from "@/features/trips/records/visibility";
+
+const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
+
+let api: FakeApi;
+beforeEach(() => {
+  auth.session = { accessToken: testToken() };
+  api = fakeApi();
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  expect(api.unexpected).toEqual([]);
+});
+
+it("offers the same three choices for every kind and saves the chosen one at once", async () => {
+  api.on<Api.VisibilityUpdate>(
+    "PUT",
+    /\/visibility\/visit\/s1$/,
+    (body) => body as Api.VisibilityUpdate,
+  );
+  renderWithOwner(
+    <VisibilityControl tripId="trip" kind="visit" id="s1" value="private" name="Noordkust" />,
+  );
+  expect(selectedOption("Zichtbaarheid van Noordkust")).toEqual("Privé — alleen ik");
+  chooseOption("Zichtbaarheid van Noordkust", "Zelf kiezen in Delen");
+  await waitFor(() =>
+    expect(api.lastBody("PUT /api/trips/trip/visibility/visit/s1")).toEqual({
+      visibility: "custom",
+    }),
+  );
+});
+
+it("shows the server's reason when a record cannot be shared yet", async () => {
+  api.on<Api.VisibilityUpdate>(
+    "PUT",
+    /\/visibility\/location\/e1$/,
+    (body) => body as Api.VisibilityUpdate,
+  );
+  api.failNext = {
+    status: 422,
+    body: {
+      detail: "sharing diagnostic",
+      errors: [
+        { code: "give_this_location_a_public_name_before_sharing_it", path: [], params: {} },
+      ],
+    },
+  };
+  renderWithOwner(
+    <VisibilityControl tripId="trip" kind="location" id="e1" value="private" name="Hotel" />,
+  );
+  chooseOption("Zichtbaarheid van Hotel", "Iedereen — alle bezoekers");
+  expect(await screen.findByRole("alert")).toBeTruthy();
+});
+
+it("gives a photo attached to a reisupdate no choice of its own", () => {
+  renderWithOwner(
+    <VisibilityControl
+      tripId="trip"
+      kind="media_derivative"
+      id="x1"
+      value="private"
+      name="kust.jpg"
+      followsUpdate="Aankomst"
+    />,
+  );
+  expect(screen.queryByLabelText("Zichtbaarheid van kust.jpg")).toBeNull();
+  expect(screen.getByText(/gedeeld samen met reisupdate “Aankomst”/)).toBeTruthy();
+});

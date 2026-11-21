@@ -2,7 +2,7 @@
 
 CLI 4.21.0 init with explicit `--base base --preset nova` wrote `base-nova`,
 `iconLibrary: lucide`, `rsc: false` and Tailwind v4’s empty config path.
-Aliases now target the existing `src/ui/` layout; TypeScript resolves `@/*`.
+Aliases now target the existing `src/components/ui/` layout; TypeScript resolves `@/*`.
 The generated helper re-exports the existing `cn` package; there is no second
 class helper. CLI font, palette, animation and runtime dependencies were
 removed. Travel keeps its CSS layers and font, adding only Lucide.
@@ -15,7 +15,7 @@ and build. Do not bulk-generate or blindly overwrite wrappers.
 
 Renovate updates the underlying packages (Base UI, Lucide and
 react-day-picker) through `package.json` and the lockfile. It does not update
-the copied component source in `src/ui/`. Updating the pinned shadcn CLI also
+the copied component source in `src/components/ui/`. Updating the pinned shadcn CLI also
 does not rewrite existing components.
 
 For dependency updates, review release notes against the primitives we use,
@@ -56,7 +56,7 @@ custom control stays when the registry version would drop a requirement.
 | ChoiceGroup | Keep | Registry `toggle-group` renders `aria-pressed` toggle buttons that can be deselected. The choices here (language, appearance, packing group and filter) are required single selections, so Base UI `RadioGroup` semantics and arrow-key navigation are correct. Not turned into optional toggles to match a component name. |
 | WorkspaceTabs, app navigation, overview section chips | Keep | Registry `tabs` is a panel switcher (`role="tab"` plus `tabpanel`) driven by component state. These are router links where the URL decides what is open and `aria-current="page"` marks it; `role="tab"` would misreport them and break opening a section in a new tab. `navigation-menu` is for flyout menus, which there are none of. |
 | Pagination | Not applicable | No screen pages records; lists render whole or by section. Add the registry `pagination` if one ever does. |
-| Spinner | Adopt (`src/ui/spinner.tsx`) | Registry `spinner` (Lucide `Loader2Icon`) restyled to Travel tokens: always `aria-hidden`, `motion-safe:animate-spin` so it stays still under reduced motion. It sits beside text that keeps the announcement. See "Spinner" below. Progress is already Base UI (`PackingProgress`). |
+| Spinner | Adopt (`src/components/ui/spinner.tsx`) | Registry `spinner` (Lucide `Loader2Icon`) restyled to Travel tokens: always `aria-hidden`, `motion-safe:animate-spin` so it stays still under reduced motion. It sits beside text that keeps the announcement. See "Spinner" below. Progress is already Base UI (`PackingProgress`). |
 | RecordDialog, field.tsx, SearchCombobox, SuggestInput, TravelTextarea | Keep (unchanged) | The #279 reasons still hold: no registry component covers dirty dismissal, Base UI Field validity wiring, grouped option adaptation or free-text Autocomplete. |
 | Map and media rendering | Keep specialised | MapLibre and media or lightbox rendering have no registry equivalent. |
 | Visitor `PhotoLightbox` | Keep custom composition | One Base UI Dialog per gallery, restyled as a dark full-bleed viewer (#228): named Previous/Next Buttons (`focusableWhenDisabled`, so focus is never dropped at an end), ←/→ keys, a pointer-event swipe on touch and pen only (48 px, mostly horizontal, `touch-pan-y` so vertical scrolling is untouched), a "Photo n of m" status, the caption as an overlay near the bottom and `finalFocus` returned to the last photo's trigger. It has no language switch: a delivered alt text and caption have no translation, so there is nothing to switch to (the language stays in the page preferences). No registry carousel fits a modal with approved-derivative preloading. |
@@ -125,7 +125,7 @@ point; the full image remains in the lightbox.
 
 No new primitive: shadcn/Base UI have no hero, image mosaic or full-bleed viewer, so these
 stay custom compositions on native elements and the existing Base UI Button and Dialog
-(`@/ui/dialog`).
+(`@/components/ui/dialog`).
 
 - **Hero (`TripHeader`).** With a cover, the title, dates and destinations sit over a
   full-width cover (a compact band on a phone, `--spacing-travel-hero*`, that scrolls away).
@@ -181,8 +181,8 @@ Use the pinned CLI and review workflow in [ui-maintenance.md](ui-maintenance.md)
 
 ## Local primitive exports
 
-`src/ui/button.ts`, `input.ts`, `collapsible.ts`, `progress.ts` and `dialog.ts`
-re-export the existing Base UI APIs unchanged. Screens use `@/ui/...`; these
+`src/components/ui/button.ts`, `input.ts`, `collapsible.ts`, `progress.ts` and `dialog.ts`
+re-export the existing Base UI APIs unchanged. Screens use `@/components/ui/...`; these
 adapters introduce no styles, wrappers, default props or interaction changes.
 The custom `RecordDialog` remains the inventoried direct composition for guarded
 editors. The thin primitive exports are intentional; replacing them with fully
@@ -259,7 +259,7 @@ Tailwind tokens; existing messages supply all labels.
 ## Narrow owner section drawer (#5, slice 3)
 
 `WorkspaceNavigation` owns a Base UI Dialog left sheet below 1100 CSS px,
-using the existing `@/ui/dialog` API. Reviewed base-nova Sheet source
+using the existing `@/components/ui/dialog` API. Reviewed base-nova Sheet source
 (https://ui.shadcn.com/r/styles/base-nova/sheet.json) against installed Base UI
 1.9.0 / pinned shadcn 4.22.1: it already uses Dialog, but its generated icon-only
 Close, palette, animation and extra styled Button are unnecessary here.
@@ -285,7 +285,7 @@ suggestion lists appeared and vanished at once, buttons had no hover or press
 state and the map camera ignored a reduced-motion request. Base UI marks a layer
 that is entering or leaving with `data-starting-style` and `data-ending-style`
 and waits for its transition before unmounting, so the motion lives in four
-named utilities in `src/tailwind.css`:
+named utilities in `src/styles/tailwind.css`:
 
 | Utility | Used by | Motion |
 | --- | --- | --- |
@@ -383,7 +383,7 @@ default explanation, date and time, private note, photos already in the trip's l
 and the location fold under "More".
 
 No custom control stays: the folded section is the existing Base UI Collapsible
-adapter (`@/ui/collapsible`, trigger and panel as in `SectionAccordion`), photo
+adapter (`@/components/ui/collapsible`, trigger and panel as in `SectionAccordion`), photo
 choosing is a Base UI `Button` that opens a hidden Base UI `Input type="file"`
 (`multiple`; a second one with `capture="environment"` for the camera, offered only
 for coarse pointers), grouped with `FieldSet`/`FieldLegend`. shadcn and Base UI have
@@ -417,7 +417,7 @@ On `/trips/<slug>` and `/share/<token>`, in DOM order: the "Skip to the story" l
 
 `UpdateContextBlock` in `ProjectionView.tsx` is a compact, labelled `<section>` of
 plain text rows (a tinted card with a list), placed under an update's text for the
-approved stays, visits and routes that `groupStoryContext` (`src/visitor-context.ts`)
+approved stays, visits and routes that `groupStoryContext` (`src/components/projection/visitor-context.ts`)
 ties to that one update by shared area and day. It is read-only text with an existing
 Directions link, so no Base UI or shadcn primitive applies; it adds no dependency.
 Records the projection cannot tie to exactly one update keep their existing sections.
@@ -581,8 +581,8 @@ waits for an `IntersectionObserver` before fetching) and a "+N" tile; the previe
 
 ## Advanced disclosure (#241)
 
-`src/forms/AdvancedSection.tsx` is a composition of the existing Base UI Collapsible
-adapter (`@/ui/collapsible`), styled like the `scope-group` disclosures of Sharing. shadcn and
+`src/features/trips/records/AdvancedSection.tsx` is a composition of the existing Base UI Collapsible
+adapter (`@/components/ui/collapsible`), styled like the `scope-group` disclosures of Sharing. shadcn and
 Base UI offer no "advanced options" component beyond Collapsible. It holds the controls most
 owners never touch: the trip dates and the `custom` record lists of an audience editor, and
 *Dates for visitors*, *Show the time* and *Also share the address* in the visit, stay and
@@ -607,7 +607,7 @@ Undo sits in a `role="status"` region beside the group.
 
 Each day of the owner agenda has an "Add" control (`DayAddMenu` in `trips/AgendaView.tsx`) that offers
 "Add a visit on this day", "Add a stay from this day" and "Add a route on this day". It is the
-Base UI Menu, adopted through the generated shadcn `dropdown-menu` (`src/ui/dropdown-menu.tsx`,
+Base UI Menu, adopted through the generated shadcn `dropdown-menu` (`src/components/ui/dropdown-menu.tsx`,
 trimmed to the menu, trigger, content and item, with Travel tokens and the `travel-menu-motion`
 transition). A menu is the right semantics here: the trigger carries a day-specific accessible
 name, the items are commands rather than form content, and the menu brings arrow-key navigation,
@@ -693,7 +693,7 @@ which the Dutch copy had to be changed for ("Verberg", "Toon").
 ## Local flight line suggestion (#242)
 
 Checked the `base-nova/button.json` registry and the owned Base UI Button
-adapter (`src/ui/button.ts`): the existing command button already fits.
+adapter (`src/components/ui/button.ts`): the existing command button already fits.
 Reuses the existing shadcn/Base UI Button adapter and the existing route-line
 editor. This is a button command with explanatory text and a status region;
 no new primitive or custom control is needed. Only the draft changes, so the

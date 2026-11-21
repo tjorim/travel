@@ -1,0 +1,141 @@
+import type * as Api from "@/api-schema";
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+// @vitest-environment happy-dom
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw/http";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { changeLocale } from "@/i18n/locale";
+import { server } from "@/mocks/server";
+import { TripEditor } from "@/features/trips/trip/TripEditor";
+import { applyMarkdownSnippet } from "@/components/forms/markdown-snippets";
+import { renderWithOwner, testToken } from "../../../utils/query-test-utils";
+import { useFeedback, textNotice } from "@/lib/api/feedback";
+import { m } from "@/paraglide/messages.js";
+import { bytesLabel } from "@/lib/files";
+import { ROUTE_MODE_LABELS } from "@/lib/records";
+import { PLANNING_STATUS_LABELS } from "@/lib/labels";
+import { completeSignIn } from "@/lib/auth";
+import { mapMessages } from "@/lib/map/map-messages";
+
+const auth = vi.hoisted(() => ({ session: { accessToken: "" } }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
+beforeEach(() => {
+  auth.session = { accessToken: testToken() };
+  act(() => changeLocale("nl"));
+});
+afterEach(() => {
+  cleanup();
+  act(() => changeLocale("nl"));
+});
+const props = {
+  trip: null,
+  open: true,
+  onClose: vi.fn(),
+  onSaved: vi.fn(),
+  onDeleted: vi.fn(),
+  onNotice: vi.fn(),
+};
+
+it("rerenders client validation and dirty values without replacing focused controls", async () => {
+  renderWithOwner(<TripEditor {...props} />);
+  fireEvent.click(screen.getByRole("button", { name: "Reis maken" }));
+  await screen.findByText("Geef de reis een titel.");
+  const input = screen.getByRole("textbox", { name: "Titel" });
+  input.focus();
+  act(() => changeLocale("en"));
+  expect(screen.getByText("Give the trip a title.")).toBeTruthy();
+  expect(screen.getByRole("textbox", { name: "Title" })).toBe(input);
+  expect(document.activeElement).toBe(input);
+  fireEvent.change(input, { target: { value: "Mijn eigen titel" } });
+  const source = screen.getByRole("textbox", { name: "Summary (optional)" }) as HTMLTextAreaElement;
+  fireEvent.change(source, { target: { value: "**Mijn eigen verhaal**" } });
+  fireEvent.click(screen.getByRole("button", { name: "Close New trip" }));
+  await screen.findByRole("alertdialog", { name: "Discard changes?" });
+  act(() => changeLocale("nl"));
+  expect(screen.getByRole("alertdialog", { name: "Wijzigingen verwerpen?" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Verder bewerken" }));
+  expect((input as HTMLInputElement).value).toBe("Mijn eigen titel");
+  expect(source.value).toBe("**Mijn eigen verhaal**");
+});
+
+it("keeps a pending save and submitted authored values across switches", async () => {
+  let finish!: (response: Response) => void;
+  const sent: unknown[] = [];
+  server.use(
+    http.post("/api/trips", async ({ request }) => {
+      sent.push(await request.json());
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    }),
+  );
+  renderWithOwner(<TripEditor {...props} />);
+  fireEvent.change(screen.getByRole("textbox", { name: "Titel" }), {
+    target: { value: "Eigen reis" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Reis maken" }));
+  await waitFor(() => expect(sent).toHaveLength(1));
+  act(() => changeLocale("en"));
+  expect(
+    (screen.getByRole("button", { name: "Creating trip…" }) as HTMLButtonElement).disabled,
+  ).toBe(true);
+  expect((screen.getByRole("textbox", { name: "Title" }) as HTMLInputElement).value).toBe(
+    "Eigen reis",
+  );
+  expect((sent[0] as { title_nl: string }).title_nl).toBe("Eigen reis");
+  await act(async () =>
+    finish(
+      HttpResponse.json<Api.TripResponse>({
+        ...responseFixtures.TripResponse,
+        id: "new",
+        title: "Eigen reis",
+      }),
+    ),
+  );
+});
+
+it("renders retained success notices, enums and plural messages in the current locale", () => {
+  function Notice() {
+    const [notice] = useFeedback<string>(textNotice(m.trips_trip_saved));
+    return <p>{notice}</p>;
+  }
+  renderWithOwner(<Notice />);
+  expect(screen.getByText("Reis opgeslagen.")).toBeTruthy();
+  for (const locale of ["en", "nl"] as const) {
+    act(() => changeLocale(locale));
+    expect(screen.getByText(locale === "en" ? "Trip saved." : "Reis opgeslagen.")).toBeTruthy();
+    expect(ROUTE_MODE_LABELS.flight).toBe(locale === "en" ? "Flight" : "Vlucht");
+    expect(bytesLabel(1536)).toBe(locale === "en" ? "1.5 kB" : "1,5 kB");
+    expect(PLANNING_STATUS_LABELS.planned).toBe(locale === "en" ? "Planned" : "Gepland");
+    expect(mapMessages()["NavigationControl.ZoomIn"]).toBe(
+      locale === "en" ? "Zoom in" : "Inzoomen",
+    );
+    for (const count of [0, 1, 3]) {
+      expect(m.common_night_count({ count })).toBe(
+        `${count} ${locale === "en" ? (count === 1 ? "night" : "nights") : count === 1 ? "nacht" : "nachten"}`,
+      );
+      expect(m.home_reminder_count({ count })).toContain(String(count));
+      expect(m.home_missing_nights({ count })).toContain(String(count));
+    }
+  }
+});
+
+it("localizes only new Markdown placeholders and preserves existing source and selections", () => {
+  const dutch = applyMarkdownSnippet("", 0, 0, "bold").value;
+  expect(dutch).toBe("**vet**");
+  act(() => changeLocale("en"));
+  expect(applyMarkdownSnippet(dutch, dutch.length, dutch.length, "italic").value).toBe(
+    "**vet***italic*",
+  );
+  expect(applyMarkdownSnippet("Eigen tekst", 0, 5, "bold").value).toBe("**Eigen** tekst");
+  expect(applyMarkdownSnippet("", 0, 0, "link").value).toBe("[link text](https://)");
+});
+
+it("keeps an authentication failure localizable after the callback has rejected", async () => {
+  sessionStorage.removeItem("travel-tracker-pkce-transaction");
+  const failure = await completeSignIn("").catch((error: unknown) => error);
+  expect(failure).toBeInstanceOf(Error);
+  expect((failure as Error).message).toBe("De aanmeldsessie ontbreekt of is verlopen.");
+  act(() => changeLocale("en"));
+  expect((failure as Error).message).toBe("The sign-in session is missing or has expired.");
+});

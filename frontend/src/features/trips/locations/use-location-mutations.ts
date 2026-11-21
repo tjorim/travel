@@ -1,0 +1,13 @@
+import { m } from "@/paraglide/messages.js";
+import { ownerKeys } from "@/lib/query/keys";
+import type { Location } from "@/api-types";
+import { useTripRecordMutations } from "../records/use-record-mutations";
+
+/** The owner API calls behind the location editor: save (create or update) and delete. */
+export function useLocationMutations(tripId: string) {
+  return useTripRecordMutations<Location>(tripId, "locations", {
+    saveFailed: m.locations_the_location_could_not_be_saved,
+    deleteFailed: m.locations_the_location_could_not_be_deleted,
+    invalidate: (subject) => [ownerKeys.trip(subject, tripId), ownerKeys.trips(subject)],
+  });
+}

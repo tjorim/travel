@@ -1,0 +1,296 @@
+import { FinishedTrackImport } from "./FinishedTrackImport";
+import { FlightLineSuggestion } from "./FlightLineSuggestion";
+import { Collapsible } from "@/components/ui/collapsible";
+
+import { DateField, DateTimeField } from "../records/DateTimeFields";
+import {
+  RecordForm,
+  SelectField,
+  TextAreaField,
+  TextField,
+  TimeZoneField,
+} from "@/components/forms/fields";
+import { DocumentLinksField } from "../records/DocumentLinksField";
+import { LocalizedField } from "@/components/forms/LocalizedField";
+import { MarkdownField } from "@/components/forms/MarkdownField";
+import type { useRecordForm } from "@/hooks/useRecordForm";
+import { useLocale } from "@/i18n/locale";
+import { m } from "@/paraglide/messages.js";
+import { ROUTE_MODE_LABELS } from "@/lib/records";
+import { type Area, type DocumentAsset, type Location } from "@/api-types";
+import { FieldLegend, FieldSet } from "@/components/ui/field";
+import { PLANNING_STATUS_LABELS } from "@/lib/labels";
+import { PlacePicker } from "../records/PlacePicker";
+import { RouteGeometryEditor } from "./RouteGeometryEditor";
+import {
+  areaPoint,
+  arrivalChosen,
+  departureChosen,
+  editableCoordinates,
+  validCoordinates,
+  type Values,
+} from "./model";
+import { IdeaNote } from "../records/IdeaNote";
+
+/** The route editor's fields; the booking details disclosure and the line editor keep their own state. */
+export function RouteForm({
+  tripId,
+  record,
+  editingId,
+  bookingOpen,
+  onBookingOpenChange,
+  areas,
+  locations,
+  documents,
+}: {
+  tripId: string;
+  record: ReturnType<typeof useRecordForm<Values>>;
+  editingId: string | null | undefined;
+  bookingOpen: boolean;
+  onBookingOpenChange: (open: boolean) => void;
+  areas: Area[];
+  locations: Location[];
+  documents: DocumentAsset[];
+}) {
+  useLocale();
+  return (
+    <RecordForm
+      record={record}
+      submitLabel={editingId ? m.routes_save_route() : m.routes_add_route()}
+      pendingLabel={m.common_saving()}
+    >
+      <div className="field-row">
+        <record.form.Field name="mode">
+          {(input) => (
+            <SelectField field={input} label={m.common_transport()}>
+              {Object.entries(ROUTE_MODE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </SelectField>
+          )}
+        </record.form.Field>
+        <record.form.Field name="status">
+          {(input) => (
+            <SelectField field={input} label={m.common_status()}>
+              {Object.entries(PLANNING_STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </SelectField>
+          )}
+        </record.form.Field>
+      </div>
+      <record.form.Subscribe selector={(state) => state.values.status}>
+        {(status) => status === "idea" && <IdeaNote kind="route" />}
+      </record.form.Subscribe>
+      <LocalizedField
+        form={record.form}
+        name="label"
+        label={m.common_name()}
+        optional
+        maxLength={160}
+        placeholder={m.routes_without_a_name_the_route_is_called_departure_arrival()}
+      />
+      <record.form.Field name="departure" validators={{ onSubmit: departureChosen }}>
+        {(input) => (
+          <PlacePicker
+            tripId={tripId}
+            label={m.routes_departure()}
+            value={input.state.value}
+            onChange={(value) => input.handleChange(value)}
+            error={input.state.meta.errors
+              .map((error) => (typeof error === "function" ? error() : error))
+              .find((error) => typeof error === "string")}
+          />
+        )}
+      </record.form.Field>
+      <record.form.Field name="arrival" validators={{ onSubmit: arrivalChosen }}>
+        {(input) => (
+          <PlacePicker
+            tripId={tripId}
+            label={m.routes_arrival()}
+            value={input.state.value}
+            onChange={(value) => input.handleChange(value)}
+            error={input.state.meta.errors
+              .map((error) => (typeof error === "function" ? error() : error))
+              .find((error) => typeof error === "string")}
+          />
+        )}
+      </record.form.Field>
+      <record.form.Field name="departsOn">
+        {(input) => <DateField field={input} label={m.routes_departure_day()} optional />}
+      </record.form.Field>
+      <FieldSet className="grid gap-3">
+        <FieldLegend>
+          {m.routes_times()}{" "}
+          <span className="font-medium text-travel-optional">
+            {m.routes_optional_once_you_choose_a_connection()}
+          </span>
+        </FieldLegend>
+        <div className="field-row">
+          <record.form.Field name="departsAt">
+            {(input) => (
+              <DateTimeField field={input} label={m.routes_departure_time_local()} optional />
+            )}
+          </record.form.Field>
+          <record.form.Field name="departureTimezone">
+            {(input) => (
+              <TimeZoneField
+                field={input}
+                label={m.routes_departure_time_zone()}
+                optional
+                maxLength={64}
+                placeholder="Europe/Amsterdam"
+              />
+            )}
+          </record.form.Field>
+        </div>
+        <div className="field-row">
+          <record.form.Field name="arrivesAt">
+            {(input) => (
+              <DateTimeField field={input} label={m.routes_arrival_time_local()} optional />
+            )}
+          </record.form.Field>
+          <record.form.Field name="arrivalTimezone">
+            {(input) => (
+              <TimeZoneField
+                field={input}
+                label={m.routes_arrival_time_zone()}
+                optional
+                maxLength={64}
+                placeholder="Asia/Taipei"
+              />
+            )}
+          </record.form.Field>
+        </div>
+      </FieldSet>
+      <Collapsible.Root open={bookingOpen} onOpenChange={onBookingOpenChange}>
+        <Collapsible.Trigger className="disclosure-trigger">
+          {m.routes_booking_details_optional_private()}
+        </Collapsible.Trigger>
+        <Collapsible.Panel keepMounted className="mt-2.5 grid gap-3">
+          <div className="field-row">
+            <record.form.Field name="carrier">
+              {(input) => (
+                <TextField
+                  field={input}
+                  label={m.common_carrier()}
+                  optional
+                  maxLength={160}
+                  placeholder={m.routes_for_example_eva_air()}
+                />
+              )}
+            </record.form.Field>
+            <record.form.Field name="serviceReference">
+              {(input) => (
+                <TextField
+                  field={input}
+                  label={m.routes_flight_service_number()}
+                  optional
+                  maxLength={40}
+                  placeholder="BR-087"
+                />
+              )}
+            </record.form.Field>
+          </div>
+          <record.form.Field name="travelClass">
+            {(input) => (
+              <TextField
+                field={input}
+                label={m.routes_travel_class()}
+                optional
+                maxLength={80}
+                placeholder={m.routes_for_example_premium_economy()}
+              />
+            )}
+          </record.form.Field>
+          <record.form.Field name="bookingReference">
+            {(input) => (
+              <TextField
+                field={input}
+                label={m.common_booking_reference_label()}
+                optional
+                maxLength={255}
+              />
+            )}
+          </record.form.Field>
+          <record.form.Field name="notes">
+            {(input) => (
+              <MarkdownField
+                field={input}
+                label={m.common_notes()}
+                optional
+                maxLength={4000}
+                rows={3}
+              />
+            )}
+          </record.form.Field>
+          <record.form.Field name="documentAssetIds">
+            {(input) => (
+              <DocumentLinksField
+                documents={documents}
+                value={input.state.value}
+                onChange={input.handleChange}
+              />
+            )}
+          </record.form.Field>
+        </Collapsible.Panel>
+      </Collapsible.Root>
+      <record.form.Field
+        name="coordinates"
+        validators={{ onBlur: validCoordinates, onSubmit: validCoordinates }}
+      >
+        {(input) => (
+          <FieldSet>
+            <FieldLegend>
+              {m.routes_line_on_the_map()}{" "}
+              <span className="font-medium text-travel-optional">{m.common_optional()}</span>
+            </FieldLegend>
+            <record.form.Subscribe selector={(state) => state.values}>
+              {(values) =>
+                values.mode === "flight" && (
+                  <FlightLineSuggestion
+                    values={values}
+                    areas={areas}
+                    locations={locations}
+                    onChange={(coordinates) => input.handleChange(JSON.stringify(coordinates))}
+                  />
+                )
+              }
+            </record.form.Subscribe>
+            <FinishedTrackImport
+              tripId={tripId}
+              onChange={(points) => input.handleChange(JSON.stringify(points))}
+            />
+            <RouteGeometryEditor
+              coordinates={editableCoordinates(input.state.value)}
+              onChange={(coordinates) =>
+                input.handleChange(coordinates.length ? JSON.stringify(coordinates) : "")
+              }
+              suggestions={[
+                ...areaPoint(record.form.state.values.departure, areas, locations),
+                ...areaPoint(record.form.state.values.arrival, areas, locations),
+              ]}
+            />
+            <Collapsible.Root className="border-t border-travel-divider pt-2.5">
+              <Collapsible.Trigger className="disclosure-trigger">
+                {m.routes_advanced_paste_coordinates_as_json()}
+              </Collapsible.Trigger>
+              <Collapsible.Panel keepMounted className="mt-2.5">
+                <TextAreaField
+                  field={input}
+                  label={m.routes_line_coordinates_json()}
+                  optional
+                  placeholder="[[121.5,25.0],[121.6,25.1]]"
+                />
+              </Collapsible.Panel>
+            </Collapsible.Root>
+          </FieldSet>
+        )}
+      </record.form.Field>
+    </RecordForm>
+  );
+}

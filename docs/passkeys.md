@@ -2,7 +2,7 @@
 
 The owner signs in to `/admin/` through the Keycloak `travel` realm. Passkeys
 and security keys are Keycloak credentials: Travel implements no WebAuthn. The
-PWA only starts the standard OIDC authorization-code flow (`frontend/src/auth.ts`)
+PWA only starts the standard OIDC authorization-code flow (`frontend/src/lib/auth.ts`)
 and links to Keycloak's account console, so no Travel API change is needed.
 Realm policy (relying-party identity, discoverable credentials, user
 verification, the required actions and the login theme) is owned by

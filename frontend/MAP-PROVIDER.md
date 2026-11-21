@@ -1,6 +1,6 @@
 # Map provider and privacy policy
 
-The owner, public and unlisted trip maps (`src/TripMap.tsx`) render the hosted
+The owner, public and unlisted trip maps (`src/components/map/TripMap.tsx`) render the hosted
 OpenFreeMap Liberty vector style at
 `https://tiles.openfreemap.org/styles/liberty` through the pinned `maplibre-gl`
 dependency. `VITE_MAP_STYLE_URL` replaces the style at build time, and the

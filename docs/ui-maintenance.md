@@ -156,7 +156,7 @@ Base UI is already 1.9. Focused RecordDialog, date-input, SuggestInput and Trave
 ## Cross-app import and tooling conventions
 
 Application screens import shared controls from the app's local UI boundary:
-`@/ui/<component>`. Keep the configured alias; physical folders and existing
+`@/components/ui/<component>`. Keep the configured alias; physical folders and existing
 visual presets need not match between applications. Use the same rule for type
 imports. Cross-directory relative paths into shared UI are rejected.
 

@@ -1,0 +1,309 @@
+import { Spinner } from "@/components/ui/spinner";
+import { Alert } from "@/components/ui/alert";
+import { m } from "@/paraglide/messages.js";
+import { useLocale } from "@/i18n/locale";
+import { textNotice, errorNotice, noticeMessage, type ErrorNotice } from "@/lib/api/feedback";
+import { Button } from "@/components/ui/button";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { TravelTextarea } from "@/components/ui/TravelTextarea";
+import type { AnyFieldApi } from "@tanstack/react-form";
+import { cn } from "cn";
+import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
+
+import { Markdown } from "@/components/Markdown";
+import { ownerRequest } from "@/lib/api/api";
+import { useOwner } from "@/lib/query/owner-queries";
+import { optionalNote, useFieldErrors } from "./fields";
+import { applyMarkdownSnippet, type MarkdownSnippet } from "./markdown-snippets";
+
+/** How the server renders the field: long-form Markdown, an inline-only caption, or contact details. */
+export type MarkdownFormat = "markdown" | "inline" | "contact";
+
+const SNIPPETS: Record<
+  MarkdownFormat,
+  { snippet: MarkdownSnippet; label: string; text: string }[]
+> = {
+  markdown: [
+    {
+      snippet: "bold",
+      get label() {
+        return m.markdown_bold();
+      },
+      text: "B",
+    },
+    {
+      snippet: "italic",
+      get label() {
+        return m.markdown_italic();
+      },
+      text: "I",
+    },
+    {
+      snippet: "heading",
+      get label() {
+        return m.markdown_heading();
+      },
+      text: "H",
+    },
+    {
+      snippet: "list",
+      get label() {
+        return m.markdown_list();
+      },
+      text: "•",
+    },
+    {
+      snippet: "tasks",
+      get label() {
+        return m.markdown_task_list();
+      },
+      text: "☐",
+    },
+    {
+      snippet: "link",
+      get label() {
+        return m.markdown_link();
+      },
+      get text() {
+        return m.markdown_link();
+      },
+    },
+  ],
+  inline: [
+    {
+      snippet: "bold",
+      get label() {
+        return m.markdown_bold();
+      },
+      text: "B",
+    },
+    {
+      snippet: "italic",
+      get label() {
+        return m.markdown_italic();
+      },
+      text: "I",
+    },
+    {
+      snippet: "link",
+      get label() {
+        return m.markdown_link();
+      },
+      get text() {
+        return m.markdown_link();
+      },
+    },
+  ],
+  contact: [],
+};
+
+const HINTS: Record<MarkdownFormat, string> = {
+  get markdown() {
+    return m.markdown_formatting_hint();
+  },
+  get inline() {
+    return m.markdown_only_bold_italic_and_links();
+  },
+  get contact() {
+    return m.markdown_plain_text_hint();
+  },
+};
+
+type RenderResult = { html: string | null; text: string | null };
+
+/**
+ * The server's rendering of the current text: the same renderer as the stored field, so the preview
+ * and what visitors see never drift apart.
+ */
+function MarkdownPreview({
+  source,
+  format,
+  lang,
+}: {
+  source: string;
+  format: MarkdownFormat;
+  lang?: string;
+}) {
+  useLocale();
+  const owner = useOwner();
+  const [state, setState] = useState<
+    | { kind: "loading" }
+    | { kind: "ready"; result: RenderResult }
+    | { kind: "error"; message: string | ErrorNotice | import("@/lib/api/feedback").MessageNotice }
+  >({ kind: "loading" });
+
+  useEffect(() => {
+    if (!owner) {
+      setState({ kind: "error", message: textNotice(m.markdown_sign_in_to_see_a_preview) });
+      return;
+    }
+    const controller = new AbortController();
+    setState({ kind: "loading" });
+    ownerRequest<RenderResult>(
+      owner.session,
+      "/api/markdown/render",
+      m.markdown_the_preview_could_not_be_loaded,
+      {
+        method: "POST",
+        body: { source, format },
+        signal: controller.signal,
+      },
+    )
+      .then((result) => setState({ kind: "ready", result }))
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted)
+          setState({
+            kind: "error",
+            message: errorNotice(error, m.markdown_the_preview_could_not_be_loaded),
+          });
+      });
+    return () => controller.abort();
+  }, [owner, source, format]);
+
+  if (state.kind === "loading")
+    return (
+      <p className="help flex items-center gap-2" role="status">
+        <Spinner />
+        {m.common_loading_preview()}
+      </p>
+    );
+  if (state.kind === "error")
+    return (
+      <Alert variant="error" role="alert">
+        {noticeMessage(state.message)}
+      </Alert>
+    );
+  if (!state.result.html) return <p className="help">{m.markdown_nothing_to_show_yet()}</p>;
+  return <Markdown html={state.result.html} text={source} lang={lang} />;
+}
+
+/**
+ * A textarea for a Markdown field with a small snippet toolbar and a Preview tab rendered by the
+ * server. No WYSIWYG: the owner writes the source, which is what is stored.
+ */
+export function MarkdownField({
+  field,
+  label,
+  optional,
+  format = "markdown",
+  companion,
+  ...input
+}: {
+  field: AnyFieldApi;
+  label: string;
+  optional?: string | boolean;
+  format?: MarkdownFormat;
+  /** The same text in the other language: its errors show here too, as only one language is on screen. */
+  companion?: AnyFieldApi;
+} & Omit<
+  TextareaHTMLAttributes<HTMLTextAreaElement>,
+  "value" | "onChange" | "onBlur" | "name" | "id"
+>) {
+  useLocale();
+  const { message, invalid } = useFieldErrors(field, companion);
+  const [previewing, setPreviewing] = useState(false);
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  const pendingSelection = useRef<[number, number] | null>(null);
+  const value: string = field.state.value ?? "";
+  const { required, ...rest } = input;
+
+  useEffect(() => {
+    const selection = pendingSelection.current;
+    if (!selection || !textarea.current) return;
+    pendingSelection.current = null;
+    textarea.current.focus();
+    textarea.current.setSelectionRange(selection[0], selection[1]);
+  }, [value]);
+
+  const apply = (snippet: MarkdownSnippet) => {
+    const element = textarea.current;
+    const edit = applyMarkdownSnippet(
+      value,
+      element?.selectionStart ?? value.length,
+      element?.selectionEnd ?? value.length,
+      snippet,
+    );
+    pendingSelection.current = [edit.selectionStart, edit.selectionEnd];
+    field.handleChange(edit.value);
+  };
+
+  return (
+    <>
+      <Field name={field.name} invalid={invalid}>
+        <FieldLabel>
+          <span>
+            {label}
+            {optionalNote(optional)}
+          </span>
+        </FieldLabel>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+          <div
+            className="flex flex-wrap gap-1"
+            role="group"
+            aria-label={m.markdown_view_for({ label: label })}
+          >
+            <Button
+              type="button"
+              className="compact aria-[pressed=false]:bg-transparent aria-[pressed=false]:text-travel-forest aria-[pressed=false]:ring-1 aria-[pressed=false]:ring-travel-control-border"
+              aria-pressed={!previewing}
+              onClick={() => setPreviewing(false)}
+            >
+              {m.markdown_write()}
+            </Button>
+            <Button
+              type="button"
+              className="compact aria-[pressed=false]:bg-transparent aria-[pressed=false]:text-travel-forest aria-[pressed=false]:ring-1 aria-[pressed=false]:ring-travel-control-border"
+              aria-pressed={previewing}
+              onClick={() => setPreviewing(true)}
+            >
+              {m.common_preview()}
+            </Button>
+          </div>
+          {!previewing && SNIPPETS[format].length > 0 && (
+            <div
+              className="flex flex-wrap gap-1"
+              role="toolbar"
+              aria-label={m.markdown_formatting_for({ label: label })}
+            >
+              {SNIPPETS[format].map(({ snippet, label: name, text }) => (
+                <Button
+                  key={snippet}
+                  type="button"
+                  className={cn(
+                    "compact secondary min-w-9 max-[679px]:min-w-11",
+                    snippet === "bold" && "font-extrabold",
+                    snippet === "italic" && "italic",
+                  )}
+                  aria-label={name}
+                  title={name}
+                  onClick={() => apply(snippet)}
+                >
+                  {text}
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
+        <TravelTextarea
+          {...rest}
+          ref={textarea}
+          hidden={previewing}
+          value={value}
+          aria-required={required || undefined}
+          onBlur={field.handleBlur}
+          onChange={(event) => field.handleChange(event.target.value)}
+        />
+        {previewing && (
+          <div
+            className="min-h-22.5 rounded-lg border border-dashed border-travel-control-border bg-travel-surface px-3 py-2.75"
+            aria-live="polite"
+          >
+            <MarkdownPreview source={value} format={format} lang={rest.lang} />
+          </div>
+        )}
+        <FieldDescription className="text-xs text-travel-muted">{HINTS[format]}</FieldDescription>
+        <FieldError>{message}</FieldError>
+      </Field>
+    </>
+  );
+}

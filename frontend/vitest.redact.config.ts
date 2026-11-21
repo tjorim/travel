@@ -17,7 +17,7 @@ export default defineConfig(async (env) => {
       ...config.test,
       projects: undefined,
       environment: "happy-dom",
-      include: ["src/trips/useInPlaceCreate.test.tsx"],
+      include: ["tests/features/trips/records/useInPlaceCreate.test.tsx"],
       setupFiles: ["./tests/redact-runtime-setup.ts", "./tests/setup.ts"],
       server: { deps: { inline: true } },
       alias: {

@@ -2,10 +2,10 @@
   "version": 1,
   "mode": "shadcn",
   "style": "base-nova",
-  "directories": ["src/ui"],
+  "directories": ["src/components/ui"],
   "components": {
     "ChoiceGroup": {
-      "files": ["src/ui/ChoiceGroup.tsx"],
+      "files": ["src/components/ui/ChoiceGroup.tsx"],
       "registry": null,
       "origin": "local",
       "reason": "Locally owned composition; maintain against the Base UI APIs it imports and the app UI audit.",
@@ -13,7 +13,7 @@
       "reviewNote": null
     },
     "EmptyState": {
-      "files": ["src/ui/EmptyState.tsx"],
+      "files": ["src/components/ui/EmptyState.tsx"],
       "registry": null,
       "origin": "local",
       "reason": "Locally owned composition; maintain against the Base UI APIs it imports and the app UI audit.",
@@ -21,7 +21,7 @@
       "reviewNote": null
     },
     "SearchCombobox": {
-      "files": ["src/ui/SearchCombobox.tsx"],
+      "files": ["src/components/ui/SearchCombobox.tsx"],
       "registry": null,
       "origin": "local",
       "reason": "Locally owned composition; maintain against the Base UI APIs it imports and the app UI audit.",
@@ -29,7 +29,7 @@
       "reviewNote": null
     },
     "SuggestInput": {
-      "files": ["src/ui/SuggestInput.tsx"],
+      "files": ["src/components/ui/SuggestInput.tsx"],
       "registry": null,
       "origin": "local",
       "reason": "Locally owned composition; maintain against the Base UI APIs it imports and the app UI audit.",
@@ -37,7 +37,7 @@
       "reviewNote": null
     },
     "TravelCheckbox": {
-      "files": ["src/ui/TravelCheckbox.tsx"],
+      "files": ["src/components/ui/TravelCheckbox.tsx"],
       "registry": null,
       "origin": "local",
       "reason": "Locally owned composition; maintain against the Base UI APIs it imports and the app UI audit.",
@@ -45,7 +45,7 @@
       "reviewNote": null
     },
     "TravelTextarea": {
-      "files": ["src/ui/TravelTextarea.tsx"],
+      "files": ["src/components/ui/TravelTextarea.tsx"],
       "registry": null,
       "origin": "local",
       "reason": "Locally owned composition; maintain against the Base UI APIs it imports and the app UI audit.",
@@ -53,7 +53,7 @@
       "reviewNote": null
     },
     "calendar": {
-      "files": ["src/ui/calendar.tsx"],
+      "files": ["src/components/ui/calendar.tsx"],
       "registry": "calendar",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/calendar.json",
       "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
@@ -61,10 +61,10 @@
       "reviewNote": "Kept the previously reviewed implementation and app theme/localisation. Only cn now imports through the identical @/lib/utils re-export. Non-import AST is unchanged; 6 primitive/helper identity tests pass, full suite 494 passed with the 5 existing #508 failures.",
       "upstreamSha256": "830084beb4b79290ce658fbc54572e4875c7d5f5f223c28511433fbff7be8a40",
       "capturedAt": "2026-10-23T23:08:40.176Z",
-      "reviewedLocalSha256": "26427e64560fcda2855bfd5cee4837334ff0872d3cd97fc9b6f2def04a94c9f6"
+      "reviewedLocalSha256": "44d576a199b6c74f3b90eecdf74b3b6c63bc90a60c8b69da61f2d9492cc73bed"
     },
     "checkbox": {
-      "files": ["src/ui/checkbox.tsx"],
+      "files": ["src/components/ui/checkbox.tsx"],
       "registry": "checkbox",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/checkbox.json",
       "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
@@ -72,10 +72,10 @@
       "reviewNote": "Kept the previously reviewed implementation and app theme/localisation. Only cn now imports through the identical @/lib/utils re-export. Non-import AST is unchanged; 6 primitive/helper identity tests pass, full suite 494 passed with the 5 existing #508 failures.",
       "upstreamSha256": "45f0ea21f6d5adba482e5ee184f180e2f8498da29346ac12e02600fed74ae199",
       "capturedAt": "2026-10-23T23:08:39.845Z",
-      "reviewedLocalSha256": "4c912ab8e9e8cd8a8b5d7f777f880677bb12476f5df9ab065cb382fee01151be"
+      "reviewedLocalSha256": "d63a3fba32796b0899c5dd336b36291b65ad76d76b3cd3ca2ed0167d8c72ec19"
     },
     "empty": {
-      "files": ["src/ui/empty.tsx"],
+      "files": ["src/components/ui/empty.tsx"],
       "registry": "empty",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/empty.json",
       "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
@@ -85,7 +85,7 @@
       "capturedAt": "2026-10-23T22:47:12.357560Z"
     },
     "field": {
-      "files": ["src/ui/field.tsx"],
+      "files": ["src/components/ui/field.tsx"],
       "registry": null,
       "origin": "local",
       "reason": "Locally owned composition; maintain against the Base UI APIs it imports and the app UI audit.",
@@ -93,7 +93,7 @@
       "reviewNote": null
     },
     "dropdown-menu": {
-      "files": ["src/ui/dropdown-menu.tsx"],
+      "files": ["src/components/ui/dropdown-menu.tsx"],
       "registry": "dropdown-menu",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/dropdown-menu.json",
       "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
@@ -101,10 +101,10 @@
       "reviewNote": "Trimmed to the menu, trigger, content and item the agenda day menu uses; Travel tokens and the travel-menu-motion transition replace the animate-in classes; keyboard, focus return and browser checks passed.",
       "upstreamSha256": "6786e426e239075630326de9b3e2c952d9e4274443f9715c4ffe6bb438f2fa8d",
       "capturedAt": "2026-11-07T13:31:27.930Z",
-      "reviewedLocalSha256": "ad057fa6427200f75d448518fe33a326f88c4dd72de37246028fd8677462fd05"
+      "reviewedLocalSha256": "1ada52bbcb978763f51fc6b3c054ec66d099fa555f6a047e48504b20a36f2341"
     },
     "popover": {
-      "files": ["src/ui/popover.tsx"],
+      "files": ["src/components/ui/popover.tsx"],
       "registry": "popover",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/popover.json",
       "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
@@ -112,10 +112,10 @@
       "reviewNote": "Keep local tokens; added travel-menu-motion enter and exit transition; reviewed no upstream change; keyboard and browser checks passed.",
       "upstreamSha256": "3c89b7e34758a7f402641a1b0a504247998464c140f9962e28e4ef4e11c190d7",
       "capturedAt": "2026-10-31T13:26:36.012Z",
-      "reviewedLocalSha256": "1ab46ad3a106db8cf2bd2a590022a0cf50647ab97bc8a94ff2a5d934d9ec25e6"
+      "reviewedLocalSha256": "877c70d5ab4580253d2d7858e8e0f7501f3a3d3516a62d6f9bb6028c83482914"
     },
     "skeleton": {
-      "files": ["src/ui/skeleton.tsx"],
+      "files": ["src/components/ui/skeleton.tsx"],
       "registry": "skeleton",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/skeleton.json",
       "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
@@ -125,7 +125,7 @@
       "capturedAt": "2026-10-23T22:47:12.357560Z"
     },
     "spinner": {
-      "files": ["src/ui/spinner.tsx"],
+      "files": ["src/components/ui/spinner.tsx"],
       "registry": "spinner",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/spinner.json",
       "reason": "Adapted registry component; preserve app tokens, accessibility and documented wrapper decisions.",
@@ -133,10 +133,10 @@
       "reviewNote": "Adopted for pending submit buttons and text loading lines; aria-hidden, motion-safe spin only; unit, axe and e2e checks passed in both locales and themes.",
       "upstreamSha256": "b5963ae0b6c398cf7e8edd566fee1035e70e18ac4fd6756a9f60c12f96b17264",
       "capturedAt": "2026-11-01T11:55:44.872Z",
-      "reviewedLocalSha256": "f5785624923b98f8f3e6775469c241de46ae6854785a97f3328ee783b8668e0a"
+      "reviewedLocalSha256": "abf0babbdacd3ae115b165be2c743c082483e930b278219fffdc5c2c3bec820d"
     },
     "RecordDialog": {
-      "files": ["src/RecordDialog.tsx"],
+      "files": ["src/components/RecordDialog.tsx"],
       "registry": null,
       "origin": "local",
       "reason": "App-specific Base UI composition; review direct primitive API changes and interaction tests.",
@@ -144,7 +144,7 @@
       "reviewNote": null
     },
     "fields": {
-      "files": ["src/forms/fields.tsx"],
+      "files": ["src/components/forms/fields.tsx"],
       "registry": null,
       "origin": "local",
       "reason": "App-specific Base UI composition; review direct primitive API changes and interaction tests.",
@@ -152,7 +152,7 @@
       "reviewNote": null
     },
     "button": {
-      "files": ["src/ui/button.ts"],
+      "files": ["src/components/ui/button.ts"],
       "registry": null,
       "origin": "https://base-ui.com/react/components/button",
       "reason": "API-preserving local export for existing unstyled Base UI consumers; app styles and primitive semantics stay unchanged. Review Base UI runtime changes here.",
@@ -160,7 +160,7 @@
       "reviewNote": null
     },
     "input": {
-      "files": ["src/ui/input.ts"],
+      "files": ["src/components/ui/input.ts"],
       "registry": null,
       "origin": "https://base-ui.com/react/components/input",
       "reason": "API-preserving local export for existing unstyled Base UI consumers; app styles and primitive semantics stay unchanged. Review Base UI runtime changes here.",
@@ -168,7 +168,7 @@
       "reviewNote": null
     },
     "collapsible": {
-      "files": ["src/ui/collapsible.ts"],
+      "files": ["src/components/ui/collapsible.ts"],
       "registry": null,
       "origin": "https://base-ui.com/react/components/collapsible",
       "reason": "API-preserving local export for existing unstyled Base UI consumers; app styles and primitive semantics stay unchanged. Review Base UI runtime changes here.",
@@ -176,7 +176,7 @@
       "reviewNote": null
     },
     "progress": {
-      "files": ["src/ui/progress.ts"],
+      "files": ["src/components/ui/progress.ts"],
       "registry": null,
       "origin": "https://base-ui.com/react/components/progress",
       "reason": "API-preserving local export for existing unstyled Base UI consumers; app styles and primitive semantics stay unchanged. Review Base UI runtime changes here.",
@@ -184,7 +184,7 @@
       "reviewNote": null
     },
     "dialog": {
-      "files": ["src/ui/dialog.ts"],
+      "files": ["src/components/ui/dialog.ts"],
       "registry": null,
       "origin": "https://base-ui.com/react/components/dialog",
       "reason": "API-preserving local export for existing unstyled Base UI consumers; app styles and primitive semantics stay unchanged. Review Base UI runtime changes here.",
@@ -193,9 +193,9 @@
     },
     "TripWorkspace": {
       "files": [
-        "src/pages/TripWorkspace.tsx",
-        "src/trips/WorkspaceHeader.tsx",
-        "src/trips/WorkspaceTabs.tsx"
+        "src/features/trips/workspace/TripWorkspace.tsx",
+        "src/features/trips/workspace/WorkspaceHeader.tsx",
+        "src/features/trips/workspace/WorkspaceTabs.tsx"
       ],
       "registry": null,
       "origin": "local",
@@ -204,7 +204,7 @@
       "reviewNote": null
     },
     "WorkspaceNavigation": {
-      "files": ["src/trips/WorkspaceNavigation.tsx"],
+      "files": ["src/features/trips/workspace/WorkspaceNavigation.tsx"],
       "registry": null,
       "origin": "local",
       "reason": "Trip-local Dialog left sheet via owned adapter; native route links and no gesture, cookie, shortcut or editor ownership. Registry Sheet styling is replaced by Travel tokens; Base UI Dialog owns modal focus and dismissal.",
@@ -212,7 +212,7 @@
       "reviewNote": null
     },
     "alert": {
-      "files": ["src/ui/alert.tsx"],
+      "files": ["src/components/ui/alert.tsx"],
       "registry": "alert",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/alert.json",
       "reason": "Owned registry Alert using Travel notice tokens and explicit caller live-region roles.",
@@ -220,10 +220,10 @@
       "reviewNote": "Reviewed generated base-nova source; retain Travel notice tokens and explicit existing status/alert roles. Validation recorded in PR.",
       "upstreamSha256": "c66957c5b3a51860a650c4cf8717917895493aa2c7a03df76b983b68405b6734",
       "capturedAt": "2026-11-01T09:12:37.090Z",
-      "reviewedLocalSha256": "b138454a03ccbf328d8a04f8efa5a877fe3cd672c724addb798d565c46c1bf5b"
+      "reviewedLocalSha256": "09f0855c9ec6bc8ece29757528313503b5beeba6d43f027b86495b8666925d1b"
     },
     "badge": {
-      "files": ["src/ui/badge.tsx"],
+      "files": ["src/components/ui/badge.tsx"],
       "registry": "badge",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/badge.json",
       "reason": "Owned registry badge retains Base UI render composition; Travel publication and booking tokens replace registry variants.",
@@ -231,10 +231,10 @@
       "reviewNote": "Reviewed base-nova render composition; preserve Travel publication and booking-count appearance and semantics. Validation results recorded in PR.",
       "upstreamSha256": "1c083a2b0fef00084c7c4c68212552e14d1afe9cdf8326a03378041d323a9d95",
       "capturedAt": "2026-11-01T09:28:58.488Z",
-      "reviewedLocalSha256": "0f230967db7b5140a1c5012166acde9b4a033be8ae3d001227e6a21f428e52d0"
+      "reviewedLocalSha256": "b2388b0b742a281e7c31ffbf8fa5adb49855eaee2e9f9d861cee1a97845db199"
     },
     "toggle": {
-      "files": ["src/ui/toggle.tsx"],
+      "files": ["src/components/ui/toggle.tsx"],
       "registry": "toggle",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/toggle.json",
       "reason": "Owned registry Toggle in the Travel secondary-button look with a filled pressed state.",
@@ -242,10 +242,10 @@
       "reviewNote": "Reviewed generated base-nova Toggle; replaced cva variants with Travel secondary/compact look and data-pressed fill. Map group browser, keyboard and unit checks passed.",
       "upstreamSha256": "a98444301997970cf65f6bdd05d17c520daee7b6099077008257c92bb8fe2032",
       "capturedAt": "2026-11-01T09:54:19.999Z",
-      "reviewedLocalSha256": "d548b7b4ad4261411cf8787d05e043a05d4d0c8bc283701ee8f012998c5f1fc8"
+      "reviewedLocalSha256": "3709ff79998de65549884433aaef7dab8a72b38d79ffe11fa209458750f4aad6"
     },
     "toggle-group": {
-      "files": ["src/ui/toggle-group.tsx"],
+      "files": ["src/components/ui/toggle-group.tsx"],
       "registry": "toggle-group",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/toggle-group.json",
       "reason": "Owned registry Toggle Group for the map's independent view toggles; items reuse the owned Toggle.",
@@ -253,10 +253,10 @@
       "reviewNote": "Reviewed generated base-nova ToggleGroup; dropped spacing/orientation context, kept Base UI group semantics, Travel gap. Map toggles verified in both locales and themes.",
       "upstreamSha256": "1ec416475c67019d52fa69ce4a817f703148370f119badc319ae63c9be3e602e",
       "capturedAt": "2026-11-01T09:54:21.192Z",
-      "reviewedLocalSha256": "bd265a34bddadc6d38b89dc3175926d90e9517be665c8780fefc1861eeaff71c"
+      "reviewedLocalSha256": "ebefe17fa83fc234c5182c52f7ba53abf0fb1c4693ee5520a22d569ae3bf6c46"
     },
     "tabs": {
-      "files": ["src/ui/tabs.tsx"],
+      "files": ["src/components/ui/tabs.tsx"],
       "registry": "tabs",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/tabs.json",
       "reason": "Owned registry Tabs in the Travel segmented look for the visitor Story/Map/Plan switch.",
@@ -264,10 +264,10 @@
       "reviewNote": "Reviewed generated base-nova Tabs; replaced cva list variants with the Travel segmented look shared with ChoiceGroup and data-active fill. Visitor view switch verified: arrow/Home/End keys, panel association, both locales and themes, side-by-side at 1100px.",
       "upstreamSha256": "f6fc78f38c183a0ef5458d424f97cef31a10735847dbb2bac08f30524faa95f3",
       "capturedAt": "2026-11-01T09:48:11.318Z",
-      "reviewedLocalSha256": "0235adf3fb7fad17af55cdd42f8bcbdb327e08b55044b4519ad3fb8d456cd1a1"
+      "reviewedLocalSha256": "29c8576ca9b8b7237e510459bc20f6fe94455df9f22987a17a3a916d1b0be2c0"
     },
     "switch": {
-      "files": ["src/ui/switch.tsx"],
+      "files": ["src/components/ui/switch.tsx"],
       "registry": "switch",
       "origin": "https://ui.shadcn.com/r/styles/base-nova/switch.json",
       "reason": "Owned registry Switch for real on/off preferences, starting with the visitor map-follow control.",
@@ -275,13 +275,13 @@
       "capturedAt": "2026-11-01T11:19:13.712Z",
       "reviewedAt": "2026-11-01T11:19:13.712Z",
       "reviewNote": "Reviewed generated base-nova Switch; dropped the size variant, reused the Travel focus outline and tokens. Visitor map-follow control verified with switch role and label wiring, both locales and themes.",
-      "reviewedLocalSha256": "5db0db6681307f6e7dd6b698c0e66d383ee1f6db6098f29ff33452ceeb05a4c4"
+      "reviewedLocalSha256": "2ce3c2fa6f995b0564e9d399454a1f2d132a0f0138bba3856a06a35a3113fe56"
     }
   },
   "importPolicy": {
-    "uiAlias": "@/ui",
+    "uiAlias": "@/components/ui",
     "baseUiExceptions": {
-      "src/RecordDialog.tsx": {
+      "src/components/RecordDialog.tsx": {
         "component": "RecordDialog",
         "modules": ["@base-ui/react/dialog", "@base-ui/react/alert-dialog"],
         "reason": "Shared editor owns dirty guards, nested confirmations and explicit focus return; consumers use RecordDialog."
