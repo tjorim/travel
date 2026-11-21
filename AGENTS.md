@@ -14,7 +14,10 @@ versions live in `frontend/.node-version`, the `packageManager` field of `fronte
 ## Repository layout
 
 - `frontend/` contains the React source (`src/`, unit tests in `tests/`, Playwright specs in `e2e/`, translations in
-  `messages/`)
+  `messages/`). `src/` is `app/` (providers, router, layout), `features/<domain>/`, `components/` (with `components/ui/`),
+  `hooks/`, `lib/`, `i18n/`, `mocks/` and `styles/`, plus the two entry points `main.tsx` (owner app) and
+  `visitor-main.tsx` (public and share app); `tests/` mirrors `src/`. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+  for the rules and where new code goes
 - `backend/` contains the FastAPI service (`app/`, `alembic/`, `tests/`)
 - `custom_components/travel/` is the Home Assistant integration, `home-assistant/` its tests and packaging, and
   `python-travel/` the PyPI client library
@@ -100,10 +103,10 @@ it for generated imports. Map semantic colours to Travel tokens and keep all fou
 `docs/ui-components.md` for existing controls' keep/replace decisions.
 
 Use Tailwind utilities for new frontend styling and `cn` for conditional utility classes. Keep reusable design values
-in named Tailwind theme tokens. Tailwind's base layer holds document and form defaults; `frontend/src/styles.css` holds
+in named Tailwind theme tokens. Tailwind's base layer holds document and form defaults; `frontend/src/styles/app.css` holds
 only sanitized Markdown styling. Use Base UI Button, Input, Checkbox, Collapsible and Progress for matching controls;
 render textareas through Base UI Field.Control. Label, describe and validate controls with the Base UI-backed `Field`,
-`FieldLabel`, `FieldError`, `FieldSet` and `FieldLegend` components in `frontend/src/ui/field.tsx` instead of raw
+`FieldLabel`, `FieldError`, `FieldSet` and `FieldLegend` components in `frontend/src/components/ui/field.tsx` instead of raw
 `<label>` and `<fieldset>`. Offer free-text suggestions with `SuggestInput` (Base UI Autocomplete), never `<datalist>`.
 Shared record editors use Base UI Dialog and Alert Dialog with guarded dismissal and focus return. The frontend lint
 command checks utility classes without a legacy-class allowlist.
@@ -114,7 +117,7 @@ Follow [docs/ui-maintenance.md](docs/ui-maintenance.md) for Base UI/runtime upda
 comparisons and review records. Run `pnpm ui:check` from `frontend/` after changing shared UI. Renovate does not update
 owned component source; preserve the documented customisations and validate interactions and bundle budgets.
 
-Application UI imports use `@/ui/<component>`. Direct Base UI subpath imports belong in inventoried UI adapters or exact
+Application UI imports use `@/components/ui/<component>`. Direct Base UI subpath imports belong in inventoried UI adapters or exact
 documented composition exceptions. `pnpm ui:check` enforces the policy; `pnpm ui:test` tests it. Keep styles and
 application behaviour when aligning imports.
 
@@ -130,7 +133,7 @@ docblock. Playwright specs live in `frontend/e2e/`; backend tests in `backend/te
 Frontend application copy belongs in `frontend/messages/nl.json` and `en.json`. Use typed whole-message functions from
 `src/paraglide/messages.js` during render with `useLocale()`; retain message descriptors/functions for stored notices.
 Never translate authored content or match server prose. `pnpm paraglide:compile` generates ignored code before
-check/test/build. Use selected-locale formatting from `src/locale.tsx` and the configured `dayjs.ts`; preserve ISO
+check/test/build. Use selected-locale formatting from `src/i18n/locale.tsx` and the configured `dayjs.ts`; preserve ISO
 dates, timezones and numeric input/payload values. Store message functions/descriptors for async feedback and
 serializable message codes in browser history; never store a translated UI snapshot. Unknown API errors use a
 translated operation fallback, never server prose or submitted input. New application copy must pass
@@ -219,7 +222,7 @@ backend response models -> uv run python -m app.openapi_export (pnpm api:generat
   explicitly: `HttpResponse.json<Api.Model>(...)`, `jsonResponse<Api.Model>(...)`, the stateful fake API's explicit
   schema generic, or `satisfies Api.Model` at a browser response boundary. The generic JSON helpers use `NoInfer`
   and default to `never`, so a payload never infers its own contract. The source guard
-  `frontend/src/mocks/fixture-contracts.test.ts` fails on a fixture that is unchecked or erased
+  `frontend/tests/mocks/fixture-contracts.test.ts` fails on a fixture that is unchecked or erased
   (`as unknown`, `any`), and `fixture-contracts.typecheck.ts` holds compile-only negative checks.
 - A deliberately malformed, error, external-provider, control or persistence fixture is exempt only with a comment
   at the call site that says why, starting `Fixture exception:` or `Deliberately malformed:`.
