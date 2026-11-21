@@ -1,7 +1,7 @@
 import { Spinner } from "@/components/ui/spinner";
 import type { ErrorFallback } from "@/lib/api/api";
 import { useLocale } from "@/i18n/locale";
-import { m } from "../paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { errorNotice, useFeedback, textNotice } from "@/lib/api/feedback";
 import { Button } from "@/components/ui/button";
 
@@ -15,7 +15,7 @@ import { errorMessage } from "@/lib/api/api";
 import { ownerKeys } from "@/lib/query/keys";
 import { libraryPath, useLibrary, useOwnerMutation } from "@/lib/query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
-import type { EmergencyInfoEntry, EmergencyInfoKind } from "../api-types";
+import type { EmergencyInfoEntry, EmergencyInfoKind } from "@/api-types";
 
 const KIND_LABELS: Record<EmergencyInfoKind, string> = {
   get contact() {

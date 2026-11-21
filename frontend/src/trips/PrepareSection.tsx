@@ -1,4 +1,4 @@
-import { DocumentManager } from "../documents/DocumentManager";
+import { DocumentManager } from "@/features/documents/DocumentManager";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { useTripResource } from "@/lib/query/owner-queries";

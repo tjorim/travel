@@ -9,13 +9,13 @@ import { SearchSelect } from "@/components/forms/fields";
 import { LocalizedFieldView, plainField } from "@/components/forms/LocalizedField";
 import { useConfirmation } from "@/hooks/useConfirmation";
 import { useLocale } from "@/i18n/locale";
-import { m } from "../paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
 import { RecordDialog } from "@/components/RecordDialog";
-import type { TripSummary } from "../api-types";
-import { emptyScope } from "../trips/publication/catalog";
-import { LinkLifecycle } from "../trips/publication/LinkLifecycle";
-import { RevealedLinkDialog } from "../trips/publication/RevealedLinkDialog";
+import type { TripSummary } from "@/api-types";
+import { emptyScope } from "@/trips/publication/catalog";
+import { LinkLifecycle } from "@/trips/publication/LinkLifecycle";
+import { RevealedLinkDialog } from "@/trips/publication/RevealedLinkDialog";
 import {
   collectionUrl,
   useCollectionMutations,

@@ -8,7 +8,7 @@ import { formatInstant } from "@/lib/dates";
 import * as api from "@/lib/api/api";
 import { AuthProvider } from "@/app/providers/auth-context";
 import { answerConfirmation } from "../test-confirm";
-import { OfflineManager } from "./OfflineManager";
+import { OfflineManager } from "@/features/library/OfflineManager";
 import {
   __resetOfflineStoreForTests,
   pinOfflineCopy,

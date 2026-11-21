@@ -8,7 +8,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { changeLocale } from "@/i18n/locale";
 import { renderWithOwner, testToken } from "../query/test-utils";
 import { serveApi } from "../query/serve-api";
-import { SharingOverview } from "./SharingOverview";
+import { SharingOverview } from "@/features/sharing/SharingOverview";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

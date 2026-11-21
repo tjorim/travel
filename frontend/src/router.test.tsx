@@ -17,7 +17,7 @@ import { TripWorkspace } from "./pages/TripWorkspace";
 
 // The workspace-route regression test below exercises the real Trips component on the
 // real route tree; everything it renders beyond the section nav is covered elsewhere.
-vi.mock("./documents/DocumentManager", () => ({ DocumentManager: () => null }));
+vi.mock("@/features/documents/DocumentManager", () => ({ DocumentManager: () => null }));
 vi.mock("./trips/AreaManager", () => ({ AreaManager: () => null }));
 vi.mock("./trips/LocationManager", () => ({ LocationManager: () => null }));
 vi.mock("./trips/TravelUpdateManager", () => ({ TravelUpdateManager: () => null }));

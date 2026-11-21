@@ -7,12 +7,12 @@ import { http, HttpResponse } from "msw";
 
 import { AuthProvider } from "@/app/providers/auth-context";
 import { changeLocale } from "@/i18n/locale";
-import { DocumentManager } from "../documents/DocumentManager";
-import { EmergencyInfoManager } from "../library/EmergencyInfoManager";
+import { DocumentManager } from "@/features/documents/DocumentManager";
+import { EmergencyInfoManager } from "@/features/library/EmergencyInfoManager";
 import { server } from "../mocks/server";
 import { renderWithOwner, resetOfflineDb } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
-import { OfflineManager } from "./OfflineManager";
+import { OfflineManager } from "@/features/library/OfflineManager";
 import { listOfflineCopies } from "@/lib/offline-store";
 
 const SUBJECT = "owner-1";

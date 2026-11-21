@@ -15,7 +15,7 @@ import {
   testToken,
 } from "../query/test-utils";
 import type { DocumentAsset, Trip } from "../api-types";
-import { DocumentManager } from "./DocumentManager";
+import { DocumentManager } from "@/features/documents/DocumentManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

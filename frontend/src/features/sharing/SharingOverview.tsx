@@ -8,7 +8,7 @@ import { useMemo, useState, type ReactNode } from "react";
 
 import { useConfirmation } from "@/hooks/useConfirmation";
 import { useLocale } from "@/i18n/locale";
-import { m } from "../paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { errorMessage } from "@/lib/api/api";
 import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
 import { ownerKeys } from "@/lib/query/keys";
@@ -19,10 +19,10 @@ import {
   useOwnerMutation,
   useTripsQuery,
 } from "@/lib/query/owner-queries";
-import type { ShareLink, TripSummary } from "../api-types";
-import { sectionPath } from "../trips/workspace-sections";
-import { dateLabel, LINK_STATE_LABELS, publicUrl, shareUrl } from "../trips/publication/catalog";
-import { RevealedLinkDialog } from "../trips/publication/RevealedLinkDialog";
+import type { ShareLink, TripSummary } from "@/api-types";
+import { sectionPath } from "@/trips/workspace-sections";
+import { dateLabel, LINK_STATE_LABELS, publicUrl, shareUrl } from "@/trips/publication/catalog";
+import { RevealedLinkDialog } from "@/trips/publication/RevealedLinkDialog";
 import { CollectionEditor } from "./CollectionEditor";
 import {
   collectionUrl,

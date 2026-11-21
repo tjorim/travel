@@ -13,11 +13,11 @@ import {
   type ProjectionPlace,
 } from "@/components/projection/ProjectionView";
 import { fixture } from "./test-projection";
-import { VisitorRoutes } from "./visitor-routes";
+import { VisitorRoutes } from "@/features/visitor/visitor-routes";
 import type { ShareScope } from "./api-types";
 import { RenderedPreview } from "@/components/projection/RenderedPreview";
 import { m } from "./paraglide/messages.js";
-import { rememberSharedTrip } from "./saved-shared-trips";
+import { rememberSharedTrip } from "@/features/visitor/saved-shared-trips";
 import { http, HttpResponse } from "msw/http";
 import { server } from "./mocks/server";
 import { serveApi } from "./query/serve-api";

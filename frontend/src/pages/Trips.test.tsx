@@ -37,7 +37,7 @@ const routeTree = rootRoute.addChildren([tripsListRoute, tripRoute, tripSectionR
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 // The managers and map have their own tests; this file covers trip selection and the trip editor.
-vi.mock("../documents/DocumentManager", () => ({ DocumentManager: () => null }));
+vi.mock("@/features/documents/DocumentManager", () => ({ DocumentManager: () => null }));
 vi.mock("../trips/AreaManager", () => ({ AreaManager: () => null }));
 vi.mock("../trips/LocationManager", () => ({ LocationManager: () => null }));
 vi.mock("../trips/TravelUpdateManager", () => ({ TravelUpdateManager: () => null }));

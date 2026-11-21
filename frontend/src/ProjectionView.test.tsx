@@ -15,7 +15,7 @@ import {
 import { timeForViewer } from "@/lib/dates";
 import { type ShareScope } from "./api-types";
 import { fixture, type SparseProjection } from "./test-projection";
-import { VisitorRoutes } from "./visitor-routes";
+import { VisitorRoutes } from "@/features/visitor/visitor-routes";
 import { RenderedPreview } from "@/components/projection/RenderedPreview";
 import { serveApi } from "./query/serve-api";
 

@@ -11,8 +11,8 @@ import {
   forgetAllSharedTrips,
   readSavedSharedTrips,
   rememberSharedTrip,
-} from "./saved-shared-trips";
-import { VisitorRoutes } from "./visitor-routes";
+} from "@/features/visitor/saved-shared-trips";
+import { VisitorRoutes } from "@/features/visitor/visitor-routes";
 
 const token = "synthetic-saved-trip-capability";
 const projection: Projection = {

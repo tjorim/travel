@@ -9,7 +9,7 @@ import type {
   SharingPresetId,
   SharingPresetReview,
 } from "../../api-types";
-import type { CollectionMember } from "../../sharing/collections";
+import type { CollectionMember } from "@/features/sharing/collections";
 
 /** The audience a preset is reviewed for and applied to: the public view, a saved hidden link or a collection member. */
 export type PresetTarget =

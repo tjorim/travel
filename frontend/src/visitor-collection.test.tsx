@@ -5,7 +5,7 @@ import { http, HttpResponse } from "msw/http";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { changeLocale } from "@/i18n/locale";
 import { server } from "./mocks/server";
-import { VisitorRoutes } from "./visitor-routes";
+import { VisitorRoutes } from "@/features/visitor/visitor-routes";
 
 const token = "synthetic-collection-capability-0001";
 const storageKey = "travel-saved-shared-trips@1";

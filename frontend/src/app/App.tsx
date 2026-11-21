@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
 import { lazyNamed } from "@/components/lazy-view";
-import { Callback } from "@/pages/Callback";
+import { Callback } from "@/features/auth/Callback";
 import { OwnerHome } from "@/pages/OwnerHome";
 import { createOwnerQueryClient } from "@/lib/query/client";
 import { OwnerQueryProvider } from "@/app/providers/OwnerQueryProvider";
@@ -20,9 +20,9 @@ const Trips = lazyNamed(() => import("@/pages/Trips"), "Trips");
 const TripWorkspace = lazyNamed(() => import("@/pages/TripWorkspace"), "TripWorkspace");
 const TripDetail = lazyNamed(() => import("@/pages/TripDetail"), "TripDetail");
 const Capture = lazyNamed(() => import("@/pages/Capture"), "Capture");
-const Library = lazyNamed(() => import("@/pages/Library"), "Library");
-const Sharing = lazyNamed(() => import("@/pages/Sharing"), "Sharing");
-const Settings = lazyNamed(() => import("@/pages/Settings"), "Settings");
+const Library = lazyNamed(() => import("@/features/library/Library"), "Library");
+const Sharing = lazyNamed(() => import("@/features/sharing/Sharing"), "Sharing");
+const Settings = lazyNamed(() => import("@/features/settings/Settings"), "Settings");
 
 const routeTree = buildOwnerRouteTree({
   Callback,

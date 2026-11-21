@@ -10,7 +10,7 @@ import { m } from "./paraglide/messages.js";
 import { serveApi } from "./query/serve-api";
 import { fixture } from "./test-projection";
 import type { Projection } from "@/components/projection/ProjectionView";
-import { VisitorRoutes } from "./visitor-routes";
+import { VisitorRoutes } from "@/features/visitor/visitor-routes";
 
 const token = "fictional-capability-for-language-tests";
 

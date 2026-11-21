@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import type { ErrorFallback } from "@/lib/api/api";
 import { useLocale } from "@/i18n/locale";
-import { m } from "../paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { errorNotice, useFeedback, textNotice, FeedbackError } from "@/lib/api/feedback";
 import {
   AsyncSearchSelect,
@@ -33,7 +33,7 @@ import {
 } from "@/lib/query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
 import { bytesLabel } from "@/lib/files";
-import type { DocumentAsset, Trip } from "../api-types";
+import type { DocumentAsset, Trip } from "@/api-types";
 
 type Values = { title: string; kind: DocumentAsset["document_kind"]; tripId: string };
 

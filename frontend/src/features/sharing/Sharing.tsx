@@ -2,8 +2,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 
 import { useAuth } from "@/app/providers/auth-context";
 import { useLocale } from "@/i18n/locale";
-import { m } from "../paraglide/messages.js";
-import { SharingOverview } from "../sharing/SharingOverview";
+import { m } from "@/paraglide/messages.js";
+import { SharingOverview } from "./SharingOverview";
 
 export function Sharing() {
   useLocale();

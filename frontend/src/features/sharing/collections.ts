@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { m } from "../paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { ownerRequest } from "@/lib/api/api";
 import { ownerKeys } from "@/lib/query/keys";
 import { useOwner, useOwnerMutation, type Owner } from "@/lib/query/owner-queries";
-import type { Collection, CollectionMember, ProjectionDocument, ShareScope } from "../api-types";
+import type { Collection, CollectionMember, ProjectionDocument, ShareScope } from "@/api-types";
 
 export type { Collection, CollectionMember };
 

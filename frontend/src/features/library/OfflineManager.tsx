@@ -1,5 +1,5 @@
 import { useLocale } from "@/i18n/locale";
-import { m } from "../paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { errorNotice, useFeedback, textNotice } from "@/lib/api/feedback";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -10,7 +10,7 @@ import { formatInstant } from "@/lib/dates";
 import { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import type { OfflineCopySummary, OfflineResourceKind } from "@/lib/offline-store";
 import { OfflineSnapshotView } from "./OfflineSnapshotView";
-import { PackingOfflineView } from "../trips/PackingOfflineView";
+import { PackingOfflineView } from "@/trips/PackingOfflineView";
 
 const KIND_LABELS: Record<OfflineResourceKind, string> = {
   get document() {

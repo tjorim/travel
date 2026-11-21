@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it } from "vitest";
 import { server } from "./mocks/server";
-import { VisitorRoutes } from "./visitor-routes";
+import { VisitorRoutes } from "@/features/visitor/visitor-routes";
 
 afterEach(cleanup);
 it.each(["/", "/trips"])(

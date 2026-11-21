@@ -1,10 +1,10 @@
-import { m } from "../paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { useLocale } from "@/i18n/locale";
 import { useAuth } from "@/app/providers/auth-context";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { DocumentManager } from "../documents/DocumentManager";
-import { EmergencyInfoManager } from "../library/EmergencyInfoManager";
-import { OfflineManager } from "../offline/OfflineManager";
+import { DocumentManager } from "@/features/documents/DocumentManager";
+import { EmergencyInfoManager } from "./EmergencyInfoManager";
+import { OfflineManager } from "./OfflineManager";
 import { HomeLink } from "@/components/HomeLink";
 
 export function Library() {

@@ -4,7 +4,7 @@ import { m } from "../../paraglide/messages.js";
 import { ownerRequest } from "@/lib/api/api";
 import { ownerKeys } from "@/lib/query/keys";
 import { tripPath, useOwner } from "@/lib/query/owner-queries";
-import { collectionsPath } from "../../sharing/collections";
+import { collectionsPath } from "@/features/sharing/collections";
 import type { FutureDisclosure, ShareScope } from "../../api-types";
 
 /** The audience a candidate scope is reviewed for: the public view, a hidden link or a collection member. */

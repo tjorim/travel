@@ -1,9 +1,13 @@
 import { cn } from "cn";
 import { ApiError, apiFailure, errorMessage } from "@/lib/api/api";
-import { m } from "./paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { adoptLocale, chosenLocale, useLocale } from "@/i18n/locale";
 import type { ContentLanguage } from "@/i18n/content-language";
-import { deliveredLanguage, isContentLanguage, withLanguage } from "@/components/projection/visitor-language";
+import {
+  deliveredLanguage,
+  isContentLanguage,
+  withLanguage,
+} from "@/components/projection/visitor-language";
 import { VisitorTopBar } from "@/components/VisitorTopBar";
 import { Button } from "@/components/ui/button";
 import { Collapsible } from "@/components/ui/collapsible";
@@ -25,7 +29,7 @@ import {
   type Audience,
   type Projection,
 } from "@/components/projection/ProjectionView";
-import type { CollectionIndex, PublicTripCard } from "./api-types";
+import type { CollectionIndex, PublicTripCard } from "@/api-types";
 import {
   forgetAllSharedTrips,
   forgetSharedTrip,

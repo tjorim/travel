@@ -6,25 +6,25 @@ import { useRef, useState } from "react";
 import { useAuth } from "@/app/providers/auth-context";
 import type { ContentLanguage } from "@/i18n/content-language";
 import { useLocale } from "@/i18n/locale";
-import { m } from "../paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import type { Projection } from "@/components/projection/ProjectionView";
 import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
 import { RecordDialog } from "@/components/RecordDialog";
-import type { ExclusionWidening, ShareScope, TripSummary } from "../api-types";
+import type { ExclusionWidening, ShareScope, TripSummary } from "@/api-types";
 import { RenderedPreview } from "@/components/projection/RenderedPreview";
-import { cloneScope } from "../trips/publication/catalog";
+import { cloneScope } from "@/trips/publication/catalog";
 import {
   ExclusionWideningDialog,
   exclusionWidening,
-} from "../trips/publication/ExclusionWideningDialog";
-import { ScopeEditor } from "../trips/publication/ScopeEditor";
-import { FutureDisclosureReview } from "../trips/publication/SharingReview";
+} from "@/trips/publication/ExclusionWideningDialog";
+import { ScopeEditor } from "@/trips/publication/ScopeEditor";
+import { FutureDisclosureReview } from "@/trips/publication/SharingReview";
 import {
   useFutureDisclosure,
   useRefreshFutureDisclosure,
-} from "../trips/publication/use-future-disclosure";
-import type { PresetAppliedAudience } from "../trips/publication/use-sharing-presets";
-import { usePublicationCatalog } from "../trips/publication/use-publication-catalog";
+} from "@/trips/publication/use-future-disclosure";
+import type { PresetAppliedAudience } from "@/trips/publication/use-sharing-presets";
+import { usePublicationCatalog } from "@/trips/publication/use-publication-catalog";
 import {
   collectionsPath,
   useCollectionMutations,

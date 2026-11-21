@@ -8,7 +8,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { AuthProvider } from "@/app/providers/auth-context";
 import { renderWithOwner, resetOfflineDb } from "../query/test-utils";
 import type { EmergencyInfoEntry } from "../api-types";
-import { EmergencyInfoManager } from "./EmergencyInfoManager";
+import { EmergencyInfoManager } from "@/features/library/EmergencyInfoManager";
 import { serveApi } from "../query/serve-api";
 
 function fakeAccessToken(subject: string): string {

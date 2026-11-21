@@ -7,7 +7,7 @@ import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
 import { changeLocale } from "@/i18n/locale";
-import { Settings } from "./Settings";
+import { Settings } from "@/features/settings/Settings";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

@@ -9,8 +9,8 @@ import { server } from "../mocks/server";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
 import type { ShareScope, TripSummary } from "../api-types";
-import type { Collection, CollectionMember } from "./collections";
-import { MemberScopeDialog } from "./MemberScopeDialog";
+import type { Collection, CollectionMember } from "@/features/sharing/collections";
+import { MemberScopeDialog } from "@/features/sharing/MemberScopeDialog";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
