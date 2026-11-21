@@ -79,7 +79,7 @@ export function uncheckedFixtures(file: string, source: string): number[] {
 
 it("keeps MSW, stateful test helpers and browser success responses schema-checked", () => {
   const unchecked: string[] = [];
-  for (const directory of ["src", "e2e"]) {
+  for (const directory of ["src", "tests", "e2e"]) {
     for (const entry of readdirSync(resolve(directory), { recursive: true })) {
       const file = resolve(directory, String(entry));
       if (

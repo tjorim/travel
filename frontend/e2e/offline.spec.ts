@@ -11,7 +11,7 @@ for (const locale of ["nl", "en"] as const) {
       await choosePreferences(page, locale, theme);
       await page.goto("/admin/library");
       await page.evaluate(async () => {
-        const path = "/admin/src/offline/offline-store.ts";
+        const path = "/admin/src/lib/offline-store.ts";
         const { pinOfflineCopy, offlineContentValidator } = await import(/* @vite-ignore */ path);
         const session = JSON.parse(sessionStorage.getItem("travel-tracker-session")!);
         const subject = JSON.parse(atob(session.accessToken.split(".")[1])).sub;
