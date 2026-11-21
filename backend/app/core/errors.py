@@ -1,5 +1,6 @@
 """Language-neutral HTTP errors. Diagnostic detail is never a UI translation key."""
 
+import logging
 from typing import Any, ClassVar
 
 from fastapi import HTTPException, status
@@ -7,6 +8,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic_core import PydanticCustomError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceError(ValueError):
@@ -144,6 +147,21 @@ async def http_error_handler(_request, error: StarletteHTTPException) -> JSONRes
     descriptor = getattr(error, "descriptor", {"code": "http_error", "params": {}, "path": []})
     return JSONResponse(
         {"detail": error.detail, "errors": [descriptor]}, status_code=error.status_code, headers=error.headers
+    )
+
+
+async def unhandled_error_handler(request, error: Exception) -> JSONResponse:
+    """An exception nothing answered: a generic 500 that names no cause, with the request id.
+
+    Starlette sends this from its outermost middleware, after ``RequestIdMiddleware`` has unwound, so the id is read
+    from the request state and set here. The traceback goes to the server log only, never the body."""
+    request_id = request.scope.get("state", {}).get("request_id")
+    logger.error("Unhandled exception (request_id=%s)", request_id, exc_info=error)
+    descriptor = {"code": "internal_error", "params": {}, "path": []}
+    return JSONResponse(
+        {"detail": "Internal server error", "code": "internal_error", "errors": [descriptor]},
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        headers={"X-Request-ID": request_id} if request_id else None,
     )
 
 

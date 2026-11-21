@@ -14,6 +14,7 @@ from app.core.errors import (
     http_error_handler,
     service_error_handler,
     service_exception,
+    unhandled_error_handler,
     validation_error_handler,
 )
 from app.core.logging import configure_logging
@@ -92,6 +93,7 @@ app = FastAPI(
 app.add_middleware(RateLimitHeadersMiddleware)
 # Starlette types handlers against `Exception`, not the specific class they are registered for.
 app.add_exception_handler(StarletteHTTPException, http_error_handler)  # ty: ignore[invalid-argument-type]
+app.add_exception_handler(Exception, unhandled_error_handler)
 app.add_exception_handler(Refusal, service_error_handler)  # ty: ignore[invalid-argument-type]
 
 

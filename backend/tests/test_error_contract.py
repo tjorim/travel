@@ -1,6 +1,7 @@
 """Contract coverage independent of diagnostic wording and UI languages."""
 
 import ast
+import logging
 from pathlib import Path
 
 import httpx
@@ -11,8 +12,16 @@ from pydantic import BaseModel, Field
 from pydantic_core import PydanticCustomError
 from starlette.exceptions import HTTPException
 
-from app.core.errors import ApiException, http_error_handler, service_exception, validation_error_handler
+from app.core.errors import (
+    ApiException,
+    http_error_handler,
+    service_exception,
+    unhandled_error_handler,
+    validation_error_handler,
+)
+from app.db.session import get_session
 from app.main import app as travel_app
+from app.middleware.request_id import RequestIdMiddleware
 from app.schemas import require_visit_times
 from app.services.media.providers import GooglePhotosPickerProvider, ProviderError
 
@@ -158,6 +167,24 @@ def test_the_assembled_app_answers_every_failure_in_one_shape_with_stable_codes(
         assert body["errors"][0]["code"] == code
 
 
+def test_the_assembled_app_answers_an_unhandled_exception_in_the_error_shape_with_the_request_id():
+    def broken_session():
+        raise RuntimeError("secret-token postgresql://user:password@db/travel")
+
+    travel_app.dependency_overrides[get_session] = broken_session
+    try:
+        response = TestClient(travel_app, raise_server_exceptions=False).get(
+            "/api/health/readiness", headers={"X-Request-ID": "assembled-500"}
+        )
+    finally:
+        travel_app.dependency_overrides.pop(get_session, None)
+    assert response.status_code == 500
+    assert response.headers["X-Request-ID"] == "assembled-500"
+    assert response.json()["code"] == "internal_error"
+    assert response.json()["detail"] == "Internal server error"
+    assert "secret-token" not in response.text
+
+
 def test_failures_never_carry_a_stack_trace_or_a_secret():
     client = TestClient(travel_app, raise_server_exceptions=False)
     for response in (
@@ -169,17 +196,45 @@ def test_failures_never_carry_a_stack_trace_or_a_secret():
             assert marker not in response.text
 
 
-def test_an_unhandled_exception_answers_500_without_leaking_its_cause():
-    # Starlette's outermost handler answers this one, before the application's error handlers; its plain-text body is
-    # recorded as a follow-up in the alignment notes (a JSON body with a stable code would match the rest).
+def test_an_unhandled_exception_answers_500_with_a_stable_code_and_the_request_id(caplog):
+    # The same wiring as app.main: the catch-all handler is Starlette's outermost, outside RequestIdMiddleware.
     application = FastAPI()
+    application.add_exception_handler(Exception, unhandled_error_handler)
+    application.add_middleware(RequestIdMiddleware)
 
     @application.get("/boom")
     def boom():
         raise RuntimeError("secret-token postgresql://user:password@db/travel")
 
+    with caplog.at_level(logging.ERROR, logger="app.core.errors"):
+        response = TestClient(application, raise_server_exceptions=False).get(
+            "/boom", headers={"X-Request-ID": "trace-500"}
+        )
+    assert response.status_code == 500
+    assert response.headers["content-type"] == "application/json"
+    assert response.headers["X-Request-ID"] == "trace-500"
+    body = response.json()
+    assert body["detail"] == "Internal server error"
+    assert body["code"] == "internal_error"
+    assert body["errors"] == [{"code": "internal_error", "params": {}, "path": []}]
+    for secret in ("secret-token", "password", "Traceback", "RuntimeError"):
+        assert secret not in response.text
+    # The cause and its traceback stay on the server, tied to the request id.
+    record = next(r for r in caplog.records if r.name == "app.core.errors")
+    assert "trace-500" in record.getMessage()
+    assert record.exc_info is not None and "secret-token" in str(record.exc_info[1])
+
+
+def test_an_unhandled_exception_without_a_request_id_middleware_still_answers_500():
+    application = FastAPI()
+    application.add_exception_handler(Exception, unhandled_error_handler)
+
+    @application.get("/boom")
+    def boom():
+        raise RuntimeError("secret-token")
+
     response = TestClient(application, raise_server_exceptions=False).get("/boom")
     assert response.status_code == 500
+    assert response.json()["code"] == "internal_error"
+    assert "X-Request-ID" not in response.headers
     assert "secret-token" not in response.text
-    assert "password" not in response.text
-    assert "Traceback" not in response.text
