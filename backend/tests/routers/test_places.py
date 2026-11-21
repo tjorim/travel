@@ -2,7 +2,6 @@ from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from test_publication import activate, client_for, create_trip, engine, scope, share
 
 from app.core.config import Settings
 from app.db.base import Base
@@ -10,6 +9,7 @@ from app.main import app
 from app.models import TravelUpdate
 from app.routers.places import get_place_search_service
 from app.services.places.search import CachedPlaceSearchService
+from tests.routers.test_publication import activate, client_for, create_trip, engine, scope, share
 
 
 def setup_function() -> None:

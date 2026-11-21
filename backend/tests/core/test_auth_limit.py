@@ -17,7 +17,7 @@ from app.core.config import Settings, settings
 from app.db.base import Base
 from app.db.session import get_session
 from app.main import app
-from tests.test_auth import StaticJwksClient, token_for
+from tests.core.test_auth import StaticJwksClient, token_for
 
 ISSUER = "https://auth.example.test/realms/travel"
 LIMIT = 3

@@ -2,18 +2,6 @@
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from test_future_warnings import _public_scope, _route, _trip  # noqa: F401
-from test_publication import (  # noqa: F401
-    activate,
-    add_update,
-    client_for,
-    create_trip,
-    engine,
-    item,
-    setup_function,
-    share,
-    teardown_function,
-)
 
 from app.models import AuditEventKind, AuditTargetType, CollectionAuditKind, PublicSurface
 from app.schemas import ShareScopeInput
@@ -28,6 +16,18 @@ from app.services.sharing.audience import (
 )
 from app.services.sharing.precision import audience_precision
 from app.services.sharing.publication import public_preview
+from tests.routers.test_publication import (  # noqa: F401
+    activate,
+    add_update,
+    client_for,
+    create_trip,
+    engine,
+    item,
+    setup_function,
+    share,
+    teardown_function,
+)
+from tests.test_future_warnings import _public_scope, _route, _trip  # noqa: F401
 
 
 def _audiences(owner: TestClient) -> dict:

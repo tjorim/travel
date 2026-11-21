@@ -15,7 +15,10 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from test_publication import (  # noqa: F401
+
+from app.main import app
+from app.models import PublicSurface, SurfaceState
+from tests.routers.test_publication import (  # noqa: F401
     activate,
     client_for,
     create_trip,
@@ -23,9 +26,6 @@ from test_publication import (  # noqa: F401
     setup_function,
     teardown_function,
 )
-
-from app.main import app
-from app.models import PublicSurface, SurfaceState
 
 GOLDEN = Path(__file__).parent / "golden" / "area_only_stay_documents.json"
 SCOPE = {"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}

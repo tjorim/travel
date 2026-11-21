@@ -3,7 +3,9 @@
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from test_publication import (  # noqa: F401
+
+from app.models import Stay
+from tests.routers.test_publication import (  # noqa: F401
     activate,
     client_for,
     create_trip,
@@ -13,8 +15,6 @@ from test_publication import (  # noqa: F401
     share,
     teardown_function,
 )
-
-from app.models import Stay
 
 CODE = "merge_widening_needs_acknowledgement"
 ZEROES = {"stays": 0, "visits": 0, "routes": 0, "travel_updates": 0}

@@ -5,8 +5,8 @@ from app.core.authlimit import failed_authentication
 from app.core.config import settings
 from app.models import ShareLink
 from app.services.sharing.atom import atom_document
-from tests import test_publication as publication
-from tests.test_publication import (
+from tests.routers import test_publication as publication
+from tests.routers.test_publication import (
     TestingSessionLocal,
     add_update,
     client_for,

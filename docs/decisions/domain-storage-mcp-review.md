@@ -198,7 +198,7 @@ explicitly described as a proposed reproduction. No new test is added in this PR
    the same bounded ingestion service. HTTP uses multipart. Over HTTP MCP every
    request body is capped at 48 MiB (about 36 MiB of file), raised from the SDK's 4 MiB default
    by `TravelStreamableHTTPSessionManager` and enforced and tested explicitly (`RequestBodyCap`,
-   `tests/test_mcp_server.py`, `tests/test_mcp_upload_memory.py`; one request in flight costs
+   `tests/mcp/test_mcp_server.py`, `tests/mcp/test_mcp_upload_memory.py`; one request in flight costs
    about 3.1 times its body, so 148 MiB at the cap);
    the stdio measurement is in `docs/object-storage.md`. The bounded upload
    handle the issue proposes stays open: it needs a decision on a one-time
@@ -226,7 +226,7 @@ Existing regression evidence also includes `test_mcp_cannot_cross_owner_boundary
 `test_route_tools_refuse_a_route_between_the_same_place`, the merge-widening and
 chosen-private tests, and `test_update_location_refuses_an_unacknowledged_visitor_change_with_a_json_review`.
 These are source-inspected tests, not tests executed for this documentation PR.
-A practical rerun is `cd backend && uv sync --all-groups --frozen && uv run pytest tests/test_mcp_server.py`.
+A practical rerun is `cd backend && uv sync --all-groups --frozen && uv run pytest tests/mcp/test_mcp_server.py`.
 
 ## Retention, Deletion And Private Export
 

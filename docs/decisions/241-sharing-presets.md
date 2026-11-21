@@ -439,7 +439,7 @@ Shipped (Part of #241). Nothing is applied: no migration, no scope or visibility
   (`share_time_is_on`) and an unapproved share copy attached to an included update.
 - A review of a public view that was never saved does not create it: it reads the default scope (dates by month) that a
   new public view would hold.
-- Tests: `tests/test_sharing_presets.py` (each preset's target, never `everyone`, no other audience changes, precision,
+- Tests: `tests/services/test_sharing_presets.py` (each preset's target, never `everyone`, no other audience changes, precision,
   `exclude` on a link versus the public view, caps, nothing written, owner-only, collection members, idempotence of the
   plan, and a randomised property test that a preset adds only what it selects) and one MCP test.
 
@@ -616,7 +616,7 @@ Shipped (Closes #241). Documents and tests only; no behaviour changed.
   an apply creates it unpublished; added what a preset is not (a later `everyone` record still reaches the
   audience), and a short description of the owner interface and MCP discovery. `backend/README.md` describes the
   routes and tools.
-- **Final regression** (`tests/test_sharing_presets_apply.py::test_after_each_preset_visitors_receive_the_preset_and_no_field_outside_the_allowlists`):
+- **Final regression** (`tests/services/test_sharing_presets_apply.py::test_after_each_preset_visitors_receive_the_preset_and_no_field_outside_the_allowlists`):
   a synthetic trip with a private value planted in every place a preset could leak one (location address, notes and
   display name; visit and stay notes; property, booking reference, contact; route booking reference, class, notes
   and an attached document; update private notes) is first shared with everything to learn the keys the allowlists

@@ -8,14 +8,6 @@ import httpx
 import pytest
 from PIL import Image
 from sqlalchemy import select, text
-from test_media import (
-    TestingSessionLocal,
-    client_for,
-    create_trip,
-    setup_function,
-    teardown_function,
-    video_with_telemetry,
-)
 
 from app.core.config import settings
 from app.models import (
@@ -30,6 +22,14 @@ from app.models import (
 from app.services.media import ingest as service
 from app.services.media import worker
 from app.services.storage import LocalObjectStorage, sha256_hex
+from tests.routers.test_media import (
+    TestingSessionLocal,
+    client_for,
+    create_trip,
+    setup_function,
+    teardown_function,
+    video_with_telemetry,
+)
 
 WORKER_ID = "a" * 32
 

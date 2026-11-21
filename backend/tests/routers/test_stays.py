@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
-from test_publication import share
 
 from app.core.auth import current_subject
 from app.db.base import Base
@@ -12,6 +11,7 @@ from app.db.session import get_session
 from app.main import app
 from app.models import StayDocumentAsset
 from app.services.storage import LocalObjectStorage, get_storage
+from tests.routers.test_publication import share
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)

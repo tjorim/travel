@@ -5,8 +5,6 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from test_live_location import payload, start
-from test_packing import TestingSessionLocal, client_for, setup_function, teardown_function  # noqa: F401
 
 from app.main import app
 from app.models import (
@@ -17,6 +15,8 @@ from app.models import (
     ShareLink,
 )
 from app.services import live_location as live
+from tests.routers.test_live_location import payload, start
+from tests.routers.test_packing import TestingSessionLocal, client_for, setup_function, teardown_function  # noqa: F401
 
 
 def settings(session_id: str) -> dict[str, tuple[str, int]]:

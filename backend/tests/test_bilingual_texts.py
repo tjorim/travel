@@ -622,7 +622,7 @@ def test_an_owner_can_edit_a_suggested_area_name_on_an_english_trip(owner: TestC
     from app.core.config import Settings
     from app.routers.places import get_place_search_service
     from app.services.places.search import CachedPlaceSearchService
-    from tests.test_places import FakePlaceSearchProvider
+    from tests.routers.test_places import FakePlaceSearchProvider
 
     app.dependency_overrides[get_place_search_service] = lambda: CachedPlaceSearchService(
         FakePlaceSearchProvider(), Settings()

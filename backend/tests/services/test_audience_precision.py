@@ -7,16 +7,6 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from test_publication import (  # noqa: F401
-    activate,
-    client_for,
-    create_trip,
-    engine,
-    scope,
-    setup_function,
-    share,
-    teardown_function,
-)
 
 from app.models import (
     AuditEvent,
@@ -37,6 +27,16 @@ from app.services.sharing.precision import (
 )
 from app.services.sharing.projection import render_projection
 from app.services.trips import trip_query
+from tests.routers.test_publication import (  # noqa: F401
+    activate,
+    client_for,
+    create_trip,
+    engine,
+    scope,
+    setup_function,
+    share,
+    teardown_function,
+)
 
 PRECISIONS = ("day", "month", "year")
 LENGTH = {"day": 10, "month": 7, "year": 4}

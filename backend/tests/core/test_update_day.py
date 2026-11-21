@@ -13,8 +13,8 @@ from app.main import app
 from app.models import Area, TravelUpdate
 from app.services.trip_pdf import PdfRequest, pdf_data
 from app.services.trips import owned_trip
-from tests import test_publication as publication
-from tests.test_publication import TestingSessionLocal, client_for, create_trip, item, scope
+from tests.routers import test_publication as publication
+from tests.routers.test_publication import TestingSessionLocal, client_for, create_trip, item, scope
 
 
 def setup_function():

@@ -13,14 +13,6 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
-from test_link_exclusions import World, link_scope
-from test_publication import (  # noqa: F401
-    _photo_copy,
-    client_for,
-    engine,
-    setup_function,
-    teardown_function,
-)
 
 from app.core.errors import ServiceError
 from app.db.base import Base
@@ -34,6 +26,14 @@ from app.services.sharing.precision import audience_precision, effective_precisi
 from app.services.sharing.preset_plan import PRESETS, plan_preset
 from app.services.sharing.projection import delivered
 from app.services.trips import trip_query
+from tests.routers.test_publication import (  # noqa: F401
+    _photo_copy,
+    client_for,
+    engine,
+    setup_function,
+    teardown_function,
+)
+from tests.services.test_link_exclusions import World, link_scope
 
 PRESET_IDS = list(PRESETS)
 

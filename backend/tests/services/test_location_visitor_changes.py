@@ -1,7 +1,17 @@
 """Editing what visitors read on a shared location needs an explicit acknowledgement (#32)."""
 
 from fastapi.testclient import TestClient
-from test_publication import activate, client_for, create_trip, item, scope, setup_function, share, teardown_function  # noqa: F401
+
+from tests.routers.test_publication import (  # noqa: F401
+    activate,
+    client_for,
+    create_trip,
+    item,
+    scope,
+    setup_function,
+    share,
+    teardown_function,
+)
 
 CODE = "visitor_visible_change_needs_acknowledgement"
 

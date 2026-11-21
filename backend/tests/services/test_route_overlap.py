@@ -1,4 +1,4 @@
-from test_visits import client_for, create_trip, make_area, setup_function, teardown_function  # noqa: F401
+from tests.routers.test_visits import client_for, create_trip, make_area, setup_function, teardown_function  # noqa: F401
 
 
 def _trip_with_flight(owner):
@@ -84,10 +84,10 @@ def test_a_cancelled_route_and_the_arrival_day_in_local_time() -> None:
 
 def test_the_trip_overview_lists_visits_that_restate_a_route() -> None:
     from sqlalchemy import select
-    from test_visits import TestingSessionLocal
 
     from app.models import Trip
     from app.services.sharing.overview import _visits_restating_routes
+    from tests.routers.test_visits import TestingSessionLocal
 
     owner = client_for("owner-1")
     base, ams, _, _, _ = _trip_with_flight(owner)

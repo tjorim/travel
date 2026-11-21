@@ -2,7 +2,6 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 
 import pytest
-from test_publication import client_for, create_trip, engine
 
 from app.db.base import Base
 from app.main import app
@@ -12,6 +11,7 @@ from app.services.places.search import (
     PlaceSearchError,
     get_place_search_service,
 )
+from tests.routers.test_publication import client_for, create_trip, engine
 
 
 def setup_function() -> None:

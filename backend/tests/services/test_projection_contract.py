@@ -8,7 +8,12 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 from pydantic import BaseModel, ValidationError
-from test_publication import (  # noqa: F401
+
+from app import schemas
+from app.main import app
+from app.models import DatePrecision
+from app.services.storage import LocalObjectStorage, get_storage
+from tests.routers.test_publication import (  # noqa: F401
     client_for,
     create_trip,
     item,
@@ -17,11 +22,6 @@ from test_publication import (  # noqa: F401
     share,
     teardown_function,
 )
-
-from app import schemas
-from app.main import app
-from app.models import DatePrecision
-from app.services.storage import LocalObjectStorage, get_storage
 
 RECORDS = {
     "visits": schemas.ProjectionVisit,

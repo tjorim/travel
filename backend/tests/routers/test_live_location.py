@@ -3,11 +3,11 @@
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
-from test_packing import TestingSessionLocal, client_for, setup_function, teardown_function  # noqa: F401
 
 from app.models import LivePoint, LivePrecision, LiveSession
 from app.routers import live_location as live_router
 from app.services import live_location as live
+from tests.routers.test_packing import TestingSessionLocal, client_for, setup_function, teardown_function  # noqa: F401
 
 
 def start():

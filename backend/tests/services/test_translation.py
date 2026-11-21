@@ -5,7 +5,6 @@ import logging
 import httpx
 import pytest
 from fastapi.testclient import TestClient
-from test_publication import client_for
 
 from app.core.config import Settings
 from app.main import app
@@ -18,6 +17,7 @@ from app.services.translation import (
     get_translation_service,
     plan,
 )
+from tests.routers.test_publication import client_for
 
 BASE = "http://translation.internal:5000"
 SECRET = "Geheim hotel in Taipei"

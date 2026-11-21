@@ -134,7 +134,7 @@ through the production mount (`test_mcp_server.py`) accept a body of exactly the
 one byte more, and fail if a FastMCP or SDK upgrade stops honouring the override. Only the local
 stdio server (development) can receive a larger body.
 
-Memory: a synthetic 150 MiB stdio upload (`tests/test_mcp_upload_memory.py`) grew the peak RSS
+Memory: a synthetic 150 MiB stdio upload (`tests/mcp/test_mcp_upload_memory.py`) grew the peak RSS
 by about 400 MiB while parsing, twice the 200 MiB of encoded JSON, because `json.loads`
 decodes the bytes to text and then builds the string; decoding, staging, the durable copy
 and the read-back then grew it by 4 MiB more. Through uvicorn and the production mount, a

@@ -13,15 +13,6 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from test_publication import (  # noqa: F401
-    activate,
-    client_for,
-    create_trip,
-    engine,
-    setup_function,
-    share,
-    teardown_function,
-)
 
 from app.main import app
 from app.models import CollectionMember, Trip
@@ -30,6 +21,15 @@ from app.services.sharing.precision import precision_summary, route_precision
 from app.services.sharing.projection import delivered, render_projection
 from app.services.storage import LocalObjectStorage, get_storage
 from app.services.trips import trip_query
+from tests.routers.test_publication import (  # noqa: F401
+    activate,
+    client_for,
+    create_trip,
+    engine,
+    setup_function,
+    share,
+    teardown_function,
+)
 
 LENGTH = {"day": 10, "month": 7, "year": 4}
 BEFORE_START = date(2054, 3, 1)

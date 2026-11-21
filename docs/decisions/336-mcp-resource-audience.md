@@ -104,7 +104,7 @@ and BM25 discovery use those fixes without additional configuration.
 
 ## Evidence
 
-Covered here by `tests/test_mcp_server.py` and `tests/test_auth.py`: discovery
+Covered here by `tests/mcp/test_mcp_server.py` and `tests/core/test_auth.py`: discovery
 and challenge, a real HTTP tool call acting as the token subject and writing
 its audit row, and rejection of an API-audience-only token, another MCP
 resource's token, a trailing-slash audience, a list or missing audience, wrong

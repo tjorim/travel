@@ -7,7 +7,13 @@ import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy import select
-from test_export import (
+
+from app.models import OwnerActivityEvent, PublicSurface, ShareLink, TravelUpdate, Trip, Visibility
+from app.services.sharing.projection import render_projection
+from app.services.storage import get_storage
+from app.services.trip_pdf import PdfRequest, check_budget, generate_pdf, pdf_data
+from app.services.trips import owned_trip
+from tests.services.test_export import (
     CANARIES,
     TestingSessionLocal,
     build_rich_trip,
@@ -15,12 +21,6 @@ from test_export import (
     setup_function,
     teardown_function,
 )
-
-from app.models import OwnerActivityEvent, PublicSurface, ShareLink, TravelUpdate, Trip, Visibility
-from app.services.sharing.projection import render_projection
-from app.services.storage import get_storage
-from app.services.trip_pdf import PdfRequest, check_budget, generate_pdf, pdf_data
-from app.services.trips import owned_trip
 
 # Reuse only synthetic fixture helpers; pytest calls these locally too.
 __all__ = ["setup_function", "teardown_function"]

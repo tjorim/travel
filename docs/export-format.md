@@ -118,7 +118,7 @@ state. The checksums let a later files export be verified; they are not keys.
 
 ## Excluded
 
-Excluded by design, and covered by canary tests in `backend/tests/test_export.py`:
+Excluded by design, and covered by canary tests in `backend/tests/services/test_export.py`:
 
 - File bytes of originals, derivatives, posters and documents.
 - Storage buckets, object keys and object paths, including worker job source keys.

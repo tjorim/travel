@@ -11,15 +11,6 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from test_publication import (  # noqa: F401
-    _photo_copy,
-    activate,
-    client_for,
-    create_trip,
-    engine,
-    setup_function,
-    teardown_function,
-)
 
 from app.db.session import get_session  # noqa: F401
 from app.main import app
@@ -37,6 +28,15 @@ from app.models import (
 )
 from app.services.sharing.projection import local_id
 from app.services.storage import LocalObjectStorage, get_storage
+from tests.routers.test_publication import (  # noqa: F401
+    _photo_copy,
+    activate,
+    client_for,
+    create_trip,
+    engine,
+    setup_function,
+    teardown_function,
+)
 
 MODELS = {
     "area": Area,

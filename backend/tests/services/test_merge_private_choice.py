@@ -3,8 +3,9 @@
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from test_merge_widening import CODE, ZEROES, Areas, Trip
-from test_publication import (  # noqa: F401
+
+from app.models import Route, Stay, TravelUpdate, Visibility, Visit
+from tests.routers.test_publication import (  # noqa: F401
     client_for,
     engine,
     scope,
@@ -12,8 +13,7 @@ from test_publication import (  # noqa: F401
     share,
     teardown_function,
 )
-
-from app.models import Route, Stay, TravelUpdate, Visibility, Visit
+from tests.services.test_merge_widening import CODE, ZEROES, Areas, Trip
 
 STALE = "merge_private_choice_is_stale"
 

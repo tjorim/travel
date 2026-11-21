@@ -6,8 +6,16 @@ shared, never widening what the label itself would reveal."""
 import httpx
 import pytest
 from fastapi.testclient import TestClient
-from test_location_visitor_changes import Setup, changes_of
-from test_publication import (  # noqa: F401
+
+from app import schemas
+from app.core.config import settings
+from app.main import app
+from app.mcp import TravelMcpBackend
+from app.models import Area, Location
+from app.services.places.navigation import area_navigation_url, location_navigation_url
+from app.services.places.search import NominatimSearchProvider
+from app.services.sharing.projection import place_names
+from tests.routers.test_publication import (  # noqa: F401
     TestingSessionLocal,
     activate,
     client_for,
@@ -18,15 +26,7 @@ from test_publication import (  # noqa: F401
     share,
     teardown_function,
 )
-
-from app import schemas
-from app.core.config import settings
-from app.main import app
-from app.mcp import TravelMcpBackend
-from app.models import Area, Location
-from app.services.places.navigation import area_navigation_url, location_navigation_url
-from app.services.places.search import NominatimSearchProvider
-from app.services.sharing.projection import place_names
+from tests.services.test_location_visitor_changes import Setup, changes_of
 
 TAIPEI = "台北"
 HOTEL = "河畔飯店"

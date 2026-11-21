@@ -369,7 +369,7 @@ def test_a_missing_shell_is_a_service_error_never_a_trip_specific_page(monkeypat
 
 def test_the_real_public_shell_carries_every_tag_the_preview_rewrites(monkeypatch: pytest.MonkeyPatch) -> None:
     # Guards against drift: a renamed or removed tag in frontend/public.html must fail here, not silently in production.
-    source = Path(__file__).parents[2] / "frontend"
+    source = Path(__file__).parents[3] / "frontend"
     monkeypatch.setattr(settings, "visitor_shell_dir", str(source))
     generic = tags((source / "public.html").read_text(encoding="utf-8"))
     for key in ("description", "og:title", "og:description", "og:image", "twitter:title", "twitter:image", "robots"):

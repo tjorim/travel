@@ -6,7 +6,10 @@ code before that change; both produce the same golden output."""
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from test_publication import (  # noqa: F401
+
+from app.main import app
+from app.models import PublicSurface, SurfaceState
+from tests.routers.test_publication import (  # noqa: F401
     client_for,
     create_trip,
     engine,
@@ -14,9 +17,6 @@ from test_publication import (  # noqa: F401
     share,
     teardown_function,
 )
-
-from app.main import app
-from app.models import PublicSurface, SurfaceState
 
 
 def _rich_trip(owner: TestClient) -> dict:

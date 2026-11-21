@@ -13,7 +13,7 @@ from app.core.ratelimit import limiter  # noqa: E402
 @pytest.fixture(autouse=True)
 def _delivery_rate_limit_off():
     # Every test client shares one address, so the visitor limits would otherwise count across unrelated tests.
-    # tests/test_rate_limit.py switches them on for its own requests.
+    # tests/core/test_rate_limit.py switches them on for its own requests.
     limiter.enabled = False
     limiter.reset()
     yield
@@ -23,7 +23,7 @@ def _delivery_rate_limit_off():
 
 @pytest.fixture(autouse=True)
 def _failed_authentication_limit_off():
-    # Tests that forge many tokens from one address would otherwise trip the limit; tests/test_auth_limit.py enables it.
+    # Tests that forge many tokens from one address would otherwise trip the limit; tests/core/test_auth_limit.py enables it.
     failed_authentication.enabled = False
     failed_authentication.reset()
     yield
