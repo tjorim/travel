@@ -151,7 +151,7 @@ def test_lifespan_and_other_scopes_pass_through() -> None:
 
 
 def test_the_travel_api_reports_server_timing(monkeypatch) -> None:
-    monkeypatch.setattr("app.main.APP_COMMIT", "d" * 40)
+    monkeypatch.setattr("app.routers.health.APP_COMMIT", "d" * 40)
     response = TestClient(travel_app).get("/api/health")
 
     assert response.status_code == 200

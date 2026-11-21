@@ -10,4 +10,6 @@ export type HealthResponse = {
   status: string;
   version: string;
   commit: string;
+  liveness_endpoint: string;
+  readiness_endpoint: string;
 };

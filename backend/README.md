@@ -35,6 +35,7 @@ For PostgreSQL, Keycloak and Caddy start the local stack from the repository roo
 
 ```bash
 uv run pytest
+uv run pytest --cov    # what CI runs: fails below the `fail_under` coverage floor in pyproject.toml
 ```
 
 Most of the suite uses SQLite and needs no services. The `*_postgres.py` tests skip unless a PostgreSQL database is
@@ -248,7 +249,12 @@ and `preview_sharing_preset` (read) and `apply_sharing_preset` (write, `confirm`
 writes no `everyone`, changes no other audience and adds no field to any allowlist; see
 [the domain model](../docs/domain-model.md#sharing-presets).
 
-`GET /api/health` checks database connectivity. `GET /api/auth/oidc-config` is unauthenticated, like Worktime's and Champagnefestival's. It returns the issuer,
+`GET /api/health/liveness` answers `{"status": "alive"}` without touching a dependency. `GET /api/health/readiness` answers
+`{"status": "ready"}`, or 503 `{"status": "not_ready"}` when the database or the OIDC signing keys are unreachable. `GET /api/health`
+reports the version and commit, links both probes and checks database connectivity (503 when it is unavailable, which the image's
+`HEALTHCHECK` relies on). Every response carries an `X-Request-ID` (the caller's own when it is a short token of letters, digits and
+`._:-`, else a new UUID) and each request logs one JSON line on `travel.access` with `request_id`, `method`, `route` (the route
+template, never the raw path), `status_code` and `latency_ms`. `GET /api/auth/oidc-config` is unauthenticated, like Worktime's and Champagnefestival's. It returns the issuer,
 authorization, token and end-session URLs from the provider's `/.well-known/openid-configuration` (cached per
 issuer, failures not cached) plus the public Home Assistant client ID. It returns 503 when `TRAVEL_OIDC_ISSUER_URL`
 is unset (`oidc_validation_is_not_configured`) or discovery fails (`oidc_discovery_failed`). FastAPI publishes the full

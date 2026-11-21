@@ -70,8 +70,8 @@ jobs:
       - name: Typecheck (ty)
         run: uv run ty check .
 
-      - name: Test
-        run: uv run pytest
+      - name: Test with coverage floor
+        run: uv run pytest --cov
 
       - name: Verify migrations against PostgreSQL
         run: |

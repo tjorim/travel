@@ -129,6 +129,7 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 - Record the convention for dates, times and record names in `docs/domain-model.md` (inclusive `starts_on`/`ends_on`, wall clock plus the area's zone, `title`/`label`/`name`), with the documented exceptions, and open #386 for the one rename it chooses (#358).
 - Migration 035 adds the nullable `local_name` column to `areas` and `locations` (existing rows start without one) and downgrades by dropping it. The trip export (`travel/trip-export@3`) lists `areas[].local_name` and `locations[].local_name`; adding a field is compatible, so the schema version stays (#376).
 - A duplicate `_REFERENCE_NAMES` table in the location service is gone.
+- Add the shared quality baseline (Part of #443): `GET /api/health/liveness` and `GET /api/health/readiness` next to `GET /api/health`, which now also links both probes (`liveness_endpoint`, `readiness_endpoint`); every response carries an `X-Request-ID` (the caller's, when it is a short token) and each request logs one JSON access line with the route template, never the raw path; backend (`pytest --cov`, floor 93%) and frontend (`vitest --coverage`, thresholds from 79% to 84%) coverage floors in CI; the error contract is tested on the assembled app, and the privacy headers of the edge and the API have tests; Docker build context ignores, `.editorconfig`, `.gitattributes`; hatchling is pinned and the MSW worker stays untracked.
 
 ## [2026.11.2] - 2026-11-10
 

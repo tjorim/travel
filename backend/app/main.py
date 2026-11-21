@@ -2,24 +2,22 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Request, status
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastmcp.utilities.lifespan import combine_lifespans
-from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.auth import current_subject
 from app.core.errors import (
-    ApiException,
     Refusal,
     http_error_handler,
     service_error_handler,
     service_exception,
     validation_error_handler,
 )
+from app.core.logging import configure_logging
 from app.core.request_limits import RateLimitExceeded, RateLimitHeadersMiddleware
-from app.db.session import SessionLocal
 from app.mcp import (
     MCP_CAPABILITY_CONTRACT_VERSION,
     MCP_TOOL_CAPABILITIES,
@@ -28,6 +26,7 @@ from app.mcp import (
     mcp_http_enabled,
     mount_mcp,
 )
+from app.middleware.request_id import RequestIdMiddleware
 from app.middleware.request_timing import RequestTimingMiddleware
 from app.services.places.search import PlaceSearchError
 
@@ -41,6 +40,7 @@ from .routers.documents import library_router as library_documents_router
 from .routers.documents import router as documents_router
 from .routers.documents import trip_router as trip_documents_router
 from .routers.emergency_info import router as emergency_info_router
+from .routers.health import router as health_router
 from .routers.link_preview import router as link_preview_router
 from .routers.live_location import router as live_location_router
 from .routers.locations import router as locations_router
@@ -63,8 +63,7 @@ from .routers.translation import router as translation_router
 from .routers.trips import router as trips_router
 from .routers.visibility import router as visibility_router
 from .routers.visits import router as visits_router
-from .schemas import HealthResponse, McpCapabilitiesResponse, OwnerIdentityResponse
-from .version import APP_COMMIT, APP_VERSION
+from .schemas import McpCapabilitiesResponse, OwnerIdentityResponse
 
 if mcp_http_enabled():
     _mcp, _mcp_app = create_mcp_http_app()
@@ -81,6 +80,8 @@ async def _application_lifespan(_: FastAPI) -> AsyncGenerator[None]:
 _lifespan = (
     combine_lifespans(_application_lifespan, _mcp_app.lifespan) if _mcp_app is not None else _application_lifespan
 )
+
+configure_logging()
 
 app = FastAPI(
     title="Travel API",
@@ -106,6 +107,8 @@ app.add_exception_handler(RequestValidationError, validation_error_handler)  # t
 app.add_exception_handler(RateLimitExceeded, delivery_rate_limit_handler)  # ty: ignore[invalid-argument-type]
 # Outermost, so its timing covers everything below it (apps#246).
 app.add_middleware(RequestTimingMiddleware)
+# Outermost of all, so every response (errors and rate-limit refusals included) carries the id.
+app.add_middleware(RequestIdMiddleware)
 
 app.include_router(live_location_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
@@ -169,16 +172,7 @@ def mcp_capabilities() -> dict[str, object]:
     }
 
 
-@app.get("/api/health", tags=["health"], response_model=HealthResponse)
-def health() -> dict[str, str]:
-    try:
-        with SessionLocal() as session:
-            session.execute(text("SELECT 1"))
-    except Exception as error:
-        raise ApiException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database unavailable", code="database_unavailable"
-        ) from error
-    return {"status": "ok", "version": APP_VERSION, "commit": APP_COMMIT}
+app.include_router(health_router, prefix="/api")
 
 
 @app.get("/api/identity", tags=["owner"], response_model=OwnerIdentityResponse)

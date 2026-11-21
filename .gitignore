@@ -4,6 +4,8 @@ Caddyfile
 # Python backend local environments and test artifacts.
 backend/.venv/
 backend/.pytest_cache/
+backend/.coverage
+backend/coverage.xml
 backend/travel-api.db
 backend/media-storage/
 backend/**/__pycache__/
