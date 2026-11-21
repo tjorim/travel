@@ -55,9 +55,9 @@ uv run alembic upgrade head
 ## Testing
 
 ```bash
-cd frontend && pnpm test          # Vitest unit and component tests
-cd frontend && pnpm test:e2e      # Playwright smoke and axe checks (see frontend/e2e/README.md)
-cd backend && uv run pytest       # SQLite by default; CI also runs PostgreSQL
+(cd frontend && pnpm test)         # Vitest unit and component tests
+(cd frontend && pnpm test:e2e)     # Playwright smoke and axe checks (see frontend/e2e/README.md)
+(cd backend && uv run pytest)      # SQLite by default; CI also runs PostgreSQL
 ```
 
 ## Project layout
