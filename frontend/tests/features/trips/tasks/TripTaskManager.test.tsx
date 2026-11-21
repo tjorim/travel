@@ -1,0 +1,323 @@
+import { jsonResponse } from "@/mocks/response";
+import type * as Api from "@/api-schema";
+// @vitest-environment happy-dom
+import { createRootRoute } from "@tanstack/react-router";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+
+import { renderRoutesWithOwner, renderWithOwner, testToken } from "../../../utils/query-test-utils";
+import type { Stay, Route, Trip, TripTask, TripTaskAlert } from "@/api-types";
+import { TripOverview } from "@/features/trips/workspace/TripOverview";
+import { TripTaskManager } from "@/features/trips/tasks/TripTaskManager";
+import { serveApi } from "../../../utils/serve-api";
+
+const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
+
+const trip: Trip = {
+  owner_subject: "owner-1",
+  content_language: "nl",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
+  id: "trip",
+  title: "Exampleland",
+  title_nl: "Exampleland",
+  title_en: null,
+  summary: null,
+  summary_nl: null,
+  summary_en: null,
+  starts_on: "2054-11-16",
+  ends_on: null,
+  travel_updates: [],
+};
+const task = (id: string, title: string, extra: Partial<TripTask> = {}): TripTask => ({
+  id,
+  title,
+  notes: null,
+  due_date: null,
+  remind_at: null,
+  reminded_at: null,
+  links: [],
+  completed_at: null,
+  created_at: "2054-09-01T00:00:00Z",
+  notes_html: null,
+  ...extra,
+});
+
+type Api = {
+  tasks: TripTask[];
+  alerts: TripTaskAlert[];
+  failNext: { status: number; body: unknown } | null;
+  requests: string[];
+};
+let api: Api;
+
+function json<T = never>(value: NoInfer<T>, status = 200) {
+  return Promise.resolve(new Response(JSON.stringify(value), { status }));
+}
+
+beforeEach(() => {
+  auth.session = { accessToken: testToken() };
+  api = {
+    tasks: [task("a", "Visum regelen"), task("b", "Reisverzekering")],
+    alerts: [],
+    failNext: null,
+    requests: [],
+  };
+  serveApi(
+    vi.fn((url: string, init: RequestInit = {}) => {
+      const method = init.method ?? "GET";
+      api.requests.push(`${method} ${url}`);
+      if (method !== "GET" && api.failNext) {
+        const failure = api.failNext;
+        api.failNext = null;
+        return json<unknown>(
+          /* Fixture exception: Error fixture preserves server diagnostics for failure handling. */ failure.body,
+          failure.status,
+        );
+      }
+      const body = init.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
+      if (url.endsWith("/visits")) return json<Api.VisitResponse[]>([]);
+      if (url.endsWith("/stays")) return json<Api.StayResponse[]>([] as Stay[]);
+      if (url.endsWith("/routes")) return json<Api.RouteResponse[]>([] as Route[]);
+      if (url.endsWith("/task-alerts")) return json<Api.TripTaskAlertResponse[]>(api.alerts);
+      if (url.endsWith("/trip-tasks") && method === "GET")
+        return json<Api.TripTaskResponse[]>(api.tasks);
+      if (url.endsWith("/trip-tasks") && method === "POST") {
+        const created = task(`new-${api.tasks.length}`, String(body.title), {
+          notes: (body.notes as string | null) ?? null,
+        });
+        api.tasks = [...api.tasks, created];
+        return json<Api.TripTaskResponse>(created, 201);
+      }
+      const match = /trip-tasks\/([^/]+)$/.exec(url);
+      if (match && method === "PATCH") {
+        api.tasks = api.tasks.map((item) =>
+          item.id === match[1]
+            ? {
+                ...item,
+                ...("title" in body ? { title: String(body.title) } : {}),
+                ...("completed" in body
+                  ? { completed_at: body.completed ? "2054-09-24T10:00:00Z" : null }
+                  : {}),
+              }
+            : item,
+        );
+        return json<Api.TripTaskResponse>(api.tasks.find((item) => item.id === match[1])!);
+      }
+      if (match && method === "DELETE") {
+        api.tasks = api.tasks.filter((item) => item.id !== match[1]);
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      throw new Error(`unexpected request ${method} ${url}`);
+    }),
+  );
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+const openTask = async (title: string) =>
+  fireEvent.click(await screen.findByRole("button", { name: new RegExp(`^${title}`) }));
+
+it("shows the edited title straight after saving, without a reload", async () => {
+  renderWithOwner(<TripTaskManager trip={trip} />);
+  await openTask("Visum regelen");
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Visum aanvragen" } });
+  fireEvent.click(screen.getByRole("button", { name: "Taak opslaan" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(screen.getByRole("button", { name: /^Visum aanvragen/ })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /^Visum regelen/ })).toBeNull();
+  expect(screen.getByText("Taak opgeslagen.")).toBeTruthy();
+});
+
+it("opens the editor with the saved task instead of a blank form", async () => {
+  api.tasks = [
+    task("a", "Visum regelen", {
+      notes: "Bij de ambassade",
+      due_date: "2054-10-01",
+      links: [{ label: "Ambassade", url: "https://example.test" }],
+    }),
+  ];
+  renderWithOwner(<TripTaskManager trip={trip} />);
+  await openTask("Visum regelen");
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Visum regelen");
+  expect((screen.getByLabelText("Notities (optioneel)") as HTMLTextAreaElement).value).toBe(
+    "Bij de ambassade",
+  );
+  expect((screen.getByLabelText("Deadline (optioneel)") as HTMLInputElement).value).toBe(
+    "1 okt 2054",
+  );
+  expect((screen.getByLabelText("Adres") as HTMLInputElement).value).toBe("https://example.test");
+});
+
+it("removes a deleted task at once and after the refetch", async () => {
+  renderWithOwner(<TripTaskManager trip={trip} />);
+  await openTask("Reisverzekering");
+  fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
+  fireEvent.click(
+    within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: /^Reisverzekering/ })).toBeNull(),
+  );
+  expect(screen.getByText("Taak verwijderd.")).toBeTruthy();
+  expect(api.tasks.map((item) => item.id)).toEqual(["a"]);
+});
+
+it("restores a task when completing it is refused", async () => {
+  renderWithOwner(<TripTaskManager trip={trip} />);
+  await screen.findByRole("button", { name: /^Visum regelen/ });
+  api.failNext = { status: 500, body: { detail: "Opslaan mislukt op de server." } };
+  fireEvent.click(screen.getByRole("button", { name: "Afvinken: Visum regelen" }));
+  await screen.findByText(
+    "De taak kon niet worden bijgewerkt. De server reageert niet goed. Probeer het later opnieuw.",
+  );
+  expect(screen.getAllByRole("button", { name: /^Afvinken: / })).toHaveLength(2);
+  expect(screen.queryByRole("button", { name: /^Heropenen: / })).toBeNull();
+});
+
+it("names each completion and reopen action after its task", async () => {
+  renderWithOwner(<TripTaskManager trip={trip} />);
+  await screen.findByRole("button", { name: /^Visum regelen/ });
+  const names = screen
+    .getAllByRole("button", { name: /^Afvinken: / })
+    .map((button) => button.getAttribute("aria-label"));
+  expect(new Set(names).size).toBe(names.length);
+  expect(screen.queryByRole("button", { name: "Afvinken" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Afvinken: Visum regelen" }));
+  await screen.findByRole("button", { name: "Heropenen: Visum regelen" });
+});
+
+it("refreshes the overview badge when a task is completed elsewhere on the screen", async () => {
+  renderRoutesWithOwner(
+    createRootRoute({
+      component: () => (
+        <>
+          <TripOverview trip={trip} />
+          <TripTaskManager trip={trip} />
+        </>
+      ),
+    }),
+    ["/"],
+  );
+  await screen.findAllByText("2 open");
+  fireEvent.click(screen.getAllByRole("button", { name: /^Afvinken: / })[0]);
+  await screen.findAllByText("1 open");
+  // One shared read per resource: overview and manager never fetch the tasks twice.
+  expect(
+    api.requests.filter((request) => request === "GET /api/trips/trip/trip-tasks").length,
+  ).toBeLessThanOrEqual(2);
+});
+
+it("validates the form, keeps the editor open on a server error, and resets after success", async () => {
+  renderWithOwner(<TripTaskManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe taak" }));
+  const save = screen.getByRole("button", {
+    name: "Taak toevoegen",
+    description: "",
+  }) as HTMLButtonElement;
+
+  fireEvent.click(save);
+  const title = await screen.findByLabelText("Titel");
+  await waitFor(() => expect(title.getAttribute("aria-invalid")).toBe("true"));
+  expect(screen.getByRole("alert").textContent).toBe("Geef de taak een titel.");
+  expect(document.activeElement).toBe(title);
+  expect(title.getAttribute("aria-describedby")).toBe(screen.getByRole("alert").id);
+
+  fireEvent.change(title, { target: { value: "Vliegtickets" } });
+  await waitFor(() => expect(title.getAttribute("aria-invalid")).toBeNull());
+
+  api.failNext = {
+    status: 422,
+    body: {
+      detail: "diagnostic",
+      errors: [{ code: "string_too_long", path: ["body", "title"], params: { max_length: 120 } }],
+    },
+  };
+  fireEvent.click(save);
+  await screen.findByText("Gebruik maximaal 120 tekens.", { selector: ".field-error" });
+  expect(screen.getByRole("heading", { name: "Taak toevoegen" })).toBeTruthy();
+  expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Vliegtickets");
+  expect(save.disabled).toBe(false);
+
+  fireEvent.change(title, { target: { value: "Vliegtickets boeken" } });
+  await waitFor(() =>
+    expect(
+      screen.queryByText("Gebruik maximaal 120 tekens.", { selector: ".field-error" }),
+    ).toBeNull(),
+  );
+  fireEvent.click(save);
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(screen.getByRole("button", { name: /^Vliegtickets boeken/ })).toBeTruthy();
+
+  // A new editor opens blank, not with the previous values.
+  fireEvent.click(screen.getByRole("button", { name: "Nieuwe taak" }));
+  expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("");
+});
+
+it("disables submit while saving and asks before discarding a dirty form", async () => {
+  let release: () => void = () => undefined;
+  // Layered over the default API: only the create is held back, everything else falls through.
+  serveApi((_url, init) =>
+    init.method === "POST"
+      ? new Promise<Response>((resolve) => {
+          release = () =>
+            resolve(jsonResponse<Api.TripTaskResponse>(task("z", "Nieuw"), { status: 201 }));
+        })
+      : undefined,
+  );
+  renderWithOwner(<TripTaskManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe taak" }));
+  fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Nieuw" } });
+  fireEvent.click(screen.getByRole("button", { name: "Taak toevoegen sluiten" }));
+  expect(screen.getByRole("heading", { name: "Wijzigingen verwerpen?" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Verder bewerken" }));
+
+  fireEvent.click(screen.getByRole("button", { name: "Taak toevoegen" }));
+  const busy = (await screen.findByRole("button", { name: "Opslaan…" })) as HTMLButtonElement;
+  expect(busy.disabled).toBe(true);
+  release();
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+});
+
+it("requires a name and an https address for each link", async () => {
+  renderWithOwner(<TripTaskManager trip={trip} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe taak" }));
+  fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Boeken" } });
+  fireEvent.click(screen.getByRole("button", { name: "Link toevoegen" }));
+  fireEvent.change(screen.getByLabelText("Naam"), { target: { value: "Site" } });
+  fireEvent.change(screen.getByLabelText("Adres"), { target: { value: "http://example.test" } });
+  fireEvent.click(screen.getByRole("button", { name: "Taak toevoegen" }));
+  await screen.findByText("Gebruik een https-adres.");
+  expect(api.requests.some((request) => request.startsWith("POST"))).toBe(false);
+});
+
+it("links readiness counts to the matching sections and identifies overdue tasks", async () => {
+  api.tasks = [task("late", "Visum", { due_date: "2000-01-02" })];
+  renderRoutesWithOwner(
+    createRootRoute({
+      component: () => (
+        <>
+          <TripOverview trip={trip} />
+          <TripTaskManager trip={trip} />
+        </>
+      ),
+    }),
+    ["/"],
+  );
+  expect(
+    (await screen.findByRole("link", { name: "1 achterstallige taak" })).getAttribute("href"),
+  ).toBe("/trips/trip/prepare#tasks");
+  // The existing badge for open tasks is the link to the same block; the strip adds only what it does not say.
+  expect(screen.getByRole("link", { name: /1 open/ }).getAttribute("href")).toBe(
+    "/trips/trip/prepare#tasks",
+  );
+  expect(await screen.findByRole("button", { name: /Achterstallig: Visum/ })).toBeTruthy();
+});

@@ -1,7 +1,7 @@
 import type * as Api from "@/api-schema";
 import type { Route } from "@playwright/test";
 import { json as browserJson } from "../../e2e/mock-api";
-import { FakeApi } from "@/query/fake-api";
+import { FakeApi } from "../../tests/utils/fake-api";
 import { jsonResponse } from "./response";
 import { responseFixtures } from "./response-test-fixtures";
 

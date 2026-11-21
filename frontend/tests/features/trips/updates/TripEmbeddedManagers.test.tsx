@@ -1,0 +1,302 @@
+import { responseFixtures } from "@/mocks/response-test-fixtures";
+import type * as Api from "@/api-schema";
+// @vitest-environment happy-dom
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+
+import { fakeApi, resolveTexts, type FakeApi } from "../../../utils/fake-api";
+import { useTripWithUpdates, useTripsQuery } from "@/lib/query/owner-queries";
+import {
+  chooseOption,
+  renderWithOwner,
+  selectedOption,
+  testToken,
+} from "../../../utils/query-test-utils";
+import type { TravelUpdate, Trip } from "@/api-types";
+import { TravelUpdateManager } from "@/features/trips/updates/TravelUpdateManager";
+
+const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
+
+const update = (
+  id: string,
+  title: string,
+  visibility: TravelUpdate["visibility"] = "private",
+): TravelUpdate => ({
+  area: null,
+  body_html: null,
+  private_notes_html: null,
+  id,
+  occurred_at: "2054-11-16T10:00:00Z",
+  timezone: "UTC",
+  local_date: "2054-11-16",
+  share_date_precision: "day",
+  title,
+  title_nl: title,
+  title_en: null,
+  body: "De eerste avond.",
+  body_nl: "De eerste avond.",
+  body_en: null,
+  private_notes: null,
+  area_id: null,
+  location: null,
+  media_asset_ids: [],
+  visibility,
+});
+
+let state: { trip: Trip };
+let api: FakeApi;
+
+/** The fake keeps a trip's updates in one place: writes change them and the update list is what refreshes. */
+function embed(
+  key: "travel_updates",
+  path: string,
+  shape: (item: Api.TravelUpdateResponse) => Api.TravelUpdateResponse = (item) =>
+    resolveTexts(item),
+) {
+  const list = () => state.trip[key];
+  const set = (items: unknown[]) => {
+    state.trip = { ...state.trip, [key]: items as TravelUpdate[] };
+  };
+  api.on<Api.TravelUpdateResponse>("POST", new RegExp(`^/api/trips/trip/${path}$`), (body) => {
+    const created = shape({
+      ...responseFixtures.TravelUpdateResponse,
+      id: `new-${list().length}`,
+
+      media_asset_ids: [],
+      ...(body as object),
+    });
+    set([...list(), created]);
+    return created;
+  });
+  api.on<Api.TravelUpdateResponse>(
+    "PATCH",
+    new RegExp(`^/api/trips/trip/${path}/([^/]+)$`),
+    (body, match) => {
+      const move = (body as { position?: number }).position;
+      if (move !== undefined) {
+        const items = list().map((item, position) => ({ ...item, position }));
+        const from = items.findIndex((item) => item.id === match[1]);
+        const [moved] = items.splice(from, 1);
+        items.splice(move, 0, moved);
+        set(items.map((item, position) => ({ ...item, position })));
+        return { ...responseFixtures.TravelUpdateResponse, ...moved };
+      }
+      set(
+        list().map((item) =>
+          item.id === match[1] ? shape({ ...item, ...(body as object) }) : item,
+        ),
+      );
+      return list().find((item) => item.id === match[1]);
+    },
+  );
+  api.on<undefined>("DELETE", new RegExp(`^/api/trips/trip/${path}/([^/]+)$`), (_body, match) => {
+    set(list().filter((item) => item.id !== match[1]));
+    return undefined;
+  });
+}
+
+function Screen({ children }: { children: (trip: Trip) => ReactNode }) {
+  const { trip } = useTripWithUpdates(useTripsQuery().data?.[0]?.id);
+  return trip ? <>{children(trip)}</> : null;
+}
+
+beforeEach(() => {
+  auth.session = { accessToken: testToken() };
+  state = {
+    trip: {
+      owner_subject: "owner-1",
+      content_language: "nl",
+      cover_derivative_id: null,
+      cover_url: null,
+      summary_html: null,
+      id: "trip",
+      title: "Exampleland",
+      title_nl: "Exampleland",
+      title_en: null,
+      summary: null,
+      summary_nl: null,
+      summary_en: null,
+      starts_on: null,
+      ends_on: null,
+      travel_updates: [update("e1", "Aankomst"), update("e2", "Vertrek")],
+    },
+  };
+  api = fakeApi();
+  api.collection<Api.LocationResponse>("/api/trips/trip/locations", []);
+  // The story rows read photos and the audiences that would receive an update.
+  api.collection<Api.MediaAssetResponse>("/api/trips/trip/media", []);
+  api.value<Api.PublicProjectionStatusResponse>("/api/trips/trip/public-projection", {
+    trip_id: "synthetic",
+    applied_preset: null,
+    applied_preset_at: null,
+    preset_exceptions: null,
+    surface_state: "unpublished",
+    scope: {
+      schema_version: "travel/share-scope@1",
+      trip: { title: true, summary: true, dates: null },
+      items: [],
+    },
+    revision: 1,
+    slug: null,
+  });
+  api.value<Api.ShareLinkResponse[]>("/api/trips/trip/share-links", []);
+  api.on<Api.TripSummaryResponse[]>("GET", /^\/api\/trips$/, () => [
+    { ...state.trip, travel_update_count: state.trip.travel_updates.length, last_update_at: null },
+  ]);
+  api.on<Api.TravelUpdateResponse[]>(
+    "GET",
+    /^\/api\/trips\/trip\/travel-updates$/,
+    () => state.trip.travel_updates,
+  );
+  embed("travel_updates", "travel-updates");
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+  expect(api.unexpected).toEqual([]);
+});
+
+const confirmDelete = () =>
+  fireEvent.click(
+    within(screen.getByRole("alertdialog")).getByRole("button", { name: "Verwijderen" }),
+  );
+
+it("opens a travel update in detail before editing and asks before discarding edits", async () => {
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: /^Aankomst\b/ }));
+  expect(await screen.findByRole("heading", { name: "Aankomst" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  expect(screen.getByRole("heading", { name: "Reisupdate bewerken" })).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Late aankomst" } });
+  fireEvent.click(screen.getByRole("button", { name: /Reisupdate bewerken sluiten/ }));
+  expect(screen.getByText("Wijzigingen verwerpen?")).toBeTruthy();
+});
+
+it("keeps the typed update after a rejected save and marks the field", async () => {
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe update" }));
+  expect(screen.getByRole("heading", { name: "Reisupdate maken" })).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Nieuw verhaal" } });
+  fireEvent.change(screen.getByLabelText(/^Tekst voor bezoekers/), { target: { value: "Tekst" } });
+  api.failNext = {
+    status: 422,
+    body: {
+      detail: "diagnostic",
+      errors: [{ code: "string_too_long", path: ["body", "title"], params: { max_length: 120 } }],
+    },
+  };
+  fireEvent.click(screen.getByRole("button", { name: "Reisupdate maken" }));
+  await screen.findByText("Gebruik maximaal 120 tekens.", { selector: ".field-error" });
+  expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Nieuw verhaal");
+});
+
+it("adds an update to the list once saved", async () => {
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe update" }));
+  fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Nieuw verhaal" } });
+  fireEvent.change(screen.getByLabelText(/^Tekst voor bezoekers/), { target: { value: "Tekst" } });
+  fireEvent.click(screen.getByRole("button", { name: "Reisupdate maken" }));
+  await screen.findByRole("button", { name: /^Nieuw verhaal\b/ });
+  expect(screen.getByText("Reisupdate opgeslagen.")).toBeTruthy();
+});
+
+it("shows an edited update and removes it only after the in-app confirmation", async () => {
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: /^Vertrek\b/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+  // The editor opens with the saved record, not a blank form.
+  expect((screen.getByLabelText("Titel") as HTMLInputElement).value).toBe("Vertrek");
+  expect((screen.getByLabelText(/^Tekst voor bezoekers/) as HTMLTextAreaElement).value).toBe(
+    "De eerste avond.",
+  );
+  fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Terugvlucht" } });
+  fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));
+  await screen.findByRole("button", { name: /^Terugvlucht\b/ });
+  expect(screen.queryByRole("button", { name: /^Vertrek\b/ })).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: /^Aankomst\b/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Verwijderen" }));
+  expect(api.count("DELETE /api/trips/trip/travel-updates/e1")).toBe(0);
+  confirmDelete();
+  await waitFor(() => expect(screen.queryByRole("button", { name: /^Aankomst\b/ })).toBeNull());
+  expect(api.count("DELETE /api/trips/trip/travel-updates/e1")).toBe(1);
+});
+
+it("saves who may see an update with the update itself, private by default", async () => {
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe update" }));
+  expect(selectedOption("Zichtbaarheid")).toBe("Privé — alleen ik");
+  fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Voor iedereen" } });
+  fireEvent.change(screen.getByLabelText(/^Tekst voor bezoekers/), { target: { value: "Tekst" } });
+  chooseOption("Zichtbaarheid", "Iedereen — alle bezoekers");
+  fireEvent.click(screen.getByRole("button", { name: "Reisupdate maken" }));
+  await screen.findByRole("button", { name: /^Voor iedereen\b/ });
+  expect(api.lastBody("POST /api/trips/trip/travel-updates")).toMatchObject({
+    visibility: "everyone",
+  });
+  // The list says who sees each update.
+  expect(screen.getByRole("button", { name: /^Voor iedereen\b/ }).textContent).toContain(
+    "Iedereen",
+  );
+  expect(screen.getByRole("button", { name: /^Aankomst\b/ }).textContent).toContain("Privé");
+});
+
+it("checks the text for visitors again when who may see the update changes", async () => {
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe update" }));
+  const message = "Schrijf eerst de tekst voor bezoekers, of kies “Privé”.";
+  // Nothing is shared, so nothing needs text.
+  expect(screen.queryByText(message)).toBeNull();
+  chooseOption("Zichtbaarheid", "Iedereen — alle bezoekers");
+  expect(await screen.findByText(message)).toBeTruthy();
+  chooseOption("Zichtbaarheid", "Privé — alleen ik");
+  await waitFor(() => expect(screen.queryByText(message)).toBeNull());
+});
+
+const timeInput = () =>
+  within(screen.getByRole("group", { name: /Datum en tijd/ })).getAllByRole(
+    "textbox",
+  )[1] as HTMLInputElement;
+
+it.each([
+  // Just after local midnight in UTC+8, and shortly before it in UTC-8, from a browser in a third zone.
+  ["Asia/Taipei", "2054-11-19T16:30:00Z", "2054-11-20T00:30", "2054-11-20", "00:30"],
+  ["America/Los_Angeles", "2054-11-20T07:30:00Z", "2054-11-19T23:30", "2054-11-19", "23:30"],
+])(
+  "edits an update in %s at the wall clock of its own zone and sends it back unchanged",
+  async (timezone, occurred_at, wallClock, localDate, clock) => {
+    vi.stubEnv("TZ", "Europe/Brussels");
+    state.trip.travel_updates = [
+      { ...update("e3", "Midden in de nacht"), occurred_at, timezone, local_date: localDate },
+    ];
+    renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
+    fireEvent.click(await screen.findByRole("button", { name: /^Midden in de nacht\b/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Bewerken" }));
+    expect(timeInput().value).toBe(clock);
+    expect(
+      screen.getByText(`Lokale tijd ter plaatse (${timezone.split("/")[1].replace("_", " ")}).`),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Reisupdate opslaan" }));
+    await waitFor(() => expect(api.count("PATCH /api/trips/trip/travel-updates/e3")).toBe(1));
+    // The wall clock at the place, with no offset: the server reads it in the update's zone.
+    expect(api.lastBody("PATCH /api/trips/trip/travel-updates/e3")).toMatchObject({
+      occurred_at: wallClock,
+    });
+  },
+);
+
+it("sends a typed time as the wall clock at the place, never as the browser's instant", async () => {
+  vi.stubEnv("TZ", "Pacific/Auckland");
+  renderWithOwner(<Screen>{(trip) => <TravelUpdateManager trip={trip} areas={[]} />}</Screen>);
+  fireEvent.click(await screen.findByRole("button", { name: "Nieuwe update" }));
+  fireEvent.change(screen.getByLabelText("Titel"), { target: { value: "Ontbijt" } });
+  fireEvent.change(timeInput(), { target: { value: "07:00" } });
+  fireEvent.blur(timeInput());
+  fireEvent.click(screen.getByRole("button", { name: "Reisupdate maken" }));
+  await screen.findByRole("button", { name: /^Ontbijt\b/ });
+  const body = api.lastBody<{ occurred_at: string }>("POST /api/trips/trip/travel-updates")!;
+  expect(body.occurred_at).toMatch(/^\d{4}-\d\d-\d\dT07:00$/);
+});

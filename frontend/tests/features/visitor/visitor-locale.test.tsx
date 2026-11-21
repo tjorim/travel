@@ -1,0 +1,406 @@
+import { jsonResponse, fixtureResponse } from "@/mocks/response";
+import type * as Api from "@/api-schema";
+// @vitest-environment happy-dom
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { stubViewport } from "@/mocks/viewport";
+import { changeLocale } from "@/i18n/locale";
+import {
+  ProjectionView,
+  tripDates,
+  type Projection,
+  type ProjectionMedia,
+  type ProjectionPlace,
+} from "@/components/projection/ProjectionView";
+import { fixture } from "../../utils/test-projection";
+import { VisitorRoutes } from "@/features/visitor/visitor-routes";
+import type { ShareScope } from "@/api-types";
+import { RenderedPreview } from "@/components/projection/RenderedPreview";
+import { m } from "@/paraglide/messages.js";
+import { rememberSharedTrip } from "@/features/visitor/saved-shared-trips";
+import { http, HttpResponse } from "msw/http";
+import { server } from "@/mocks/server";
+import { serveApi } from "../../utils/serve-api";
+
+const token = "fictional-capability-for-locale-tests";
+function projection(): Projection {
+  return fixture<Projection>({
+    schema_version: "travel/unlisted-trip@1",
+    numbers: { days: 1, areas: 2, countries: 1, nights: 0 },
+    title: "Authored reis",
+    summary: "**Authored** tekst",
+    summary_html: "<p><strong>Authored</strong> tekst</p>",
+    dates: { starts_on: "2054-04", ends_on: "2054-05", date_precision: "month" },
+    visits: [
+      {
+        id: "visit",
+        title: "Mijn bezoek",
+        place: { latitude: 25, longitude: 121 },
+        starts_on: "2054-04-02",
+        date_precision: "day",
+      },
+    ],
+    places: [{ id: "place", label: "Mijn plek", latitude: 25, longitude: 121 }],
+    stays: [],
+    navigation: [{ id: "place" }],
+    updates: [
+      { id: "stable-story", title: "Mijn verhaal", story_date: "2054", date_precision: "year" },
+    ],
+    routes: [
+      {
+        id: "route",
+        mode: "train",
+        status: "confirmed",
+        departs_at: "2054-04-02T23:30:00Z",
+        departure_timezone: "Asia/Taipei",
+        departure: { label: "Mijn vertrek" },
+      },
+    ],
+    media: [
+      { id: "image", image: { id: "image" }, alt_text: "Mijn foto", caption: "Mijn onderschrift" },
+    ],
+  });
+}
+
+const previewScope: ShareScope = {
+  schema_version: "travel/share-scope@1",
+  trip: { title: true, summary: true, dates: null },
+  items: [],
+};
+
+// Tab panels are only hidden below the side-by-side width; these tests read the whole page.
+beforeEach(() => stubViewport(true));
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  act(() => changeLocale("nl"));
+  // After the switch back: the visitor in these tests has made no choice of their own.
+  localStorage.clear();
+});
+
+it("switches projection chrome, dates and map alternatives while keeping authored content, URLs and anchors", () => {
+  const view = render(
+    <ProjectionView projection={projection()} audience="share" identifier={token} />,
+  );
+  expect(screen.getByText("april 2054 – mei 2054")).toBeTruthy();
+  const img = screen.getByRole("img", { name: "Mijn foto" });
+  const url = img.getAttribute("src");
+  const story = view.container.querySelector("#stable-story");
+  fireEvent.click(screen.getByRole("button", { name: "Mijn plek" }));
+  act(() => changeLocale("en"));
+  expect(screen.getByText("April 2054 – May 2054")).toBeTruthy();
+  // The visit sits on its day, and the route on the day it leaves in its own zone (not the browser's).
+  expect(view.container.querySelector('[data-day="2054-04-02"] time')?.textContent).toBe(
+    "Thu 2 Apr",
+  );
+  expect(
+    view.container.querySelector('[data-day="2054-04-03"] [data-day-entry="route"]')?.textContent,
+  ).toContain("07:30");
+  fireEvent.click(screen.getByRole("button", { name: "Choose an update" }));
+  expect(screen.getByRole("navigation", { name: "Updates in this story" })).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Visit: Mijn bezoek" }).getAttribute("href")).toBe(
+    "#visit-visit",
+  );
+  expect(screen.getByRole("link", { name: "Directions" }).getAttribute("href")).toBe(
+    `/api/shared/${token}/navigation/place`,
+  );
+  expect(screen.getByText("Train")).toBeTruthy();
+  expect(screen.getByText(/Confirmed/)).toBeTruthy();
+  expect(screen.getByRole("img", { name: "Mijn foto" })).toBe(img);
+  expect(img.getAttribute("src")).toBe(url);
+  expect(view.container.querySelector("#stable-story")).toBe(story);
+  expect(view.container.querySelector(".markdown strong")?.textContent).toBe("Authored");
+});
+
+it("names a place's country in the visitor's language and falls back to the delivered code", () => {
+  const data = projection();
+  data.places = fixture<ProjectionPlace[]>([
+    { id: "place", label: "Berlijn", country_code: "DE", latitude: 52, longitude: 13 },
+    { id: "odd", label: "Elders", country_code: "ZZZZ", latitude: 1, longitude: 1 },
+  ]);
+  data.routes = [];
+  render(<ProjectionView projection={data} audience="share" identifier={token} />);
+  expect(screen.queryByText("DE")).toBeNull();
+  expect(screen.getAllByText("Duitsland").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("ZZZZ").length).toBeGreaterThan(0);
+  act(() => changeLocale("en"));
+  expect(screen.getAllByText("Germany").length).toBeGreaterThan(0);
+  expect(screen.queryByText("Duitsland")).toBeNull();
+});
+
+it("preserves delivered date precision and rejects invalid dates in both languages", () => {
+  for (const locale of ["nl", "en"] as const) {
+    act(() => changeLocale(locale));
+    expect(tripDates({ starts_on: "2054", date_precision: "year" })).toBe("2054");
+    expect(tripDates({ starts_on: "2054-02-30", date_precision: "day" })).toBeNull();
+    expect(tripDates({ starts_on: "2054-04-02", date_precision: "month" })).toBeNull();
+    for (const count of [0, 1, 3]) expect(m.saved_trip_count({ count })).toContain(String(count));
+  }
+});
+
+it("keeps an open lightbox and its focus through switching and returns focus on Escape", async () => {
+  const data = projection();
+  data.places = [];
+  data.routes = [];
+  render(<ProjectionView projection={data} audience="share" identifier={token} />);
+  const trigger = screen.getByRole("button", { name: "Afbeelding openen: Mijn foto" });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const dialog = await screen.findByRole("dialog", { name: "Mijn foto" });
+  const close = within(dialog).getByRole("button", { name: "Afbeelding sluiten" });
+  close.focus();
+  act(() => changeLocale("en"));
+  expect(screen.getByRole("dialog", { name: "Mijn foto" })).toBe(dialog);
+  expect(document.activeElement).toBe(close);
+  expect(within(dialog).getByRole("button", { name: "Close image" })).toBe(close);
+  expect(within(dialog).getByText("Mijn onderschrift")).toBeTruthy();
+  fireEvent.keyDown(close, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
+});
+
+it("moves through a gallery's photos from one lightbox, ends included, and preloads only neighbours", async () => {
+  const data = projection();
+  data.places = [];
+  data.routes = [];
+  data.media = ["a", "b", "c"].map((id) =>
+    fixture<ProjectionMedia>({
+      id,
+      image: { id },
+      alt_text: `Foto ${id}`,
+      caption: `Onderschrift ${id}`,
+    }),
+  );
+  const loaded: string[] = [];
+  vi.stubGlobal(
+    "Image",
+    class {
+      referrerPolicy = "";
+      set src(value: string) {
+        loaded.push(value);
+      }
+    },
+  );
+  render(<ProjectionView projection={data} audience="share" identifier={token} />);
+  fireEvent.click(screen.getAllByRole("button", { name: "Afbeelding openen: Foto a" })[0]!);
+  const dialog = await screen.findByRole("dialog", { name: "Foto a" });
+  expect(within(dialog).getByText("Foto 1 van 3")).toBeTruthy();
+  expect(
+    within(dialog)
+      .getByRole("button", { name: m.visitor_previous_photo() })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
+  expect(loaded).toEqual([`/api/shared/${token}/files/b`]);
+  fireEvent.keyDown(dialog, { key: "ArrowRight" });
+  expect(await screen.findByRole("dialog", { name: "Foto b" })).toBeTruthy();
+  expect(within(screen.getByRole("dialog")).getByText("Onderschrift b")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: m.visitor_next_photo() }));
+  expect(await screen.findByRole("dialog", { name: "Foto c" })).toBeTruthy();
+  fireEvent.keyDown(screen.getByRole("dialog"), { key: "ArrowRight" });
+  expect(within(screen.getByRole("dialog")).getByText("Foto 3 van 3")).toBeTruthy();
+  expect(loaded).not.toContain(`/api/shared/${token}/files/zzz`);
+  vi.unstubAllGlobals();
+});
+
+it("retranslates retained image/video failures and retries only the selected image", () => {
+  const data = projection();
+  data.places = [];
+  data.routes = [];
+  data.media.push(fixture<ProjectionMedia>({ id: "video", video: { id: "video" } }));
+  const view = render(<ProjectionView projection={data} audience="share" identifier={token} />);
+  fireEvent.error(screen.getByRole("img", { name: "Mijn foto" }));
+  fireEvent.error(view.container.querySelector("source")!);
+  act(() => changeLocale("en"));
+  expect(screen.getByText("This video is unavailable.")).toBeTruthy();
+  expect(screen.getByRole("button", { name: m.retry() })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: m.retry() }));
+  expect(screen.getByRole("img", { name: "Mijn foto" }).getAttribute("src")).toBe(
+    `/api/shared/${token}/files/image`,
+  );
+  expect(screen.queryByText("This image is unavailable.")).toBeNull();
+});
+
+it("reports denied saved-link storage without losing the trip, and asks again in the language chosen", async () => {
+  vi.stubGlobal("localStorage", {
+    getItem: localStorage.getItem.bind(localStorage),
+    setItem: () => {
+      throw new Error("denied");
+    },
+  });
+  const fetcher = vi.fn(async (_input: RequestInfo | URL) =>
+    jsonResponse<Api.ProjectionDocument>(projection(), { headers: { "Content-Language": "nl" } }),
+  );
+  serveApi(fetcher);
+  render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
+  await screen.findByRole("heading", { name: "Authored reis" });
+  expect(screen.getByText(m.visitor_storage_failed())).toBeTruthy();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher.mock.calls[0]?.[0]).toBe(`/api/shared/${token}`);
+  act(() => changeLocale("en"));
+  // The page stays up while the texts are asked for again in the language chosen.
+  expect(screen.getByText(m.visitor_storage_failed())).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Authored reis" })).toBeTruthy();
+  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+  expect(fetcher.mock.calls[1]?.[0]).toBe(`/api/shared/${token}?lang=en`);
+});
+
+it("sets a long authored trip title in a smaller, looser heading than a short one", async () => {
+  const short = projection();
+  const long = {
+    ...projection(),
+    title: "Een reis met een bijzonder lange titel die over meerdere regels moet lopen",
+  };
+  for (const [data, looser] of [
+    [short, false],
+    [long, true],
+  ] as const) {
+    serveApi(vi.fn(async () => jsonResponse<Api.ProjectionDocument>(data)));
+    const view = render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
+    const heading = await screen.findByRole("heading", { level: 1, name: data.title ?? "" });
+    expect(heading.classList.contains("text-travel-title-long")).toBe(looser);
+    view.unmount();
+  }
+});
+
+it.each(["nl", "en"] as const)(
+  "uses translated numbers in owner previews without visitor resource requests (%s)",
+  async (locale) => {
+    act(() => changeLocale(locale));
+    const data = projection();
+    data.media = [];
+    data.places = [];
+    data.routes = [];
+    const fetcher = vi.fn();
+    serveApi(fetcher);
+    render(
+      <RenderedPreview
+        projection={data}
+        audience="share"
+        tripId="private-trip"
+        linkId="private-link"
+        scope={previewScope}
+        session={{ accessToken: "owner", expiresAt: Date.now() + 60000 }}
+      />,
+    );
+    expect(screen.getByRole("region", { name: m.numbers_heading() })).toBeTruthy();
+    expect(screen.getByText(m.numbers_nights())).toBeTruthy();
+    if (locale === "en") {
+      fireEvent.click(screen.getByRole("button", { name: "Choose an update" }));
+      expect(screen.getByRole("navigation", { name: "Updates in this story" })).toBeTruthy();
+      expect(screen.getByText("April 2054 – May 2054")).toBeTruthy();
+    }
+    expect(fetcher).not.toHaveBeenCalled();
+  },
+);
+
+it.each(["/", "/trips/"])(
+  "translates public cards at %s without changing slug paths",
+  async (path) => {
+    serveApi(
+      vi.fn(async () =>
+        jsonResponse<Api.PublicTripCard[]>([
+          {
+            cover: null,
+            summary_text: null,
+            slug: "authored-slug",
+            title: "Mijn reis",
+            summary: null,
+            dates: projection().dates,
+          },
+        ]),
+      ),
+    );
+    render(<VisitorRoutes initialEntries={[path]} />);
+    const card = await screen.findByRole("link", { name: /Mijn reis/ });
+    act(() => changeLocale("en"));
+    expect(card.textContent).toContain("April 2054 – May 2054");
+    expect(card.getAttribute("href")).toBe("/trips/authored-slug");
+  },
+);
+
+it.each(["invalid", "revoked", "expired"])(
+  "keeps an unavailable %s share ambiguous in both languages",
+  async (reason) => {
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      fixtureResponse(
+        /* Fixture exception: Error or persistence-control fixture; no successful Travel record is consumed. */ {
+          detail: reason,
+          errors: [{ code: reason }],
+        },
+        {
+          status: 404,
+        },
+      ),
+    );
+    const sent = serveApi(fetcher);
+    rememberSharedTrip(token, projection());
+    render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
+    await screen.findByRole("heading", { name: m.unavailable_trip() });
+    act(() => changeLocale("en"));
+    expect(screen.getByRole("heading", { name: m.unavailable_trip() })).toBeTruthy();
+    expect(document.body.textContent).not.toContain(reason);
+    expect(localStorage.getItem("travel-saved-shared-trips@1")).toBe("[]");
+    expect(sent.mock.calls[0]?.[1]).toMatchObject({
+      cache: "no-store",
+      credentials: "omit",
+      redirect: "error",
+      referrerPolicy: "no-referrer",
+    });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  },
+);
+
+it("retries a visitor network failure in the current locale", async () => {
+  const fetcher = vi.fn(async () => jsonResponse<Api.ProjectionDocument>(projection()));
+  fetcher.mockRejectedValueOnce(new Error("private network diagnostic"));
+  fetcher.mockRejectedValueOnce(new Error("private network diagnostic"));
+  serveApi(fetcher);
+  render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
+  await screen.findByRole("button", { name: m.retry() });
+  act(() => changeLocale("en"));
+  // Choosing a language asks again; the failure stays on screen, in the new language.
+  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
+  expect(document.body.textContent).not.toContain("private network diagnostic");
+  fireEvent.click(await screen.findByRole("button", { name: m.retry() }));
+  await screen.findByRole("heading", { name: "Authored reis" });
+  expect(fetcher).toHaveBeenCalledTimes(3);
+});
+
+it("keeps a saved shortcut visible when forgetting is denied and translates its retained failure", async () => {
+  rememberSharedTrip(token, projection());
+  vi.stubGlobal("localStorage", {
+    getItem: localStorage.getItem.bind(localStorage),
+    setItem: () => {
+      throw new Error("denied");
+    },
+  });
+  server.use(
+    http.get("/api/public/trips", () => HttpResponse.json<Api.PublicTripCard[]>([])),
+    http.get(`/api/shared/${token}`, () => HttpResponse.json<Api.ProjectionDocument>(projection())),
+  );
+  render(<VisitorRoutes initialEntries={["/"]} />);
+  await screen.findByRole("heading", { name: "Authored reis" });
+  fireEvent.click(screen.getByRole("button", { name: m.forget_trip() }));
+  act(() => changeLocale("en"));
+  expect(screen.getByText(m.visitor_storage_failed())).toBeTruthy();
+  expect(screen.getByRole("link", { name: /Authored reis/ }).getAttribute("href")).toBe(
+    `/share/${token}`,
+  );
+});
+
+it.each(["/missing", "/share/", "/trips/withdrawn"])(
+  "translates unavailable and not-found routes at %s",
+  async (path) => {
+    serveApi(vi.fn(async () => new Response(null, { status: 404 })));
+    render(<VisitorRoutes initialEntries={[path]} />);
+    await screen.findByText(
+      path === "/trips/withdrawn" ? m.unavailable_trip() : m.page_unavailable(),
+    );
+    act(() => changeLocale("en"));
+    expect(
+      screen.getByText(path === "/trips/withdrawn" ? m.unavailable_trip() : m.page_unavailable()),
+    ).toBeTruthy();
+  },
+);

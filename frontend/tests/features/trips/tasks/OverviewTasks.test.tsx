@@ -1,0 +1,111 @@
+import type * as Api from "@/api-schema";
+// @vitest-environment happy-dom
+import { createRootRoute } from "@tanstack/react-router";
+import { cleanup, screen } from "@testing-library/react";
+import { http, HttpResponse } from "msw/http";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+
+import { server } from "@/mocks/server";
+import { renderRoutesWithOwner, testToken } from "../../../utils/query-test-utils";
+import type { Trip, TripTask } from "@/api-types";
+import { OverviewTasks } from "@/features/trips/tasks/OverviewTasks";
+
+const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
+vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
+
+const trip: Trip = {
+  owner_subject: "owner-1",
+  content_language: "nl",
+  cover_derivative_id: null,
+  cover_url: null,
+  summary_html: null,
+  id: "trip",
+  title: "Exampleland",
+  title_nl: "Exampleland",
+  title_en: null,
+  summary: null,
+  summary_nl: null,
+  summary_en: null,
+  starts_on: "2054-11-16",
+  ends_on: null,
+  travel_updates: [],
+};
+const task = (id: string, title: string, extra: Partial<TripTask> = {}): TripTask => ({
+  id,
+  title,
+  notes: null,
+  due_date: null,
+  remind_at: null,
+  reminded_at: null,
+  links: [],
+  completed_at: null,
+  created_at: "2054-09-01T00:00:00Z",
+  notes_html: null,
+  ...extra,
+});
+
+const render = () =>
+  renderRoutesWithOwner(createRootRoute({ component: () => <OverviewTasks trip={trip} /> }), ["/"]);
+
+function serve(tasks: TripTask[] | number) {
+  server.use(
+    http.get("*/api/trips/:id/stays", () => HttpResponse.json<Api.StayResponse[]>([])),
+    http.get("*/api/trips/:id/routes", () => HttpResponse.json<Api.RouteResponse[]>([])),
+    http.all("*", () =>
+      typeof tasks === "number"
+        ? HttpResponse.json(
+            /* Fixture exception: Error/control response: exercises failure handling rather than a successful API record. */ {},
+            { status: tasks },
+          )
+        : HttpResponse.json<Api.TripTaskResponse[]>(tasks),
+    ),
+  );
+}
+
+beforeEach(() => {
+  auth.session = { accessToken: testToken() };
+});
+afterEach(() => {
+  cleanup();
+});
+
+it("lists the open tasks by deadline, tasks without one last, and hides finished ones", async () => {
+  serve([
+    task("a", "Reisverzekering"),
+    task("b", "Visum regelen", { due_date: "2054-10-01" }),
+    task("c", "Treinpas kopen", { due_date: "2054-09-20" }),
+    task("d", "Oud", { completed_at: "2054-09-02T00:00:00Z" }),
+  ]);
+  render();
+  await screen.findByText("Visum regelen");
+  const titles = screen.getAllByRole("strong", { hidden: true }).map((node) => node.textContent);
+  expect(titles).toEqual(["Treinpas kopen", "Visum regelen", "Reisverzekering"]);
+  expect(screen.queryByText("Oud")).toBeNull();
+  expect(screen.getByText("Geen deadline")).toBeTruthy();
+});
+
+it("shows at most five tasks and sends the owner to Prepare to manage them", async () => {
+  serve(Array.from({ length: 8 }, (_, index) => task(`t${index}`, `Taak ${index}`)));
+  render();
+  await screen.findByText("Taak 0");
+  expect(screen.getAllByText(/^Taak \d$/)).toHaveLength(5);
+  const link = screen.getByRole("link", { name: "Beheren bij Voorbereiden" });
+  expect(link.getAttribute("href")).toBe("/trips/trip/prepare#tasks");
+});
+
+it("says so when nothing is left to arrange, and when the tasks cannot be read", async () => {
+  serve([]);
+  render();
+  expect(await screen.findByText("Niets meer te regelen.")).toBeTruthy();
+  cleanup();
+  serve(500);
+  render();
+  expect(await screen.findByRole("alert")).toBeTruthy();
+  expect(screen.queryByText("Niets meer te regelen.")).toBeNull();
+});
+
+it("identifies an overdue task with text as well as colour", async () => {
+  serve([task("late", "Visum", { due_date: "2000-01-02" })]);
+  render();
+  expect(await screen.findByLabelText("Achterstallig: Visum")).toHaveClass("text-travel-danger");
+});
