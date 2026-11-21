@@ -23,7 +23,7 @@ import { PublicationManager } from "./PublicationManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
-vi.mock("./RenderedPreview", () => ({ RenderedPreview: () => <p>Weergegeven preview</p> }));
+vi.mock("@/components/projection/RenderedPreview", () => ({ RenderedPreview: () => <p>Weergegeven preview</p> }));
 
 const scope = (items: ShareScope["items"] = []): ShareScope => ({
   schema_version: "travel/share-scope@1",

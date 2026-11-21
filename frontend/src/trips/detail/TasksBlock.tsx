@@ -1,6 +1,6 @@
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { Markdown } from "../../Markdown";
+import { Markdown } from "@/components/Markdown";
 import { formatDay } from "@/lib/dates";
 import { type Trip, type TripTask } from "../../api-types";
 import { RecordHeading, Section, timestamp } from "./shared";

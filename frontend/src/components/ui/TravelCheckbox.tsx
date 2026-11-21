@@ -1,4 +1,4 @@
-import { Checkbox } from "./checkbox";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 
 /** Preserve the application API and explicit-label handling around the generated control. */

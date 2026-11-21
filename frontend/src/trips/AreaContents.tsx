@@ -1,6 +1,6 @@
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { routeTitle, stayLabel, visitTitle } from "@/lib/records";
 import { type Area, type Trip } from "../api-types";
 import { useTripResource } from "@/lib/query/owner-queries";

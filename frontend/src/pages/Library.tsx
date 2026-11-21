@@ -1,11 +1,11 @@
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "@/i18n/locale";
 import { useAuth } from "../auth-context";
-import { EmptyState } from "@/ui/EmptyState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { DocumentManager } from "../documents/DocumentManager";
 import { EmergencyInfoManager } from "../library/EmergencyInfoManager";
 import { OfflineManager } from "../offline/OfflineManager";
-import { HomeLink } from "../trips/HomeLink";
+import { HomeLink } from "@/components/HomeLink";
 
 export function Library() {
   useLocale();

@@ -11,7 +11,7 @@ import { m } from "../../paraglide/messages.js";
 import { errorNotice, FeedbackError, textNotice, type ReportNotice } from "@/lib/api/feedback";
 import { useTripResource } from "@/lib/query/owner-queries";
 import { groupedIds } from "../alternatives/model";
-import { DeleteConfirmation, RecordDialog } from "../../RecordDialog";
+import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
 import { formatDay } from "@/lib/dates";
 import { routeInPlan, routeTitle, sameJourney } from "@/lib/records";
 import { type Route, type Trip } from "../../api-types";

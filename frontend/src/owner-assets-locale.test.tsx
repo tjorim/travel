@@ -20,7 +20,7 @@ import { serveApi } from "./query/serve-api";
 
 const auth = vi.hoisted(() => ({ session: { accessToken: "" } }));
 vi.mock("./auth-context", () => ({ useAuth: () => auth }));
-vi.mock("./TripMap", () => ({
+vi.mock("@/components/map/TripMap", () => ({
   TripMap: ({ points }: { points: { detail: string }[] }) => <p>{points[0]?.detail}</p>,
 }));
 const trip: Trip = {

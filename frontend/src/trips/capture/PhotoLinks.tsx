@@ -1,11 +1,11 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { formatCapture } from "@/lib/dates";
 import { type MediaAsset } from "../../api-types";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { SuggestionAside } from "./SuggestionAside";
 
 type Gps = { latitude: number; longitude: number };

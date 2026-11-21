@@ -1,15 +1,15 @@
-import { Spinner } from "@/ui/spinner";
-import { Alert } from "@/ui/alert";
+import { Spinner } from "@/components/ui/spinner";
+import { Alert } from "@/components/ui/alert";
 import { errorNotice, useFeedback } from "@/lib/api/feedback";
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "@/i18n/locale";
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { useQueries } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 
 import { useAuth } from "../auth-context";
-import { EmptyState } from "@/ui/EmptyState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { HomeTripCard } from "../trips/OwnerTripCard";
 import { orderedTrips, today, tripState } from "../trips/trip-state";
 

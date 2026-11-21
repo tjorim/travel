@@ -1,5 +1,5 @@
 import { dayjs } from "@/lib/dayjs";
-import type { ProjectionRoute, ProjectionStay, ProjectionVisit } from "./api-types";
+import type { ProjectionRoute, ProjectionStay, ProjectionVisit } from "@/api-types";
 import { addDays } from "@/lib/dates";
 
 /** Where one stay is on a given day: arriving, sleeping there (a night) or leaving. */

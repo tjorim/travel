@@ -1,11 +1,11 @@
-import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-import { SearchSelect } from "../../forms/fields";
+import { SearchSelect } from "@/components/forms/fields";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { ChoiceGroup } from "@/ui/ChoiceGroup";
-import { Field, FieldLabel } from "@/ui/field";
+import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
+import { Field, FieldLabel } from "@/components/ui/field";
 import type { Bag, Filter, Group } from "./model";
 
 /** Grouping, filtering and search, plus selecting items for a bulk pack, unpack or move. */

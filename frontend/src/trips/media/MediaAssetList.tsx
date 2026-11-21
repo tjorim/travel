@@ -1,4 +1,4 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
@@ -6,8 +6,8 @@ import { useOwner } from "@/lib/query/owner-queries";
 import { bytesLabel } from "@/lib/files";
 import { formatCapture } from "@/lib/dates";
 import { type MediaAsset } from "../../api-types";
-import { Field, FieldLabel } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { OwnerImage } from "../OwnerImage";
 
 /** The trip's media as selectable rows, each with a checkbox that adds it to the travel-update review. */

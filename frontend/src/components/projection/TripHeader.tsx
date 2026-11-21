@@ -2,8 +2,8 @@ import { useState, type ElementType } from "react";
 import { cn } from "cn";
 
 import { useLocale } from "@/i18n/locale";
-import { Markdown } from "./Markdown";
-import { m } from "./paraglide/messages.js";
+import { Markdown } from "@/components/Markdown";
+import { m } from "@/paraglide/messages.js";
 
 /** A long authored title would otherwise fill the first screen at display size with no room between lines. */
 const LONG_TITLE_LENGTH = 40;

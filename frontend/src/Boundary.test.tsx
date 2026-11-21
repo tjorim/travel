@@ -12,7 +12,7 @@ const auth = vi.hoisted(() => ({
   setSession: () => undefined,
 }));
 vi.mock("./auth-context", () => ({ useAuth: () => auth }));
-vi.mock("./Preferences", () => ({ Preferences: () => null }));
+vi.mock("@/components/preferences/Preferences", () => ({ Preferences: () => null }));
 vi.mock("./trips/CaptureDialog", () => ({
   CaptureDialog: ({
     open,

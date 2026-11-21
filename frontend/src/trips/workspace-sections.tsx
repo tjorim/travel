@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 
-import { lazyView } from "../lazy-view";
+import { lazyView } from "@/components/lazy-view";
 import { m } from "../paraglide/messages.js";
 import type { Area, Trip } from "../api-types";
 import type { TravelUpdateCandidateIntent } from "../capture-draft";

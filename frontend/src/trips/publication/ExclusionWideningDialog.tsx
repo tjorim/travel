@@ -1,11 +1,11 @@
-import { Field, FieldLabel } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { useState } from "react";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { ApiError } from "@/lib/api/api";
-import { DeleteConfirmation } from "../../RecordDialog";
+import { DeleteConfirmation } from "@/components/RecordDialog";
 import type { ExclusionWidening, KindCounts } from "../../api-types";
 import { kindCountsText } from "./catalog";
 

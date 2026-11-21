@@ -1,6 +1,6 @@
 import { FinishedTrackImport } from "./FinishedTrackImport";
 import { FlightLineSuggestion } from "./FlightLineSuggestion";
-import { Collapsible } from "@/ui/collapsible";
+import { Collapsible } from "@/components/ui/collapsible";
 
 import { DateField, DateTimeField } from "../../forms/DateTimeFields";
 import {
@@ -9,16 +9,16 @@ import {
   TextAreaField,
   TextField,
   TimeZoneField,
-} from "../../forms/fields";
+} from "@/components/forms/fields";
 import { DocumentLinksField } from "../../forms/DocumentLinksField";
-import { LocalizedField } from "../../forms/LocalizedField";
-import { MarkdownField } from "../../forms/MarkdownField";
+import { LocalizedField } from "@/components/forms/LocalizedField";
+import { MarkdownField } from "@/components/forms/MarkdownField";
 import type { useRecordForm } from "@/hooks/useRecordForm";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { ROUTE_MODE_LABELS } from "@/lib/records";
 import { type Area, type DocumentAsset, type Location } from "../../api-types";
-import { FieldLegend, FieldSet } from "@/ui/field";
+import { FieldLegend, FieldSet } from "@/components/ui/field";
 import { PLANNING_STATUS_LABELS } from "@/lib/labels";
 import { PlacePicker } from "../PlacePicker";
 import { RouteGeometryEditor } from "../RouteGeometryEditor";

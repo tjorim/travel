@@ -1,8 +1,8 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { RecordDialog } from "../../RecordDialog";
+import { RecordDialog } from "@/components/RecordDialog";
 
 /** Shows a share link's URL once it is created or revealed, with a copy action. */
 export function RevealedLinkDialog({

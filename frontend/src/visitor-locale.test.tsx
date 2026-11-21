@@ -11,11 +11,11 @@ import {
   type Projection,
   type ProjectionMedia,
   type ProjectionPlace,
-} from "./ProjectionView";
+} from "@/components/projection/ProjectionView";
 import { fixture } from "./test-projection";
 import { VisitorRoutes } from "./visitor-routes";
 import type { ShareScope } from "./api-types";
-import { RenderedPreview } from "./trips/RenderedPreview";
+import { RenderedPreview } from "@/components/projection/RenderedPreview";
 import { m } from "./paraglide/messages.js";
 import { rememberSharedTrip } from "./saved-shared-trips";
 import { http, HttpResponse } from "msw/http";

@@ -1,18 +1,18 @@
-import { numberLabels } from "../../VisitorNumbers";
+import { numberLabels } from "@/components/projection/VisitorNumbers";
 import type { VisitorNumber } from "../../api-types";
-import { Button } from "@/ui/button";
-import { Collapsible } from "@/ui/collapsible";
+import { Button } from "@/components/ui/button";
+import { Collapsible } from "@/components/ui/collapsible";
 import { useState } from "react";
 
 import { AdvancedSection } from "../../forms/AdvancedSection";
-import { SearchSelect } from "../../forms/fields";
+import { SearchSelect } from "@/components/forms/fields";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { errorMessage } from "@/lib/api/api";
 import { FeedbackError } from "@/lib/api/feedback";
 import type { DatePrecision, ShareScope, ShareScopeKind } from "../../api-types";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { useSetVisibility } from "../visibility";
 import { DATE_PRECISIONS, GROUP_TITLES, groupBy, updateItem, type CatalogItem } from "./catalog";
 import { ExclusionList } from "./ExclusionList";

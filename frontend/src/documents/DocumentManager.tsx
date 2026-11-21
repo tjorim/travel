@@ -1,7 +1,7 @@
-import { Spinner } from "@/ui/spinner";
-import { Input } from "@/ui/input";
-import { Button } from "@/ui/button";
-import { Field, FieldLabel } from "@/ui/field";
+import { Spinner } from "@/components/ui/spinner";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { useState } from "react";
 
 import type { ErrorFallback } from "@/lib/api/api";
@@ -15,7 +15,7 @@ import {
   SearchSelect,
   SelectField,
   TextField,
-} from "../forms/fields";
+} from "@/components/forms/fields";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "@/hooks/useRecordDialog";
 import { useRecordForm } from "@/hooks/useRecordForm";
 import { useOfflineCopies } from "@/hooks/useOfflineCopies";
@@ -31,7 +31,7 @@ import {
   useTripSearch,
   useTripsQuery,
 } from "@/lib/query/owner-queries";
-import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
+import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
 import { bytesLabel } from "@/lib/files";
 import type { DocumentAsset, Trip } from "../api-types";
 

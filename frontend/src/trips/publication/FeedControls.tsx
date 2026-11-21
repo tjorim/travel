@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
-import { Field, FieldLabel } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { ownerRequest } from "@/lib/api/api";

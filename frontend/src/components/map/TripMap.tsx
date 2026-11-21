@@ -3,11 +3,11 @@ import { mapErrorReporter } from "@/lib/map/map-errors";
 import { mapMessages, useMapMessages } from "@/lib/map/map-messages";
 import { textNotice, useFeedback } from "@/lib/api/feedback";
 import { useLocale } from "@/i18n/locale";
-import { m } from "./paraglide/messages.js";
-import { themeColor, useTheme } from "./appearance";
-import { Collapsible } from "@/ui/collapsible";
-import { Button } from "@/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/ui/toggle-group";
+import { m } from "@/paraglide/messages.js";
+import { themeColor, useTheme } from "@/components/preferences/appearance";
+import { Collapsible } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "cn";
 import type { FeatureCollection, LineString, MultiLineString, Point } from "geojson";
@@ -22,7 +22,7 @@ import {
   type MapCamera,
 } from "@/lib/map/map-style";
 import { ROUTE_MODE_LABELS } from "@/lib/records";
-import { type RouteMode } from "./api-types";
+import { type RouteMode } from "@/api-types";
 
 export type MapLink = { label: string; href?: string; onOpen?: () => void };
 export type MapPoint = {

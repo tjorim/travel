@@ -1,12 +1,12 @@
-import { Alert } from "@/ui/alert";
-import { m } from "../paraglide/messages.js";
+import { Alert } from "@/components/ui/alert";
+import { m } from "@/paraglide/messages.js";
 import { useLocale } from "@/i18n/locale";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
-import { Field, FieldError, FieldLabel, FieldSet } from "@/ui/field";
-import { TravelTextarea } from "@/ui/TravelTextarea";
-import { Input } from "@/ui/input";
-import { Button } from "@/ui/button";
-import { Spinner } from "@/ui/spinner";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
+import { Field, FieldError, FieldLabel, FieldSet } from "@/components/ui/field";
+import { TravelTextarea } from "@/components/ui/TravelTextarea";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import {
   createContext,
@@ -18,12 +18,12 @@ import {
   type RefObject,
   type TextareaHTMLAttributes,
 } from "react";
-import { SearchSelect } from "@/ui/SearchCombobox";
-import { SuggestInput } from "@/ui/SuggestInput";
+import { SearchSelect } from "@/components/ui/SearchCombobox";
+import { SuggestInput } from "@/components/ui/SuggestInput";
 import { timeZoneOptions } from "@/lib/dates";
 import { blockUnreadableEntries } from "@/lib/unreadable-entry";
-export { SearchSelect, AsyncSearchSelect } from "@/ui/SearchCombobox";
-export type { SearchSelectOption, SearchSelectGroup } from "@/ui/SearchCombobox";
+export { SearchSelect, AsyncSearchSelect } from "@/components/ui/SearchCombobox";
+export type { SearchSelectOption, SearchSelectGroup } from "@/components/ui/SearchCombobox";
 
 import { PendingEditContext } from "@/lib/navigation-guard";
 

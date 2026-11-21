@@ -1,10 +1,10 @@
-import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { RecordDialog } from "../../RecordDialog";
-import { Field, FieldLabel } from "@/ui/field";
+import { RecordDialog } from "@/components/RecordDialog";
+import { Field, FieldLabel } from "@/components/ui/field";
 import type { PackingRequest, PackingSave } from "./model";
 
 /** Saves the current list as a reusable template; `name` is the proposed name, or null while closed. */

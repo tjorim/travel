@@ -7,9 +7,9 @@ import { m } from "../paraglide/messages.js";
 import { ApiError, errorMessage, ownerFile } from "@/lib/api/api";
 import { textNotice, type MessageNotice } from "@/lib/api/feedback";
 import { useOwner } from "@/lib/query/owner-queries";
-import { Alert } from "@/ui/alert";
-import { Button } from "@/ui/button";
-import { Spinner } from "@/ui/spinner";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 /**
  * Downloads one trip's canonical records as private JSON through the normal

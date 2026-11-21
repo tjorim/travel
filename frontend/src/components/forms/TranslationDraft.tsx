@@ -1,11 +1,11 @@
-import { Alert } from "@/ui/alert";
-import { Button } from "@/ui/button";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 
 import { type ContentLanguage } from "@/i18n/content-language";
 import { useLocale } from "@/i18n/locale";
-import { m } from "../paraglide/messages.js";
-import type { TranslationDraftResponse } from "../api-types";
+import { m } from "@/paraglide/messages.js";
+import type { TranslationDraftResponse } from "@/api-types";
 import { ownerRequest } from "@/lib/api/api";
 import {
   errorNotice,

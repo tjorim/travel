@@ -1,10 +1,10 @@
-import { SelectField, TextField } from "../../forms/fields";
+import { SelectField, TextField } from "@/components/forms/fields";
 import type { useRecordForm } from "@/hooks/useRecordForm";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import type { MediaAsset } from "../../api-types";
-import { Field, FieldLabel } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { dimensionInRange, type DerivativeValues } from "./copy-form";
 
 /** The fields for a new shareable copy: its purpose, and a size for a photo or audio handling for a video. */

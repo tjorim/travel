@@ -1,7 +1,7 @@
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { Markdown } from "../Markdown";
-import { TripMap, type MapLine, type MapPoint } from "../TripMap";
+import { Markdown } from "@/components/Markdown";
+import { TripMap, type MapLine, type MapPoint } from "@/components/map/TripMap";
 import { formatDay } from "@/lib/dates";
 import { type Visit } from "../api-types";
 import { VISIT_KIND_LABELS, PLANNING_STATUS_LABELS } from "@/lib/labels";

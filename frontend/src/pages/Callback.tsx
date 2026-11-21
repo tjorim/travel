@@ -1,8 +1,8 @@
 import { useFeedback, textNotice, errorNotice } from "@/lib/api/feedback";
 import { useLocale } from "@/i18n/locale";
-import { VisitorTopBar } from "../VisitorTopBar";
+import { VisitorTopBar } from "@/components/VisitorTopBar";
 import { m } from "../paraglide/messages.js";
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 

@@ -1,7 +1,7 @@
-import { Popover, PopoverTrigger } from "@/ui/popover";
-import { Button } from "@/ui/button";
+import { Popover, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import { PreferencesPanel } from "./PreferencesPanel";
-import { m } from "./paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { useLocale } from "@/i18n/locale";
 
 /** Loaded on first use to keep the visitor's initial bundle small. */

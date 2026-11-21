@@ -1,6 +1,6 @@
 import { useLocation } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Dialog } from "@/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { WorkspaceTabs } from "./WorkspaceTabs";

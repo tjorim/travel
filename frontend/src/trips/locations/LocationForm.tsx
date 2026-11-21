@@ -1,11 +1,11 @@
 import { AdvancedSection } from "../../forms/AdvancedSection";
 import { pickText, useContentLanguage } from "@/i18n/content-language";
-import { LocalizedField } from "../../forms/LocalizedField";
+import { LocalizedField } from "@/components/forms/LocalizedField";
 import { LocalNameField } from "../../forms/LocalNameField";
 import { SuggestedNamesNotice } from "../../forms/SuggestedNames";
 import type { SuggestedNames } from "../place-result";
 import { areaName } from "@/lib/records";
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 
 import {
   CheckboxField,
@@ -14,7 +14,7 @@ import {
   SelectField,
   TextAreaField,
   TextField,
-} from "../../forms/fields";
+} from "@/components/forms/fields";
 import type { useRecordForm } from "@/hooks/useRecordForm";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";

@@ -1,7 +1,7 @@
 import { PendingEditContext, useEditGuard } from "@/lib/navigation-guard";
-import { m } from "./paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { LocaleControl, useLocale } from "@/i18n/locale";
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Dialog } from "@base-ui/react/dialog";
 import { cn } from "cn";

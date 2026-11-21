@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Button } from "@/ui/button";
-import { Field, FieldLabel } from "@/ui/field";
-import { SearchSelect } from "../../forms/fields";
+import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { SearchSelect } from "@/components/forms/fields";
 import { useLocale } from "@/i18n/locale";
 import { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import { m } from "../../paraglide/messages.js";

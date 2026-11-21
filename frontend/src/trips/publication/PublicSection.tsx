@@ -1,6 +1,6 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 
-import { RecordForm } from "../../forms/fields";
+import { RecordForm } from "@/components/forms/fields";
 import type { useRecordForm } from "@/hooks/useRecordForm";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";

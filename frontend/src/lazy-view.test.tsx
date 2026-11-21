@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Component, type ReactNode } from "react";
 
-import { lazyNamed, lazyView } from "./lazy-view";
+import { lazyNamed, lazyView } from "@/components/lazy-view";
 import { changeLocale } from "@/i18n/locale";
 import { m } from "./paraglide/messages.js";
 

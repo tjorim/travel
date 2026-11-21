@@ -10,7 +10,7 @@ import shareHtml from "../share.html?raw";
 import { LocaleBoundary, changeLocale, resolveLocale, useLocale, formatNumber } from "@/i18n/locale";
 import { m } from "./paraglide/messages.js";
 import { getLocale } from "./paraglide/runtime.js";
-import { RecordDialog } from "./RecordDialog";
+import { RecordDialog } from "@/components/RecordDialog";
 import { dayjs } from "@/lib/dayjs";
 import nl from "../messages/nl.json";
 import en from "../messages/en.json";

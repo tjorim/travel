@@ -1,9 +1,9 @@
 import { AdvancedSection } from "../../forms/AdvancedSection";
 import { DateField, TimeField } from "../../forms/DateTimeFields";
 import { DocumentLinksField } from "../../forms/DocumentLinksField";
-import { Button } from "@/ui/button";
-import { RecordForm, requiredText, SelectField, TextField } from "../../forms/fields";
-import { MarkdownField } from "../../forms/MarkdownField";
+import { Button } from "@/components/ui/button";
+import { RecordForm, requiredText, SelectField, TextField } from "@/components/forms/fields";
+import { MarkdownField } from "@/components/forms/MarkdownField";
 import type { useRecordForm } from "@/hooks/useRecordForm";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";

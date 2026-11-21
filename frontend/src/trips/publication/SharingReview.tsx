@@ -1,10 +1,10 @@
 import { LiveLocation } from "../LiveLocation";
-import { VisitorNumbers } from "../../VisitorNumbers";
+import { VisitorNumbers } from "@/components/projection/VisitorNumbers";
 import type { UseQueryResult } from "@tanstack/react-query";
 
-import { Alert } from "@/ui/alert";
-import { Button } from "@/ui/button";
-import { Collapsible } from "@/ui/collapsible";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Collapsible } from "@/components/ui/collapsible";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";

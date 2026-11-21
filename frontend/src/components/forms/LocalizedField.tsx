@@ -1,11 +1,11 @@
-import { ChoiceGroup } from "@/ui/ChoiceGroup";
-import { Button } from "@/ui/button";
+import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
+import { Button } from "@/components/ui/button";
 import { useField, type AnyFieldApi, type AnyFormApi } from "@tanstack/react-form";
 import { useEffect, useState } from "react";
 
 import { otherLanguage, useContentLanguage, type ContentLanguage } from "@/i18n/content-language";
 import { useLocale } from "@/i18n/locale";
-import { m } from "../paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { TextField } from "./fields";
 import { MarkdownField, type MarkdownFormat } from "./MarkdownField";
 import { TranslationDraft } from "./TranslationDraft";

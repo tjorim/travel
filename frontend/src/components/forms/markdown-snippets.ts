@@ -1,4 +1,4 @@
-import { m } from "../paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 /** The toolbar's Markdown snippets. They only insert source text: the server renders it. */
 export type MarkdownSnippet = "bold" | "italic" | "heading" | "list" | "tasks" | "link";
 

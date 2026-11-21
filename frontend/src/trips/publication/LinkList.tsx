@@ -1,6 +1,6 @@
 import { FeedControls } from "./FeedControls";
-import { Button } from "@/ui/button";
-import { Collapsible } from "@/ui/collapsible";
+import { Button } from "@/components/ui/button";
+import { Collapsible } from "@/components/ui/collapsible";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";

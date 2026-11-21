@@ -3,7 +3,7 @@ import { useCallback } from "react";
 
 import { useAuth } from "../auth-context";
 import { useLocale } from "@/i18n/locale";
-import { Markdown } from "../Markdown";
+import { Markdown } from "@/components/Markdown";
 import { m } from "../paraglide/messages.js";
 import { errorMessage, openOwnerFile } from "@/lib/api/api";
 import { errorNotice, useFeedback } from "@/lib/api/feedback";
@@ -23,7 +23,7 @@ import { VisitsBlock } from "../trips/detail/VisitsBlock";
 import { OwnerTripMap } from "../trips/OwnerTripMap";
 import { TripOverview } from "../trips/TripOverview";
 import { sectionForRecord } from "../trips/workspace-sections";
-import { EmptyState } from "@/ui/EmptyState";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 export function TripDetail() {
   useLocale();

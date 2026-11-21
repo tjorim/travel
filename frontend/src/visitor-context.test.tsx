@@ -8,9 +8,9 @@ import {
   type ProjectionStay,
   type ProjectionUpdate,
   type ProjectionVisit,
-} from "./ProjectionView";
+} from "@/components/projection/ProjectionView";
 import { fixture } from "./test-projection";
-import { groupStoryContext } from "./visitor-context";
+import { groupStoryContext } from "@/components/projection/visitor-context";
 
 afterEach(cleanup);
 

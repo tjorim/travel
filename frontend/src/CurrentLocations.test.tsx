@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { CurrentLocations } from "./CurrentLocations";
+import { CurrentLocations } from "@/components/projection/CurrentLocations";
 import { changeLocale, formatInstant, formatRelativeTime } from "@/i18n/locale";
 import { m } from "./paraglide/messages.js";
 

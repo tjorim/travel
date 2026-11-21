@@ -1,12 +1,12 @@
 import { useLocale } from "@/i18n/locale";
 import { errorNotice, useFeedback, textNotice, FeedbackError } from "@/lib/api/feedback";
-import { m } from "../paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { useEffect, useState } from "react";
 
 import type { OwnerSession } from "@/lib/auth";
-import { ProjectionView, isProjection, type Audience, type Projection } from "../ProjectionView";
+import { ProjectionView, isProjection, type Audience, type Projection } from "./ProjectionView";
 import type { ContentLanguage } from "@/i18n/content-language";
-import type { ShareScope } from "../api-types";
+import type { ShareScope } from "@/api-types";
 import { ownerFile, ownerRequest } from "@/lib/api/api";
 
 export function RenderedPreview({

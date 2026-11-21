@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { fitHeadings } from "./Markdown";
+import { fitHeadings } from "@/components/Markdown";
 
 it("fits authored headings one level below the heading they sit under", () => {
   const html = "<h5>One</h5><p>x</p><h6>Two</h6>";

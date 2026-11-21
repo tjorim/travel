@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { useAuth } from "../../auth-context";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { Projection } from "../ProjectionView";
+import type { Projection } from "@/components/projection/ProjectionView";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { useOwner, useTripResource } from "@/lib/query/owner-queries";

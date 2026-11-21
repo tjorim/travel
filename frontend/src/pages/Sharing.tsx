@@ -1,4 +1,4 @@
-import { EmptyState } from "@/ui/EmptyState";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 import { useAuth } from "../auth-context";
 import { useLocale } from "@/i18n/locale";

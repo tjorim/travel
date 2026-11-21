@@ -1,4 +1,4 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
 import { useLocale } from "@/i18n/locale";

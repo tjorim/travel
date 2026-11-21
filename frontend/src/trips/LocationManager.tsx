@@ -1,4 +1,4 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "@/hooks/useRecordDialog";
@@ -8,7 +8,7 @@ import { m } from "../paraglide/messages.js";
 import { isResourceInUse } from "@/lib/api/api";
 import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
 import { useTripResource } from "@/lib/query/owner-queries";
-import { RecordDialog } from "../RecordDialog";
+import { RecordDialog } from "@/components/RecordDialog";
 import type { Area, Location, LocationInput, Trip } from "../api-types";
 import { duplicateLocations } from "./merge-candidates";
 import type { SuggestedNames } from "./place-result";

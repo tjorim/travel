@@ -1,17 +1,17 @@
-import { Alert } from "@/ui/alert";
-import { Button } from "@/ui/button";
-import { ChoiceGroup } from "@/ui/ChoiceGroup";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { useRef, useState } from "react";
 
 import { useAuth } from "../auth-context";
 import type { ContentLanguage } from "@/i18n/content-language";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import type { Projection } from "../ProjectionView";
+import type { Projection } from "@/components/projection/ProjectionView";
 import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
-import { RecordDialog } from "../RecordDialog";
+import { RecordDialog } from "@/components/RecordDialog";
 import type { ExclusionWidening, ShareScope, TripSummary } from "../api-types";
-import { RenderedPreview } from "../trips/RenderedPreview";
+import { RenderedPreview } from "@/components/projection/RenderedPreview";
 import { cloneScope } from "../trips/publication/catalog";
 import {
   ExclusionWideningDialog,

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from "react";
-import { Button } from "@/ui/button";
-import { m } from "./paraglide/messages.js";
+import { Button } from "@/components/ui/button";
+import { m } from "@/paraglide/messages.js";
 import { useLocale } from "@/i18n/locale";
 
 const CompactPreferences = lazy(() => import("./CompactPreferences"));

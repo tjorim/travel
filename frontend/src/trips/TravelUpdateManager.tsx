@@ -1,20 +1,20 @@
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { useFeedback, textNotice, errorNotice } from "@/lib/api/feedback";
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 
 import { DateTimeField } from "../forms/DateTimeFields";
-import { RecordForm, requiredText, SelectField } from "../forms/fields";
+import { RecordForm, requiredText, SelectField } from "@/components/forms/fields";
 import { AuthoredText, authoredLanguage } from "@/i18n/content-language";
-import { LocalizedField } from "../forms/LocalizedField";
-import { MarkdownField } from "../forms/MarkdownField";
+import { LocalizedField } from "@/components/forms/LocalizedField";
+import { MarkdownField } from "@/components/forms/MarkdownField";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "@/hooks/useRecordDialog";
 import { useRecordForm } from "@/hooks/useRecordForm";
 
 import { ownerKeys } from "@/lib/query/keys";
 import { tripPath, useOwner, useOwnerMutation } from "@/lib/query/owner-queries";
-import { Markdown } from "../Markdown";
-import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
+import { Markdown } from "@/components/Markdown";
+import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
 import { localDateTime, updateWallClock, zoneName } from "@/lib/dates";
 import { locationName } from "@/lib/records";
 import {

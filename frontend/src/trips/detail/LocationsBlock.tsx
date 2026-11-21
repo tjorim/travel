@@ -2,7 +2,7 @@ import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { Link } from "@tanstack/react-router";
 
-import { Markdown } from "../../Markdown";
+import { Markdown } from "@/components/Markdown";
 import type { Location, Trip } from "../../api-types";
 import { placeLabel, Section } from "./shared";
 import { DetailList } from "./DetailList";

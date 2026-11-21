@@ -1,7 +1,7 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 
 import { useLocale } from "@/i18n/locale";
-import { LocalName } from "../../LocalName";
+import { LocalName } from "@/components/LocalName";
 import { m } from "../../paraglide/messages.js";
 import { ownerLocationName, areaName } from "@/lib/records";
 import { type Area, type Location } from "../../api-types";

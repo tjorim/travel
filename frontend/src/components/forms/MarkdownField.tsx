@@ -1,16 +1,16 @@
-import { Spinner } from "@/ui/spinner";
-import { Alert } from "@/ui/alert";
-import { m } from "../paraglide/messages.js";
+import { Spinner } from "@/components/ui/spinner";
+import { Alert } from "@/components/ui/alert";
+import { m } from "@/paraglide/messages.js";
 import { useLocale } from "@/i18n/locale";
 import { textNotice, errorNotice, noticeMessage, type ErrorNotice } from "@/lib/api/feedback";
-import { Button } from "@/ui/button";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@/ui/field";
-import { TravelTextarea } from "@/ui/TravelTextarea";
+import { Button } from "@/components/ui/button";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { TravelTextarea } from "@/components/ui/TravelTextarea";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { cn } from "cn";
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 
-import { Markdown } from "../Markdown";
+import { Markdown } from "@/components/Markdown";
 import { ownerRequest } from "@/lib/api/api";
 import { useOwner } from "@/lib/query/owner-queries";
 import { optionalNote, useFieldErrors } from "./fields";

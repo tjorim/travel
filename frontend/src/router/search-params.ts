@@ -1,6 +1,6 @@
 // Route search params use small, hand-written parse functions per route (no schema
 // library such as zod/valibot). The app's forms already validate this way (see
-// `src/forms/fields.tsx`); introduce a schema library only if a route's params grow
+// `src/components/forms/fields.tsx`); introduce a schema library only if a route's params grow
 // enough to need composition or coercion beyond what a plain function reads cleanly.
 
 /**

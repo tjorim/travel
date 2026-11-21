@@ -1,6 +1,6 @@
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { Markdown } from "../../Markdown";
+import { Markdown } from "@/components/Markdown";
 import { formatUpdateInstant } from "@/lib/dates";
 import { type MediaAsset, type Trip } from "../../api-types";
 import { visibilityLabel } from "../visibility";

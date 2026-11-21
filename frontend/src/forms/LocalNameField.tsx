@@ -1,9 +1,9 @@
-import { Field, FieldDescription, FieldError, FieldLabel } from "@/ui/field";
-import { Input } from "@/ui/input";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import type { AnyFieldApi } from "@tanstack/react-form";
 
 import { useLocale } from "@/i18n/locale";
-import { optionalNote, useFieldErrors } from "./fields";
+import { optionalNote, useFieldErrors } from "@/components/forms/fields";
 
 /**
  * A place's name as written where the place is (#376): a plain input, not a Dutch | English pair, because it is

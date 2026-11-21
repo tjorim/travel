@@ -1,6 +1,6 @@
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { Input } from "@/ui/input";
+import { Input } from "@/components/ui/input";
 import { useCallback, useRef } from "react";
 
 import {
@@ -8,7 +8,7 @@ import {
   SearchSelect,
   type SearchSelectGroup,
   type SearchSelectOption,
-} from "../forms/fields";
+} from "@/components/forms/fields";
 import {
   tripPath,
   useAreaSearch,
@@ -25,7 +25,7 @@ import {
   type Visit,
 } from "../api-types";
 import { PlaceSearchField } from "./PlaceSearchField";
-import { Field, FieldError, FieldLabel, FieldSet, FieldLegend } from "@/ui/field";
+import { Field, FieldError, FieldLabel, FieldSet, FieldLegend } from "@/components/ui/field";
 
 /**
  * Where something is: a whole area, a location in one, or a new location. A location is always

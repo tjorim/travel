@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
-import { areaFocusPoints, framingCoordinates, TripMap } from "./TripMap";
+import { areaFocusPoints, framingCoordinates, TripMap } from "@/components/map/TripMap";
 
 afterEach(cleanup);
 

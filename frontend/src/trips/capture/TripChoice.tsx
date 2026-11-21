@@ -1,8 +1,8 @@
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { AsyncSearchSelect } from "../../forms/fields";
+import { AsyncSearchSelect } from "@/components/forms/fields";
 import type { TripSummary } from "../../api-types";
-import { Field, FieldLabel } from "@/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 /** The trip a travel update belongs to: fixed when the dialog is locked to one, else searchable. */
 export function TripChoice({

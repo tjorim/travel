@@ -1,6 +1,6 @@
 import { useLocale } from "@/i18n/locale";
-import { m } from "./paraglide/messages.js";
-import type { VisitorNumber, VisitorNumbers as Numbers } from "./api-types";
+import { m } from "@/paraglide/messages.js";
+import type { VisitorNumber, VisitorNumbers as Numbers } from "@/api-types";
 
 export const numberLabels: Record<VisitorNumber, () => string> = {
   days: m.numbers_days,

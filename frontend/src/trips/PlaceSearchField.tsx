@@ -1,12 +1,12 @@
 import { useLocale } from "@/i18n/locale";
-import { LocalName } from "../LocalName";
+import { LocalName } from "@/components/LocalName";
 import { m } from "../paraglide/messages.js";
 import { textNotice, errorNotice, useFeedback } from "@/lib/api/feedback";
-import { Input } from "@/ui/input";
-import { Button } from "@/ui/button";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useRef, useState } from "react";
 
-import { AsyncSearchSelect } from "../forms/fields";
+import { AsyncSearchSelect } from "@/components/forms/fields";
 
 import { tripPath, useLocationSearch, useOwnerMutation } from "@/lib/query/owner-queries";
 import { locationName } from "@/lib/records";
@@ -17,7 +17,7 @@ import {
   type LocationInput,
 } from "../api-types";
 import { splitPlaceResult, type SuggestedNames } from "./place-result";
-import { Field, FieldLabel, FieldSet, FieldLegend } from "@/ui/field";
+import { Field, FieldLabel, FieldSet, FieldLegend } from "@/components/ui/field";
 
 /** Owner-only place lookup that never persists a selected result by itself. */
 export function PlaceSearchField({

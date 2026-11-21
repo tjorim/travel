@@ -1,4 +1,4 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
 
 import { useLocale } from "@/i18n/locale";

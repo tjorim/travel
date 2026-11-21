@@ -1,11 +1,11 @@
 import { areaName } from "@/lib/records";
 import { AuthoredText } from "@/i18n/content-language";
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 
 import { useLocale } from "@/i18n/locale";
-import { LocalName } from "../../LocalName";
+import { LocalName } from "@/components/LocalName";
 import { m } from "../../paraglide/messages.js";
-import { DeleteConfirmation } from "../../RecordDialog";
+import { DeleteConfirmation } from "@/components/RecordDialog";
 import type { Area, Trip } from "../../api-types";
 import { AreaContents } from "../AreaContents";
 import type { DuplicateGroup } from "../merge-candidates";

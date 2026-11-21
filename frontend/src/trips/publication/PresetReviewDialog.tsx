@@ -1,15 +1,15 @@
-import { Alert } from "@/ui/alert";
-import { Button } from "@/ui/button";
-import { Collapsible } from "@/ui/collapsible";
-import { Field, FieldLabel } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Collapsible } from "@/components/ui/collapsible";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { useState, type ReactNode } from "react";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { errorMessage } from "@/lib/api/api";
 import { descriptorMessage } from "@/lib/api/error-messages";
-import { DeleteConfirmation } from "../../RecordDialog";
+import { DeleteConfirmation } from "@/components/RecordDialog";
 import { presetRecordName } from "@/lib/records";
 import {
   type DatePrecision,

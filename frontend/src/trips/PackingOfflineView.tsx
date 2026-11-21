@@ -1,13 +1,13 @@
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { errorNotice, useFeedback, FeedbackError, textNotice } from "@/lib/api/feedback";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
-import { Input } from "@/ui/input";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
+import { Input } from "@/components/ui/input";
 import { useEffect, useRef, useState } from "react";
-import { ChoiceGroup } from "@/ui/ChoiceGroup";
+import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { formatInstant } from "@/lib/dates";
 import type { OfflineCopySummary } from "@/lib/offline-store";
-import { Field, FieldLabel } from "@/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 export type PackingSnapshot = {
   list: { id: string; name: string };

@@ -1,7 +1,7 @@
-import { Button } from "@/ui/button";
-import { Spinner } from "@/ui/spinner";
-import { FieldLegend, FieldSet } from "@/ui/field";
-import { Input } from "@/ui/input";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { FieldLegend, FieldSet } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { CameraIcon, ImagePlusIcon, XIcon } from "lucide-react";
 import { cn } from "cn";
 import { useRef, type ChangeEvent } from "react";

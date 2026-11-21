@@ -12,8 +12,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { NavigationGuard } from "./NavigationGuard";
-import { RecordDialog } from "../RecordDialog";
-import { RecordForm, TextField } from "./fields";
+import { RecordDialog } from "@/components/RecordDialog";
+import { RecordForm, TextField } from "@/components/forms/fields";
 import { useRecordForm } from "@/hooks/useRecordForm";
 import { changeLocale } from "@/i18n/locale";
 

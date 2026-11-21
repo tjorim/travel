@@ -1,6 +1,6 @@
-import { Preferences } from "./Preferences";
+import { Preferences } from "@/components/preferences/Preferences";
 import { useLocale } from "@/i18n/locale";
-import { m } from "./paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 
 /** Plain links also work outside either router, including error states and the callback. */
 export function VisitorTopBar({

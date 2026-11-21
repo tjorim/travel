@@ -1,6 +1,6 @@
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { HomeLink } from "./HomeLink";
+import { HomeLink } from "@/components/HomeLink";
 import { PublicationManager } from "./PublicationManager";
 import type { SectionProps } from "./workspace-sections";
 

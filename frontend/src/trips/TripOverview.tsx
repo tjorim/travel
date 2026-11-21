@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { buildAgendaItems, isUndated } from "./agenda-items";
 import { isOverdue, tripDay, tripProgress } from "./readiness";
 import { sectionPath } from "./workspace-sections";
-import { Badge as StatusBadge } from "@/ui/badge";
+import { Badge as StatusBadge } from "@/components/ui/badge";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { useEffect, useMemo, useState, type ReactNode } from "react";

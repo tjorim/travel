@@ -1,11 +1,11 @@
-import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import type { ShareLink } from "../../api-types";
-import { Field, FieldLabel } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 
 /** The expiry and reason a link is activated, rotated or revoked with, and the lifecycle actions for its state. */
 export function LinkLifecycle({

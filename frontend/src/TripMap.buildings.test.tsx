@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { beforeEach, describe, expect, it } from "vitest";
-import { paintBuildings } from "./TripMap";
+import { paintBuildings } from "@/components/map/TripMap";
 
 /** A minimal stand-in for the parts of MapLibre that `paintBuildings` touches. */
 function fakeMap(color: string, opacity: number) {

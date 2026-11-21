@@ -2,8 +2,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, expect, it } from "vitest";
-import { Field, FieldError, FieldLabel } from "./field";
-import { SuggestInput } from "./SuggestInput";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { SuggestInput } from "@/components/ui/SuggestInput";
 
 afterEach(cleanup);
 

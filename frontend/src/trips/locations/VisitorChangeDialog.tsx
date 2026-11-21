@@ -1,4 +1,4 @@
-import { DeleteConfirmation } from "../../RecordDialog";
+import { DeleteConfirmation } from "@/components/RecordDialog";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { areaName } from "@/lib/records";

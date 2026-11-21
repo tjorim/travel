@@ -2,12 +2,12 @@ import { m } from "../paraglide/messages.js";
 import { useLocale } from "@/i18n/locale";
 import { errorNotice, useFeedback } from "@/lib/api/feedback";
 
-import { SearchSelect } from "../forms/fields";
+import { SearchSelect } from "@/components/forms/fields";
 
 import { ownerKeys } from "@/lib/query/keys";
 import { tripPath, useOwnerMutation } from "@/lib/query/owner-queries";
 import type { ShareScopeKind, Visibility } from "../api-types";
-import { Field, FieldError, FieldLabel } from "@/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 
 /** Who receives a record. The same three choices apply to everything that can be shared. */
 export const VISIBILITY_LABELS: Record<Visibility, string> = {

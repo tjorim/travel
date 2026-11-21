@@ -1,14 +1,14 @@
 import { useState } from "react";
 
 import type { OwnerSession } from "@/lib/auth";
-import { LocalizedField } from "../../forms/LocalizedField";
-import { AsyncSearchSelect, TextField } from "../../forms/fields";
+import { LocalizedField } from "@/components/forms/LocalizedField";
+import { AsyncSearchSelect, TextField } from "@/components/forms/fields";
 import type { useRecordForm } from "@/hooks/useRecordForm";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { useTravelUpdateSearch } from "@/lib/query/owner-queries";
 import type { MediaDerivative, TravelUpdate } from "../../api-types";
-import { Field, FieldLabel } from "@/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { OwnerImage } from "../OwnerImage";
 
 export type DerivativeValues = {

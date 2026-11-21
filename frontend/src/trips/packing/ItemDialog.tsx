@@ -1,13 +1,13 @@
-import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-import { SearchSelect } from "../../forms/fields";
+import { SearchSelect } from "@/components/forms/fields";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { DeleteConfirmation, RecordDialog } from "../../RecordDialog";
-import { Field, FieldLabel } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
-import { TravelTextarea } from "@/ui/TravelTextarea";
+import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
+import { TravelTextarea } from "@/components/ui/TravelTextarea";
 import type { Bag, ItemDraft, PackingRequest, PackingSave, PendingDelete } from "./model";
 
 /** Adds or edits one item; `dialog` is the item's id, "new", or null while closed. */

@@ -4,7 +4,7 @@ import type { FeatureCollection, Point } from "geojson";
 import type { SymbolLayerSpecification } from "maplibre-gl";
 import { afterEach, expect, it, vi } from "vitest";
 import { changeLocale } from "@/i18n/locale";
-import { TripMap, type MapPoint } from "./TripMap";
+import { TripMap, type MapPoint } from "@/components/map/TripMap";
 
 type CapturedMap = {
   sources: Record<string, FeatureCollection<Point>>;

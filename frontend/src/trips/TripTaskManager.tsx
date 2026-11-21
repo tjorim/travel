@@ -2,16 +2,16 @@ import { isOverdue, tripDay } from "./readiness";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { textNotice, errorNotice, useFeedback } from "@/lib/api/feedback";
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 import { DateField, DateTimeField } from "../forms/DateTimeFields";
-import { RecordForm, requiredText, TextField } from "../forms/fields";
-import { MarkdownField } from "../forms/MarkdownField";
+import { RecordForm, requiredText, TextField } from "@/components/forms/fields";
+import { MarkdownField } from "@/components/forms/MarkdownField";
 import { useDialogFocus, type DialogFocusRequest } from "@/hooks/useRecordDialog";
 import { useRecordForm } from "@/hooks/useRecordForm";
-import { Markdown } from "../Markdown";
-import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
+import { Markdown } from "@/components/Markdown";
+import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
 import { ownerKeys } from "@/lib/query/keys";
 import { errorMessage } from "@/lib/api/api";
 import {
@@ -22,7 +22,7 @@ import {
 } from "@/lib/query/owner-queries";
 import { formatInstant, formatDay, localDateTime } from "@/lib/dates";
 import { type TaskLink, type Trip, type TripTask } from "../api-types";
-import { FieldSet, FieldLegend } from "@/ui/field";
+import { FieldSet, FieldLegend } from "@/components/ui/field";
 
 const MAX_LINKS = 5;
 type Values = {

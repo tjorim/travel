@@ -8,9 +8,9 @@ import {
   type ProjectionRoute,
   type ProjectionStay,
   type ProjectionVisit,
-} from "./ProjectionView";
+} from "@/components/projection/ProjectionView";
 import { fixture } from "./test-projection";
-import { planByDay, type DayEntry } from "./visitor-days";
+import { planByDay, type DayEntry } from "@/components/projection/visitor-days";
 
 beforeEach(() => stubViewport(true));
 afterEach(cleanup);

@@ -11,12 +11,12 @@ import {
   ProjectionView,
   visitTimes,
   type ProjectionVisit,
-} from "./ProjectionView";
+} from "@/components/projection/ProjectionView";
 import { timeForViewer } from "@/lib/dates";
 import { type ShareScope } from "./api-types";
 import { fixture, type SparseProjection } from "./test-projection";
 import { VisitorRoutes } from "./visitor-routes";
-import { RenderedPreview } from "./trips/RenderedPreview";
+import { RenderedPreview } from "@/components/projection/RenderedPreview";
 import { serveApi } from "./query/serve-api";
 
 const previewScope: ShareScope = {

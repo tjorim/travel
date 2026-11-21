@@ -9,7 +9,7 @@ import { AuthProvider } from "../auth-context";
 import { ContentLanguageProvider, type ContentLanguage } from "@/i18n/content-language";
 import { server } from "../mocks/server";
 import { testToken } from "../query/test-utils";
-import { LocalizedField } from "./LocalizedField";
+import { LocalizedField } from "@/components/forms/LocalizedField";
 
 afterEach(() => {
   cleanup();

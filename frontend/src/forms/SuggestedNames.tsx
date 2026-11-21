@@ -1,10 +1,10 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { useStore, type AnyFormApi } from "@tanstack/react-form";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { pendingNames, type SuggestedNames } from "../trips/place-result";
-import { localizedNames } from "./LocalizedField";
+import { localizedNames } from "@/components/forms/LocalizedField";
 
 /**
  * The provider's own Dutch and English names for a chosen place, offered for the two versions of a label (#376).

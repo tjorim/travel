@@ -1,7 +1,7 @@
-import { m } from "./paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { useLocale } from "@/i18n/locale";
 import { useSyncExternalStore } from "react";
-import { ChoiceGroup } from "@/ui/ChoiceGroup";
+import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 
 export type Appearance = "light" | "dark" | "auto";
 const subscribe = (notify: () => void) => {

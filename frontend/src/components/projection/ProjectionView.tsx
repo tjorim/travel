@@ -9,18 +9,18 @@ import type {
   ProjectionStay,
   ProjectionUpdate,
   ProjectionVisit,
-} from "./api-types";
-import { Spinner } from "@/ui/spinner";
-import { Alert } from "@/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
-import { m } from "./paraglide/messages.js";
+} from "@/api-types";
+import { Spinner } from "@/components/ui/spinner";
+import { Alert } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { m } from "@/paraglide/messages.js";
 import { selectedLocale, useLocale } from "@/i18n/locale";
-import { Collapsible } from "@/ui/collapsible";
-import { Dialog } from "@/ui/dialog";
-import { Button } from "@/ui/button";
+import { Collapsible } from "@/components/ui/collapsible";
+import { Dialog } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon, ImagesIcon, XIcon } from "lucide-react";
-import { Field, FieldLabel } from "@/ui/field";
-import { Switch } from "@/ui/switch";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Switch } from "@/components/ui/switch";
 import {
   lazy,
   Suspense,
@@ -34,17 +34,17 @@ import {
 } from "react";
 import { cn } from "cn";
 import { dayjs } from "@/lib/dayjs";
-import { LocalName } from "./LocalName";
-import { Markdown } from "./Markdown";
+import { LocalName } from "@/components/LocalName";
+import { Markdown } from "@/components/Markdown";
 import { Authored, DocumentLanguageProvider, useTextLang } from "./visitor-language";
 import type { ContentLanguage } from "@/i18n/content-language";
-import { TripMap, type MapLine, type MapPhoto, type MapPoint } from "./TripMap";
+import { TripMap, type MapLine, type MapPhoto, type MapPoint } from "@/components/map/TripMap";
 import { TripHeader, type TripCover } from "./TripHeader";
 import { groupStoryContext, type UpdateContext } from "./visitor-context";
 import { localDay, planByDay, type DayEntry, type PlanDay, type PlanRecords } from "./visitor-days";
 import { ROUTE_MODE_LABELS } from "@/lib/records";
 import { timeForViewer, zoneName } from "@/lib/dates";
-import { type RouteMode } from "./api-types";
+import { type RouteMode } from "@/api-types";
 
 const CurrentLocations = lazy(() => import("./CurrentLocations"));
 
@@ -59,7 +59,7 @@ export type {
   ProjectionStay,
   ProjectionUpdate,
   ProjectionVisit,
-} from "./api-types";
+} from "@/api-types";
 
 export type Audience = "public" | "share";
 export type PreviewResources = {

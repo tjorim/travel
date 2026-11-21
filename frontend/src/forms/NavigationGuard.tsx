@@ -1,7 +1,7 @@
 import { flushSync } from "react-dom";
 import { useBlocker } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { DeleteConfirmation } from "../RecordDialog";
+import { DeleteConfirmation } from "@/components/RecordDialog";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { NavigationGuardContext, type EditState } from "@/lib/navigation-guard";

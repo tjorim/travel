@@ -3,10 +3,10 @@ import { ApiError, apiFailure, errorMessage } from "@/lib/api/api";
 import { m } from "./paraglide/messages.js";
 import { adoptLocale, chosenLocale, useLocale } from "@/i18n/locale";
 import type { ContentLanguage } from "@/i18n/content-language";
-import { deliveredLanguage, isContentLanguage, withLanguage } from "./visitor-language";
-import { VisitorTopBar } from "./VisitorTopBar";
-import { Button } from "@/ui/button";
-import { Collapsible } from "@/ui/collapsible";
+import { deliveredLanguage, isContentLanguage, withLanguage } from "@/components/projection/visitor-language";
+import { VisitorTopBar } from "@/components/VisitorTopBar";
+import { Button } from "@/components/ui/button";
+import { Collapsible } from "@/components/ui/collapsible";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createMemoryHistory,
@@ -24,7 +24,7 @@ import {
   tripDates,
   type Audience,
   type Projection,
-} from "./ProjectionView";
+} from "@/components/projection/ProjectionView";
 import type { CollectionIndex, PublicTripCard } from "./api-types";
 import {
   forgetAllSharedTrips,

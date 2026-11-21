@@ -1,11 +1,11 @@
-import { Spinner } from "@/ui/spinner";
-import { Button } from "@/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
 import { CloudOffIcon, RefreshCwIcon } from "lucide-react";
 import { Component, Suspense, lazy, type ComponentType, type FC, type ReactNode } from "react";
 
 import { useLocale } from "@/i18n/locale";
-import { m } from "./paraglide/messages.js";
-import { Skeleton } from "@/ui/skeleton";
+import { m } from "@/paraglide/messages.js";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /** A deferred module that could not be fetched, as opposed to a view that failed while rendering. */
 export class ChunkLoadError extends Error {

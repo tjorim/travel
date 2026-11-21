@@ -1,7 +1,7 @@
-import { Button } from "@/ui/button";
-import { Collapsible } from "@/ui/collapsible";
-import { Field, FieldLabel } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Button } from "@/components/ui/button";
+import { Collapsible } from "@/components/ui/collapsible";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { useState } from "react";
 
 import { useLocale } from "@/i18n/locale";

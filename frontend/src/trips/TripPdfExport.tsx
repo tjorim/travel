@@ -6,13 +6,13 @@ import type { CollectionMembershipResponse } from "../api-types";
 import { ownerKeys } from "@/lib/query/keys";
 import { ownerFile, ownerRequest } from "@/lib/api/api";
 import { useOwner, useTripResource } from "@/lib/query/owner-queries";
-import { Alert } from "@/ui/alert";
-import { Button } from "@/ui/button";
-import { ChoiceGroup } from "@/ui/ChoiceGroup";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { saveFile } from "./save-file";
-import { Collapsible } from "@/ui/collapsible";
-import { Field, FieldLabel } from "@/ui/field";
+import { Collapsible } from "@/components/ui/collapsible";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 export function TripPdfExport({ tripId }: { tripId: string }) {
   const locale = useLocale();

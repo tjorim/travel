@@ -1,7 +1,7 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
-import { AsyncSearchSelect, SearchSelect } from "../../forms/fields";
+import { AsyncSearchSelect, SearchSelect } from "@/components/forms/fields";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import type { ErrorFallback } from "@/lib/api/api";
@@ -19,7 +19,7 @@ import {
   type Visit,
 } from "../../api-types";
 import { type TravelUpdateCandidateIntent } from "../../capture-draft";
-import { Field, FieldLabel } from "@/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 /**
  * Reviews the selected media for possible travel updates: nothing is stored, and a candidate only opens the capture

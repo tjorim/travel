@@ -1,6 +1,6 @@
 import { useLocale } from "@/i18n/locale";
-import { m } from "../paraglide/messages.js";
-import { Button } from "@/ui/button";
+import { m } from "@/paraglide/messages.js";
+import { Button } from "@/components/ui/button";
 import { Combobox } from "@base-ui/react/combobox";
 import { Children, isValidElement, useEffect, useRef, useState, type ReactNode } from "react";
 

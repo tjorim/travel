@@ -1,13 +1,13 @@
-import { Button } from "@/ui/button";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
-import { ChoiceGroup } from "@/ui/ChoiceGroup";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Button } from "@/components/ui/button";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { useEffect, useId, useMemo, useState } from "react";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { errorMessage } from "@/lib/api/api";
-import { DeleteConfirmation, RecordDialog } from "../../RecordDialog";
+import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
 import { formatDay } from "@/lib/dates";
 import {
   type AlternativeGroup,

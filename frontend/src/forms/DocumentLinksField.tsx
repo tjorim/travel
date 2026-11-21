@@ -1,5 +1,5 @@
-import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";

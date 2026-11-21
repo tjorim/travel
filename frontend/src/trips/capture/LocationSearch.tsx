@@ -1,12 +1,12 @@
-import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 import { useLocale } from "@/i18n/locale";
-import { LocalName } from "../../LocalName";
+import { LocalName } from "@/components/LocalName";
 import { m } from "../../paraglide/messages.js";
 import type { PlaceSearchResponse, LocationInput } from "../../api-types";
 import type { UpdateDraft } from "../../capture-draft";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { splitPlaceResult } from "../place-result";
 import { SuggestionAside } from "./SuggestionAside";
 

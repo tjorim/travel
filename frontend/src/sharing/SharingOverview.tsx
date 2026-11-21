@@ -1,7 +1,7 @@
-import { Alert } from "@/ui/alert";
-import { Badge } from "@/ui/badge";
-import { Button } from "@/ui/button";
-import { Spinner } from "@/ui/spinner";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { useQueries } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";

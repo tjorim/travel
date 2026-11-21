@@ -1,7 +1,7 @@
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { dayjs } from "@/lib/dayjs";
-import { Markdown } from "../../Markdown";
+import { Markdown } from "@/components/Markdown";
 import { ROUTE_MODE_LABELS, routeTitle, areaName } from "@/lib/records";
 import { formatDay, formatInstant } from "@/lib/dates";
 import { type Location, type Route, type Trip } from "../../api-types";

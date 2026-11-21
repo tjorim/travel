@@ -1,6 +1,6 @@
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { Markdown } from "../../Markdown";
+import { Markdown } from "@/components/Markdown";
 import { formatDayRange } from "@/lib/dates";
 import { stayLabel, areaName } from "@/lib/records";
 import { type Stay, type Trip } from "../../api-types";

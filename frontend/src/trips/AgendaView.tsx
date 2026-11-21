@@ -1,13 +1,13 @@
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/ui/dropdown-menu";
-import { ToggleGroup, ToggleGroupItem } from "@/ui/toggle-group";
+} from "@/components/ui/dropdown-menu";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EllipsisVerticalIcon, PlusIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 

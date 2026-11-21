@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { PopoverContent } from "@/ui/popover";
+import { PopoverContent } from "@/components/ui/popover";
 import { AppearanceControl } from "./appearance";
 import { LocaleControl } from "@/i18n/locale";
 

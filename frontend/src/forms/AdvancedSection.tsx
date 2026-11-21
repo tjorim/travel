@@ -1,4 +1,4 @@
-import { Collapsible } from "@/ui/collapsible";
+import { Collapsible } from "@/components/ui/collapsible";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { useLocale } from "@/i18n/locale";

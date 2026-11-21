@@ -1,6 +1,6 @@
 import { CalendarIcon } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
-import { Input } from "@/ui/input";
+import { Input } from "@/components/ui/input";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import {
   dateFromIso,
@@ -14,10 +14,10 @@ import {
 } from "../date-input";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { Calendar } from "@/ui/calendar";
-import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
-import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
-import { optionalNote, useFieldErrors } from "./fields";
+import { Calendar } from "@/components/ui/calendar";
+import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { optionalNote, useFieldErrors } from "@/components/forms/fields";
 import { UNREADABLE_ENTRY } from "@/lib/unreadable-entry";
 
 type PickerProps = {

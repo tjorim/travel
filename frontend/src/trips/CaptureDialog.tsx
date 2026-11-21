@@ -1,5 +1,5 @@
-import { Button } from "@/ui/button";
-import { Collapsible } from "@/ui/collapsible";
+import { Button } from "@/components/ui/button";
+import { Collapsible } from "@/components/ui/collapsible";
 import { useStore } from "@tanstack/react-form";
 import { ChevronDownIcon, LockIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -8,9 +8,9 @@ import { flushSync } from "react-dom";
 
 import { decodeSubject } from "@/lib/auth";
 import { useAuth } from "../auth-context";
-import { requiredText, TextField } from "../forms/fields";
+import { requiredText, TextField } from "@/components/forms/fields";
 import { DateTimeField } from "../forms/DateTimeFields";
-import { MarkdownField } from "../forms/MarkdownField";
+import { MarkdownField } from "@/components/forms/MarkdownField";
 import { blockUnreadableEntries, UNREADABLE_ENTRY } from "@/lib/unreadable-entry";
 import { useConfirmation } from "@/hooks/useConfirmation";
 import { useRecordForm } from "@/hooks/useRecordForm";
@@ -19,7 +19,7 @@ import { m } from "../paraglide/messages.js";
 import { errorMessage } from "@/lib/api/api";
 import { errorNotice, FeedbackError, textNotice, useFeedback } from "@/lib/api/feedback";
 import { useTripSearch, useTripUpdates, useTripsQuery } from "@/lib/query/owner-queries";
-import { RecordDialog } from "../RecordDialog";
+import { RecordDialog } from "@/components/RecordDialog";
 import {
   DRAFT_FENCE,
   clearDraft,

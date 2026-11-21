@@ -1,7 +1,7 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
-import { SearchSelect } from "../forms/fields";
+import { SearchSelect } from "@/components/forms/fields";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { ApiError } from "@/lib/api/api";
@@ -14,7 +14,7 @@ import {
 } from "@/lib/api/feedback";
 import { ownerKeys } from "@/lib/query/keys";
 import { tripPath, useOwnerMutation } from "@/lib/query/owner-queries";
-import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
+import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
 import type {
   Area,
   AreaMergeResult,
@@ -23,8 +23,8 @@ import type {
   MergeWidening,
   Trip,
 } from "../api-types";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { audienceName } from "./locations/model";
 import { MergeRecordChoices, recordKey } from "./MergeRecordChoices";
 import { parseAudience, type DuplicateGroup, type DuplicateReason } from "./merge-candidates";

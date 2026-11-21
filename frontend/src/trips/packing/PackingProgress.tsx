@@ -1,4 +1,4 @@
-import { Progress } from "@/ui/progress";
+import { Progress } from "@/components/ui/progress";
 
 import { useLocale } from "@/i18n/locale";
 import type { Item } from "./model";

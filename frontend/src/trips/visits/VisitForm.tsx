@@ -1,8 +1,8 @@
 import { AdvancedSection } from "../../forms/AdvancedSection";
-import { CheckboxField, SelectField, RecordForm } from "../../forms/fields";
-import { LocalizedField } from "../../forms/LocalizedField";
+import { CheckboxField, SelectField, RecordForm } from "@/components/forms/fields";
+import { LocalizedField } from "@/components/forms/LocalizedField";
 import { DateField, TimeField } from "../../forms/DateTimeFields";
-import { MarkdownField } from "../../forms/MarkdownField";
+import { MarkdownField } from "@/components/forms/MarkdownField";
 import type { useRecordForm } from "@/hooks/useRecordForm";
 import { pickText, useContentLanguage } from "@/i18n/content-language";
 import { useLocale } from "@/i18n/locale";

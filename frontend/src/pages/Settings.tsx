@@ -1,6 +1,6 @@
 import { m } from "../paraglide/messages.js";
 import { useLocale } from "@/i18n/locale";
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -10,7 +10,7 @@ import { useConfirmation } from "@/hooks/useConfirmation";
 import { ownerRequest } from "@/lib/api/api";
 import { ownerKeys } from "@/lib/query/keys";
 import { useOwnerMutation, useProviderConnections } from "@/lib/query/owner-queries";
-import { EmptyState } from "@/ui/EmptyState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { OAuthStartResponse, ProviderConnectionStatus } from "../api-types";
 
 const labels = { google_photos_picker: "Google Photos", gopro_cloud: "GoPro Cloud" } as const;

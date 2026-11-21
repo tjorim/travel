@@ -5,7 +5,7 @@ import {
   liveElement,
   rememberPosition,
   type TriggerPosition,
-} from "../RecordDialog";
+} from "@/components/RecordDialog";
 
 type Origin = { trigger: HTMLElement | null; where: TriggerPosition };
 

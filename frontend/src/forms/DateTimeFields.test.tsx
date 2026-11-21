@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { changeLocale } from "@/i18n/locale";
 import { DateField, DateTimeField, TimeField } from "./DateTimeFields";
-import { RecordForm } from "./fields";
+import { RecordForm } from "@/components/forms/fields";
 import { useRecordForm } from "@/hooks/useRecordForm";
 
 type Values = { day: string; time: string; moment: string };

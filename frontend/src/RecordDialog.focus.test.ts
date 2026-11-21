@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it } from "vitest";
 
-import { focusReturnTarget, liveElement, rememberPosition } from "./RecordDialog";
+import { focusReturnTarget, liveElement, rememberPosition } from "@/components/RecordDialog";
 
 afterEach(() => {
   document.body.innerHTML = "";

@@ -1,8 +1,8 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { SearchSelect } from "../forms/fields";
+import { SearchSelect } from "@/components/forms/fields";
 import { useLocale } from "@/i18n/locale";
 import { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import { m } from "../paraglide/messages.js";
@@ -10,7 +10,7 @@ import { ownerRequest } from "@/lib/api/api";
 import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
 import { tripPath, useOwner } from "@/lib/query/owner-queries";
 import type { Trip } from "../api-types";
-import { Field, FieldLabel } from "@/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { BagDialog } from "./packing/BagDialog";
 import { BagSummaries } from "./packing/BagSummaries";
 import { DepartureCheck } from "./packing/DepartureCheck";

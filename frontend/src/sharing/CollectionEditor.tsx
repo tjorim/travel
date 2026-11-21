@@ -1,17 +1,17 @@
-import { Alert } from "@/ui/alert";
-import { Button } from "@/ui/button";
-import { Field, FieldLabel } from "@/ui/field";
-import { Input } from "@/ui/input";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { useState } from "react";
 
 import { interfaceLanguage } from "@/i18n/content-language";
-import { SearchSelect } from "../forms/fields";
-import { LocalizedFieldView, plainField } from "../forms/LocalizedField";
+import { SearchSelect } from "@/components/forms/fields";
+import { LocalizedFieldView, plainField } from "@/components/forms/LocalizedField";
 import { useConfirmation } from "@/hooks/useConfirmation";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
-import { RecordDialog } from "../RecordDialog";
+import { RecordDialog } from "@/components/RecordDialog";
 import type { TripSummary } from "../api-types";
 import { emptyScope } from "../trips/publication/catalog";
 import { LinkLifecycle } from "../trips/publication/LinkLifecycle";

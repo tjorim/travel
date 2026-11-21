@@ -1,8 +1,8 @@
-import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { RecordForm } from "../forms/fields";
+import { RecordForm } from "@/components/forms/fields";
 import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "@/hooks/useRecordDialog";
 import { useRecordForm } from "@/hooks/useRecordForm";
 import { useLocale } from "@/i18n/locale";
@@ -11,10 +11,10 @@ import { m } from "../paraglide/messages.js";
 import { errorMessage, openOwnerFile, ownerFile, type ErrorFallback } from "@/lib/api/api";
 import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
 import { tripPath, useDerivatives, useOwner, useTripResource } from "@/lib/query/owner-queries";
-import { RecordDialog } from "../RecordDialog";
+import { RecordDialog } from "@/components/RecordDialog";
 import type { ImportSession, MediaAsset, MediaDerivative, Trip } from "../api-types";
 import type { TravelUpdateCandidateIntent } from "../capture-draft";
-import { Field, FieldLabel } from "@/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { AssetView } from "./media/AssetView";
 import { CandidateReview } from "./media/CandidateReview";
 import {

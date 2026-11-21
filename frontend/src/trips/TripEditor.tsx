@@ -1,17 +1,17 @@
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { textNotice, errorNotice, useFeedback } from "@/lib/api/feedback";
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
 import { DateField } from "../forms/DateTimeFields";
-import { RecordForm } from "../forms/fields";
-import { LocalizedField } from "../forms/LocalizedField";
+import { RecordForm } from "@/components/forms/fields";
+import { LocalizedField } from "@/components/forms/LocalizedField";
 import { useRecordForm } from "@/hooks/useRecordForm";
 import { ownerKeys } from "@/lib/query/keys";
 
 import { useOwnerMutation, useRefreshTrip } from "@/lib/query/owner-queries";
-import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
+import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
 import { interfaceLanguage } from "@/i18n/content-language";
 import { TripExport } from "./TripExport";
 import { TripLanguage } from "./TripLanguage";

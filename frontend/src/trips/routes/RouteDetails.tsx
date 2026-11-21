@@ -1,8 +1,8 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 
 import { AuthoredText } from "@/i18n/content-language";
 import { useLocale } from "@/i18n/locale";
-import { Markdown } from "../../Markdown";
+import { Markdown } from "@/components/Markdown";
 import { m } from "../../paraglide/messages.js";
 import { ROUTE_MODE_LABELS, routeTitle } from "@/lib/records";
 import { type Route } from "../../api-types";

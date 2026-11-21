@@ -6,7 +6,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { changeLocale } from "@/i18n/locale";
 import { server } from "./mocks/server";
 import { m } from "./paraglide/messages.js";
-import type { Projection } from "./ProjectionView";
+import type { Projection } from "@/components/projection/ProjectionView";
 import {
   forgetAllSharedTrips,
   readSavedSharedTrips,

@@ -11,7 +11,7 @@ import { TravelUpdateManager } from "./TravelUpdateManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("../auth-context", () => ({ useAuth: () => auth }));
-vi.mock("./RenderedPreview", () => ({
+vi.mock("@/components/projection/RenderedPreview", () => ({
   RenderedPreview: ({ focusId }: { focusId?: string }) => <p>Weergegeven preview {focusId}</p>,
 }));
 

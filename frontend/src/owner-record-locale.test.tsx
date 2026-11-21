@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { changeLocale } from "@/i18n/locale";
 import { server } from "./mocks/server";
 import { TripEditor } from "./trips/TripEditor";
-import { applyMarkdownSnippet } from "./forms/markdown-snippets";
+import { applyMarkdownSnippet } from "@/components/forms/markdown-snippets";
 import { renderWithOwner, testToken } from "./query/test-utils";
 import { useFeedback, textNotice } from "@/lib/api/feedback";
 import { m } from "./paraglide/messages.js";

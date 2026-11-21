@@ -2,7 +2,7 @@ import { DocumentManager } from "../documents/DocumentManager";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { useTripResource } from "@/lib/query/owner-queries";
-import { HomeLink } from "./HomeLink";
+import { HomeLink } from "@/components/HomeLink";
 import { focusFor } from "./record-focus";
 import { SectionAccordion } from "./SectionAccordion";
 import { TripTaskManager } from "./TripTaskManager";

@@ -1,6 +1,6 @@
-import { Alert } from "@/ui/alert";
-import { Button } from "@/ui/button";
-import { ChoiceGroup } from "@/ui/ChoiceGroup";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { useId, useRef, useState } from "react";
 
 import { useLocale } from "@/i18n/locale";

@@ -1,17 +1,17 @@
-import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { SearchSelect } from "../../forms/fields";
+import { SearchSelect } from "@/components/forms/fields";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { ownerRequest } from "@/lib/api/api";
 import { useOwner } from "@/lib/query/owner-queries";
-import { DeleteConfirmation, RecordDialog } from "../../RecordDialog";
-import { ChoiceGroup } from "@/ui/ChoiceGroup";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
+import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import type {
   PackingList,
   PackingRequest,

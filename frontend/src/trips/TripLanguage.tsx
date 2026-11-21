@@ -1,8 +1,8 @@
-import { Alert } from "@/ui/alert";
-import { Button } from "@/ui/button";
-import { ChoiceGroup } from "@/ui/ChoiceGroup";
-import { Field, FieldDescription, FieldLabel } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { useState } from "react";
 
 import { type ContentLanguage } from "@/i18n/content-language";

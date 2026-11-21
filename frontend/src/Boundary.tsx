@@ -1,9 +1,9 @@
 import { cn } from "cn";
 import { m } from "./paraglide/messages.js";
 import { useLocale } from "@/i18n/locale";
-import { PreferencesPanel } from "./PreferencesPanel";
-import { VisitorTopBar } from "./VisitorTopBar";
-import { Button } from "@/ui/button";
+import { PreferencesPanel } from "@/components/preferences/PreferencesPanel";
+import { VisitorTopBar } from "@/components/VisitorTopBar";
+import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
@@ -20,7 +20,7 @@ import { beginSignIn, beginSignOut, decodeSubject } from "@/lib/auth";
 import { useAuth } from "./auth-context";
 import { CaptureProvider, useCapture } from "./capture-context";
 import { wipeOfflineData } from "@/lib/offline-store";
-import { Popover, PopoverTrigger } from "@/ui/popover";
+import { Popover, PopoverTrigger } from "@/components/ui/popover";
 
 const PublicationState = lazy(() => import("./trips/PublicationState"));
 import { OwnerHeaderContext } from "./owner-header-context";

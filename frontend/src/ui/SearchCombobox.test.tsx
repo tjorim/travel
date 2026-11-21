@@ -5,7 +5,7 @@ import { HttpResponse, http } from "msw";
 import { afterEach, expect, it, vi } from "vitest";
 import { server } from "../mocks/server";
 import { changeLocale } from "@/i18n/locale";
-import { AsyncSearchSelect, type SearchSelectOption } from "@/ui/SearchCombobox";
+import { AsyncSearchSelect, type SearchSelectOption } from "@/components/ui/SearchCombobox";
 
 afterEach(() => {
   cleanup();

@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { stubViewport } from "./mocks/viewport";
 import { changeLocale } from "@/i18n/locale";
-import { ProjectionView, type Projection, type ProjectionMedia } from "./ProjectionView";
+import { ProjectionView, type Projection, type ProjectionMedia } from "@/components/projection/ProjectionView";
 import { fixture } from "./test-projection";
 import { m } from "./paraglide/messages.js";
 

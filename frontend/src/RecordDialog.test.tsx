@@ -3,7 +3,7 @@ import { StrictMode, useState } from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { DeleteConfirmation, RecordDialog } from "./RecordDialog";
+import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
 
 function Fixture() {
   const [open, setOpen] = useState(false);

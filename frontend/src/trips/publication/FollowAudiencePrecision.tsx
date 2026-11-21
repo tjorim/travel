@@ -1,13 +1,13 @@
-import { Button } from "@/ui/button";
-import { Field, FieldLabel } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { useState } from "react";
 
-import { SearchSelect } from "../../forms/fields";
+import { SearchSelect } from "@/components/forms/fields";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import type { FollowAudienceAudience, FollowAudienceResult } from "../../api-types";
-import { DeleteConfirmation } from "../../RecordDialog";
+import { DeleteConfirmation } from "@/components/RecordDialog";
 import { usePublicationMutations } from "./use-publication-mutations";
 
 type Choice = "both" | "visit" | "stay";

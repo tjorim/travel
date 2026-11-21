@@ -2,7 +2,7 @@
 import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { changeLocale } from "@/i18n/locale";
-import { VisitorNumbers } from "./VisitorNumbers";
+import { VisitorNumbers } from "@/components/projection/VisitorNumbers";
 import { ScopeEditor } from "./trips/publication/ScopeEditor";
 import { m } from "./paraglide/messages.js";
 import { cloneScope, emptyScope } from "./trips/publication/catalog";

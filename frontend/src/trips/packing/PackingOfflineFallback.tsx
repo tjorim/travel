@@ -1,12 +1,12 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import type { UseQueryResult } from "@tanstack/react-query";
 
-import { SearchSelect } from "../../forms/fields";
+import { SearchSelect } from "@/components/forms/fields";
 import { useLocale } from "@/i18n/locale";
 import type { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import { m } from "../../paraglide/messages.js";
 import { errorMessage } from "@/lib/api/api";
-import { Field, FieldLabel } from "@/ui/field";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { PackingOfflineView } from "../PackingOfflineView";
 import type { Bag, Item, PackingList } from "./model";
 

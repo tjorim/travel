@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { applyMarkdownSnippet } from "./markdown-snippets";
+import { applyMarkdownSnippet } from "@/components/forms/markdown-snippets";
 
 const selected = (edit: { value: string; selectionStart: number; selectionEnd: number }) =>
   edit.value.slice(edit.selectionStart, edit.selectionEnd);

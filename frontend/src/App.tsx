@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { renewSession } from "@/lib/auth";
 import { AuthProvider, useAuth } from "./auth-context";
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 import { useLocale } from "@/i18n/locale";
 import { m } from "./paraglide/messages.js";
-import { lazyNamed } from "./lazy-view";
+import { lazyNamed } from "@/components/lazy-view";
 import { Callback } from "./pages/Callback";
 import { OwnerHome } from "./pages/OwnerHome";
 import { createOwnerQueryClient } from "@/lib/query/client";

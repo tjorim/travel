@@ -3,7 +3,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, expect, it } from "vitest";
-import { TravelCheckbox } from "./TravelCheckbox";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 
 afterEach(cleanup);
 

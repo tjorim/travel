@@ -1,5 +1,5 @@
-import { RecordForm, TextField, TimeZoneField } from "../../forms/fields";
-import { LocalizedField } from "../../forms/LocalizedField";
+import { RecordForm, TextField, TimeZoneField } from "@/components/forms/fields";
+import { LocalizedField } from "@/components/forms/LocalizedField";
 import { LocalNameField } from "../../forms/LocalNameField";
 import { SuggestedNamesNotice } from "../../forms/SuggestedNames";
 import { useContentLanguage } from "@/i18n/content-language";

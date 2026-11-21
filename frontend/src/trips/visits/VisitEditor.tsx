@@ -11,7 +11,7 @@ import { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import { m } from "../../paraglide/messages.js";
 import { errorNotice, FeedbackError, textNotice, type ReportNotice } from "@/lib/api/feedback";
 import { useTripResource } from "@/lib/query/owner-queries";
-import { DeleteConfirmation, RecordDialog } from "../../RecordDialog";
+import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
 import { visitTitle } from "@/lib/records";
 import type { Trip, Visit } from "../../api-types";
 import { hasPlace, placeFields, samePlace } from "../PlacePicker";

@@ -5,11 +5,11 @@ import { Collapsible as BaseCollapsible } from "@base-ui/react/collapsible";
 import { Progress as BaseProgress } from "@base-ui/react/progress";
 import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { cn as originalCn } from "cn";
-import { Button } from "@/ui/button";
-import { Input } from "@/ui/input";
-import { Collapsible } from "@/ui/collapsible";
-import { Progress } from "@/ui/progress";
-import { Dialog } from "@/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Collapsible } from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
+import { Dialog } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 describe("local UI imports preserve the existing primitive APIs", () => {

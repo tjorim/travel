@@ -1,4 +1,4 @@
-import { Badge } from "@/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { useTripResource } from "@/lib/query/owner-queries";

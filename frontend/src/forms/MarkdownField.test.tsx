@@ -8,7 +8,7 @@ import { afterEach, expect, it } from "vitest";
 import { AuthProvider } from "../auth-context";
 import { server } from "../mocks/server";
 import { testToken } from "../query/test-utils";
-import { MarkdownField, type MarkdownFormat } from "./MarkdownField";
+import { MarkdownField, type MarkdownFormat } from "@/components/forms/MarkdownField";
 
 afterEach(() => {
   cleanup();

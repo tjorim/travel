@@ -1,9 +1,9 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { Field, FieldLabel } from "@/ui/field";
-import { TravelCheckbox } from "@/ui/TravelCheckbox";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { count, grams, type Bag, type Group, type Item } from "./model";
 
 /** The items, grouped by bag or category, each row with its packed checkbox (or selection box) and edit action. */

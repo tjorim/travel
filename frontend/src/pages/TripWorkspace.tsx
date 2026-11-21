@@ -11,7 +11,7 @@ import { m } from "../paraglide/messages.js";
 import { useFeedback } from "@/lib/api/feedback";
 import { useTripResource, useTripWithUpdates } from "@/lib/query/owner-queries";
 import type { TravelUpdateCandidateIntent } from "../capture-draft";
-import { EmptyState } from "@/ui/EmptyState";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { AgendaRecordKind } from "../trips/agenda-items";
 import type { CreateKind, CreatePrefill, CreateRequest } from "../trips/create-request";
 import type { MapRecordKind, RecordFocus } from "../trips/record-focus";

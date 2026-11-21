@@ -1,20 +1,20 @@
-import { Spinner } from "@/ui/spinner";
+import { Spinner } from "@/components/ui/spinner";
 import type { ErrorFallback } from "@/lib/api/api";
 import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { errorNotice, useFeedback, textNotice } from "@/lib/api/feedback";
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 
-import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
-import { MarkdownField } from "../forms/MarkdownField";
-import { Markdown } from "../Markdown";
+import { RecordForm, requiredText, SelectField, TextField } from "@/components/forms/fields";
+import { MarkdownField } from "@/components/forms/MarkdownField";
+import { Markdown } from "@/components/Markdown";
 import { useRecordDialog } from "@/hooks/useRecordDialog";
 import { useRecordForm } from "@/hooks/useRecordForm";
 import { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import { errorMessage } from "@/lib/api/api";
 import { ownerKeys } from "@/lib/query/keys";
 import { libraryPath, useLibrary, useOwnerMutation } from "@/lib/query/owner-queries";
-import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
+import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
 import type { EmergencyInfoEntry, EmergencyInfoKind } from "../api-types";
 
 const KIND_LABELS: Record<EmergencyInfoKind, string> = {

@@ -1,7 +1,7 @@
-import { Button } from "@/ui/button";
+import { Button } from "@/components/ui/button";
 
 import { useLocale } from "@/i18n/locale";
-import { Markdown } from "../../Markdown";
+import { Markdown } from "@/components/Markdown";
 import { m } from "../../paraglide/messages.js";
 import { areaName, stayLabel } from "@/lib/records";
 import { type Stay } from "../../api-types";
