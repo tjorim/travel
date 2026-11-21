@@ -31,5 +31,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "tests", "e2e", "e2e-production", "playwright*.ts"]
+  "include": ["src", "tests", "e2e", "e2e-production"]
 }
