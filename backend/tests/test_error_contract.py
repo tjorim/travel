@@ -52,7 +52,11 @@ def test_validation_paths_constraints_and_redaction():
         {"code": "greater_than_equal", "path": ["body", "weight"], "params": {"ge": 0}},
     ]
     assert "secret-token" not in response.text
-    assert "input" not in response.json()["detail"][0]
+    body = response.json()
+    assert body["code"] == "validation_error"
+    # FastAPI's list shape stays; `input` and `ctx` (which can echo what was sent) are dropped from every item.
+    assert [set(item) for item in body["detail"]] == [{"type", "loc", "msg"}] * 2
+    assert [item["loc"] for item in body["detail"]] == [["body", "title"], ["body", "weight"]]
     assert TestClient(app).post("/validate", json={}).json()["errors"][0]["code"] == "missing"
     broken = TestClient(app).post(
         "/validate", content='{"title": "secret-token", broken', headers={"Content-Type": "application/json"}

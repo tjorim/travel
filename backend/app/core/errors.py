@@ -196,6 +196,7 @@ _CONSTRAINTS = {"min_length", "max_length", "ge", "le", "gt", "lt", "multiple_of
 
 
 async def validation_error_handler(_request, error: RequestValidationError) -> JSONResponse:
+    """422: FastAPI's ``detail`` list (``type``, ``loc``, ``msg``; never ``input`` or ``ctx``) plus ``code``."""
     details, descriptors = [], []
     for issue in error.errors():
         code = issue["type"]
@@ -209,4 +210,7 @@ async def validation_error_handler(_request, error: RequestValidationError) -> J
         message = issue["msg"] if code != "json_invalid" else "Invalid JSON"
         details.append({"type": code, "loc": path, "msg": message})
         descriptors.append({"code": code, "params": params, "path": path})
-    return JSONResponse({"detail": details, "errors": descriptors}, status_code=422)
+    return JSONResponse(
+        {"detail": details, "code": "validation_error", "errors": descriptors},
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+    )
