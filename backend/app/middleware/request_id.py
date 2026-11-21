@@ -9,8 +9,8 @@ The access line is JSON with the field names the other apps use (``event``, ``re
 included router, like the slow-request log), never the raw path, which can carry share slugs and capability tokens. 5xx log as errors, 4xx as warnings.
 
 Pure ASGI, so streamed responses (media, MCP over SSE) pass through unbuffered. The 500 for an unhandled exception is
-sent by Starlette's outermost ``ServerErrorMiddleware`` after this middleware has unwound, so that response carries no
-id; the access line still records it.
+sent by Starlette's outermost ``ServerErrorMiddleware`` after this middleware has unwound, so ``unhandled_error_handler``
+(``app.core.errors``) adds the id from ``request.state`` itself; the access line records the 500 too.
 """
 
 import json

@@ -88,6 +88,7 @@ def test_forged_tokens_are_refused_with_429_and_retry_after_after_the_threshold(
     assert limited.headers["cache-control"] == "no-store"
     assert limited.json() == {
         "detail": "Too many failed authentication attempts",
+        "code": "rate_limited",
         "errors": [{"code": "rate_limited", "params": {}, "path": []}],
     }
     assert secret not in limited.text

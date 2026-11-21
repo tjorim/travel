@@ -1,5 +1,6 @@
 """Language-neutral HTTP errors. Diagnostic detail is never a UI translation key."""
 
+import logging
 from typing import Any, ClassVar
 
 from fastapi import HTTPException, status
@@ -7,6 +8,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic_core import PydanticCustomError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceError(ValueError):
@@ -140,10 +143,50 @@ async def service_error_handler(request, error: Refusal) -> JSONResponse:
     return await http_error_handler(request, service_exception(error.status_code, error))
 
 
+# The stable code of a framework HTTP error (an unknown route, a wrong method) that no rule of this app raised.
+_STATUS_CODES = {
+    status.HTTP_400_BAD_REQUEST: "bad_request",
+    status.HTTP_401_UNAUTHORIZED: "unauthorized",
+    status.HTTP_403_FORBIDDEN: "forbidden",
+    status.HTTP_404_NOT_FOUND: "not_found",
+    status.HTTP_405_METHOD_NOT_ALLOWED: "method_not_allowed",
+}
+
+
+def status_code_name(status_code: int) -> str:
+    """The stable machine-readable code for an HTTP status that has no code of its own."""
+    return _STATUS_CODES.get(status_code, f"http_{status_code}")
+
+
 async def http_error_handler(_request, error: StarletteHTTPException) -> JSONResponse:
-    descriptor = getattr(error, "descriptor", {"code": "http_error", "params": {}, "path": []})
+    """Every HTTP error: ``detail`` and ``errors`` as before, plus the first descriptor's ``code`` at the top level.
+
+    An error an application rule raised keeps its own descriptor; a framework one (404, 405, a bare 401/403) gets a
+    code from its status. Headers such as ``WWW-Authenticate``, ``Retry-After`` and ``Allow`` travel unchanged."""
+    descriptor = getattr(error, "descriptor", None) or {
+        "code": status_code_name(error.status_code),
+        "params": {},
+        "path": [],
+    }
     return JSONResponse(
-        {"detail": error.detail, "errors": [descriptor]}, status_code=error.status_code, headers=error.headers
+        {"detail": error.detail, "code": descriptor["code"], "errors": [descriptor]},
+        status_code=error.status_code,
+        headers=error.headers,
+    )
+
+
+async def unhandled_error_handler(request, error: Exception) -> JSONResponse:
+    """An exception nothing answered: a generic 500 that names no cause, with the request id.
+
+    Starlette sends this from its outermost middleware, after ``RequestIdMiddleware`` has unwound, so the id is read
+    from the request state and set here. The traceback goes to the server log only, never the body."""
+    request_id = request.scope.get("state", {}).get("request_id")
+    logger.error("Unhandled exception (request_id=%s)", request_id, exc_info=error)
+    descriptor = {"code": "internal_error", "params": {}, "path": []}
+    return JSONResponse(
+        {"detail": "Internal server error", "code": "internal_error", "errors": [descriptor]},
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        headers={"X-Request-ID": request_id} if request_id else None,
     )
 
 
@@ -153,6 +196,7 @@ _CONSTRAINTS = {"min_length", "max_length", "ge", "le", "gt", "lt", "multiple_of
 
 
 async def validation_error_handler(_request, error: RequestValidationError) -> JSONResponse:
+    """422: FastAPI's ``detail`` list (``type``, ``loc``, ``msg``; never ``input`` or ``ctx``) plus ``code``."""
     details, descriptors = [], []
     for issue in error.errors():
         code = issue["type"]
@@ -166,4 +210,7 @@ async def validation_error_handler(_request, error: RequestValidationError) -> J
         message = issue["msg"] if code != "json_invalid" else "Invalid JSON"
         details.append({"type": code, "loc": path, "msg": message})
         descriptors.append({"code": code, "params": params, "path": path})
-    return JSONResponse({"detail": details, "errors": descriptors}, status_code=422)
+    return JSONResponse(
+        {"detail": details, "code": "validation_error", "errors": descriptors},
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+    )
