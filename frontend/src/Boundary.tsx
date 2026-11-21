@@ -1,6 +1,6 @@
 import { cn } from "cn";
 import { m } from "./paraglide/messages.js";
-import { useLocale } from "./locale";
+import { useLocale } from "@/i18n/locale";
 import { PreferencesPanel } from "./PreferencesPanel";
 import { VisitorTopBar } from "./VisitorTopBar";
 import { Button } from "@/ui/button";
@@ -16,10 +16,10 @@ import {
   Share2Icon,
 } from "lucide-react";
 
-import { beginSignIn, beginSignOut, decodeSubject } from "./auth";
+import { beginSignIn, beginSignOut, decodeSubject } from "@/lib/auth";
 import { useAuth } from "./auth-context";
 import { CaptureProvider, useCapture } from "./capture-context";
-import { wipeOfflineData } from "./offline/offline-store";
+import { wipeOfflineData } from "@/lib/offline-store";
 import { Popover, PopoverTrigger } from "@/ui/popover";
 
 const PublicationState = lazy(() => import("./trips/PublicationState"));

@@ -3,22 +3,22 @@ import { Collapsible } from "@/ui/collapsible";
 import { useStore } from "@tanstack/react-form";
 import { ChevronDownIcon, LockIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { authoredLanguage, type ContentLanguage } from "../content-language";
+import { authoredLanguage, type ContentLanguage } from "@/i18n/content-language";
 import { flushSync } from "react-dom";
 
-import { decodeSubject } from "../auth";
+import { decodeSubject } from "@/lib/auth";
 import { useAuth } from "../auth-context";
 import { requiredText, TextField } from "../forms/fields";
 import { DateTimeField } from "../forms/DateTimeFields";
 import { MarkdownField } from "../forms/MarkdownField";
-import { blockUnreadableEntries, UNREADABLE_ENTRY } from "../forms/unreadable-entry";
-import { useConfirmation } from "../forms/useConfirmation";
-import { useRecordForm } from "../forms/useRecordForm";
-import { LocaleControl, useLocale } from "../locale";
+import { blockUnreadableEntries, UNREADABLE_ENTRY } from "@/lib/unreadable-entry";
+import { useConfirmation } from "@/hooks/useConfirmation";
+import { useRecordForm } from "@/hooks/useRecordForm";
+import { LocaleControl, useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { errorMessage } from "../query/api";
-import { errorNotice, FeedbackError, textNotice, useFeedback } from "../query/feedback";
-import { useTripSearch, useTripUpdates, useTripsQuery } from "../query/owner-queries";
+import { errorMessage } from "@/lib/api/api";
+import { errorNotice, FeedbackError, textNotice, useFeedback } from "@/lib/api/feedback";
+import { useTripSearch, useTripUpdates, useTripsQuery } from "@/lib/query/owner-queries";
 import { RecordDialog } from "../RecordDialog";
 import {
   DRAFT_FENCE,
@@ -30,7 +30,7 @@ import {
   type TravelUpdateCandidateIntent,
   type UpdateDraft,
 } from "../capture-draft";
-import { captureInputValue, localDateTime, updateWallClock, zoneName } from "../dates";
+import { captureInputValue, localDateTime, updateWallClock, zoneName } from "@/lib/dates";
 import {
   type MediaAsset,
   type LocationInput,

@@ -1,7 +1,7 @@
 import { Button } from "@/ui/button";
 import { useState } from "react";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { count, grams, type Bag, type Item } from "./model";
 

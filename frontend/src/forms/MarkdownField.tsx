@@ -1,8 +1,8 @@
 import { Spinner } from "@/ui/spinner";
 import { Alert } from "@/ui/alert";
 import { m } from "../paraglide/messages.js";
-import { useLocale } from "../locale";
-import { textNotice, errorNotice, noticeMessage, type ErrorNotice } from "../query/feedback";
+import { useLocale } from "@/i18n/locale";
+import { textNotice, errorNotice, noticeMessage, type ErrorNotice } from "@/lib/api/feedback";
 import { Button } from "@/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/ui/field";
 import { TravelTextarea } from "@/ui/TravelTextarea";
@@ -11,8 +11,8 @@ import { cn } from "cn";
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 
 import { Markdown } from "../Markdown";
-import { ownerRequest } from "../query/api";
-import { useOwner } from "../query/owner-queries";
+import { ownerRequest } from "@/lib/api/api";
+import { useOwner } from "@/lib/query/owner-queries";
 import { optionalNote, useFieldErrors } from "./fields";
 import { applyMarkdownSnippet, type MarkdownSnippet } from "./markdown-snippets";
 
@@ -129,7 +129,7 @@ function MarkdownPreview({
   const [state, setState] = useState<
     | { kind: "loading" }
     | { kind: "ready"; result: RenderResult }
-    | { kind: "error"; message: string | ErrorNotice | import("../query/feedback").MessageNotice }
+    | { kind: "error"; message: string | ErrorNotice | import("@/lib/api/feedback").MessageNotice }
   >({ kind: "loading" });
 
   useEffect(() => {

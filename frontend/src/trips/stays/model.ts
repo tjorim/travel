@@ -1,6 +1,6 @@
 import { m } from "../../paraglide/messages.js";
-import { addDays, daysBetween, formatDay } from "../../dates";
-import { locationName, stayLabel } from "../../records";
+import { addDays, daysBetween, formatDay } from "@/lib/dates";
+import { locationName, stayLabel } from "@/lib/records";
 import {
   type DatePrecision,
   type Location,
@@ -9,7 +9,7 @@ import {
   type Trip,
 } from "../../api-types";
 import type { FormContext } from "../../forms/form-context";
-import { PLANNING_STATUS_LABELS } from "../labels";
+import { PLANNING_STATUS_LABELS } from "@/lib/labels";
 import type { CreatePrefill } from "../create-request";
 
 export type StayValues = {

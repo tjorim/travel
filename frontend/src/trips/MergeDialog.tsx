@@ -2,18 +2,18 @@ import { Button } from "@/ui/button";
 import { useEffect, useState } from "react";
 
 import { SearchSelect } from "../forms/fields";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { ApiError } from "../query/api";
+import { ApiError } from "@/lib/api/api";
 import {
   errorNotice,
   textNotice,
   useFeedback,
   type ErrorNotice,
   type MessageNotice,
-} from "../query/feedback";
-import { ownerKeys } from "../query/keys";
-import { tripPath, useOwnerMutation } from "../query/owner-queries";
+} from "@/lib/api/feedback";
+import { ownerKeys } from "@/lib/query/keys";
+import { tripPath, useOwnerMutation } from "@/lib/query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import type {
   Area,

@@ -1,11 +1,11 @@
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
-import { ownerRequest } from "../query/api";
-import { ownerKeys } from "../query/keys";
-import { tripPath, useOwner } from "../query/owner-queries";
+import { ownerRequest } from "@/lib/api/api";
+import { ownerKeys } from "@/lib/query/keys";
+import { tripPath, useOwner } from "@/lib/query/owner-queries";
 import type { Visit } from "../api-types";
 import type { PlaceValue } from "./PlacePicker";
 

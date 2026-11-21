@@ -1,15 +1,15 @@
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { LocalName } from "../LocalName";
 import { m } from "../paraglide/messages.js";
-import { textNotice, errorNotice, useFeedback } from "../query/feedback";
+import { textNotice, errorNotice, useFeedback } from "@/lib/api/feedback";
 import { Input } from "@/ui/input";
 import { Button } from "@/ui/button";
 import { useRef, useState } from "react";
 
 import { AsyncSearchSelect } from "../forms/fields";
 
-import { tripPath, useLocationSearch, useOwnerMutation } from "../query/owner-queries";
-import { locationName } from "../records";
+import { tripPath, useLocationSearch, useOwnerMutation } from "@/lib/query/owner-queries";
+import { locationName } from "@/lib/records";
 import {
   type Location,
   type PlaceSearchResponse,

@@ -1,4 +1,4 @@
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { Button } from "@/ui/button";
 import {
@@ -19,9 +19,9 @@ import {
   type CreatePrefill,
 } from "./create-request";
 
-import { errorMessage } from "../query/api";
-import { useTripResource } from "../query/owner-queries";
-import { formatDayRange, daysBetween } from "../dates";
+import { errorMessage } from "@/lib/api/api";
+import { useTripResource } from "@/lib/query/owner-queries";
+import { formatDayRange, daysBetween } from "@/lib/dates";
 import { type Stay, type Trip, type Visit } from "../api-types";
 import {
   AGENDA_KINDS,
@@ -40,13 +40,13 @@ import {
   type AgendaRecordKind,
   type AgendaStatusGroup,
 } from "./agenda-items";
-import { stayLabel } from "../records";
-import { PLANNING_STATUS_LABELS } from "./labels";
+import { stayLabel } from "@/lib/records";
+import { PLANNING_STATUS_LABELS } from "@/lib/labels";
 import { canAdjustNights } from "./stays/model";
 import { Overnight } from "./visits/Overnight";
 import { visibilityLabel } from "./visibility";
 import { RestatedRoutesNote } from "./VisitRouteHint";
-import type { DialogFocusAction } from "../forms/useRecordDialog";
+import type { DialogFocusAction } from "@/hooks/useRecordDialog";
 
 /**
  * What a row can do besides opening its record. A row has a menu only when the agenda is given these; the delete

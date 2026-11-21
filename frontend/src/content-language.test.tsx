@@ -7,7 +7,7 @@ import {
   authoredLanguage,
   ContentLanguageProvider,
   pickText,
-} from "./content-language";
+} from "@/i18n/content-language";
 
 afterEach(cleanup);
 

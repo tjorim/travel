@@ -2,7 +2,7 @@
 import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 
-import { changeLocale } from "../../locale";
+import { changeLocale } from "@/i18n/locale";
 import type { OverviewWarning, TripOverview } from "../../api-types";
 import { futureDisclosureLines, SharingReview } from "./SharingReview";
 

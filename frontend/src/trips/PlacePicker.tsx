@@ -1,4 +1,4 @@
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { Input } from "@/ui/input";
 import { useCallback, useRef } from "react";
@@ -15,8 +15,8 @@ import {
   useLocationSearch,
   useOwnerMutation,
   useTripResource,
-} from "../query/owner-queries";
-import { locationName, areaName } from "../records";
+} from "@/lib/query/owner-queries";
+import { locationName, areaName } from "@/lib/records";
 import {
   type Area,
   type AreaSuggestion,

@@ -4,7 +4,7 @@ import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { afterEach, expect, it, vi } from "vitest";
 import { server } from "../mocks/server";
-import { changeLocale } from "../locale";
+import { changeLocale } from "@/i18n/locale";
 import { renderWithOwner, testToken } from "../query/test-utils";
 import { PlaceSearchField } from "./PlaceSearchField";
 

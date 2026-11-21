@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { PopoverContent } from "@/ui/popover";
 import { AppearanceControl } from "./appearance";
-import { LocaleControl } from "./locale";
+import { LocaleControl } from "@/i18n/locale";
 
 /** Shared popover surface for visitor preferences and the owner's Account controls. */
 export function PreferencesPanel({ label, children }: { label: string; children?: ReactNode }) {

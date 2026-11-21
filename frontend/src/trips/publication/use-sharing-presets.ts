@@ -1,7 +1,7 @@
 import { m } from "../../paraglide/messages.js";
-import { ApiError } from "../../query/api";
-import { ownerKeys } from "../../query/keys";
-import { tripPath, useOwnerMutation } from "../../query/owner-queries";
+import { ApiError } from "@/lib/api/api";
+import { ownerKeys } from "@/lib/query/keys";
+import { tripPath, useOwnerMutation } from "@/lib/query/owner-queries";
 import type {
   PresetApplyResult,
   PublicProjectionStatus,

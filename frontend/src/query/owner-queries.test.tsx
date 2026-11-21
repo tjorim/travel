@@ -6,8 +6,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { server } from "../mocks/server";
 import { OwnerQueryProvider } from "./OwnerQueryProvider";
-import { createOwnerQueryClient } from "./client";
-import { useOwnerMutation, useTripResource, useTripsQuery } from "./owner-queries";
+import { createOwnerQueryClient } from "@/lib/query/client";
+import { useOwnerMutation, useTripResource, useTripsQuery } from "@/lib/query/owner-queries";
 import { renderWithOwner, testClient, testToken } from "./test-utils";
 
 const auth = vi.hoisted(() => ({
@@ -243,8 +243,8 @@ it("fails a write immediately while offline instead of queueing it", async () =>
   expect(requests).toHaveLength(1);
 });
 
-vi.mock("../auth", async (importOriginal) => {
-  const original = await importOriginal<typeof import("../auth")>();
+vi.mock("@/lib/auth", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/auth")>();
   return {
     ...original,
     freshSession: async (session: unknown, force: boolean) => {

@@ -1,5 +1,5 @@
-import type { DialogFocusAction, DialogFocusRequest } from "../forms/useRecordDialog";
-import { useFeedback, type ReportNotice } from "../query/feedback";
+import type { DialogFocusAction, DialogFocusRequest } from "@/hooks/useRecordDialog";
+import { useFeedback, type ReportNotice } from "@/lib/api/feedback";
 import type { Trip } from "../api-types";
 import type { AgendaRecordKind } from "./agenda-items";
 import { type CreateRequest } from "./create-request";

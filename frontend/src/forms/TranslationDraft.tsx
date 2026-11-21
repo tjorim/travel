@@ -2,19 +2,19 @@ import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { useEffect, useRef, useState } from "react";
 
-import { type ContentLanguage } from "../content-language";
-import { useLocale } from "../locale";
+import { type ContentLanguage } from "@/i18n/content-language";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import type { TranslationDraftResponse } from "../api-types";
-import { ownerRequest } from "../query/api";
+import { ownerRequest } from "@/lib/api/api";
 import {
   errorNotice,
   noticeMessage,
   textNotice,
   type ErrorNotice,
   type MessageNotice,
-} from "../query/feedback";
-import { useOwner } from "../query/owner-queries";
+} from "@/lib/api/feedback";
+import { useOwner } from "@/lib/query/owner-queries";
 
 type State = { kind: "working" } | { kind: "error"; notice: ErrorNotice | MessageNotice };
 

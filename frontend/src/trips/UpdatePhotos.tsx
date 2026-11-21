@@ -2,10 +2,10 @@ import { useQueries } from "@tanstack/react-query";
 import { VideoIcon } from "lucide-react";
 import { useMemo } from "react";
 
-import type { OwnerSession } from "../auth";
-import { useLocale } from "../locale";
+import type { OwnerSession } from "@/lib/auth";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { derivativesQueryOptions, useOwner, useTripResource } from "../query/owner-queries";
+import { derivativesQueryOptions, useOwner, useTripResource } from "@/lib/query/owner-queries";
 import type { MediaDerivative, TravelUpdate, Trip } from "../api-types";
 import { OwnerImage } from "./OwnerImage";
 

@@ -1,6 +1,6 @@
-import { formatNumber } from "./locale";
-import { FeedbackError } from "./query/feedback";
-import { m } from "./paraglide/messages.js";
+import { formatNumber } from "@/i18n/locale";
+import { FeedbackError } from "@/lib/api/feedback";
+import { m } from "@/paraglide/messages.js";
 
 export function bytesLabel(bytes: number): string {
   return bytes < 1024

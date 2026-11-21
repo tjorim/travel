@@ -1,7 +1,7 @@
-import type { OwnerSession } from "../auth";
+import type { OwnerSession } from "@/lib/auth";
 import { m } from "../paraglide/messages.js";
-import { errorMessage } from "../query/api";
-import type { useTripsQuery } from "../query/owner-queries";
+import { errorMessage } from "@/lib/api/api";
+import type { useTripsQuery } from "@/lib/query/owner-queries";
 import type { TripSummary } from "../api-types";
 
 /** What the trips list and a trip's workspace say about loading the owner's trips, before any notice overrides it. */

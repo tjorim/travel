@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw/http";
 import { server } from "../../mocks/server";
-import { changeLocale, LocaleBoundary } from "../../locale";
+import { changeLocale, LocaleBoundary } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { FinishedTrackImport } from "./FinishedTrackImport";
 

@@ -1,7 +1,7 @@
-import { routeLineGeometry } from "../route-line-geometry";
-import { mapMessages, useMapMessages } from "../map-messages";
-import { textNotice, useFeedback } from "../query/feedback";
-import { useLocale } from "../locale";
+import { routeLineGeometry } from "@/lib/map/route-line-geometry";
+import { mapMessages, useMapMessages } from "@/lib/map/map-messages";
+import { textNotice, useFeedback } from "@/lib/api/feedback";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { themeColor, useTheme } from "../appearance";
 import { Button } from "@/ui/button";
@@ -12,7 +12,7 @@ import type { GeoJSONSource, Map as MapLibreMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 
-import { configuredMapStyleUrl, loadMapStyle, readCamera, type MapCamera } from "../map-style";
+import { configuredMapStyleUrl, loadMapStyle, readCamera, type MapCamera } from "@/lib/map/map-style";
 
 export type RouteCoordinate = [number, number];
 export type RouteSuggestion = { label: string; coordinates: RouteCoordinate };

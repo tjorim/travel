@@ -1,22 +1,22 @@
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { useFeedback, textNotice, errorNotice } from "../query/feedback";
+import { useFeedback, textNotice, errorNotice } from "@/lib/api/feedback";
 import { Button } from "@/ui/button";
 
 import { DateTimeField } from "../forms/DateTimeFields";
 import { RecordForm, requiredText, SelectField } from "../forms/fields";
-import { AuthoredText, authoredLanguage } from "../content-language";
+import { AuthoredText, authoredLanguage } from "@/i18n/content-language";
 import { LocalizedField } from "../forms/LocalizedField";
 import { MarkdownField } from "../forms/MarkdownField";
-import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
-import { useRecordForm } from "../forms/useRecordForm";
+import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "@/hooks/useRecordDialog";
+import { useRecordForm } from "@/hooks/useRecordForm";
 
-import { ownerKeys } from "../query/keys";
-import { tripPath, useOwner, useOwnerMutation } from "../query/owner-queries";
+import { ownerKeys } from "@/lib/query/keys";
+import { tripPath, useOwner, useOwnerMutation } from "@/lib/query/owner-queries";
 import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { localDateTime, updateWallClock, zoneName } from "../dates";
-import { locationName } from "../records";
+import { localDateTime, updateWallClock, zoneName } from "@/lib/dates";
+import { locationName } from "@/lib/records";
 import {
   type Area,
   type LocationInput,

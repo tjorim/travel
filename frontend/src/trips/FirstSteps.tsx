@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
 
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { useTripResource } from "../query/owner-queries";
+import { useTripResource } from "@/lib/query/owner-queries";
 import type { Area, Trip } from "../api-types";
 import { sectionPath } from "./workspace-sections";
 

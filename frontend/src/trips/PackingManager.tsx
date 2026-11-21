@@ -3,12 +3,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { SearchSelect } from "../forms/fields";
-import { useLocale } from "../locale";
-import { useOfflineCopies } from "../offline/useOfflineCopies";
+import { useLocale } from "@/i18n/locale";
+import { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import { m } from "../paraglide/messages.js";
-import { ownerRequest } from "../query/api";
-import { errorNotice, textNotice, useFeedback } from "../query/feedback";
-import { tripPath, useOwner } from "../query/owner-queries";
+import { ownerRequest } from "@/lib/api/api";
+import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
+import { tripPath, useOwner } from "@/lib/query/owner-queries";
 import type { Trip } from "../api-types";
 import { Field, FieldLabel } from "@/ui/field";
 import { BagDialog } from "./packing/BagDialog";

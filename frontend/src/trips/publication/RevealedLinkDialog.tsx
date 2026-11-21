@@ -1,6 +1,6 @@
 import { Button } from "@/ui/button";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { RecordDialog } from "../../RecordDialog";
 

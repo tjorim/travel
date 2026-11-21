@@ -1,26 +1,26 @@
 import { isOverdue, tripDay } from "./readiness";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { textNotice, errorNotice, useFeedback } from "../query/feedback";
+import { textNotice, errorNotice, useFeedback } from "@/lib/api/feedback";
 import { Button } from "@/ui/button";
 import { useState } from "react";
 
 import { DateField, DateTimeField } from "../forms/DateTimeFields";
 import { RecordForm, requiredText, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
-import { useDialogFocus, type DialogFocusRequest } from "../forms/useRecordDialog";
-import { useRecordForm } from "../forms/useRecordForm";
+import { useDialogFocus, type DialogFocusRequest } from "@/hooks/useRecordDialog";
+import { useRecordForm } from "@/hooks/useRecordForm";
 import { Markdown } from "../Markdown";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { ownerKeys } from "../query/keys";
-import { errorMessage } from "../query/api";
+import { ownerKeys } from "@/lib/query/keys";
+import { errorMessage } from "@/lib/api/api";
 import {
   tripPath,
   useMarkAlertRead,
   useOwnerMutation,
   useTripResource,
-} from "../query/owner-queries";
-import { formatInstant, formatDay, localDateTime } from "../dates";
+} from "@/lib/query/owner-queries";
+import { formatInstant, formatDay, localDateTime } from "@/lib/dates";
 import { type TaskLink, type Trip, type TripTask } from "../api-types";
 import { FieldSet, FieldLegend } from "@/ui/field";
 
@@ -216,7 +216,7 @@ export function TripTaskManager({
         : tasksQuery.isPending
           ? m.tasks_loading_your_private_task_list()
           : m.tasks_intro());
-  const fail = (fallback: import("../query/api").ErrorFallback) => (error: unknown) =>
+  const fail = (fallback: import("@/lib/api/api").ErrorFallback) => (error: unknown) =>
     setNotice(errorNotice(error, fallback));
   const readinessStays = useTripResource(trip.id, "stays").data ?? [];
   const readinessRoutes = useTripResource(trip.id, "routes").data ?? [];

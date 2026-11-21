@@ -4,10 +4,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { SearchSelect } from "../../forms/fields";
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { ownerRequest } from "../../query/api";
-import { useOwner } from "../../query/owner-queries";
+import { ownerRequest } from "@/lib/api/api";
+import { useOwner } from "@/lib/query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../../RecordDialog";
 import { ChoiceGroup } from "@/ui/ChoiceGroup";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";

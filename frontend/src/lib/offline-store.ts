@@ -1,5 +1,5 @@
-import { FeedbackError } from "../query/feedback";
-import { m } from "../paraglide/messages.js";
+import { FeedbackError } from "@/lib/api/feedback";
+import { m } from "@/paraglide/messages.js";
 /** Keep native storage diagnostics separate from the localized operation message. */
 function storageFailure(describe: () => string, cause?: unknown): FeedbackError {
   const error = new FeedbackError(describe);

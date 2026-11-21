@@ -2,9 +2,9 @@ import { flushSync } from "react-dom";
 import { useBlocker } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { DeleteConfirmation } from "../RecordDialog";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { NavigationGuardContext, type EditState } from "./navigation-guard";
+import { NavigationGuardContext, type EditState } from "@/lib/navigation-guard";
 
 export function NavigationGuard({ children }: { children: ReactNode }) {
   useLocale();

@@ -6,9 +6,9 @@ import { http, HttpResponse } from "msw/http";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { server } from "../mocks/server";
-import { pinOfflineCopy } from "../offline/offline-store";
+import { pinOfflineCopy } from "@/lib/offline-store";
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { ownerKeys } from "../query/keys";
+import { ownerKeys } from "@/lib/query/keys";
 import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils";
 import type { Area, Route, Location, Trip } from "../api-types";
 import { OwnerTripMap } from "./OwnerTripMap";

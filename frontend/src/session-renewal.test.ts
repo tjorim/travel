@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw/http";
 import { server } from "./mocks/server";
-import { clearSession, freshSession, renewSession } from "./auth";
+import { clearSession, freshSession, renewSession } from "@/lib/auth";
 
 const tokenUrl = "https://auth.tjor.im/realms/travel/protocol/openid-connect/token";
 beforeEach(() => {

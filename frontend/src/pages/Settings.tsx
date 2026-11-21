@@ -1,15 +1,15 @@
 import { m } from "../paraglide/messages.js";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { Button } from "@/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { accountUrl, decodeSubject } from "../auth";
+import { accountUrl, decodeSubject } from "@/lib/auth";
 import { useAuth } from "../auth-context";
-import { useConfirmation } from "../forms/useConfirmation";
-import { ownerRequest } from "../query/api";
-import { ownerKeys } from "../query/keys";
-import { useOwnerMutation, useProviderConnections } from "../query/owner-queries";
+import { useConfirmation } from "@/hooks/useConfirmation";
+import { ownerRequest } from "@/lib/api/api";
+import { ownerKeys } from "@/lib/query/keys";
+import { useOwnerMutation, useProviderConnections } from "@/lib/query/owner-queries";
 import { EmptyState } from "@/ui/EmptyState";
 import type { OAuthStartResponse, ProviderConnectionStatus } from "../api-types";
 

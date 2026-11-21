@@ -1,6 +1,6 @@
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { useTripResource } from "../query/owner-queries";
+import { useTripResource } from "@/lib/query/owner-queries";
 
 /** The titles of the documents a record links, for the owner's detail view. Renders nothing without a link. */
 export function LinkedDocuments({ tripId, ids }: { tripId: string; ids: readonly string[] }) {

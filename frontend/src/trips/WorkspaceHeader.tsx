@@ -1,9 +1,9 @@
 import { Button } from "@/ui/button";
-import { AuthoredText } from "../content-language";
+import { AuthoredText } from "@/i18n/content-language";
 import { Link } from "@tanstack/react-router";
 import { cn } from "cn";
 
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import PublicationState from "./PublicationState";
 import type { Trip } from "../api-types";

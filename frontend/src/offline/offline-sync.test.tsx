@@ -6,14 +6,14 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-libra
 import { http, HttpResponse } from "msw";
 
 import { AuthProvider } from "../auth-context";
-import { changeLocale } from "../locale";
+import { changeLocale } from "@/i18n/locale";
 import { DocumentManager } from "../documents/DocumentManager";
 import { EmergencyInfoManager } from "../library/EmergencyInfoManager";
 import { server } from "../mocks/server";
 import { renderWithOwner, resetOfflineDb } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
 import { OfflineManager } from "./OfflineManager";
-import { listOfflineCopies } from "./offline-store";
+import { listOfflineCopies } from "@/lib/offline-store";
 
 const SUBJECT = "owner-1";
 
@@ -182,7 +182,7 @@ it("leaves every consumer on the previous state when a save fails", async () => 
 });
 
 it("updates mounted consumers when revalidation deletes a copy", async () => {
-  const { pinOfflineCopy } = await import("./offline-store");
+  const { pinOfflineCopy } = await import("@/lib/offline-store");
   await pinOfflineCopy({
     subject: SUBJECT,
     resourceKind: "library_document",
@@ -200,7 +200,7 @@ it("updates mounted consumers when revalidation deletes a copy", async () => {
   );
   await documents.findByRole("button", { name: "Offline verwijderen" });
 
-  const { revalidateOfflineCopies } = await import("./offline-store");
+  const { revalidateOfflineCopies } = await import("@/lib/offline-store");
   await revalidateOfflineCopies(SUBJECT, () =>
     Promise.resolve(new Response(null, { status: 404 })),
   );

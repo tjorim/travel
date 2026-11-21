@@ -1,6 +1,6 @@
 import { SelectField, TextField } from "../../forms/fields";
-import type { useRecordForm } from "../../forms/useRecordForm";
-import { useLocale } from "../../locale";
+import type { useRecordForm } from "@/hooks/useRecordForm";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import type { MediaAsset } from "../../api-types";
 import { Field, FieldLabel } from "@/ui/field";

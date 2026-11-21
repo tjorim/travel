@@ -1,4 +1,4 @@
-import { browserTimeZone, daysBetween, localDate } from "../dates";
+import { browserTimeZone, daysBetween, localDate } from "@/lib/dates";
 import { whereabouts } from "../whereabouts";
 import { type Stay, type Route, type TripTask } from "../api-types";
 

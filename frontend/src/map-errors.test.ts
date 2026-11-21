@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { isAbortedRequest, isTileFailure, mapErrorReporter } from "./map-errors";
+import { isAbortedRequest, isTileFailure, mapErrorReporter } from "@/lib/map/map-errors";
 
 function abortError() {
   const error = new Error("aborted");

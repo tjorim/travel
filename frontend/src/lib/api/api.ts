@@ -1,8 +1,8 @@
 import { FeedbackError } from "./FeedbackError";
-import { freshSession, type OwnerSession } from "../auth";
-import { openBlobInNewTab } from "../files";
+import { freshSession, type OwnerSession } from "@/lib/auth";
+import { openBlobInNewTab } from "@/lib/files";
 
-import { m } from "../paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import { descriptorMessage, type ErrorDescriptor } from "./error-messages";
 
 export type ErrorFallback = string | (() => string);

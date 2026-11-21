@@ -6,7 +6,7 @@ import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it } from "vitest";
 
 import { AuthProvider } from "../auth-context";
-import { ContentLanguageProvider, type ContentLanguage } from "../content-language";
+import { ContentLanguageProvider, type ContentLanguage } from "@/i18n/content-language";
 import { server } from "../mocks/server";
 import { testToken } from "../query/test-utils";
 import { LocalizedField } from "./LocalizedField";

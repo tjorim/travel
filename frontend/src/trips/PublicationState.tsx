@@ -1,7 +1,7 @@
 import { Badge } from "@/ui/badge";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { useTripResource } from "../query/owner-queries";
+import { useTripResource } from "@/lib/query/owner-queries";
 
 /** Whether the public page is live. Unlisted links are not summarised here: the Sharing section lists them. */
 export default function PublicationState({ tripId }: { tripId: string }) {

@@ -1,5 +1,5 @@
-import { useLocale } from "../locale";
-import { useTripResource } from "../query/owner-queries";
+import { useLocale } from "@/i18n/locale";
+import { useTripResource } from "@/lib/query/owner-queries";
 import { MediaManager } from "./MediaManager";
 import { focusFor } from "./record-focus";
 import { SectionAccordion } from "./SectionAccordion";

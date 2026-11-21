@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, resolveTexts, type FakeApi } from "../query/fake-api";
-import { useTripWithUpdates, useTripsQuery } from "../query/owner-queries";
+import { useTripWithUpdates, useTripsQuery } from "@/lib/query/owner-queries";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
 import type { TravelUpdate, Trip } from "../api-types";
 import { TravelUpdateManager } from "./TravelUpdateManager";

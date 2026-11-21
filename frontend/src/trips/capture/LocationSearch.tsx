@@ -1,7 +1,7 @@
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { LocalName } from "../../LocalName";
 import { m } from "../../paraglide/messages.js";
 import type { PlaceSearchResponse, LocationInput } from "../../api-types";

@@ -5,12 +5,12 @@ import { Field, FieldLabel } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { useState, type ReactNode } from "react";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { errorMessage } from "../../query/api";
-import { descriptorMessage } from "../../query/error-messages";
+import { errorMessage } from "@/lib/api/api";
+import { descriptorMessage } from "@/lib/api/error-messages";
 import { DeleteConfirmation } from "../../RecordDialog";
-import { presetRecordName } from "../../records";
+import { presetRecordName } from "@/lib/records";
 import {
   type DatePrecision,
   type KindCounts,

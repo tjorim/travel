@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
 
-import type { ContentLanguage } from "./content-language";
+import type { ContentLanguage } from "@/i18n/content-language";
 
 /**
  * The language a visitor document's unmarked authored texts are in (#376). The page never translates anything

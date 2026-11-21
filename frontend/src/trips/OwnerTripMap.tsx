@@ -1,15 +1,15 @@
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { FeedbackError, textNotice, errorNotice, useFeedback } from "../query/feedback";
+import { FeedbackError, textNotice, errorNotice, useFeedback } from "@/lib/api/feedback";
 import { Button } from "@/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { useOfflineCopies } from "../offline/useOfflineCopies";
-import { errorMessage } from "../query/api";
-import { tripPath, useOwnerMutation, useTripResource } from "../query/owner-queries";
-import { ownerKeys } from "../query/keys";
+import { useOfflineCopies } from "@/hooks/useOfflineCopies";
+import { errorMessage } from "@/lib/api/api";
+import { tripPath, useOwnerMutation, useTripResource } from "@/lib/query/owner-queries";
+import { ownerKeys } from "@/lib/query/keys";
 import { TripMap, type MapLine, type MapPoint } from "../TripMap";
-import { locationName, routeTitle, areaName } from "../records";
+import { locationName, routeTitle, areaName } from "@/lib/records";
 import { type Area, type Trip } from "../api-types";
 import type { CreateKind, CreatePrefill } from "./create-request";
 

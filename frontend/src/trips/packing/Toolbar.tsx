@@ -2,7 +2,7 @@ import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 
 import { SearchSelect } from "../../forms/fields";
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { ChoiceGroup } from "@/ui/ChoiceGroup";
 import { Field, FieldLabel } from "@/ui/field";

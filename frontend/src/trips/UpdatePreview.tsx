@@ -1,9 +1,9 @@
 import { useState } from "react";
 
 import type { Projection } from "../ProjectionView";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { useOwner, useTripResource } from "../query/owner-queries";
+import { useOwner, useTripResource } from "@/lib/query/owner-queries";
 import type {
   ShareLink,
   ShareScope,

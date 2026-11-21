@@ -1,12 +1,12 @@
 import { useState } from "react";
 
-import type { OwnerSession } from "../../auth";
+import type { OwnerSession } from "@/lib/auth";
 import { LocalizedField } from "../../forms/LocalizedField";
 import { AsyncSearchSelect, TextField } from "../../forms/fields";
-import type { useRecordForm } from "../../forms/useRecordForm";
-import { useLocale } from "../../locale";
+import type { useRecordForm } from "@/hooks/useRecordForm";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { useTravelUpdateSearch } from "../../query/owner-queries";
+import { useTravelUpdateSearch } from "@/lib/query/owner-queries";
 import type { MediaDerivative, TravelUpdate } from "../../api-types";
 import { Field, FieldLabel } from "@/ui/field";
 import { OwnerImage } from "../OwnerImage";

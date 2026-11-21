@@ -12,7 +12,7 @@ import {
   visitTimes,
   type ProjectionVisit,
 } from "./ProjectionView";
-import { timeForViewer } from "./dates";
+import { timeForViewer } from "@/lib/dates";
 import { type ShareScope } from "./api-types";
 import { fixture, type SparseProjection } from "./test-projection";
 import { VisitorRoutes } from "./visitor-routes";

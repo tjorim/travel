@@ -1,9 +1,9 @@
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 
-import { decodeSubject } from "../auth";
+import { decodeSubject } from "@/lib/auth";
 import { useAuth } from "../auth-context";
-import { createOwnerQueryClient } from "./client";
+import { createOwnerQueryClient } from "@/lib/query/client";
 
 // Diagnostics are opt-in and exist only in the dev server (`VITE_QUERY_DEVTOOLS=1`):
 // the panel lists cached owner records, so it is off by default. The dynamic

@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { AuthoredText } from "../content-language";
+import { AuthoredText } from "@/i18n/content-language";
 import { cn } from "cn";
 import type { ReactNode } from "react";
 
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import type { TripSummary } from "../api-types";
 import { TripCover } from "./TripCover";

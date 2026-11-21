@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import type { FeatureCollection, Point } from "geojson";
 import type { SymbolLayerSpecification } from "maplibre-gl";
 import { afterEach, expect, it, vi } from "vitest";
-import { changeLocale } from "./locale";
+import { changeLocale } from "@/i18n/locale";
 import { TripMap, type MapPoint } from "./TripMap";
 
 type CapturedMap = {
@@ -21,8 +21,8 @@ type CapturedMap = {
 };
 const maps = vi.hoisted(() => [] as CapturedMap[]);
 
-vi.mock("./map-style", async (importOriginal) => ({
-  readCamera: (await importOriginal<typeof import("./map-style")>()).readCamera,
+vi.mock("@/lib/map/map-style", async (importOriginal) => ({
+  readCamera: (await importOriginal<typeof import("@/lib/map/map-style")>()).readCamera,
   configuredMapStyleUrl: "test-style",
   loadMapStyle: async () => ({ version: 8, sources: {}, layers: [] }),
   styleLabelFont: () => ["Style Sans Regular"],

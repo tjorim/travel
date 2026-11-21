@@ -1,9 +1,9 @@
-import { useLocale } from "../../locale";
-import { AuthoredText } from "../../content-language";
+import { useLocale } from "@/i18n/locale";
+import { AuthoredText } from "@/i18n/content-language";
 import { Markdown } from "../../Markdown";
 import { m } from "../../paraglide/messages.js";
 import { DeleteConfirmation } from "../../RecordDialog";
-import { visitTitle } from "../../records";
+import { visitTitle } from "@/lib/records";
 import { type Stay, type Trip, type Visit } from "../../api-types";
 import { VisibilityControl } from "../visibility";
 import { RestatedRoutesNote } from "../VisitRouteHint";

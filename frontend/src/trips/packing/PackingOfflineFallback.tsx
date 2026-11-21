@@ -2,10 +2,10 @@ import { Button } from "@/ui/button";
 import type { UseQueryResult } from "@tanstack/react-query";
 
 import { SearchSelect } from "../../forms/fields";
-import { useLocale } from "../../locale";
-import type { useOfflineCopies } from "../../offline/useOfflineCopies";
+import { useLocale } from "@/i18n/locale";
+import type { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import { m } from "../../paraglide/messages.js";
-import { errorMessage } from "../../query/api";
+import { errorMessage } from "@/lib/api/api";
 import { Field, FieldLabel } from "@/ui/field";
 import { PackingOfflineView } from "../PackingOfflineView";
 import type { Bag, Item, PackingList } from "./model";

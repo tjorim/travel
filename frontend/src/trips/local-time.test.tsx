@@ -3,7 +3,7 @@ import { afterEach, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 
 import { LocalTimes } from "./TripOverview";
-import { offsetLabel, utcOffsetMinutes } from "../dates";
+import { offsetLabel, utcOffsetMinutes } from "@/lib/dates";
 import { whereabouts } from "../whereabouts";
 import { type Location, type Stay, type Route } from "../api-types";
 

@@ -1,4 +1,4 @@
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 
 /** A block's records as a list, or the message for a block that has none. */
 export function DetailList({

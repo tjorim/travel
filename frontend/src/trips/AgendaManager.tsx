@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import type { Trip } from "../api-types";
 import { AlternativesArea } from "./alternatives/AlternativesArea";
 import { AgendaView, type AgendaRowActions } from "./AgendaView";

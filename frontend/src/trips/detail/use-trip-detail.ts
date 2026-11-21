@@ -1,4 +1,4 @@
-import { useTripResource, useTripWithUpdates } from "../../query/owner-queries";
+import { useTripResource, useTripWithUpdates } from "@/lib/query/owner-queries";
 
 /** Every read behind the owner's complete trip overview; nothing is read for a trip that does not exist. */
 export function useTripDetail(tripId: string | undefined) {

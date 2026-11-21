@@ -1,9 +1,9 @@
 import { Button } from "@/ui/button";
 import { Link } from "@tanstack/react-router";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { useProviderConnections } from "../../query/owner-queries";
+import { useProviderConnections } from "@/lib/query/owner-queries";
 import type { ImportSession } from "../../api-types";
 import { providerLabel } from "./labels";
 

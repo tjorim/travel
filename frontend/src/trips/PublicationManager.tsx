@@ -2,13 +2,13 @@ import { Button } from "@/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { RecordForm, requiredText, TextField } from "../forms/fields";
-import { useConfirmation } from "../forms/useConfirmation";
-import { useRecordForm } from "../forms/useRecordForm";
-import { useLocale } from "../locale";
+import { useConfirmation } from "@/hooks/useConfirmation";
+import { useRecordForm } from "@/hooks/useRecordForm";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { ApiError, errorMessage, type ErrorFallback } from "../query/api";
-import { errorNotice, textNotice, useFeedback } from "../query/feedback";
-import { useOwner, useTripResource } from "../query/owner-queries";
+import { ApiError, errorMessage, type ErrorFallback } from "@/lib/api/api";
+import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
+import { useOwner, useTripResource } from "@/lib/query/owner-queries";
 import type { Projection } from "../ProjectionView";
 import { RecordDialog } from "../RecordDialog";
 import type {

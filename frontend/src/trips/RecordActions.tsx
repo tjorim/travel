@@ -1,6 +1,6 @@
 import { Button } from "@/ui/button";
 
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 
 /** The edit and delete buttons under a record's read-only dialog view; `children` sit between them (for example a merge button). */

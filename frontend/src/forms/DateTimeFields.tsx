@@ -12,13 +12,13 @@ import {
   parseTimeInput,
   splitDateTime,
 } from "../date-input";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { Calendar } from "@/ui/calendar";
 import { Field, FieldError, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/popover";
 import { optionalNote, useFieldErrors } from "./fields";
-import { UNREADABLE_ENTRY } from "./unreadable-entry";
+import { UNREADABLE_ENTRY } from "@/lib/unreadable-entry";
 
 type PickerProps = {
   field: AnyFieldApi;

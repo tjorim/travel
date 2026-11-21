@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { answerConfirmation } from "../test-confirm";
-import { useConfirmation } from "./useConfirmation";
+import { useConfirmation } from "@/hooks/useConfirmation";
 
 const action = vi.fn();
 

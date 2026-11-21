@@ -1,7 +1,7 @@
 import { Button } from "@/ui/button";
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { textNotice, useFeedback } from "../../query/feedback";
+import { textNotice, useFeedback } from "@/lib/api/feedback";
 import type { Area, Location } from "../../api-types";
 import type { RouteCoordinate } from "../RouteGeometryEditor";
 import { resolvedAreaPoint, type Values } from "./model";

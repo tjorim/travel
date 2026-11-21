@@ -2,7 +2,7 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it } from "vitest";
-import { changeLocale } from "./locale";
+import { changeLocale } from "@/i18n/locale";
 import { m } from "./paraglide/messages.js";
 import { server } from "./mocks/server";
 import { VisitorRoutes } from "./visitor-routes";

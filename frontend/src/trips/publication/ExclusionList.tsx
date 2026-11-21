@@ -4,7 +4,7 @@ import { Field, FieldLabel } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { useState } from "react";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import type { ExcludedRecord, ShareScope, ShareScopeKind } from "../../api-types";
 import {

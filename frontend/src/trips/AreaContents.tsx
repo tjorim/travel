@@ -1,9 +1,9 @@
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { Button } from "@/ui/button";
-import { routeTitle, stayLabel, visitTitle } from "../records";
+import { routeTitle, stayLabel, visitTitle } from "@/lib/records";
 import { type Area, type Trip } from "../api-types";
-import { useTripResource } from "../query/owner-queries";
+import { useTripResource } from "@/lib/query/owner-queries";
 
 /** What belongs to one area: a private, derived view. Each record stays owned by its own editor. */
 export function AreaContents({

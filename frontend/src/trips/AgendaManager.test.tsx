@@ -8,7 +8,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { server } from "../mocks/server";
-import * as offlineStore from "../offline/offline-store";
+import * as offlineStore from "@/lib/offline-store";
 import { localized } from "../query/fake-api";
 import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils";
 import type { Area, Route, Stay, Trip, Visit } from "../api-types";
@@ -18,8 +18,8 @@ import type { AgendaRecordKind } from "./agenda-items";
 import { PlanEditors, usePlanHost } from "./plan-host";
 
 // Every offline call goes through unchanged, except where a test makes the removal of a saved copy fail.
-vi.mock("../offline/offline-store", async (importOriginal) => {
-  const original = await importOriginal<typeof import("../offline/offline-store")>();
+vi.mock("@/lib/offline-store", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/offline-store")>();
   return { ...original, removeOfflineCopy: vi.fn(original.removeOfflineCopy) };
 });
 

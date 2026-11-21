@@ -2,11 +2,11 @@ import { fixtureResponse } from "@/mocks/response";
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
-import { changeLocale } from "../locale";
+import { changeLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { ApiError, apiFailure, errorMessage } from "./api";
-import { errorNotice, useFeedback, FeedbackError } from "./feedback";
-import { useRecordForm } from "../forms/useRecordForm";
+import { ApiError, apiFailure, errorMessage } from "@/lib/api/api";
+import { errorNotice, useFeedback, FeedbackError } from "@/lib/api/feedback";
+import { useRecordForm } from "@/hooks/useRecordForm";
 
 afterEach(() => {
   cleanup();

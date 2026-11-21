@@ -1,7 +1,7 @@
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { useState, type ReactNode } from "react";
 
-import { DeleteConfirmation } from "../RecordDialog";
+import { DeleteConfirmation } from "@/RecordDialog";
 
 export type ConfirmationRequest = {
   title: string | (() => string);

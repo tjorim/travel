@@ -1,4 +1,4 @@
-import { m } from "../paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 import {
   onlineManager,
   useMutation,
@@ -8,8 +8,8 @@ import {
 } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import { decodeSubject, readSession, type OwnerSession } from "../auth";
-import { useAuth } from "../auth-context";
+import { decodeSubject, readSession, type OwnerSession } from "@/lib/auth";
+import { useAuth } from "@/auth-context";
 import type {
   AlternativeGroup,
   AlternativeSuggestion,
@@ -31,8 +31,8 @@ import type {
   TripOverview,
   TripTask,
   TripTaskAlert,
-} from "../api-types";
-import { ApiError, ownerRequest, type OwnerRequest, type ErrorFallback } from "./api";
+} from "@/api-types";
+import { ApiError, ownerRequest, type OwnerRequest, type ErrorFallback } from "@/lib/api/api";
 import { ownerKeys, type DerivativeParent, type LibraryResource, type TripResource } from "./keys";
 
 export type Owner = { session: OwnerSession; subject: string };

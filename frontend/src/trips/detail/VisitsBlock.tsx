@@ -1,9 +1,9 @@
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { Markdown } from "../../Markdown";
-import { visitTitle, areaName } from "../../records";
+import { visitTitle, areaName } from "@/lib/records";
 import { type Trip, type Visit } from "../../api-types";
-import { VISIT_KIND_LABELS, PLANNING_STATUS_LABELS, visitWhen } from "../labels";
+import { VISIT_KIND_LABELS, PLANNING_STATUS_LABELS, visitWhen } from "@/lib/labels";
 import { placeLabel, RecordHeading, Section } from "./shared";
 import { DetailList } from "./DetailList";
 

@@ -8,7 +8,7 @@ import { afterEach, expect, it, vi } from "vitest";
 
 import { server } from "./mocks/server";
 import { AuthProvider } from "./auth-context";
-import { createOwnerQueryClient } from "./query/client";
+import { createOwnerQueryClient } from "@/lib/query/client";
 import { OwnerQueryProvider } from "./query/OwnerQueryProvider";
 import { testToken } from "./query/test-utils";
 import { buildOwnerRouteTree, createOwnerRouter } from "./router";

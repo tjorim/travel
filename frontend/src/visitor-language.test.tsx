@@ -5,7 +5,7 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { stubViewport } from "./mocks/viewport";
-import { changeLocale, selectedLocale } from "./locale";
+import { changeLocale, selectedLocale } from "@/i18n/locale";
 import { m } from "./paraglide/messages.js";
 import { serveApi } from "./query/serve-api";
 import { fixture } from "./test-projection";

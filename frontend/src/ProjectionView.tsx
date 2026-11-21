@@ -14,7 +14,7 @@ import { Spinner } from "@/ui/spinner";
 import { Alert } from "@/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
 import { m } from "./paraglide/messages.js";
-import { selectedLocale, useLocale } from "./locale";
+import { selectedLocale, useLocale } from "@/i18n/locale";
 import { Collapsible } from "@/ui/collapsible";
 import { Dialog } from "@/ui/dialog";
 import { Button } from "@/ui/button";
@@ -33,17 +33,17 @@ import {
   type ReactNode,
 } from "react";
 import { cn } from "cn";
-import { dayjs } from "./dayjs";
+import { dayjs } from "@/lib/dayjs";
 import { LocalName } from "./LocalName";
 import { Markdown } from "./Markdown";
 import { Authored, DocumentLanguageProvider, useTextLang } from "./visitor-language";
-import type { ContentLanguage } from "./content-language";
+import type { ContentLanguage } from "@/i18n/content-language";
 import { TripMap, type MapLine, type MapPhoto, type MapPoint } from "./TripMap";
 import { TripHeader, type TripCover } from "./TripHeader";
 import { groupStoryContext, type UpdateContext } from "./visitor-context";
 import { localDay, planByDay, type DayEntry, type PlanDay, type PlanRecords } from "./visitor-days";
-import { ROUTE_MODE_LABELS } from "./records";
-import { timeForViewer, zoneName } from "./dates";
+import { ROUTE_MODE_LABELS } from "@/lib/records";
+import { timeForViewer, zoneName } from "@/lib/dates";
 import { type RouteMode } from "./api-types";
 
 const CurrentLocations = lazy(() => import("./CurrentLocations"));

@@ -1,6 +1,6 @@
 import { Button } from "@/ui/button";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import type { DuplicateGroup } from "../merge-candidates";
 import { reasonsText } from "../MergeDialog";

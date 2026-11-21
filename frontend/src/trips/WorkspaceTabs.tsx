@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import type { MouseEvent } from "react";
 import { Link } from "@tanstack/react-router";
 
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { sectionPath, WORKSPACE_SECTIONS, type TripWorkspaceSection } from "./workspace-sections";
 

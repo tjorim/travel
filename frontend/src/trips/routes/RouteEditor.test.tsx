@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeApi, type FakeApi } from "../../query/fake-api";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../../query/test-utils";
 import type { Area, DocumentAsset, Location, Route, Trip } from "../../api-types";
-import { changeLocale } from "../../locale";
+import { changeLocale } from "@/i18n/locale";
 import {
   agendaRow,
   ensurePlanApi,

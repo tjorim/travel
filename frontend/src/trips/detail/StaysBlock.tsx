@@ -1,10 +1,10 @@
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { Markdown } from "../../Markdown";
-import { formatDayRange } from "../../dates";
-import { stayLabel, areaName } from "../../records";
+import { formatDayRange } from "@/lib/dates";
+import { stayLabel, areaName } from "@/lib/records";
 import { type Stay, type Trip } from "../../api-types";
-import { PLANNING_STATUS_LABELS } from "../labels";
+import { PLANNING_STATUS_LABELS } from "@/lib/labels";
 import { placeLabel, RecordHeading, Section } from "./shared";
 import { DetailList } from "./DetailList";
 

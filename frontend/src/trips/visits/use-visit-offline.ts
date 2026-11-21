@@ -1,7 +1,7 @@
-import { useOfflineCopies } from "../../offline/useOfflineCopies";
+import { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import { m } from "../../paraglide/messages.js";
-import { errorNotice, textNotice, type ReportNotice } from "../../query/feedback";
-import { visitTitle } from "../../records";
+import { errorNotice, textNotice, type ReportNotice } from "@/lib/api/feedback";
+import { visitTitle } from "@/lib/records";
 import type { Visit } from "../../api-types";
 
 /** Saving a visit on this device, or removing the copy; the result is reported through `onNotice`. */

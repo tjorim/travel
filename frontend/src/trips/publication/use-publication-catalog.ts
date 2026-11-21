@@ -1,15 +1,15 @@
 import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import {
   derivativesQueryOptions,
   useOwner,
   useTripResource,
   useTripUpdates,
-} from "../../query/owner-queries";
-import { ROUTE_MODE_LABELS, routeTitle, stayLabel, visitTitle, areaName } from "../../records";
+} from "@/lib/query/owner-queries";
+import { ROUTE_MODE_LABELS, routeTitle, stayLabel, visitTitle, areaName } from "@/lib/records";
 import { type Trip } from "../../api-types";
 import type { CatalogItem } from "./catalog";
 

@@ -1,6 +1,6 @@
 import { m } from "../../paraglide/messages.js";
-import { areaName, routeTitle, stayLabel, visitTitle } from "../../records";
-import { daysBetween, formatDay } from "../../dates";
+import { areaName, routeTitle, stayLabel, visitTitle } from "@/lib/records";
+import { daysBetween, formatDay } from "@/lib/dates";
 import {
   type AlternativeGroup,
   type AlternativeKind,
@@ -8,7 +8,7 @@ import {
   type Stay,
   type Visit,
 } from "../../api-types";
-import { PLANNING_STATUS_LABELS, visitWhen } from "../labels";
+import { PLANNING_STATUS_LABELS, visitWhen } from "@/lib/labels";
 import { routeShift, routeTimes } from "../routes/model";
 import { locationLine } from "../stays/model";
 import { visitPlace } from "../visits/model";

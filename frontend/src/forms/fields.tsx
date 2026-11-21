@@ -1,6 +1,6 @@
 import { Alert } from "@/ui/alert";
 import { m } from "../paraglide/messages.js";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { Field, FieldError, FieldLabel, FieldSet } from "@/ui/field";
 import { TravelTextarea } from "@/ui/TravelTextarea";
@@ -20,12 +20,12 @@ import {
 } from "react";
 import { SearchSelect } from "@/ui/SearchCombobox";
 import { SuggestInput } from "@/ui/SuggestInput";
-import { timeZoneOptions } from "../dates";
-import { blockUnreadableEntries } from "./unreadable-entry";
+import { timeZoneOptions } from "@/lib/dates";
+import { blockUnreadableEntries } from "@/lib/unreadable-entry";
 export { SearchSelect, AsyncSearchSelect } from "@/ui/SearchCombobox";
 export type { SearchSelectOption, SearchSelectGroup } from "@/ui/SearchCombobox";
 
-import { PendingEditContext } from "./navigation-guard";
+import { PendingEditContext } from "@/lib/navigation-guard";
 
 const timeZones = timeZoneOptions();
 

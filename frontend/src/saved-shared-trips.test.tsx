@@ -3,7 +3,7 @@ import type * as Api from "@/api-schema";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it, vi } from "vitest";
-import { changeLocale } from "./locale";
+import { changeLocale } from "@/i18n/locale";
 import { server } from "./mocks/server";
 import { m } from "./paraglide/messages.js";
 import type { Projection } from "./ProjectionView";

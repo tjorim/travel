@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
 
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { formatUpdateInstant } from "../dates";
+import { formatUpdateInstant } from "@/lib/dates";
 import { FirstSteps } from "./FirstSteps";
 import { OwnerTripMap } from "./OwnerTripMap";
 import { TripOverview } from "./TripOverview";

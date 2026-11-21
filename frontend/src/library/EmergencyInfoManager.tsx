@@ -1,19 +1,19 @@
 import { Spinner } from "@/ui/spinner";
-import type { ErrorFallback } from "../query/api";
-import { useLocale } from "../locale";
+import type { ErrorFallback } from "@/lib/api/api";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { errorNotice, useFeedback, textNotice } from "../query/feedback";
+import { errorNotice, useFeedback, textNotice } from "@/lib/api/feedback";
 import { Button } from "@/ui/button";
 
 import { RecordForm, requiredText, SelectField, TextField } from "../forms/fields";
 import { MarkdownField } from "../forms/MarkdownField";
 import { Markdown } from "../Markdown";
-import { useRecordDialog } from "../forms/useRecordDialog";
-import { useRecordForm } from "../forms/useRecordForm";
-import { useOfflineCopies } from "../offline/useOfflineCopies";
-import { errorMessage } from "../query/api";
-import { ownerKeys } from "../query/keys";
-import { libraryPath, useLibrary, useOwnerMutation } from "../query/owner-queries";
+import { useRecordDialog } from "@/hooks/useRecordDialog";
+import { useRecordForm } from "@/hooks/useRecordForm";
+import { useOfflineCopies } from "@/hooks/useOfflineCopies";
+import { errorMessage } from "@/lib/api/api";
+import { ownerKeys } from "@/lib/query/keys";
+import { libraryPath, useLibrary, useOwnerMutation } from "@/lib/query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import type { EmergencyInfoEntry, EmergencyInfoKind } from "../api-types";
 

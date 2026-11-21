@@ -1,7 +1,7 @@
 import { Button } from "@/ui/button";
 import { useStore, type AnyFormApi } from "@tanstack/react-form";
 
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { pendingNames, type SuggestedNames } from "../trips/place-result";
 import { localizedNames } from "./LocalizedField";

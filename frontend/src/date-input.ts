@@ -3,7 +3,7 @@
  * time inputs in its own locale, so these helpers keep the visible text in the app's locale while the forms
  * and the API keep their machine values: `YYYY-MM-DD`, `HH:mm` and `YYYY-MM-DDTHH:mm`.
  */
-import { dayjs } from "./dayjs";
+import { dayjs } from "@/lib/dayjs";
 import type { Locale } from "./paraglide/runtime.js";
 
 const pad = (value: number) => String(value).padStart(2, "0");

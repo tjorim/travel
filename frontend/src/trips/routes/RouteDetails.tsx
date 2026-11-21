@@ -1,12 +1,12 @@
 import { Button } from "@/ui/button";
 
-import { AuthoredText } from "../../content-language";
-import { useLocale } from "../../locale";
+import { AuthoredText } from "@/i18n/content-language";
+import { useLocale } from "@/i18n/locale";
 import { Markdown } from "../../Markdown";
 import { m } from "../../paraglide/messages.js";
-import { ROUTE_MODE_LABELS, routeTitle } from "../../records";
+import { ROUTE_MODE_LABELS, routeTitle } from "@/lib/records";
 import { type Route } from "../../api-types";
-import { PLANNING_STATUS_LABELS } from "../labels";
+import { PLANNING_STATUS_LABELS } from "@/lib/labels";
 import { RouteGeometryEditor } from "../RouteGeometryEditor";
 import { VisibilityControl } from "../visibility";
 import { routeTimes } from "./model";

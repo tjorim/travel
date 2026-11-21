@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { formatInstant, formatNumber, useLocale } from "../locale";
+import { formatInstant, formatNumber, useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { ownerFile, ownerRequest } from "../query/api";
-import { ownerKeys } from "../query/keys";
-import { useOwner, useTripResource } from "../query/owner-queries";
+import { ownerFile, ownerRequest } from "@/lib/api/api";
+import { ownerKeys } from "@/lib/query/keys";
+import { useOwner, useTripResource } from "@/lib/query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
 import { Button } from "@/ui/button";
 import { Collapsible } from "@/ui/collapsible";

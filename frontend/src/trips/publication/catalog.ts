@@ -1,5 +1,5 @@
 import { m } from "../../paraglide/messages.js";
-import { formatInstantDate } from "../../dates";
+import { formatInstantDate } from "@/lib/dates";
 import {
   type KindCounts,
   type ShareLink,

@@ -1,4 +1,4 @@
-import { useFeedback } from "../query/feedback";
+import { useFeedback } from "@/lib/api/feedback";
 import { useEffect, useState } from "react";
 
 /** What a request asks the dialog to do with the record: show it (the default), open it for editing, or ask to delete it. */

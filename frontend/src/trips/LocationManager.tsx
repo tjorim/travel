@@ -1,13 +1,13 @@
 import { Button } from "@/ui/button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
-import { useRecordForm } from "../forms/useRecordForm";
-import { useLocale } from "../locale";
+import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "@/hooks/useRecordDialog";
+import { useRecordForm } from "@/hooks/useRecordForm";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { isResourceInUse } from "../query/api";
-import { errorNotice, textNotice, useFeedback } from "../query/feedback";
-import { useTripResource } from "../query/owner-queries";
+import { isResourceInUse } from "@/lib/api/api";
+import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
+import { useTripResource } from "@/lib/query/owner-queries";
 import { RecordDialog } from "../RecordDialog";
 import type { Area, Location, LocationInput, Trip } from "../api-types";
 import { duplicateLocations } from "./merge-candidates";

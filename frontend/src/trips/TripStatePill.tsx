@@ -1,6 +1,6 @@
 import { cn } from "cn";
 
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { tripStateLabel, type TripState } from "./trip-state";
 
 const DOT: Record<TripState, string> = {

@@ -1,6 +1,6 @@
 import { m } from "../../paraglide/messages.js";
-import { ownerKeys } from "../../query/keys";
-import { tripPath, useOwnerMutation, useTripResource } from "../../query/owner-queries";
+import { ownerKeys } from "@/lib/query/keys";
+import { tripPath, useOwnerMutation, useTripResource } from "@/lib/query/owner-queries";
 import type { AlternativeChoice, AlternativeGroup, AlternativeKind } from "../../api-types";
 
 const records = { stay: "stays", visit: "visits", route: "routes" } as const;

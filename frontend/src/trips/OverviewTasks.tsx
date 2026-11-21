@@ -1,10 +1,10 @@
 import { isOverdue, tripDay } from "./readiness";
 import { Link } from "@tanstack/react-router";
 
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { useTripResource } from "../query/owner-queries";
-import { formatDay } from "../dates";
+import { useTripResource } from "@/lib/query/owner-queries";
+import { formatDay } from "@/lib/dates";
 import { type Trip } from "../api-types";
 import { sectionPath } from "./workspace-sections";
 

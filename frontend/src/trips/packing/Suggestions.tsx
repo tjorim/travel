@@ -2,10 +2,10 @@ import { Button } from "@/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { ownerRequest } from "../../query/api";
-import { useOwner } from "../../query/owner-queries";
+import { ownerRequest } from "@/lib/api/api";
+import { useOwner } from "@/lib/query/owner-queries";
 import type { PackingSuggestion } from "./model";
 
 /** Items the owner packed on earlier trips, offered once and dismissible per list. */

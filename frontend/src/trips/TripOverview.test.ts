@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { stayCoversNight } from "../records";
+import { stayCoversNight } from "@/lib/records";
 import { whereabouts } from "../whereabouts";
 import { type Route, type Stay } from "../api-types";
 import { tripBadges } from "./TripOverview";

@@ -3,10 +3,10 @@ import { Button } from "@/ui/button";
 import { ChoiceGroup } from "@/ui/ChoiceGroup";
 import { useId, useRef, useState } from "react";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { errorNotice, textNotice, useFeedback } from "../../query/feedback";
-import { formatInstantDate } from "../../dates";
+import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
+import { formatInstantDate } from "@/lib/dates";
 import {
   type PresetLabel,
   type ShareScope,

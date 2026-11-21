@@ -1,6 +1,6 @@
 import { MutationCache, onlineManager, QueryCache, QueryClient } from "@tanstack/react-query";
 
-import { ApiError } from "./api";
+import { ApiError } from "@/lib/api/api";
 
 const MAX_QUERY_RETRIES = 2;
 

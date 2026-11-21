@@ -1,4 +1,4 @@
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 
 /** Explains what the "idea" status of a route or stay means for the owner and for visitors. */

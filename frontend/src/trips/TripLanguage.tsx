@@ -5,13 +5,13 @@ import { Field, FieldDescription, FieldLabel } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { useState } from "react";
 
-import { type ContentLanguage } from "../content-language";
-import { useConfirmation } from "../forms/useConfirmation";
-import { useLocale } from "../locale";
+import { type ContentLanguage } from "@/i18n/content-language";
+import { useConfirmation } from "@/hooks/useConfirmation";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { errorMessage } from "../query/api";
-import { ownerKeys } from "../query/keys";
-import { useOwnerMutation } from "../query/owner-queries";
+import { errorMessage } from "@/lib/api/api";
+import { ownerKeys } from "@/lib/query/keys";
+import { useOwnerMutation } from "@/lib/query/owner-queries";
 import type { Trip } from "../api-types";
 
 const languageName = (language: ContentLanguage) =>

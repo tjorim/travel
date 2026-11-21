@@ -2,10 +2,10 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { changeLocale } from "../locale";
+import { changeLocale } from "@/i18n/locale";
 import { DateField, DateTimeField, TimeField } from "./DateTimeFields";
 import { RecordForm } from "./fields";
-import { useRecordForm } from "./useRecordForm";
+import { useRecordForm } from "@/hooks/useRecordForm";
 
 type Values = { day: string; time: string; moment: string };
 const submit = vi.fn(async (_values: Values) => {});

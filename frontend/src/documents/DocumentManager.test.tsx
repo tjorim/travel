@@ -4,7 +4,7 @@ import "fake-indexeddb/auto";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { ownerKeys } from "../query/keys";
+import { ownerKeys } from "@/lib/query/keys";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import {
   chooseOption,

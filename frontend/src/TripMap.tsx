@@ -1,8 +1,8 @@
-import { routeLineGeometry } from "./route-line-geometry";
-import { mapErrorReporter } from "./map-errors";
-import { mapMessages, useMapMessages } from "./map-messages";
-import { textNotice, useFeedback } from "./query/feedback";
-import { useLocale } from "./locale";
+import { routeLineGeometry } from "@/lib/map/route-line-geometry";
+import { mapErrorReporter } from "@/lib/map/map-errors";
+import { mapMessages, useMapMessages } from "@/lib/map/map-messages";
+import { textNotice, useFeedback } from "@/lib/api/feedback";
+import { useLocale } from "@/i18n/locale";
 import { m } from "./paraglide/messages.js";
 import { themeColor, useTheme } from "./appearance";
 import { Collapsible } from "@/ui/collapsible";
@@ -20,8 +20,8 @@ import {
   readCamera,
   styleLabelFont,
   type MapCamera,
-} from "./map-style";
-import { ROUTE_MODE_LABELS } from "./records";
+} from "@/lib/map/map-style";
+import { ROUTE_MODE_LABELS } from "@/lib/records";
 import { type RouteMode } from "./api-types";
 
 export type MapLink = { label: string; href?: string; onOpen?: () => void };

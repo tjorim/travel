@@ -5,8 +5,8 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { noticeMessage } from "../query/feedback";
-import type { MessageNotice, ErrorNotice } from "../query/feedback";
+import { noticeMessage } from "@/lib/api/feedback";
+import type { MessageNotice, ErrorNotice } from "@/lib/api/feedback";
 import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils";
 import type { Area, Trip } from "../api-types";
 import { RouteEditor } from "./routes/RouteEditor";

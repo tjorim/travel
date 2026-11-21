@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
-import { changeLocale } from "../../locale";
+import { changeLocale } from "@/i18n/locale";
 import type { ShareLink } from "../../api-types";
 import { LinkList } from "./LinkList";
 

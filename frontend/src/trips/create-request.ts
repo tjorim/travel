@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { stayCoversNight, stayInPlan } from "../records";
+import { stayCoversNight, stayInPlan } from "@/lib/records";
 import { type Location, type Stay } from "../api-types";
 
 /** The record kinds the agenda and the map can start in place. */

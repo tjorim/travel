@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
-import { dayjs } from "../dayjs";
-import { formatDay } from "../dates";
+import { dayjs } from "@/lib/dayjs";
+import { formatDay } from "@/lib/dates";
 import { isOverdue, tripDay, tripProgress } from "./readiness";
 
 it("uses the local calendar around midnight and excludes completed and today's tasks", () => {

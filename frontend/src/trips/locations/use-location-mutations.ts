@@ -1,5 +1,5 @@
 import { m } from "../../paraglide/messages.js";
-import { ownerKeys } from "../../query/keys";
+import { ownerKeys } from "@/lib/query/keys";
 import type { Location } from "../../api-types";
 import { useTripRecordMutations } from "../use-record-mutations";
 

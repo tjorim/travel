@@ -4,11 +4,11 @@ import { ChoiceGroup } from "@/ui/ChoiceGroup";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { useEffect, useId, useMemo, useState } from "react";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { errorMessage } from "../../query/api";
+import { errorMessage } from "@/lib/api/api";
 import { DeleteConfirmation, RecordDialog } from "../../RecordDialog";
-import { formatDay } from "../../dates";
+import { formatDay } from "@/lib/dates";
 import {
   type AlternativeGroup,
   type AlternativeKind,

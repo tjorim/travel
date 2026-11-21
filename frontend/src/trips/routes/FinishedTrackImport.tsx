@@ -3,10 +3,10 @@ import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
 import { useAuth } from "../../auth-context";
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import type { GeoJsonLineString } from "../../api-types";
-import { ownerRequest } from "../../query/api";
+import { ownerRequest } from "@/lib/api/api";
 import { RouteGeometryEditor, type RouteCoordinate } from "../RouteGeometryEditor";
 
 /** Files never enter query/mutation caches, form values or browser storage. */

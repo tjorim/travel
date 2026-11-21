@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { formatDate, formatNumber, useLocale } from "../../locale";
+import { formatDate, formatNumber, useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { ownerRequest } from "../../query/api";
-import { ownerKeys } from "../../query/keys";
-import { tripPath, useOwner } from "../../query/owner-queries";
+import { ownerRequest } from "@/lib/api/api";
+import { ownerKeys } from "@/lib/query/keys";
+import { tripPath, useOwner } from "@/lib/query/owner-queries";
 import type { AuditEvent } from "../../api-types";
 import { isVisitorField, visitorFieldLabel } from "../locations/model";
 import { kindCountsText } from "./catalog";

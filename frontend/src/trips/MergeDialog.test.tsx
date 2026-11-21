@@ -3,7 +3,7 @@ import type * as Api from "@/api-schema";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { changeLocale } from "../locale";
+import { changeLocale } from "@/i18n/locale";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";

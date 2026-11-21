@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { ownerLocationName } from "../../records";
+import { ownerLocationName } from "@/lib/records";
 import { type Location, type PublicProjectionStatus, type ShareLink } from "../../api-types";
 import {
   address,
@@ -14,7 +14,7 @@ import {
   shareableAddress,
   visitorReview,
 } from "./model";
-import { ApiError } from "../../query/api";
+import { ApiError } from "@/lib/api/api";
 
 const place = (fields: Partial<Location> = {}) =>
   ({

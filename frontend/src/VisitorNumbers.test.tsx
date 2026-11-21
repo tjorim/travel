@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { changeLocale } from "./locale";
+import { changeLocale } from "@/i18n/locale";
 import { VisitorNumbers } from "./VisitorNumbers";
 import { ScopeEditor } from "./trips/publication/ScopeEditor";
 import { m } from "./paraglide/messages.js";

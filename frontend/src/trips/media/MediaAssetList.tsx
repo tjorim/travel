@@ -1,10 +1,10 @@
 import { Button } from "@/ui/button";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { useOwner } from "../../query/owner-queries";
-import { bytesLabel } from "../../files";
-import { formatCapture } from "../../dates";
+import { useOwner } from "@/lib/query/owner-queries";
+import { bytesLabel } from "@/lib/files";
+import { formatCapture } from "@/lib/dates";
 import { type MediaAsset } from "../../api-types";
 import { Field, FieldLabel } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";

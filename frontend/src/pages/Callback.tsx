@@ -1,12 +1,12 @@
-import { useFeedback, textNotice, errorNotice } from "../query/feedback";
-import { useLocale } from "../locale";
+import { useFeedback, textNotice, errorNotice } from "@/lib/api/feedback";
+import { useLocale } from "@/i18n/locale";
 import { VisitorTopBar } from "../VisitorTopBar";
 import { m } from "../paraglide/messages.js";
 import { Button } from "@/ui/button";
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
-import { beginSignIn, completeSignIn } from "../auth";
+import { beginSignIn, completeSignIn } from "@/lib/auth";
 import { useAuth } from "../auth-context";
 
 export function Callback() {

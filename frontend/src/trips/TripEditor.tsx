@@ -1,18 +1,18 @@
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { textNotice, errorNotice, useFeedback } from "../query/feedback";
+import { textNotice, errorNotice, useFeedback } from "@/lib/api/feedback";
 import { Button } from "@/ui/button";
 import { useEffect, useState } from "react";
 
 import { DateField } from "../forms/DateTimeFields";
 import { RecordForm } from "../forms/fields";
 import { LocalizedField } from "../forms/LocalizedField";
-import { useRecordForm } from "../forms/useRecordForm";
-import { ownerKeys } from "../query/keys";
+import { useRecordForm } from "@/hooks/useRecordForm";
+import { ownerKeys } from "@/lib/query/keys";
 
-import { useOwnerMutation, useRefreshTrip } from "../query/owner-queries";
+import { useOwnerMutation, useRefreshTrip } from "@/lib/query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { interfaceLanguage } from "../content-language";
+import { interfaceLanguage } from "@/i18n/content-language";
 import { TripExport } from "./TripExport";
 import { TripLanguage } from "./TripLanguage";
 import type { Trip } from "../api-types";
@@ -70,7 +70,7 @@ export function TripEditor({
   onClose: () => void;
   onSaved: (saved: Trip, created: boolean) => void;
   onDeleted: () => void;
-  onNotice: (message: string | import("../query/feedback").MessageNotice) => void;
+  onNotice: (message: string | import("@/lib/api/feedback").MessageNotice) => void;
 }) {
   useLocale();
   const [confirmDelete, setConfirmDelete] = useState(false);

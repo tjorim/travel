@@ -1,5 +1,5 @@
 import { Preferences } from "./Preferences";
-import { useLocale } from "./locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "./paraglide/messages.js";
 
 /** Plain links also work outside either router, including error states and the callback. */

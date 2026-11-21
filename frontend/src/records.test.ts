@@ -2,7 +2,7 @@
 import { expect, it } from "vitest";
 
 import { setLocale } from "./paraglide/runtime.js";
-import { areaName, presetRecordName } from "./records";
+import { areaName, presetRecordName } from "@/lib/records";
 
 it("names an unnamed area in the selected locale and keeps a given name as written", () => {
   try {

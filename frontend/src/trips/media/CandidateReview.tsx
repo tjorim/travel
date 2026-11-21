@@ -2,14 +2,14 @@ import { Button } from "@/ui/button";
 import { useState } from "react";
 
 import { AsyncSearchSelect, SearchSelect } from "../../forms/fields";
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import type { ErrorFallback } from "../../query/api";
-import { errorNotice, textNotice, type Notice } from "../../query/feedback";
-import { ownerKeys } from "../../query/keys";
-import { tripPath, useOwnerMutation, useTravelUpdateSearch } from "../../query/owner-queries";
-import { formatCapture } from "../../dates";
-import { visitTitle, areaName } from "../../records";
+import type { ErrorFallback } from "@/lib/api/api";
+import { errorNotice, textNotice, type Notice } from "@/lib/api/feedback";
+import { ownerKeys } from "@/lib/query/keys";
+import { tripPath, useOwnerMutation, useTravelUpdateSearch } from "@/lib/query/owner-queries";
+import { formatCapture } from "@/lib/dates";
+import { visitTitle, areaName } from "@/lib/records";
 import {
   type AreaSuggestion,
   type MediaAsset,

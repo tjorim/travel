@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { m } from "../../paraglide/messages.js";
-import { ownerRequest } from "../../query/api";
-import { ownerKeys } from "../../query/keys";
-import { tripPath, useOwner } from "../../query/owner-queries";
+import { ownerRequest } from "@/lib/api/api";
+import { ownerKeys } from "@/lib/query/keys";
+import { tripPath, useOwner } from "@/lib/query/owner-queries";
 import { collectionsPath } from "../../sharing/collections";
 import type { FutureDisclosure, ShareScope } from "../../api-types";
 

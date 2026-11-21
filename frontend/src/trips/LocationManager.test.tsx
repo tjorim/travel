@@ -7,7 +7,7 @@ import { fakeApi, type FakeApi } from "../query/fake-api";
 import { chooseOption, openAdvanced, renderWithOwner, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
 import type { Area, Location, Trip } from "../api-types";
-import { changeLocale } from "../locale";
+import { changeLocale } from "@/i18n/locale";
 import { LocationManager } from "./LocationManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));

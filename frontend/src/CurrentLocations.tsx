@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { formatInstant, formatNumber, formatRelativeTime, useLocale } from "./locale";
+import { formatInstant, formatNumber, formatRelativeTime, useLocale } from "@/i18n/locale";
 import type { CurrentLocation } from "./api-types";
 import { m } from "./paraglide/messages.js";
 

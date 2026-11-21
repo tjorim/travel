@@ -4,15 +4,15 @@ import {
   useDialogFocus,
   useRecordDialog,
   type DialogFocusRequest,
-} from "../../forms/useRecordDialog";
-import { useRecordForm } from "../../forms/useRecordForm";
-import { useLocale } from "../../locale";
+} from "@/hooks/useRecordDialog";
+import { useRecordForm } from "@/hooks/useRecordForm";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { errorNotice, textNotice, type ReportNotice } from "../../query/feedback";
-import { useTripResource } from "../../query/owner-queries";
+import { errorNotice, textNotice, type ReportNotice } from "@/lib/api/feedback";
+import { useTripResource } from "@/lib/query/owner-queries";
 import { groupedIds } from "../alternatives/model";
 import { DeleteConfirmation, RecordDialog } from "../../RecordDialog";
-import { stayInPlan, stayLabel } from "../../records";
+import { stayInPlan, stayLabel } from "@/lib/records";
 import { type Stay, type Trip } from "../../api-types";
 import {
   blankStay,

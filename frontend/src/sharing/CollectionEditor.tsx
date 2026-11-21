@@ -4,13 +4,13 @@ import { Field, FieldLabel } from "@/ui/field";
 import { Input } from "@/ui/input";
 import { useState } from "react";
 
-import { interfaceLanguage } from "../content-language";
+import { interfaceLanguage } from "@/i18n/content-language";
 import { SearchSelect } from "../forms/fields";
 import { LocalizedFieldView, plainField } from "../forms/LocalizedField";
-import { useConfirmation } from "../forms/useConfirmation";
-import { useLocale } from "../locale";
+import { useConfirmation } from "@/hooks/useConfirmation";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { errorNotice, textNotice, useFeedback } from "../query/feedback";
+import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
 import { RecordDialog } from "../RecordDialog";
 import type { TripSummary } from "../api-types";
 import { emptyScope } from "../trips/publication/catalog";

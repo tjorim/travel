@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { m } from "../../paraglide/messages.js";
-import { errorMessage } from "../../query/api";
-import { ownerKeys } from "../../query/keys";
-import { tripPath, useOwnerMutation } from "../../query/owner-queries";
+import { errorMessage } from "@/lib/api/api";
+import { ownerKeys } from "@/lib/query/keys";
+import { tripPath, useOwnerMutation } from "@/lib/query/owner-queries";
 import type { MediaAsset } from "../../api-types";
 
 /** A photo picked on this device that is on its way to the trip's private library, or did not get there. */

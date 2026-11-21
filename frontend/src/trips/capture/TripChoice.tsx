@@ -1,4 +1,4 @@
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { AsyncSearchSelect } from "../../forms/fields";
 import type { TripSummary } from "../../api-types";

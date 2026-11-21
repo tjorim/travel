@@ -9,7 +9,7 @@ import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import { parseFlagParam } from "../router/search-params";
 import type { Trip } from "../api-types";
 import { TripWorkspace, TripWorkspaceView } from "./TripWorkspace";
-import { changeLocale } from "../locale";
+import { changeLocale } from "@/i18n/locale";
 import { Trips } from "./Trips";
 import { serveApi } from "../query/serve-api";
 

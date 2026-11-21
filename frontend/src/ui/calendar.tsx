@@ -3,7 +3,7 @@ import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react
 import { DayPicker, getDefaultClassNames } from "react-day-picker";
 import { enGB } from "react-day-picker/locale/en-GB";
 import { nl } from "react-day-picker/locale/nl";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 
 const navButton =
   "inline-grid size-11 place-items-center rounded-travel-control bg-transparent p-0 text-travel-ink hover:bg-travel-hover aria-disabled:opacity-40 sm:size-9";

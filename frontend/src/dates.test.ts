@@ -7,7 +7,7 @@ import {
   formatUpdateInstant,
   updateDateLabel,
   updateWallClock,
-} from "./dates";
+} from "@/lib/dates";
 
 afterEach(() => {
   vi.unstubAllEnvs();

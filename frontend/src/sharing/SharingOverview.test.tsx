@@ -5,7 +5,7 @@ import type * as Api from "@/api-schema";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { changeLocale } from "../locale";
+import { changeLocale } from "@/i18n/locale";
 import { renderWithOwner, testToken } from "../query/test-utils";
 import { serveApi } from "../query/serve-api";
 import { SharingOverview } from "./SharingOverview";

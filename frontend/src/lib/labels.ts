@@ -1,12 +1,12 @@
-import { m } from "../paraglide/messages.js";
-import { formatDayRange } from "../dates";
+import { m } from "@/paraglide/messages.js";
+import { formatDayRange } from "./dates";
 import {
   type DocumentAsset,
   type MediaAsset,
   type PlanningStatus,
   type Visit,
   type VisitKind,
-} from "../api-types";
+} from "@/api-types";
 
 // Label tables and formatters that read-only views share with the editors. They live apart from the managers so a
 // view-only page does not pull an editor's dialog and form graph into its chunk.

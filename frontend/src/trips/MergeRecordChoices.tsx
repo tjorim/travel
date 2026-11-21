@@ -1,7 +1,7 @@
 import { useId } from "react";
 
 import { formatDateInput } from "../date-input";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import type { MergeRecordKind } from "../api-types";
 import type { MergeRecordRef, MergeWidenedRecord } from "../api-types";

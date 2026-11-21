@@ -1,5 +1,5 @@
-import { FeedbackError } from "./query/feedback";
-import { m } from "./paraglide/messages.js";
+import { FeedbackError } from "@/lib/api/feedback";
+import { m } from "@/paraglide/messages.js";
 const issuer = "https://auth.tjor.im/realms/travel";
 const clientId = "travel-tracker";
 const storageKey = "travel-tracker-session";

@@ -1,10 +1,10 @@
 import { Button } from "@/ui/button";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { LocalName } from "../../LocalName";
 import { m } from "../../paraglide/messages.js";
 import { DeleteConfirmation } from "../../RecordDialog";
-import { ownerLocationName } from "../../records";
+import { ownerLocationName } from "@/lib/records";
 import { type Area, type Location, type Trip } from "../../api-types";
 import { MergeDialog, type MergeRequest } from "../MergeDialog";
 import { VisibilityControl, visibilityLabel } from "../visibility";

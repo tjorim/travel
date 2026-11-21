@@ -3,7 +3,7 @@ import { act, cleanup, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, expect, it, vi } from "vitest";
-import { changeLocale } from "../../locale";
+import { changeLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import { server } from "../../mocks/server";
 import { renderWithOwner, testToken } from "../../query/test-utils";

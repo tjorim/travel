@@ -14,7 +14,7 @@ import {
   testToken,
 } from "../../query/test-utils";
 import type { Area, Location, Stay, Trip, Visit } from "../../api-types";
-import { visitWhen } from "../labels";
+import { visitWhen } from "@/lib/labels";
 import {
   agendaRow,
   ensurePlanApi,

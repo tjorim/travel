@@ -2,9 +2,9 @@ import { Field, FieldLabel } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { useState } from "react";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { ApiError } from "../../query/api";
+import { ApiError } from "@/lib/api/api";
 import { DeleteConfirmation } from "../../RecordDialog";
 import type { ExclusionWidening, KindCounts } from "../../api-types";
 import { kindCountsText } from "./catalog";

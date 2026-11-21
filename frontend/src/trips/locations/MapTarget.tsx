@@ -1,4 +1,4 @@
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 
 /** The saved map point with a link to it; nothing when the location has no point. */

@@ -1,4 +1,4 @@
-import { decodeSubject, readSession } from "../auth";
+import { decodeSubject, readSession } from "./auth";
 
 /** Tab-scoped emergency recovery. Never serialise uploads or other non-JSON values. */
 export function serializableRecord(value: unknown): boolean {

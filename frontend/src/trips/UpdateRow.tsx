@@ -1,11 +1,11 @@
 import { Button } from "@/ui/button";
 
-import { AuthoredText } from "../content-language";
-import { useLocale } from "../locale";
+import { AuthoredText } from "@/i18n/content-language";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { updateDateLabel } from "../dates";
+import { updateDateLabel } from "@/lib/dates";
 import { type TravelUpdate } from "../api-types";
-import type { OwnerSession } from "../auth";
+import type { OwnerSession } from "@/lib/auth";
 import { previewBlocker } from "./UpdatePreview";
 import { UpdatePhotoStrip, type UpdatePhoto } from "./UpdatePhotos";
 import { visibilityLabel } from "./visibility";

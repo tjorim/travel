@@ -14,8 +14,8 @@ import { afterEach, expect, it, vi } from "vitest";
 import { NavigationGuard } from "./NavigationGuard";
 import { RecordDialog } from "../RecordDialog";
 import { RecordForm, TextField } from "./fields";
-import { useRecordForm } from "./useRecordForm";
-import { changeLocale } from "../locale";
+import { useRecordForm } from "@/hooks/useRecordForm";
+import { changeLocale } from "@/i18n/locale";
 
 const submit = vi.fn<(values: { title: string }) => Promise<void>>();
 const saved = vi.fn();

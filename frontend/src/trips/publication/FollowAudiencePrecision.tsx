@@ -4,7 +4,7 @@ import { TravelCheckbox } from "@/ui/TravelCheckbox";
 import { useState } from "react";
 
 import { SearchSelect } from "../../forms/fields";
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import type { FollowAudienceAudience, FollowAudienceResult } from "../../api-types";
 import { DeleteConfirmation } from "../../RecordDialog";

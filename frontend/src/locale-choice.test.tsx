@@ -2,7 +2,7 @@
 import { act } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { changeLocale, chosenLocale } from "./locale";
+import { changeLocale, chosenLocale } from "@/i18n/locale";
 
 afterEach(() => {
   vi.unstubAllGlobals();

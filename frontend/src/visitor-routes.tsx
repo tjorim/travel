@@ -1,8 +1,8 @@
 import { cn } from "cn";
-import { ApiError, apiFailure, errorMessage } from "./query/api";
+import { ApiError, apiFailure, errorMessage } from "@/lib/api/api";
 import { m } from "./paraglide/messages.js";
-import { adoptLocale, chosenLocale, useLocale } from "./locale";
-import type { ContentLanguage } from "./content-language";
+import { adoptLocale, chosenLocale, useLocale } from "@/i18n/locale";
+import type { ContentLanguage } from "@/i18n/content-language";
 import { deliveredLanguage, isContentLanguage, withLanguage } from "./visitor-language";
 import { VisitorTopBar } from "./VisitorTopBar";
 import { Button } from "@/ui/button";

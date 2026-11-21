@@ -8,8 +8,8 @@ import {
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 
-import { __resetOfflineStoreForTests } from "../offline/offline-store";
-import { createOwnerQueryClient } from "./client";
+import { __resetOfflineStoreForTests } from "@/lib/offline-store";
+import { createOwnerQueryClient } from "@/lib/query/client";
 
 /** An unsigned, JWT-shaped token: enough for the client-side subject decode. */
 export function testToken(subject = "owner-1"): string {

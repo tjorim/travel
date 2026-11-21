@@ -1,9 +1,9 @@
 import { Button } from "@/ui/button";
 import { useEffect, useState } from "react";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { presetRecordName } from "../../records";
+import { presetRecordName } from "@/lib/records";
 import { type PresetExceptions, type PresetRecordRef, type ShareScope } from "../../api-types";
 import { useSetVisibility } from "../visibility";
 import { GROUP_TITLES, isExcluded, setShown, updateItem, type CatalogItem } from "./catalog";

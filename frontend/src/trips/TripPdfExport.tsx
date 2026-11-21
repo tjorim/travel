@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import type { CollectionMembershipResponse } from "../api-types";
-import { ownerKeys } from "../query/keys";
-import { ownerFile, ownerRequest } from "../query/api";
-import { useOwner, useTripResource } from "../query/owner-queries";
+import { ownerKeys } from "@/lib/query/keys";
+import { ownerFile, ownerRequest } from "@/lib/api/api";
+import { useOwner, useTripResource } from "@/lib/query/owner-queries";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { ChoiceGroup } from "@/ui/ChoiceGroup";

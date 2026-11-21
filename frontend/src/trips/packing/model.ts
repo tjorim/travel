@@ -1,4 +1,4 @@
-import { formatNumber } from "../../locale";
+import { formatNumber } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import type {
   Bag,

@@ -4,9 +4,9 @@ import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { server } from "../mocks/server";
-import { ApiError, apiFailure, ownerFile, ownerRequest } from "./api";
-import { shouldRetryQuery } from "./client";
-import { ownerKeys } from "./keys";
+import { ApiError, apiFailure, ownerFile, ownerRequest } from "@/lib/api/api";
+import { shouldRetryQuery } from "@/lib/query/client";
+import { ownerKeys } from "@/lib/query/keys";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -198,7 +198,7 @@ it("does not render remote fragments from a malformed successful JSON response",
 });
 
 it("replays an unauthorized save once with the renewed token and identical body", async () => {
-  const auth = await import("../auth");
+  const auth = await import("@/lib/auth");
   vi.spyOn(auth, "freshSession").mockImplementation(async (current, force) =>
     force ? { ...current, accessToken: "renewed" } : current,
   );
@@ -225,7 +225,7 @@ it("replays an unauthorized save once with the renewed token and identical body"
 });
 
 it("does not replay a second 401 or discard storage when renewal fails", async () => {
-  const auth = await import("../auth");
+  const auth = await import("@/lib/auth");
   const fresh = vi.spyOn(auth, "freshSession").mockImplementation(async (current) => current);
   let attempts = 0;
   server.use(

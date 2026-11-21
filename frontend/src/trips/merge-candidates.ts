@@ -1,4 +1,4 @@
-import { areaName } from "../records";
+import { areaName } from "@/lib/records";
 import type { Area, Location } from "../api-types";
 
 export type DuplicateReason = "name" | "coordinates" | "address";

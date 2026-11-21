@@ -1,10 +1,10 @@
 import { Button } from "@/ui/button";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { useOwner } from "../../query/owner-queries";
+import { useOwner } from "@/lib/query/owner-queries";
 import { DeleteConfirmation } from "../../RecordDialog";
-import { bytesLabel } from "../../files";
+import { bytesLabel } from "@/lib/files";
 import { type MediaAsset, type MediaDerivative, type Trip } from "../../api-types";
 import { OwnerImage } from "../OwnerImage";
 import { VisibilityControl } from "../visibility";

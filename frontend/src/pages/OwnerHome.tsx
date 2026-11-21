@@ -1,8 +1,8 @@
 import { Spinner } from "@/ui/spinner";
 import { Alert } from "@/ui/alert";
-import { errorNotice, useFeedback } from "../query/feedback";
+import { errorNotice, useFeedback } from "@/lib/api/feedback";
 import { m } from "../paraglide/messages.js";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { Button } from "@/ui/button";
 import { useQueries } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -13,16 +13,16 @@ import { EmptyState } from "@/ui/EmptyState";
 import { HomeTripCard } from "../trips/OwnerTripCard";
 import { orderedTrips, today, tripState } from "../trips/trip-state";
 
-import { errorMessage } from "../query/api";
+import { errorMessage } from "@/lib/api/api";
 import {
   recentUpdatesQueryOptions,
   tripResourceQueryOptions,
   useMarkAlertRead,
   useOwner,
   useTripsQuery,
-} from "../query/owner-queries";
-import { addDays, daysBetween, formatDay, formatInstant, formatUpdateInstant } from "../dates";
-import { routeInPlan, stayCoversNight } from "../records";
+} from "@/lib/query/owner-queries";
+import { addDays, daysBetween, formatDay, formatInstant, formatUpdateInstant } from "@/lib/dates";
+import { routeInPlan, stayCoversNight } from "@/lib/records";
 import {
   type Stay,
   type Route,

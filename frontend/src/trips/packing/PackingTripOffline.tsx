@@ -2,11 +2,11 @@ import { useState } from "react";
 import { Button } from "@/ui/button";
 import { Field, FieldLabel } from "@/ui/field";
 import { SearchSelect } from "../../forms/fields";
-import { useLocale } from "../../locale";
-import { useOfflineCopies } from "../../offline/useOfflineCopies";
+import { useLocale } from "@/i18n/locale";
+import { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import { m } from "../../paraglide/messages.js";
-import { bytesLabel } from "../../files";
-import { formatInstant } from "../../dates";
+import { bytesLabel } from "@/lib/files";
+import { formatInstant } from "@/lib/dates";
 import { PackingOfflineView } from "../PackingOfflineView";
 
 /** This reader needs only the route id, never a cached live trip response or an editor chunk. */

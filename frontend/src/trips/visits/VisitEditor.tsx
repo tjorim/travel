@@ -4,15 +4,15 @@ import {
   useDialogFocus,
   useRecordDialog,
   type DialogFocusRequest,
-} from "../../forms/useRecordDialog";
-import { useRecordForm } from "../../forms/useRecordForm";
-import { useLocale } from "../../locale";
-import { useOfflineCopies } from "../../offline/useOfflineCopies";
+} from "@/hooks/useRecordDialog";
+import { useRecordForm } from "@/hooks/useRecordForm";
+import { useLocale } from "@/i18n/locale";
+import { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import { m } from "../../paraglide/messages.js";
-import { errorNotice, FeedbackError, textNotice, type ReportNotice } from "../../query/feedback";
-import { useTripResource } from "../../query/owner-queries";
+import { errorNotice, FeedbackError, textNotice, type ReportNotice } from "@/lib/api/feedback";
+import { useTripResource } from "@/lib/query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../../RecordDialog";
-import { visitTitle } from "../../records";
+import { visitTitle } from "@/lib/records";
 import type { Trip, Visit } from "../../api-types";
 import { hasPlace, placeFields, samePlace } from "../PlacePicker";
 import { useInPlaceCreate, type CreateRequestProps } from "../create-request";

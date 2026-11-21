@@ -6,10 +6,10 @@ import { useState } from "react";
 
 import { AdvancedSection } from "../../forms/AdvancedSection";
 import { SearchSelect } from "../../forms/fields";
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { errorMessage } from "../../query/api";
-import { FeedbackError } from "../../query/feedback";
+import { errorMessage } from "@/lib/api/api";
+import { FeedbackError } from "@/lib/api/feedback";
 import type { DatePrecision, ShareScope, ShareScopeKind } from "../../api-types";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";

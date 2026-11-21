@@ -2,15 +2,15 @@ import { createPortal } from "react-dom";
 import { RouterProvider } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
-import { renewSession } from "./auth";
+import { renewSession } from "@/lib/auth";
 import { AuthProvider, useAuth } from "./auth-context";
 import { Button } from "@/ui/button";
-import { useLocale } from "./locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "./paraglide/messages.js";
 import { lazyNamed } from "./lazy-view";
 import { Callback } from "./pages/Callback";
 import { OwnerHome } from "./pages/OwnerHome";
-import { createOwnerQueryClient } from "./query/client";
+import { createOwnerQueryClient } from "@/lib/query/client";
 import { OwnerQueryProvider } from "./query/OwnerQueryProvider";
 import { buildOwnerRouteTree, createOwnerRouter } from "./router";
 

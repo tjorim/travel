@@ -12,7 +12,7 @@ import {
 
 import { NavigationGuard } from "./forms/NavigationGuard";
 import { Boundary } from "./Boundary";
-import { currentStoredOwner, tripsQueryOptions } from "./query/owner-queries";
+import { currentStoredOwner, tripsQueryOptions } from "@/lib/query/owner-queries";
 import { parseFlagParam } from "./router/search-params";
 import type { RecordKind } from "./trips/record-focus";
 

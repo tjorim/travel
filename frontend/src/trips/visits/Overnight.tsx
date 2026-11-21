@@ -1,6 +1,6 @@
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { stayLabel } from "../../records";
+import { stayLabel } from "@/lib/records";
 import { type Stay, type Trip, type Visit } from "../../api-types";
 import { overnights } from "./model";
 

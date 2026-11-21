@@ -1,8 +1,8 @@
 import { Button } from "@/ui/button";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { formatCapture } from "../../dates";
+import { formatCapture } from "@/lib/dates";
 import { type MediaAsset } from "../../api-types";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";

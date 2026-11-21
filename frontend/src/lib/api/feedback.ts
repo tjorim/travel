@@ -1,5 +1,5 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { errorMessage, type ErrorFallback } from "./api";
 
 /** Store the thrown value, never a translated snapshot of an API failure. */

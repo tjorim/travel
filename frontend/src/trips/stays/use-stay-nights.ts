@@ -1,6 +1,6 @@
 import { m } from "../../paraglide/messages.js";
-import { errorNotice, textNotice, type ReportNotice } from "../../query/feedback";
-import { addDays, formatDay } from "../../dates";
+import { errorNotice, textNotice, type ReportNotice } from "@/lib/api/feedback";
+import { addDays, formatDay } from "@/lib/dates";
 import type { Stay } from "../../api-types";
 import { useStayMutations } from "./use-stay-mutations";
 

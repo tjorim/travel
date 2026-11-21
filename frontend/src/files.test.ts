@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from "vitest";
 
-import { openBlobInNewTab } from "./files";
+import { openBlobInNewTab } from "@/lib/files";
 
 afterEach(() => {
   vi.restoreAllMocks();

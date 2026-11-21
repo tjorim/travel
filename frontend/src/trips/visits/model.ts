@@ -1,6 +1,6 @@
 import { m } from "../../paraglide/messages.js";
-import { addDays } from "../../dates";
-import { locationName, stayCoversNight, areaName } from "../../records";
+import { addDays } from "@/lib/dates";
+import { locationName, stayCoversNight, areaName } from "@/lib/records";
 import {
   type DatePrecision,
   type Stay,
@@ -9,7 +9,7 @@ import {
   type VisitKind,
   type PlanningStatus,
 } from "../../api-types";
-import { VISIT_KIND_LABELS, PLANNING_STATUS_LABELS, clock, visitWhen } from "../labels";
+import { VISIT_KIND_LABELS, PLANNING_STATUS_LABELS, clock, visitWhen } from "@/lib/labels";
 import type { CreatePrefill } from "../create-request";
 import { emptyPlace, placeOfPrefill, placeOfVisit, type PlaceValue } from "../PlacePicker";
 import type { FormContext } from "../../forms/form-context";

@@ -1,6 +1,6 @@
 import { useEffect, type RefObject } from "react";
-import { useLocale } from "./locale";
-import { m } from "./paraglide/messages.js";
+import { useLocale } from "@/i18n/locale";
+import { m } from "@/paraglide/messages.js";
 
 /** MapLibre reads this table when creating controls; provider labels remain untouched. */
 export function mapMessages(): Record<string, string> {

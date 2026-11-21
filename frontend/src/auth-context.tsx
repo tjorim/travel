@@ -6,7 +6,7 @@ import {
   readSession,
   shouldRestoreSession,
   type OwnerSession,
-} from "./auth";
+} from "@/lib/auth";
 
 type AuthContextValue = {
   session: OwnerSession | null;

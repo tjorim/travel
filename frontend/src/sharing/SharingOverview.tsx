@@ -6,19 +6,19 @@ import { useQueries } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState, type ReactNode } from "react";
 
-import { useConfirmation } from "../forms/useConfirmation";
-import { useLocale } from "../locale";
+import { useConfirmation } from "@/hooks/useConfirmation";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { errorMessage } from "../query/api";
-import { errorNotice, textNotice, useFeedback } from "../query/feedback";
-import { ownerKeys } from "../query/keys";
+import { errorMessage } from "@/lib/api/api";
+import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
+import { ownerKeys } from "@/lib/query/keys";
 import {
   tripPath,
   tripResourceQueryOptions,
   useOwner,
   useOwnerMutation,
   useTripsQuery,
-} from "../query/owner-queries";
+} from "@/lib/query/owner-queries";
 import type { ShareLink, TripSummary } from "../api-types";
 import { sectionPath } from "../trips/workspace-sections";
 import { dateLabel, LINK_STATE_LABELS, publicUrl, shareUrl } from "../trips/publication/catalog";

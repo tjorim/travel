@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Component, type ReactNode } from "react";
 
 import { lazyNamed, lazyView } from "./lazy-view";
-import { changeLocale } from "./locale";
+import { changeLocale } from "@/i18n/locale";
 import { m } from "./paraglide/messages.js";
 
 afterEach(() => {

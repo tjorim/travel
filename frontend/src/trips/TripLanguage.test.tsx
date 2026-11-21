@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-libra
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { changeLocale } from "../locale";
+import { changeLocale } from "@/i18n/locale";
 import { server } from "../mocks/server";
 import { renderWithOwner, testToken } from "../query/test-utils";
 import type { Trip } from "../api-types";

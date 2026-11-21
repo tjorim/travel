@@ -1,7 +1,7 @@
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { errorMessage } from "../../query/api";
-import { useTripResource } from "../../query/owner-queries";
+import { errorMessage } from "@/lib/api/api";
+import { useTripResource } from "@/lib/query/owner-queries";
 import type { AlternativeKind } from "../../api-types";
 import { AlternativesPanel, hasAlternatives } from "./AlternativesPanel";
 import { useAlternativeQueries } from "./use-alternatives";

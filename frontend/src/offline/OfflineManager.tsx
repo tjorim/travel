@@ -1,14 +1,14 @@
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { errorNotice, useFeedback, textNotice } from "../query/feedback";
+import { errorNotice, useFeedback, textNotice } from "@/lib/api/feedback";
 import { Button } from "@/ui/button";
 import { useEffect, useState } from "react";
 
-import { useConfirmation } from "../forms/useConfirmation";
-import { bytesLabel, openBlobInNewTab } from "../files";
-import { formatInstant } from "../dates";
-import { useOfflineCopies } from "./useOfflineCopies";
-import type { OfflineCopySummary, OfflineResourceKind } from "./offline-store";
+import { useConfirmation } from "@/hooks/useConfirmation";
+import { bytesLabel, openBlobInNewTab } from "@/lib/files";
+import { formatInstant } from "@/lib/dates";
+import { useOfflineCopies } from "@/hooks/useOfflineCopies";
+import type { OfflineCopySummary, OfflineResourceKind } from "@/lib/offline-store";
 import { OfflineSnapshotView } from "./OfflineSnapshotView";
 import { PackingOfflineView } from "../trips/PackingOfflineView";
 

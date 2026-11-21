@@ -1,12 +1,12 @@
 import { flushSync } from "react-dom";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { useForm, useStore } from "@tanstack/react-form";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { readRecovery, recordRecoveryKey, serializableRecord } from "./record-recovery";
-import { useEditGuard } from "./navigation-guard";
+import { readRecovery, recordRecoveryKey, serializableRecord } from "@/lib/record-recovery";
+import { useEditGuard } from "@/lib/navigation-guard";
 
-import { ApiError, errorMessage, type ErrorFallback } from "../query/api";
+import { ApiError, errorMessage, type ErrorFallback } from "@/lib/api/api";
 
 type RecordFormOptions<TValues, TResult> = {
   defaultValues: TValues;

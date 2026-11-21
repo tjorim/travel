@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw/http";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { server } from "./mocks/server";
-import { clearSession, completeSignIn, readSession, shouldRestoreSession } from "./auth";
+import { clearSession, completeSignIn, readSession, shouldRestoreSession } from "@/lib/auth";
 
 const transactionKey = "travel-tracker-pkce-transaction";
 

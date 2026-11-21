@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { flightArc, MAX_FLIGHT_ARC_POINTS } from "./flight-arc";
-import { routeLineGeometry } from "../../route-line-geometry";
+import { routeLineGeometry } from "@/lib/map/route-line-geometry";
 
 it("bows a shortest arc poleward, preserving rounded endpoints with a bounded point count", () => {
   const points = flightArc([-60.12345, 40.12345], [60.98765, 40.54321])!;

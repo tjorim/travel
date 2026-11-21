@@ -3,12 +3,12 @@ import { buildAgendaItems, isUndated } from "./agenda-items";
 import { isOverdue, tripDay, tripProgress } from "./readiness";
 import { sectionPath } from "./workspace-sections";
 import { Badge as StatusBadge } from "@/ui/badge";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { dayjs } from "../dayjs";
-import { useTripResource } from "../query/owner-queries";
+import { dayjs } from "@/lib/dayjs";
+import { useTripResource } from "@/lib/query/owner-queries";
 import {
   addDays,
   browserTimeZone,
@@ -16,8 +16,8 @@ import {
   formatDay,
   offsetLabel,
   utcOffsetMinutes,
-} from "../dates";
-import { routeInPlan, stayCoversNight, stayInPlan, timedRoutes } from "../records";
+} from "@/lib/dates";
+import { routeInPlan, stayCoversNight, stayInPlan, timedRoutes } from "@/lib/records";
 import { whereabouts } from "../whereabouts";
 import {
   type Stay,

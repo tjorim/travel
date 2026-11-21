@@ -1,6 +1,6 @@
-import { dayjs } from "../dayjs";
+import { dayjs } from "@/lib/dayjs";
 import { m } from "../paraglide/messages.js";
-import { formatDay } from "../dates";
+import { formatDay } from "@/lib/dates";
 import { type Trip } from "../api-types";
 
 export type TripState = "active" | "upcoming" | "planned" | "past";

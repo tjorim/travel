@@ -1,5 +1,5 @@
-import type { ErrorFallback } from "../query/api";
-import { tripPath, useOwnerMutation } from "../query/owner-queries";
+import type { ErrorFallback } from "@/lib/api/api";
+import { tripPath, useOwnerMutation } from "@/lib/query/owner-queries";
 
 /**
  * The save (create with POST, update with PATCH) and delete calls the trip's record editors share.

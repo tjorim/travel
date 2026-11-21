@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import type { AgendaRecordKind } from "./agenda-items";
 import { AgendaManager } from "./AgendaManager";
 import { AreaManager } from "./AreaManager";

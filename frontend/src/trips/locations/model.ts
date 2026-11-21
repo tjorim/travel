@@ -1,6 +1,6 @@
 import { m } from "../../paraglide/messages.js";
-import { ApiError } from "../../query/api";
-import { ownerLocationName } from "../../records";
+import { ApiError } from "@/lib/api/api";
+import { ownerLocationName } from "@/lib/records";
 import { type Location, type PublicProjectionStatus, type ShareLink } from "../../api-types";
 
 export type Values = {

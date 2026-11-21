@@ -1,8 +1,8 @@
-import { areaName } from "../../records";
-import { AuthoredText } from "../../content-language";
+import { areaName } from "@/lib/records";
+import { AuthoredText } from "@/i18n/content-language";
 import { Button } from "@/ui/button";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { LocalName } from "../../LocalName";
 import { m } from "../../paraglide/messages.js";
 import { DeleteConfirmation } from "../../RecordDialog";

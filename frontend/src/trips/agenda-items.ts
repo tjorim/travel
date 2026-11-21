@@ -1,6 +1,6 @@
 import { m } from "../paraglide/messages.js";
-import { addDays, daysBetween, localDate, wallClock } from "../dates";
-import { areaName, routeTitle, stayInPlan, stayLabel, visitTitle } from "../records";
+import { addDays, daysBetween, localDate, wallClock } from "@/lib/dates";
+import { areaName, routeTitle, stayInPlan, stayLabel, visitTitle } from "@/lib/records";
 import type { PlanningStatus, Route, Stay, Visibility, Visit } from "../api-types";
 import { routeLine } from "./routes/model";
 import { stayLine } from "./stays/model";

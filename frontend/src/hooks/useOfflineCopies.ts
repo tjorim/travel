@@ -1,10 +1,10 @@
-import { FeedbackError } from "../query/feedback";
-import { m } from "../paraglide/messages.js";
+import { FeedbackError } from "@/lib/api/feedback";
+import { m } from "@/paraglide/messages.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { decodeSubject } from "../auth";
-import { useAuth } from "../auth-context";
-import { ApiError, ownerRequest } from "../query/api";
+import { decodeSubject } from "@/lib/auth";
+import { useAuth } from "@/auth-context";
+import { ApiError, ownerRequest } from "@/lib/api/api";
 import {
   clearOfflineCopies,
   getKeyDisclosure,
@@ -23,7 +23,7 @@ import {
   type OfflineCopySummary,
   type OfflineResourceKind,
   type PinInput,
-} from "./offline-store";
+} from "@/lib/offline-store";
 
 /** Composite snapshots need validators for their child records as well as their parent. */
 async function readOfflineMetadata(

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import type { DialogFocusAction, DialogFocusRequest } from "../forms/useRecordDialog";
+import type { DialogFocusAction, DialogFocusRequest } from "@/hooks/useRecordDialog";
 
 /** The record kinds whose dialog the workspace can open on arrival, from an Agenda row, the map or the overview. */
 export const RECORD_KINDS = [

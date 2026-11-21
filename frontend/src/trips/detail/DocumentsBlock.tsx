@@ -1,10 +1,10 @@
 import { Button } from "@/ui/button";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { bytesLabel } from "../../files";
+import { bytesLabel } from "@/lib/files";
 import { type DocumentAsset, type Trip } from "../../api-types";
-import { DOCUMENT_KIND_LABELS } from "../labels";
+import { DOCUMENT_KIND_LABELS } from "@/lib/labels";
 import { RecordHeading, Section } from "./shared";
 import { DetailList } from "./DetailList";
 

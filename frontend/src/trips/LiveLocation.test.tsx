@@ -7,7 +7,7 @@ import { http, HttpResponse } from "msw/http";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { server } from "../mocks/server";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
-import { formatInstant } from "../locale";
+import { formatInstant } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
 import { LiveLocation } from "./LiveLocation";
 import { SharingReview } from "./publication/SharingReview";

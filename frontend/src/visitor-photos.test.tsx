@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { stubViewport } from "./mocks/viewport";
-import { changeLocale } from "./locale";
+import { changeLocale } from "@/i18n/locale";
 import { ProjectionView, type Projection, type ProjectionMedia } from "./ProjectionView";
 import { fixture } from "./test-projection";
 import { m } from "./paraglide/messages.js";

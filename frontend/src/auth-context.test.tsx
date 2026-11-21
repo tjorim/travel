@@ -2,10 +2,10 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { AuthProvider } from "./auth-context";
-import { renewSession } from "./auth";
+import { renewSession } from "@/lib/auth";
 
-vi.mock("./auth", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./auth")>()),
+vi.mock("@/lib/auth", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/auth")>()),
   renewSession: vi.fn().mockRejectedValue(new TypeError("Offline")),
 }));
 

@@ -1,6 +1,6 @@
 import { Progress } from "@/ui/progress";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import type { Item } from "./model";
 
 export function PackingProgress({ rows, label }: { rows: Item[]; label: string }) {

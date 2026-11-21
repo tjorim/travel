@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
-import { changeLocale } from "../locale";
+import { changeLocale } from "@/i18n/locale";
 import { Settings } from "./Settings";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));

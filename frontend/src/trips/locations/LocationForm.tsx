@@ -1,10 +1,10 @@
 import { AdvancedSection } from "../../forms/AdvancedSection";
-import { pickText, useContentLanguage } from "../../content-language";
+import { pickText, useContentLanguage } from "@/i18n/content-language";
 import { LocalizedField } from "../../forms/LocalizedField";
 import { LocalNameField } from "../../forms/LocalNameField";
 import { SuggestedNamesNotice } from "../../forms/SuggestedNames";
 import type { SuggestedNames } from "../place-result";
-import { areaName } from "../../records";
+import { areaName } from "@/lib/records";
 import { Button } from "@/ui/button";
 
 import {
@@ -15,8 +15,8 @@ import {
   TextAreaField,
   TextField,
 } from "../../forms/fields";
-import type { useRecordForm } from "../../forms/useRecordForm";
-import { useLocale } from "../../locale";
+import type { useRecordForm } from "@/hooks/useRecordForm";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import type { Area, Location, LocationInput } from "../../api-types";
 import { PlaceSearchField } from "../PlaceSearchField";

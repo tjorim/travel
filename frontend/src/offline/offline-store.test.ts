@@ -19,7 +19,7 @@ import {
   wipeOfflineData,
   OFFLINE_LEASE_MS,
   type PinInput,
-} from "./offline-store";
+} from "@/lib/offline-store";
 
 const OWNER = "owner-sub-1";
 const OTHER_OWNER = "owner-sub-2";

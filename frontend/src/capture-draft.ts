@@ -1,4 +1,4 @@
-import { captureSessionGeneration, decodeSubject, readSession } from "./auth";
+import { captureSessionGeneration, decodeSubject, readSession } from "@/lib/auth";
 import type { LocationInput } from "./api-types";
 
 /** Editor metadata survives object spreads but is never serialized into tab recovery or API data. */

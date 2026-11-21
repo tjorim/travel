@@ -2,7 +2,7 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "@/ui/field";
 import { Input } from "@/ui/input";
 import type { AnyFieldApi } from "@tanstack/react-form";
 
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { optionalNote, useFieldErrors } from "./fields";
 
 /**

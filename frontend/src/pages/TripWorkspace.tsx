@@ -1,15 +1,15 @@
 import { Navigate, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { useContext, useCallback, useEffect, useMemo, useState } from "react";
 
-import { ContentLanguageProvider } from "../content-language";
+import { ContentLanguageProvider } from "@/i18n/content-language";
 import { OwnerHeaderContext } from "../owner-header-context";
 import { PackingTripOffline } from "../trips/packing/PackingTripOffline";
 import { useAuth } from "../auth-context";
 import { useCapture } from "../capture-context";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { useFeedback } from "../query/feedback";
-import { useTripResource, useTripWithUpdates } from "../query/owner-queries";
+import { useFeedback } from "@/lib/api/feedback";
+import { useTripResource, useTripWithUpdates } from "@/lib/query/owner-queries";
 import type { TravelUpdateCandidateIntent } from "../capture-draft";
 import { EmptyState } from "@/ui/EmptyState";
 import type { AgendaRecordKind } from "../trips/agenda-items";

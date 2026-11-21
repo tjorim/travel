@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it, vi } from "vitest";
 import type { StyleSpecification } from "maplibre-gl";
 import { server } from "./mocks/server";
-import { configuredMapStyleUrl, loadMapStyle, styleLabelFont } from "./map-style";
+import { configuredMapStyleUrl, loadMapStyle, styleLabelFont } from "@/lib/map/map-style";
 
 afterEach(() => vi.restoreAllMocks());
 

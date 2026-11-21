@@ -6,7 +6,7 @@ import { http, HttpResponse } from "msw";
 import { AuthProvider } from "../../auth-context";
 import { server } from "../../mocks/server";
 import { testToken } from "../../query/test-utils";
-import { __resetOfflineStoreForTests, pinOfflineCopy } from "../../offline/offline-store";
+import { __resetOfflineStoreForTests, pinOfflineCopy } from "@/lib/offline-store";
 import { PackingTripOffline } from "./PackingTripOffline";
 
 afterEach(async () => {

@@ -3,9 +3,9 @@ import "fake-indexeddb/auto";
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 
-import { changeLocale } from "../locale";
-import { formatInstant } from "../dates";
-import * as api from "../query/api";
+import { changeLocale } from "@/i18n/locale";
+import { formatInstant } from "@/lib/dates";
+import * as api from "@/lib/api/api";
 import { AuthProvider } from "../auth-context";
 import { answerConfirmation } from "../test-confirm";
 import { OfflineManager } from "./OfflineManager";
@@ -14,7 +14,7 @@ import {
   pinOfflineCopy,
   listOfflineCopies,
   offlineContentValidator,
-} from "./offline-store";
+} from "@/lib/offline-store";
 import { http, HttpResponse } from "msw";
 import { server } from "../mocks/server";
 

@@ -3,7 +3,7 @@ import type * as Api from "@/api-schema";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw/http";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { changeLocale } from "./locale";
+import { changeLocale } from "@/i18n/locale";
 import { server } from "./mocks/server";
 import { VisitorRoutes } from "./visitor-routes";
 

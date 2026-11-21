@@ -2,9 +2,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 
 import { AsyncSearchSelect, type SearchSelectOption } from "../forms/fields";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { useTripResource, useTripUpdates } from "../query/owner-queries";
+import { useTripResource, useTripUpdates } from "@/lib/query/owner-queries";
 import { Field, FieldLabel } from "@/ui/field";
 import type { RecordKind } from "./record-focus";
 import { matchesQuery, searchRecords, type SearchableRecords } from "./workspace-records";

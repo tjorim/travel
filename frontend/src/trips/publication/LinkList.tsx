@@ -2,7 +2,7 @@ import { FeedControls } from "./FeedControls";
 import { Button } from "@/ui/button";
 import { Collapsible } from "@/ui/collapsible";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
 import type { ShareLink } from "../../api-types";
 import { dateLabel, LINK_STATE_LABELS } from "./catalog";

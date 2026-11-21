@@ -1,11 +1,11 @@
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { dayjs } from "../../dayjs";
+import { dayjs } from "@/lib/dayjs";
 import { Markdown } from "../../Markdown";
-import { ROUTE_MODE_LABELS, routeTitle, areaName } from "../../records";
-import { formatDay, formatInstant } from "../../dates";
+import { ROUTE_MODE_LABELS, routeTitle, areaName } from "@/lib/records";
+import { formatDay, formatInstant } from "@/lib/dates";
 import { type Location, type Route, type Trip } from "../../api-types";
-import { PLANNING_STATUS_LABELS } from "../labels";
+import { PLANNING_STATUS_LABELS } from "@/lib/labels";
 import { placeLabel, RecordHeading, Section } from "./shared";
 import { DetailList } from "./DetailList";
 

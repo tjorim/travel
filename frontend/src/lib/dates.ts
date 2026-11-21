@@ -1,6 +1,6 @@
-import type { TravelUpdate } from "./api-types";
+import type { TravelUpdate } from "@/api-types";
 import { dayjs } from "./dayjs";
-import { m } from "./paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 
 const dayMs = 86_400_000;
 

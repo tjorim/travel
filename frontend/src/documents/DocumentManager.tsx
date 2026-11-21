@@ -4,10 +4,10 @@ import { Button } from "@/ui/button";
 import { Field, FieldLabel } from "@/ui/field";
 import { useState } from "react";
 
-import type { ErrorFallback } from "../query/api";
-import { useLocale } from "../locale";
+import type { ErrorFallback } from "@/lib/api/api";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { errorNotice, useFeedback, textNotice, FeedbackError } from "../query/feedback";
+import { errorNotice, useFeedback, textNotice, FeedbackError } from "@/lib/api/feedback";
 import {
   AsyncSearchSelect,
   RecordForm,
@@ -16,12 +16,12 @@ import {
   SelectField,
   TextField,
 } from "../forms/fields";
-import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "../forms/useRecordDialog";
-import { useRecordForm } from "../forms/useRecordForm";
-import { useOfflineCopies } from "../offline/useOfflineCopies";
-import type { OfflineResourceKind } from "../offline/offline-store";
-import { errorMessage, openOwnerFile, ownerFile } from "../query/api";
-import { ownerKeys } from "../query/keys";
+import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "@/hooks/useRecordDialog";
+import { useRecordForm } from "@/hooks/useRecordForm";
+import { useOfflineCopies } from "@/hooks/useOfflineCopies";
+import type { OfflineResourceKind } from "@/lib/offline-store";
+import { errorMessage, openOwnerFile, ownerFile } from "@/lib/api/api";
+import { ownerKeys } from "@/lib/query/keys";
 import {
   documentsPath,
   useDocuments,
@@ -30,9 +30,9 @@ import {
   useTripResource,
   useTripSearch,
   useTripsQuery,
-} from "../query/owner-queries";
+} from "@/lib/query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "../RecordDialog";
-import { bytesLabel } from "../files";
+import { bytesLabel } from "@/lib/files";
 import type { DocumentAsset, Trip } from "../api-types";
 
 type Values = { title: string; kind: DocumentAsset["document_kind"]; tripId: string };

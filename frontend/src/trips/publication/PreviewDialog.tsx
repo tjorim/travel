@@ -3,13 +3,13 @@ import { ChoiceGroup } from "@/ui/ChoiceGroup";
 import { Collapsible } from "@/ui/collapsible";
 import { useRef, useState } from "react";
 
-import type { OwnerSession } from "../../auth";
+import type { OwnerSession } from "@/lib/auth";
 import type { Projection } from "../../ProjectionView";
-import { useContentLanguage, type ContentLanguage } from "../../content-language";
-import { useLocale } from "../../locale";
+import { useContentLanguage, type ContentLanguage } from "@/i18n/content-language";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { errorMessage } from "../../query/api";
-import { tripPath, useOwnerMutation } from "../../query/owner-queries";
+import { errorMessage } from "@/lib/api/api";
+import { tripPath, useOwnerMutation } from "@/lib/query/owner-queries";
 import { RecordDialog } from "../../RecordDialog";
 import type { ShareLink, ShareScope } from "../../api-types";
 import { RenderedPreview } from "../RenderedPreview";

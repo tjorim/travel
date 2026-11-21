@@ -2,11 +2,11 @@ import { saveFile } from "./save-file";
 import { TripPdfExport } from "./TripPdfExport";
 import { useMutation } from "@tanstack/react-query";
 
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { ApiError, errorMessage, ownerFile } from "../query/api";
-import { textNotice, type MessageNotice } from "../query/feedback";
-import { useOwner } from "../query/owner-queries";
+import { ApiError, errorMessage, ownerFile } from "@/lib/api/api";
+import { textNotice, type MessageNotice } from "@/lib/api/feedback";
+import { useOwner } from "@/lib/query/owner-queries";
 import { Alert } from "@/ui/alert";
 import { Button } from "@/ui/button";
 import { Spinner } from "@/ui/spinner";

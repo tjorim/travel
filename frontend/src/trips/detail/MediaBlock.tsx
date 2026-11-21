@@ -1,11 +1,11 @@
 import { Button } from "@/ui/button";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { bytesLabel } from "../../files";
-import { formatCapture } from "../../dates";
+import { bytesLabel } from "@/lib/files";
+import { formatCapture } from "@/lib/dates";
 import { type MediaAsset, type Trip } from "../../api-types";
-import { MEDIA_KIND_LABELS } from "../labels";
+import { MEDIA_KIND_LABELS } from "@/lib/labels";
 import { MediaPreview, RecordHeading, Section, type OwnerSession } from "./shared";
 import { DetailList } from "./DetailList";
 

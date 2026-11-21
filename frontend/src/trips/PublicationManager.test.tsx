@@ -8,7 +8,7 @@ import { http, HttpResponse } from "msw";
 import { server } from "../mocks/server";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
-import { ownerKeys } from "../query/keys";
+import { ownerKeys } from "@/lib/query/keys";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
 import type {

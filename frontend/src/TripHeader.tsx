@@ -1,7 +1,7 @@
 import { useState, type ElementType } from "react";
 import { cn } from "cn";
 
-import { useLocale } from "./locale";
+import { useLocale } from "@/i18n/locale";
 import { Markdown } from "./Markdown";
 import { m } from "./paraglide/messages.js";
 

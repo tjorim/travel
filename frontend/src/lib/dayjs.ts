@@ -8,7 +8,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import "dayjs/locale/nl";
 import "dayjs/locale/en";
-import { selectedLocale } from "./locale";
+import { selectedLocale } from "@/i18n/locale";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);

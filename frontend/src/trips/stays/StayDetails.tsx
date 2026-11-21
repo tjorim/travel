@@ -1,9 +1,9 @@
 import { Button } from "@/ui/button";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { Markdown } from "../../Markdown";
 import { m } from "../../paraglide/messages.js";
-import { areaName, stayLabel } from "../../records";
+import { areaName, stayLabel } from "@/lib/records";
 import { type Stay } from "../../api-types";
 import { VisibilityControl } from "../visibility";
 import { RecordActions } from "../RecordActions";

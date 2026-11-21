@@ -6,7 +6,7 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-libra
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { dayjs } from "../dayjs";
+import { dayjs } from "@/lib/dayjs";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
 import { emptyDraft, readDraft, saveDraft } from "../capture-draft";

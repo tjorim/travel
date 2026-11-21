@@ -1,6 +1,6 @@
-import type { Location, PresetRecordRef, Route, RouteMode, Stay, Visit } from "./api-types";
+import type { Location, PresetRecordRef, Route, RouteMode, Stay, Visit } from "@/api-types";
 import { formatDay } from "./dates";
-import { m } from "./paraglide/messages.js";
+import { m } from "@/paraglide/messages.js";
 
 /** What the owner calls a location: the first part of its name, never a full address line. */
 export const locationName = (

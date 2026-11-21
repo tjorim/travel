@@ -1,10 +1,10 @@
 import { Link } from "@tanstack/react-router";
 
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import type { useOwner } from "../../query/owner-queries";
-import { formatInstant } from "../../dates";
-import { locationName } from "../../records";
+import type { useOwner } from "@/lib/query/owner-queries";
+import { formatInstant } from "@/lib/dates";
+import { locationName } from "@/lib/records";
 import { type Location, type MediaAsset } from "../../api-types";
 import { OwnerImage } from "../OwnerImage";
 import type { RecordKind } from "../record-focus";

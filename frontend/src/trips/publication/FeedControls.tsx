@@ -4,11 +4,11 @@ import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Field, FieldLabel } from "@/ui/field";
 import { TravelCheckbox } from "@/ui/TravelCheckbox";
-import { useLocale } from "../../locale";
+import { useLocale } from "@/i18n/locale";
 import { m } from "../../paraglide/messages.js";
-import { ownerRequest } from "../../query/api";
-import { tripPath, useOwner } from "../../query/owner-queries";
-import { ownerKeys } from "../../query/keys";
+import { ownerRequest } from "@/lib/api/api";
+import { tripPath, useOwner } from "@/lib/query/owner-queries";
+import { ownerKeys } from "@/lib/query/keys";
 import type { ShareLink } from "../../api-types";
 import { dateLabel } from "./catalog";
 

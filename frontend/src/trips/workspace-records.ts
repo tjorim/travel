@@ -1,5 +1,5 @@
 import { m } from "../paraglide/messages.js";
-import { ownerLocationName, routeTitle, stayLabel, visitTitle, areaName } from "../records";
+import { ownerLocationName, routeTitle, stayLabel, visitTitle, areaName } from "@/lib/records";
 import {
   type Area,
   type DocumentAsset,

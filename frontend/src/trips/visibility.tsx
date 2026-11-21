@@ -1,11 +1,11 @@
 import { m } from "../paraglide/messages.js";
-import { useLocale } from "../locale";
-import { errorNotice, useFeedback } from "../query/feedback";
+import { useLocale } from "@/i18n/locale";
+import { errorNotice, useFeedback } from "@/lib/api/feedback";
 
 import { SearchSelect } from "../forms/fields";
 
-import { ownerKeys } from "../query/keys";
-import { tripPath, useOwnerMutation } from "../query/owner-queries";
+import { ownerKeys } from "@/lib/query/keys";
+import { tripPath, useOwnerMutation } from "@/lib/query/owner-queries";
 import type { ShareScopeKind, Visibility } from "../api-types";
 import { Field, FieldError, FieldLabel } from "@/ui/field";
 

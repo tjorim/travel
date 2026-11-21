@@ -2,13 +2,13 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback } from "react";
 
 import { useAuth } from "../auth-context";
-import { useLocale } from "../locale";
+import { useLocale } from "@/i18n/locale";
 import { Markdown } from "../Markdown";
 import { m } from "../paraglide/messages.js";
-import { errorMessage, openOwnerFile } from "../query/api";
-import { errorNotice, useFeedback } from "../query/feedback";
-import { useOwner } from "../query/owner-queries";
-import { formatDayRange } from "../dates";
+import { errorMessage, openOwnerFile } from "@/lib/api/api";
+import { errorNotice, useFeedback } from "@/lib/api/feedback";
+import { useOwner } from "@/lib/query/owner-queries";
+import { formatDayRange } from "@/lib/dates";
 import { AreasBlock } from "../trips/detail/AreasBlock";
 import { DocumentsBlock } from "../trips/detail/DocumentsBlock";
 import { LocationsBlock } from "../trips/detail/LocationsBlock";

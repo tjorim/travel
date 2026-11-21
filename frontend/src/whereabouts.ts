@@ -1,7 +1,7 @@
 import type { Route, Stay } from "./api-types";
-import { addDays, wallClock } from "./dates";
+import { addDays, wallClock } from "@/lib/dates";
 import { m } from "./paraglide/messages.js";
-import { areaName, routeInPlan, stayCoversNight, stayInPlan, timedRoutes } from "./records";
+import { areaName, routeInPlan, stayCoversNight, stayInPlan, timedRoutes } from "@/lib/records";
 
 export type Whereabouts = {
   kind: "travel" | "stay" | "between" | "home";
