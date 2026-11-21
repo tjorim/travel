@@ -174,7 +174,7 @@ test.describe("deferred owner views", () => {
     await open(page, "/admin/", "en", "light", true);
     const nav = page.getByRole("navigation").first();
     let blocked = true;
-    await page.route(/\/src\/pages\/Library\.tsx/, (route) =>
+    await page.route(/\/src\/features\/library\/Library\.tsx/, (route) =>
       blocked ? route.abort("failed") : route.continue(),
     );
     await nav.getByRole("link", { name: message("en", "library"), exact: true }).click();
@@ -198,7 +198,7 @@ test.describe("deferred owner views", () => {
     test(`the unavailable view has no axe violations (narrow, ${theme})`, async ({ page }) => {
       await page.setViewportSize(narrow);
       await open(page, "/admin/", "en", theme, true);
-      await page.route(/\/src\/pages\/Library\.tsx/, (route) => route.abort("failed"));
+      await page.route(/\/src\/features\/library\/Library\.tsx/, (route) => route.abort("failed"));
       await page
         .getByRole("navigation")
         .first()
