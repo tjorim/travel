@@ -6,7 +6,7 @@ import { http, HttpResponse } from "msw/http";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { changeLocale } from "@/i18n/locale";
 import { server } from "./mocks/server";
-import { TripEditor } from "./trips/TripEditor";
+import { TripEditor } from "@/features/trips/trip/TripEditor";
 import { applyMarkdownSnippet } from "@/components/forms/markdown-snippets";
 import { renderWithOwner, testToken } from "./query/test-utils";
 import { useFeedback, textNotice } from "@/lib/api/feedback";

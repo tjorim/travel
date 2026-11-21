@@ -8,7 +8,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { server } from "../mocks/server";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
-import { OwnerHome } from "./OwnerHome";
+import { OwnerHome } from "@/features/trips/trip/OwnerHome";
 
 const routeTree = createRootRoute({ component: OwnerHome });
 const renderHome = () => renderRoutesWithOwner(routeTree, ["/"]);

@@ -10,9 +10,9 @@ import {
   type PlanningStatus,
 } from "@/api-types";
 import { VISIT_KIND_LABELS, PLANNING_STATUS_LABELS, clock, visitWhen } from "@/lib/labels";
-import type { CreatePrefill } from "@/trips/create-request";
-import { emptyPlace, placeOfPrefill, placeOfVisit, type PlaceValue } from "@/trips/PlacePicker";
-import type { FormContext } from "@/forms/form-context";
+import type { CreatePrefill } from "../records/create-request";
+import { emptyPlace, placeOfPrefill, placeOfVisit, type PlaceValue } from "../records/PlacePicker";
+import type { FormContext } from "../records/form-context";
 
 type TripDates = Pick<Trip, "starts_on" | "ends_on">;
 

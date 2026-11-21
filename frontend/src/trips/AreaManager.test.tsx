@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, testToken } from "../query/test-utils";
 import type { Area, DocumentAsset, Location, Trip } from "../api-types";
-import { AreaManager } from "./AreaManager";
+import { AreaManager } from "@/features/trips/areas/AreaManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

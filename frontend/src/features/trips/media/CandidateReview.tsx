@@ -18,7 +18,7 @@ import {
   type TravelUpdateCandidatesResponse,
   type Visit,
 } from "@/api-types";
-import { type TravelUpdateCandidateIntent } from "@/capture-draft";
+import { type TravelUpdateCandidateIntent } from "../capture/capture-draft";
 import { Field, FieldLabel } from "@/components/ui/field";
 
 /**

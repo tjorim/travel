@@ -13,7 +13,7 @@ const auth = vi.hoisted(() => ({
 }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 vi.mock("@/components/preferences/Preferences", () => ({ Preferences: () => null }));
-vi.mock("./trips/CaptureDialog", () => ({
+vi.mock("@/features/trips/capture/CaptureDialog", () => ({
   CaptureDialog: ({
     open,
     lockedTripId,

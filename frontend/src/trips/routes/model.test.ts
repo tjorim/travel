@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
 import type { Area, Location } from "../../api-types";
-import { emptyPlace } from "../PlacePicker";
+import { emptyPlace } from "@/features/trips/records/PlacePicker";
 import {
   areaPoint,
   resolvedAreaPoint,

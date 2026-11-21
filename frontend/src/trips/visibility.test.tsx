@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
-import { VisibilityControl } from "./visibility";
+import { VisibilityControl } from "@/features/trips/records/visibility";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

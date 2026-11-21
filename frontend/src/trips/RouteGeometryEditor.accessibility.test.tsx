@@ -3,7 +3,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import { changeLocale, LocaleBoundary } from "@/i18n/locale";
 import { m } from "../paraglide/messages.js";
-import { RouteGeometryEditor } from "./RouteGeometryEditor";
+import { RouteGeometryEditor } from "@/features/trips/routes/RouteGeometryEditor";
 
 afterEach(() => {
   cleanup();

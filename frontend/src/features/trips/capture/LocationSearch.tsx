@@ -5,9 +5,9 @@ import { useLocale } from "@/i18n/locale";
 import { LocalName } from "@/components/LocalName";
 import { m } from "@/paraglide/messages.js";
 import type { PlaceSearchResponse, LocationInput } from "@/api-types";
-import type { UpdateDraft } from "@/capture-draft";
+import type { UpdateDraft } from "./capture-draft";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
-import { splitPlaceResult } from "@/trips/place-result";
+import { splitPlaceResult } from "../records/place-result";
 import { SuggestionAside } from "./SuggestionAside";
 
 type Gps = { latitude: number; longitude: number };

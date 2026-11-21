@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { dayjs } from "@/lib/dayjs";
 import { formatDay } from "@/lib/dates";
-import { isOverdue, tripDay, tripProgress } from "./readiness";
+import { isOverdue, tripDay, tripProgress } from "@/features/trips/workspace/readiness";
 
 it("uses the local calendar around midnight and excludes completed and today's tasks", () => {
   const instant = new Date("2026-11-06T00:30:00Z");

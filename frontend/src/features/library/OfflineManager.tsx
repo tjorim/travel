@@ -10,7 +10,7 @@ import { formatInstant } from "@/lib/dates";
 import { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import type { OfflineCopySummary, OfflineResourceKind } from "@/lib/offline-store";
 import { OfflineSnapshotView } from "./OfflineSnapshotView";
-import { PackingOfflineView } from "@/trips/PackingOfflineView";
+import { PackingOfflineView } from "@/features/trips/packing/PackingOfflineView";
 
 const KIND_LABELS: Record<OfflineResourceKind, string> = {
   get document() {

@@ -1,9 +1,9 @@
-import { AdvancedSection } from "@/forms/AdvancedSection";
+import { AdvancedSection } from "../records/AdvancedSection";
 import { pickText, useContentLanguage } from "@/i18n/content-language";
 import { LocalizedField } from "@/components/forms/LocalizedField";
-import { LocalNameField } from "@/forms/LocalNameField";
-import { SuggestedNamesNotice } from "@/forms/SuggestedNames";
-import type { SuggestedNames } from "@/trips/place-result";
+import { LocalNameField } from "../records/LocalNameField";
+import { SuggestedNamesNotice } from "../records/SuggestedNames";
+import type { SuggestedNames } from "../records/place-result";
 import { areaName } from "@/lib/records";
 import { Button } from "@/components/ui/button";
 
@@ -19,7 +19,7 @@ import type { useRecordForm } from "@/hooks/useRecordForm";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
 import type { Area, Location, LocationInput } from "@/api-types";
-import { PlaceSearchField } from "@/trips/PlaceSearchField";
+import { PlaceSearchField } from "../records/PlaceSearchField";
 import { MapTarget } from "./MapTarget";
 import {
   pendingVisitorFields,

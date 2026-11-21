@@ -12,10 +12,10 @@ import * as offlineStore from "@/lib/offline-store";
 import { localized } from "../query/fake-api";
 import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils";
 import type { Area, Route, Stay, Trip, Visit } from "../api-types";
-import { AgendaManager } from "./AgendaManager";
-import { agendaFilterKey } from "./agenda-filter";
-import type { AgendaRecordKind } from "./agenda-items";
-import { PlanEditors, usePlanHost } from "./plan-host";
+import { AgendaManager } from "@/features/trips/agenda/AgendaManager";
+import { agendaFilterKey } from "@/features/trips/agenda/agenda-filter";
+import type { AgendaRecordKind } from "@/features/trips/agenda/agenda-items";
+import { PlanEditors, usePlanHost } from "@/features/trips/workspace/plan-host";
 
 // Every offline call goes through unchanged, except where a test makes the removal of a saved copy fail.
 vi.mock("@/lib/offline-store", async (importOriginal) => {

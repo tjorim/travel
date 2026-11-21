@@ -7,7 +7,7 @@ import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
 import type { GeoJsonLineString } from "@/api-types";
 import { ownerRequest } from "@/lib/api/api";
-import { RouteGeometryEditor, type RouteCoordinate } from "@/trips/RouteGeometryEditor";
+import { RouteGeometryEditor, type RouteCoordinate } from "./RouteGeometryEditor";
 
 /** Files never enter query/mutation caches, form values or browser storage. */
 export function FinishedTrackImport({

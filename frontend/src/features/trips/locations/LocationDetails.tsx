@@ -6,8 +6,8 @@ import { m } from "@/paraglide/messages.js";
 import { DeleteConfirmation } from "@/components/RecordDialog";
 import { ownerLocationName } from "@/lib/records";
 import { type Area, type Location, type Trip } from "@/api-types";
-import { MergeDialog, type MergeRequest } from "@/trips/MergeDialog";
-import { VisibilityControl, visibilityLabel } from "@/trips/visibility";
+import { MergeDialog, type MergeRequest } from "../records/MergeDialog";
+import { VisibilityControl, visibilityLabel } from "../records/visibility";
 import { MapTarget } from "./MapTarget";
 import {
   address,
@@ -16,7 +16,7 @@ import {
   shareableAddress,
   type RecipientState,
 } from "./model";
-import { RecordActions } from "@/trips/RecordActions";
+import { RecordActions } from "../records/RecordActions";
 import { RecipientsText } from "./RecipientsText";
 
 /** The read-only view of one location: what is saved, who it reaches, and its visibility, merge and delete actions. */

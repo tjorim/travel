@@ -11,7 +11,7 @@ import { fakeApi, type FakeApi } from "../query/fake-api";
 import { ownerKeys } from "@/lib/query/keys";
 import { renderWithOwner, resetOfflineDb, testToken } from "../query/test-utils";
 import type { Area, Route, Location, Trip } from "../api-types";
-import { OwnerTripMap } from "./OwnerTripMap";
+import { OwnerTripMap } from "@/features/trips/workspace/OwnerTripMap";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

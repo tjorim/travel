@@ -4,10 +4,16 @@ import { browserTimeZone, daysBetween, formatDay, localDate, wallClock } from "@
 import { locationName, ROUTE_MODE_LABELS, type TimedRoute, areaName } from "@/lib/records";
 import { type Area, type Location, type Route, type RouteMode } from "@/api-types";
 import { PLANNING_STATUS_LABELS } from "@/lib/labels";
-import type { CreatePrefill } from "@/trips/create-request";
-import { hasPlace, emptyPlace, placeOf, placeOfPrefill, type PlaceValue } from "@/trips/PlacePicker";
-import type { RouteCoordinate } from "@/trips/RouteGeometryEditor";
-import type { FormContext } from "@/forms/form-context";
+import type { CreatePrefill } from "../records/create-request";
+import {
+  hasPlace,
+  emptyPlace,
+  placeOf,
+  placeOfPrefill,
+  type PlaceValue,
+} from "../records/PlacePicker";
+import type { RouteCoordinate } from "./RouteGeometryEditor";
+import type { FormContext } from "../records/form-context";
 
 /** "16 nov 10:40" in the end's own zone (browser zone when none is known). */
 export function endpointTime(instant: string, timeZone: string | null): string {

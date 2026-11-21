@@ -1,12 +1,16 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 import { lazyNamed } from "@/components/lazy-view";
-import type { TravelUpdateCandidateIntent } from "@/capture-draft";
+import type { TravelUpdateCandidateIntent } from "@/features/trips/capture/capture-draft";
 
 // The form is fetched the first time anyone captures, not with the shell.
-const CaptureDialog = lazyNamed(() => import("@/trips/CaptureDialog"), "CaptureDialog", {
-  overlay: true,
-});
+const CaptureDialog = lazyNamed(
+  () => import("@/features/trips/capture/CaptureDialog"),
+  "CaptureDialog",
+  {
+    overlay: true,
+  },
+);
 
 export type CaptureRequest = {
   /** Lock the dialog to this trip; omit to let the owner choose. */

@@ -8,9 +8,9 @@ import {
   type Stay,
   type Trip,
 } from "@/api-types";
-import type { FormContext } from "@/forms/form-context";
+import type { FormContext } from "../records/form-context";
 import { PLANNING_STATUS_LABELS } from "@/lib/labels";
-import type { CreatePrefill } from "@/trips/create-request";
+import type { CreatePrefill } from "../records/create-request";
 
 export type StayValues = {
   propertyName: string;

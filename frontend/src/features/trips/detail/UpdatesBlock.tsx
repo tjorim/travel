@@ -3,7 +3,7 @@ import { m } from "@/paraglide/messages.js";
 import { Markdown } from "@/components/Markdown";
 import { formatUpdateInstant } from "@/lib/dates";
 import { type MediaAsset, type Trip } from "@/api-types";
-import { visibilityLabel } from "@/trips/visibility";
+import { visibilityLabel } from "../records/visibility";
 import {
   MediaPreview,
   placeLabel,

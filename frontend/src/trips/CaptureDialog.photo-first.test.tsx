@@ -9,9 +9,9 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { dayjs } from "@/lib/dayjs";
 import { fakeApi, type FakeApi } from "../query/fake-api";
 import { renderWithOwner, restoreObjectUrls, stubObjectUrls, testToken } from "../query/test-utils";
-import { emptyDraft, readDraft, saveDraft } from "../capture-draft";
+import { emptyDraft, readDraft, saveDraft } from "@/features/trips/capture/capture-draft";
 import { type TripSummary } from "../api-types";
-import { CaptureDialog } from "./CaptureDialog";
+import { CaptureDialog } from "@/features/trips/capture/CaptureDialog";
 
 const auth = vi.hoisted(() => ({
   session: null as { accessToken: string; expiresAt: number } | null,

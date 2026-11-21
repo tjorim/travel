@@ -1,10 +1,6 @@
 import { useRef } from "react";
 
-import {
-  useDialogFocus,
-  useRecordDialog,
-  type DialogFocusRequest,
-} from "@/hooks/useRecordDialog";
+import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "@/hooks/useRecordDialog";
 import { useRecordForm } from "@/hooks/useRecordForm";
 import { useLocale } from "@/i18n/locale";
 import { useOfflineCopies } from "@/hooks/useOfflineCopies";
@@ -14,9 +10,9 @@ import { useTripResource } from "@/lib/query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
 import { visitTitle } from "@/lib/records";
 import type { Trip, Visit } from "@/api-types";
-import { hasPlace, placeFields, samePlace } from "@/trips/PlacePicker";
-import { useInPlaceCreate, type CreateRequestProps } from "@/trips/create-request";
-import { useReturnTarget, useRowDelete } from "@/trips/use-row-delete";
+import { hasPlace, placeFields, samePlace } from "../records/PlacePicker";
+import { useInPlaceCreate, type CreateRequestProps } from "../records/create-request";
+import { useReturnTarget, useRowDelete } from "../records/use-row-delete";
 import { blank, fromVisit, serverFields, visitFromPrefill, type Values } from "./model";
 import { useVisitMutations } from "./use-visit-mutations";
 import { VisitDetails } from "./VisitDetails";

@@ -7,8 +7,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { renderRoutesWithOwner, renderWithOwner, testToken } from "../query/test-utils";
 import type { Stay, Route, Trip, TripTask, TripTaskAlert } from "../api-types";
-import { TripOverview } from "./TripOverview";
-import { TripTaskManager } from "./TripTaskManager";
+import { TripOverview } from "@/features/trips/workspace/TripOverview";
+import { TripTaskManager } from "@/features/trips/tasks/TripTaskManager";
 import { serveApi } from "../query/serve-api";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));

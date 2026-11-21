@@ -12,21 +12,21 @@ import { createOwnerQueryClient } from "@/lib/query/client";
 import { OwnerQueryProvider } from "@/app/providers/OwnerQueryProvider";
 import { testToken } from "./query/test-utils";
 import { buildOwnerRouteTree, createOwnerRouter } from "@/app/router/router";
-import { Trips } from "./pages/Trips";
-import { TripWorkspace } from "./pages/TripWorkspace";
+import { Trips } from "@/features/trips/trip/Trips";
+import { TripWorkspace } from "@/features/trips/workspace/TripWorkspace";
 
 // The workspace-route regression test below exercises the real Trips component on the
 // real route tree; everything it renders beyond the section nav is covered elsewhere.
 vi.mock("@/features/documents/DocumentManager", () => ({ DocumentManager: () => null }));
-vi.mock("./trips/AreaManager", () => ({ AreaManager: () => null }));
-vi.mock("./trips/LocationManager", () => ({ LocationManager: () => null }));
-vi.mock("./trips/TravelUpdateManager", () => ({ TravelUpdateManager: () => null }));
-vi.mock("./trips/MediaManager", () => ({ MediaManager: () => null }));
-vi.mock("./trips/OwnerTripMap", () => ({ OwnerTripMap: () => null }));
-vi.mock("./trips/PublicationManager", () => ({ PublicationManager: () => null }));
-vi.mock("./trips/AgendaView", () => ({ AgendaView: () => null }));
-vi.mock("./trips/TripTaskManager", () => ({ TripTaskManager: () => null }));
-vi.mock("./trips/TripOverview", () => ({ TripOverview: () => null }));
+vi.mock("@/features/trips/areas/AreaManager", () => ({ AreaManager: () => null }));
+vi.mock("@/features/trips/locations/LocationManager", () => ({ LocationManager: () => null }));
+vi.mock("@/features/trips/updates/TravelUpdateManager", () => ({ TravelUpdateManager: () => null }));
+vi.mock("@/features/trips/media/MediaManager", () => ({ MediaManager: () => null }));
+vi.mock("@/features/trips/workspace/OwnerTripMap", () => ({ OwnerTripMap: () => null }));
+vi.mock("@/features/trips/publication/PublicationManager", () => ({ PublicationManager: () => null }));
+vi.mock("@/features/trips/agenda/AgendaView", () => ({ AgendaView: () => null }));
+vi.mock("@/features/trips/tasks/TripTaskManager", () => ({ TripTaskManager: () => null }));
+vi.mock("@/features/trips/workspace/TripOverview", () => ({ TripOverview: () => null }));
 
 /** Serves the trips list and returns the requests it received. */
 function serveTrips(trips: Api.TripSummaryResponse[]): Request[] {

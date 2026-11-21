@@ -5,7 +5,7 @@ import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
 import { presetRecordName } from "@/lib/records";
 import { type PresetExceptions, type PresetRecordRef, type ShareScope } from "@/api-types";
-import { useSetVisibility } from "@/trips/visibility";
+import { useSetVisibility } from "../records/visibility";
 import { GROUP_TITLES, isExcluded, setShown, updateItem, type CatalogItem } from "./catalog";
 import { presetName } from "./use-sharing-presets";
 

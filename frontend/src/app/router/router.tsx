@@ -14,7 +14,7 @@ import { NavigationGuard } from "./NavigationGuard";
 import { Boundary } from "@/app/layout/Boundary";
 import { currentStoredOwner, tripsQueryOptions } from "@/lib/query/owner-queries";
 import { parseFlagParam } from "./search-params";
-import type { RecordKind } from "@/trips/record-focus";
+import type { RecordKind } from "@/features/trips/records/record-focus";
 
 declare module "@tanstack/react-router" {
   interface HistoryState {

@@ -2,8 +2,8 @@ import { Button } from "@/components/ui/button";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
-import type { DuplicateGroup } from "@/trips/merge-candidates";
-import { reasonsText } from "@/trips/MergeDialog";
+import type { DuplicateGroup } from "../records/merge-candidates";
+import { reasonsText } from "../records/MergeDialog";
 
 /** Likely duplicates, listed without acting on them: reviewing opens the merge preview. */
 export function DuplicateSuggestions({

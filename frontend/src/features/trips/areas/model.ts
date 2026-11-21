@@ -1,6 +1,6 @@
 import { m } from "@/paraglide/messages.js";
 import type { Area, LocationInput } from "@/api-types";
-import type { FormContext } from "@/forms/form-context";
+import type { FormContext } from "../records/form-context";
 
 export type Values = {
   labelNl: string;

@@ -5,10 +5,10 @@ import { Markdown } from "@/components/Markdown";
 import { m } from "@/paraglide/messages.js";
 import { areaName, stayLabel } from "@/lib/records";
 import { type Stay } from "@/api-types";
-import { VisibilityControl } from "@/trips/visibility";
-import { RecordActions } from "@/trips/RecordActions";
-import { IdeaNote } from "@/trips/IdeaNote";
-import { LinkedDocuments } from "@/trips/LinkedDocuments";
+import { VisibilityControl } from "../records/visibility";
+import { RecordActions } from "../records/RecordActions";
+import { IdeaNote } from "../records/IdeaNote";
+import { LinkedDocuments } from "../records/LinkedDocuments";
 
 /** The read-only view of one stay, with its visibility, overlapping ideas and edit/delete actions. */
 export function StayDetails({

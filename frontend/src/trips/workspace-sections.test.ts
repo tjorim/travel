@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
 
-import { RECORD_KINDS } from "./record-focus";
+import { RECORD_KINDS } from "@/features/trips/records/record-focus";
 import {
   DEFAULT_SECTION,
   isWorkspaceSection,
@@ -11,7 +11,7 @@ import {
   sectionForRecord,
   sectionPath,
   WORKSPACE_SECTIONS,
-} from "./workspace-sections";
+} from "@/features/trips/workspace/workspace-sections";
 
 describe("workspace sections", () => {
   it("opens the default section first, and lists every section once", () => {

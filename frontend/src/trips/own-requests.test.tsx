@@ -2,8 +2,8 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { useInPlaceCreate, type CreateRequest } from "./create-request";
-import { useFocusRequest } from "./record-focus";
+import { useInPlaceCreate, type CreateRequest } from "@/features/trips/records/create-request";
+import { useFocusRequest } from "@/features/trips/records/record-focus";
 
 afterEach(() => {
   cleanup();

@@ -11,9 +11,9 @@ import { server } from "../mocks/server";
 import { fakeApi, resolveTexts, type FakeApi } from "../query/fake-api";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import { answerConfirmation } from "../test-confirm";
-import { emptyDraft, readDraft, saveDraft } from "../capture-draft";
+import { emptyDraft, readDraft, saveDraft } from "@/features/trips/capture/capture-draft";
 import { type TravelUpdate, type Trip } from "../api-types";
-import { Capture } from "./Capture";
+import { Capture } from "@/features/trips/capture/Capture";
 
 const routeTree = createRootRoute({ component: Capture });
 

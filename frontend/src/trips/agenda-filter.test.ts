@@ -7,7 +7,7 @@ import {
   NO_FILTER,
   readAgendaFilter,
   writeAgendaFilter,
-} from "./agenda-filter";
+} from "@/features/trips/agenda/agenda-filter";
 
 afterEach(() => {
   localStorage.clear();

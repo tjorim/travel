@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { useInPlaceCreate } from "./create-request";
+import { useInPlaceCreate } from "@/features/trips/records/create-request";
 
 afterEach(() => {
   cleanup();

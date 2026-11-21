@@ -6,9 +6,9 @@ import type { useOwner } from "@/lib/query/owner-queries";
 import { formatInstant } from "@/lib/dates";
 import { locationName } from "@/lib/records";
 import { type Location, type MediaAsset } from "@/api-types";
-import { OwnerImage } from "@/trips/OwnerImage";
-import type { RecordKind } from "@/trips/record-focus";
-import { sectionForRecord } from "@/trips/workspace-sections";
+import { OwnerImage } from "../media/OwnerImage";
+import type { RecordKind } from "../records/record-focus";
+import { sectionForRecord } from "../workspace/workspace-sections";
 
 export type OwnerSession = NonNullable<ReturnType<typeof useOwner>>["session"];
 

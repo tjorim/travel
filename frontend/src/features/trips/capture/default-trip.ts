@@ -1,5 +1,5 @@
 import type { TripSummary } from "@/api-types";
-import { tripState } from "@/trips/trip-state";
+import { tripState } from "../trip/trip-state";
 
 /** The newest moment saved to a trip, or an empty string when it has none. */
 function lastUsed(trip: Pick<TripSummary, "last_update_at">): string {

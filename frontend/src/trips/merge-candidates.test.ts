@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
 import type { Area, Location } from "../api-types";
-import { duplicateAreas, duplicateLocations, parseAudience } from "./merge-candidates";
+import { duplicateAreas, duplicateLocations, parseAudience } from "@/features/trips/records/merge-candidates";
 
 const place = (id: string, fields: Partial<Location> = {}) =>
   ({ id, area_id: "a1", display_name: null, label: null, ...fields }) as Location;

@@ -7,12 +7,12 @@ import { m } from "@/paraglide/messages.js";
 import { ROUTE_MODE_LABELS, routeTitle } from "@/lib/records";
 import { type Route } from "@/api-types";
 import { PLANNING_STATUS_LABELS } from "@/lib/labels";
-import { RouteGeometryEditor } from "@/trips/RouteGeometryEditor";
-import { VisibilityControl } from "@/trips/visibility";
+import { RouteGeometryEditor } from "./RouteGeometryEditor";
+import { VisibilityControl } from "../records/visibility";
 import { routeTimes } from "./model";
-import { RecordActions } from "@/trips/RecordActions";
-import { IdeaNote } from "@/trips/IdeaNote";
-import { LinkedDocuments } from "@/trips/LinkedDocuments";
+import { RecordActions } from "../records/RecordActions";
+import { IdeaNote } from "../records/IdeaNote";
+import { LinkedDocuments } from "../records/LinkedDocuments";
 
 /** The read-only view of one route, with its visibility, rejected alternatives and edit/delete actions. */
 export function RouteDetails({

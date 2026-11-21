@@ -5,11 +5,11 @@ import { m } from "@/paraglide/messages.js";
 import { DeleteConfirmation } from "@/components/RecordDialog";
 import { visitTitle } from "@/lib/records";
 import { type Stay, type Trip, type Visit } from "@/api-types";
-import { VisibilityControl } from "@/trips/visibility";
-import { RestatedRoutesNote } from "@/trips/VisitRouteHint";
+import { VisibilityControl } from "../records/visibility";
+import { RestatedRoutesNote } from "../records/VisitRouteHint";
 import { dayLine, visitPlace } from "./model";
 import { Overnight } from "./Overnight";
-import { RecordActions } from "@/trips/RecordActions";
+import { RecordActions } from "../records/RecordActions";
 
 /** The read-only view of one visit: what visitors see, the private note, visibility and edit/delete. */
 export function VisitDetails({

@@ -11,7 +11,7 @@ import {
   isRecordRow,
   isUndated,
   withTripDays,
-} from "./agenda-items";
+} from "@/features/trips/agenda/agenda-items";
 import { routeLine } from "@/features/trips/routes/model";
 import { stayLine } from "@/features/trips/stays/model";
 import { visitLine } from "@/features/trips/visits/model";

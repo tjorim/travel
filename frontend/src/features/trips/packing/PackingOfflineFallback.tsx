@@ -7,7 +7,7 @@ import type { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import { m } from "@/paraglide/messages.js";
 import { errorMessage } from "@/lib/api/api";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { PackingOfflineView } from "@/trips/PackingOfflineView";
+import { PackingOfflineView } from "./PackingOfflineView";
 import type { Bag, Item, PackingList } from "./model";
 
 type Offline = ReturnType<typeof useOfflineCopies>;

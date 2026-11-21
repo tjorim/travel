@@ -3,10 +3,10 @@ import { useState } from "react";
 
 import type { FakeApi } from "../query/fake-api";
 import type { Trip } from "../api-types";
-import { AgendaManager } from "./AgendaManager";
-import type { CreateKind, CreatePrefill, CreateRequest } from "./create-request";
-import { PlanEditors, usePlanHost } from "./plan-host";
-import type { RecordFocus } from "./record-focus";
+import { AgendaManager } from "@/features/trips/agenda/AgendaManager";
+import type { CreateKind, CreatePrefill, CreateRequest } from "@/features/trips/records/create-request";
+import { PlanEditors, usePlanHost } from "@/features/trips/workspace/plan-host";
+import type { RecordFocus } from "@/features/trips/records/record-focus";
 
 /**
  * The plan tab's agenda with the three record dialogs behind it, wired as `PlanSection` wires them. Tests of what an

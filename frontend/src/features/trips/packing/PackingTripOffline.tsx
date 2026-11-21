@@ -7,7 +7,7 @@ import { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import { m } from "@/paraglide/messages.js";
 import { bytesLabel } from "@/lib/files";
 import { formatInstant } from "@/lib/dates";
-import { PackingOfflineView } from "@/trips/PackingOfflineView";
+import { PackingOfflineView } from "./PackingOfflineView";
 
 /** This reader needs only the route id, never a cached live trip response or an editor chunk. */
 export function PackingTripOffline({ tripId, onRetry }: { tripId: string; onRetry: () => void }) {

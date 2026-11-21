@@ -1,4 +1,4 @@
-import { LiveLocation } from "@/trips/LiveLocation";
+import { LiveLocation } from "./LiveLocation";
 import { VisitorNumbers } from "@/components/projection/VisitorNumbers";
 import type { UseQueryResult } from "@tanstack/react-query";
 
@@ -16,7 +16,7 @@ import type {
   OverviewWarning,
   TripOverview,
 } from "@/api-types";
-import { VisibilityControl } from "@/trips/visibility";
+import { VisibilityControl } from "../records/visibility";
 import { presetLabelText } from "./PresetSection";
 import {
   DATE_PRECISIONS,

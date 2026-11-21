@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { insertionIndex } from "./RouteGeometryEditor";
+import { insertionIndex } from "@/features/trips/routes/RouteGeometryEditor";
 
 const line = [
   { x: 0, y: 0 },

@@ -2,7 +2,7 @@ import { FinishedTrackImport } from "./FinishedTrackImport";
 import { FlightLineSuggestion } from "./FlightLineSuggestion";
 import { Collapsible } from "@/components/ui/collapsible";
 
-import { DateField, DateTimeField } from "@/forms/DateTimeFields";
+import { DateField, DateTimeField } from "../records/DateTimeFields";
 import {
   RecordForm,
   SelectField,
@@ -10,7 +10,7 @@ import {
   TextField,
   TimeZoneField,
 } from "@/components/forms/fields";
-import { DocumentLinksField } from "@/forms/DocumentLinksField";
+import { DocumentLinksField } from "../records/DocumentLinksField";
 import { LocalizedField } from "@/components/forms/LocalizedField";
 import { MarkdownField } from "@/components/forms/MarkdownField";
 import type { useRecordForm } from "@/hooks/useRecordForm";
@@ -20,8 +20,8 @@ import { ROUTE_MODE_LABELS } from "@/lib/records";
 import { type Area, type DocumentAsset, type Location } from "@/api-types";
 import { FieldLegend, FieldSet } from "@/components/ui/field";
 import { PLANNING_STATUS_LABELS } from "@/lib/labels";
-import { PlacePicker } from "@/trips/PlacePicker";
-import { RouteGeometryEditor } from "@/trips/RouteGeometryEditor";
+import { PlacePicker } from "../records/PlacePicker";
+import { RouteGeometryEditor } from "./RouteGeometryEditor";
 import {
   areaPoint,
   arrivalChosen,
@@ -30,7 +30,7 @@ import {
   validCoordinates,
   type Values,
 } from "./model";
-import { IdeaNote } from "@/trips/IdeaNote";
+import { IdeaNote } from "../records/IdeaNote";
 
 /** The route editor's fields; the booking details disclosure and the line editor keep their own state. */
 export function RouteForm({

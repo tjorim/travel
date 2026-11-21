@@ -6,7 +6,7 @@ import {
   parseDateInput,
   parseTimeInput,
   splitDateTime,
-} from "./date-input";
+} from "@/features/trips/records/date-input";
 
 it("reads a date from the displayed form, day-first numbers and ISO", () => {
   for (const text of [

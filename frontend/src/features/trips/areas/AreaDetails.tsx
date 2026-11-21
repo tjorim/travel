@@ -7,12 +7,12 @@ import { LocalName } from "@/components/LocalName";
 import { m } from "@/paraglide/messages.js";
 import { DeleteConfirmation } from "@/components/RecordDialog";
 import type { Area, Trip } from "@/api-types";
-import { AreaContents } from "@/trips/AreaContents";
-import type { DuplicateGroup } from "@/trips/merge-candidates";
-import { MergeDialog, type MergeRequest } from "@/trips/MergeDialog";
-import { VisibilityControl } from "@/trips/visibility";
+import { AreaContents } from "./AreaContents";
+import type { DuplicateGroup } from "../records/merge-candidates";
+import { MergeDialog, type MergeRequest } from "../records/MergeDialog";
+import { VisibilityControl } from "../records/visibility";
 import { areaSummary } from "./model";
-import { RecordActions } from "@/trips/RecordActions";
+import { RecordActions } from "../records/RecordActions";
 
 /** The read-only view of one area: its map point, contents, visibility, and the edit, merge and delete actions. */
 export function AreaDetails({

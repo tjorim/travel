@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
 import type { Area, Location, MediaAsset, Route, TripTask } from "../api-types";
-import { matchesQuery, RECORDS_PER_KIND, searchRecords } from "./workspace-records";
+import { matchesQuery, RECORDS_PER_KIND, searchRecords } from "@/features/trips/workspace/workspace-records";
 
 const area = (label: string) => ({ id: label, label }) as Area;
 const photo = (name: string, id = name) => ({ id, original_filename: name }) as MediaAsset;

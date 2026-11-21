@@ -6,7 +6,7 @@ import { HttpResponse, http } from "msw";
 import { afterEach, expect, it, vi } from "vitest";
 import { server } from "../mocks/server";
 import { renderWithOwner, testToken } from "../query/test-utils";
-import { PlaceSearchField } from "./PlaceSearchField";
+import { PlaceSearchField } from "@/features/trips/records/PlaceSearchField";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

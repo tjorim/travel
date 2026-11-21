@@ -3,7 +3,7 @@ import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
 import { textNotice, useFeedback } from "@/lib/api/feedback";
 import type { Area, Location } from "@/api-types";
-import type { RouteCoordinate } from "@/trips/RouteGeometryEditor";
+import type { RouteCoordinate } from "./RouteGeometryEditor";
 import { resolvedAreaPoint, type Values } from "./model";
 import { flightArc } from "./flight-arc";
 

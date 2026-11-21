@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
 import type { PlaceSearchResult } from "../api-types";
-import { pendingNames, splitPlaceResult } from "./place-result";
+import { pendingNames, splitPlaceResult } from "@/features/trips/records/place-result";
 import { namesTheArea } from "@/features/trips/areas/model";
 
 const result: PlaceSearchResult = {

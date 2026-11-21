@@ -1,8 +1,8 @@
 import { expect, it } from "vitest";
 
 import type { Location, Stay, Trip } from "../api-types";
-import { prefillForLocation, stayOnDay } from "./create-request";
-import { emptyPlace, placeOfPrefill } from "./PlacePicker";
+import { prefillForLocation, stayOnDay } from "@/features/trips/records/create-request";
+import { emptyPlace, placeOfPrefill } from "@/features/trips/records/PlacePicker";
 import { routeFromPrefill } from "@/features/trips/routes/model";
 import { stayFromPrefill } from "@/features/trips/stays/model";
 import { visitFromPrefill } from "@/features/trips/visits/model";

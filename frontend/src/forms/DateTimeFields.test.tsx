@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { changeLocale } from "@/i18n/locale";
-import { DateField, DateTimeField, TimeField } from "./DateTimeFields";
+import { DateField, DateTimeField, TimeField } from "@/features/trips/records/DateTimeFields";
 import { RecordForm } from "@/components/forms/fields";
 import { useRecordForm } from "@/hooks/useRecordForm";
 

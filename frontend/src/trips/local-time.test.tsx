@@ -2,9 +2,9 @@
 import { afterEach, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 
-import { LocalTimes } from "./TripOverview";
+import { LocalTimes } from "@/features/trips/workspace/TripOverview";
 import { offsetLabel, utcOffsetMinutes } from "@/lib/dates";
-import { whereabouts } from "../whereabouts";
+import { whereabouts } from "@/features/trips/workspace/whereabouts";
 import { type Location, type Stay, type Route } from "../api-types";
 
 afterEach(cleanup);

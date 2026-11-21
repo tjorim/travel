@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { orderedTrips, tripDateRange, tripState } from "./trip-state";
+import { orderedTrips, tripDateRange, tripState } from "@/features/trips/trip/trip-state";
 
 const day = "2054-06-15";
 

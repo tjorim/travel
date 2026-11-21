@@ -8,9 +8,9 @@ import type { ReactNode } from "react";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import { parseFlagParam } from "@/app/router/search-params";
 import type { Trip } from "../api-types";
-import { TripWorkspace, TripWorkspaceView } from "./TripWorkspace";
+import { TripWorkspace, TripWorkspaceView } from "@/features/trips/workspace/TripWorkspace";
 import { changeLocale } from "@/i18n/locale";
-import { Trips } from "./Trips";
+import { Trips } from "@/features/trips/trip/Trips";
 import { serveApi } from "../query/serve-api";
 
 const rootRoute = createRootRoute();
@@ -38,20 +38,20 @@ const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
 // The managers and map have their own tests; this file covers trip selection and the trip editor.
 vi.mock("@/features/documents/DocumentManager", () => ({ DocumentManager: () => null }));
-vi.mock("../trips/AreaManager", () => ({ AreaManager: () => null }));
-vi.mock("../trips/LocationManager", () => ({ LocationManager: () => null }));
-vi.mock("../trips/TravelUpdateManager", () => ({ TravelUpdateManager: () => null }));
-vi.mock("../trips/MediaManager", () => ({ MediaManager: () => null }));
-vi.mock("../trips/OwnerTripMap", () => ({
+vi.mock("@/features/trips/areas/AreaManager", () => ({ AreaManager: () => null }));
+vi.mock("@/features/trips/locations/LocationManager", () => ({ LocationManager: () => null }));
+vi.mock("@/features/trips/updates/TravelUpdateManager", () => ({ TravelUpdateManager: () => null }));
+vi.mock("@/features/trips/media/MediaManager", () => ({ MediaManager: () => null }));
+vi.mock("@/features/trips/workspace/OwnerTripMap", () => ({
   OwnerTripMap: ({ focus }: { focus?: { id: string } | null }) => (
     <p>Kaartfocus {focus?.id ?? "geen"}</p>
   ),
 }));
-vi.mock("../trips/PackingManager", () => ({ PackingManager: () => null }));
-vi.mock("../trips/PublicationManager", () => ({ PublicationManager: () => null }));
+vi.mock("@/features/trips/packing/PackingManager", () => ({ PackingManager: () => null }));
+vi.mock("@/features/trips/publication/PublicationManager", () => ({ PublicationManager: () => null }));
 vi.mock("../trips/RouteStageManager", () => ({ RouteStageManager: () => null }));
 // The agenda hosts the one dialog per kind of record: its rows ask the plan's host, which the editors listen to.
-vi.mock("../trips/AgendaManager", () => ({
+vi.mock("@/features/trips/agenda/AgendaManager", () => ({
   AgendaManager: ({
     host,
     onShowOnMap,
@@ -72,8 +72,8 @@ vi.mock("../trips/AgendaManager", () => ({
     </>
   ),
 }));
-vi.mock("../trips/plan-host", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../trips/plan-host")>()),
+vi.mock("@/features/trips/workspace/plan-host", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/trips/workspace/plan-host")>()),
   PlanEditors: ({
     host,
   }: {
@@ -86,13 +86,13 @@ vi.mock("../trips/plan-host", async (importOriginal) => ({
     </>
   ),
 }));
-vi.mock("../trips/TripTaskManager", () => ({
+vi.mock("@/features/trips/tasks/TripTaskManager", () => ({
   TripTaskManager: ({ focusId }: { focusId?: { id: string } | null }) => (
     <p>Taakfocus {focusId?.id ?? "geen"}</p>
   ),
 }));
 // The overview only passes its action through: the link beside its heading is what the workspace tests check.
-vi.mock("../trips/TripOverview", () => ({
+vi.mock("@/features/trips/workspace/TripOverview", () => ({
   TripOverview: ({ action }: { action?: ReactNode }) => <>{action}</>,
 }));
 

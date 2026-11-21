@@ -20,8 +20,13 @@ import {
   useTripsQuery,
 } from "@/lib/query/owner-queries";
 import type { ShareLink, TripSummary } from "@/api-types";
-import { sectionPath } from "@/trips/workspace-sections";
-import { dateLabel, LINK_STATE_LABELS, publicUrl, shareUrl } from "@/features/trips/publication/catalog";
+import { sectionPath } from "@/features/trips/workspace/workspace-sections";
+import {
+  dateLabel,
+  LINK_STATE_LABELS,
+  publicUrl,
+  shareUrl,
+} from "@/features/trips/publication/catalog";
 import { RevealedLinkDialog } from "@/features/trips/publication/RevealedLinkDialog";
 import { CollectionEditor } from "./CollectionEditor";
 import {

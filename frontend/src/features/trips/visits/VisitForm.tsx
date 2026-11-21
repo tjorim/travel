@@ -1,16 +1,16 @@
-import { AdvancedSection } from "@/forms/AdvancedSection";
+import { AdvancedSection } from "../records/AdvancedSection";
 import { CheckboxField, SelectField, RecordForm } from "@/components/forms/fields";
 import { LocalizedField } from "@/components/forms/LocalizedField";
-import { DateField, TimeField } from "@/forms/DateTimeFields";
+import { DateField, TimeField } from "../records/DateTimeFields";
 import { MarkdownField } from "@/components/forms/MarkdownField";
 import type { useRecordForm } from "@/hooks/useRecordForm";
 import { pickText, useContentLanguage } from "@/i18n/content-language";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
 import { VISIT_KIND_LABELS, PLANNING_STATUS_LABELS } from "@/lib/labels";
-import { PlacePicker } from "@/trips/PlacePicker";
-import { recordPrecisionOptions } from "@/trips/record-precision";
-import { VisitRouteHint } from "@/trips/VisitRouteHint";
+import { PlacePicker } from "../records/PlacePicker";
+import { recordPrecisionOptions } from "../records/record-precision";
+import { VisitRouteHint } from "../records/VisitRouteHint";
 import { lastDay, type Values } from "./model";
 
 /** The visit editor's fields. */

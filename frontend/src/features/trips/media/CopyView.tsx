@@ -6,8 +6,8 @@ import { useOwner } from "@/lib/query/owner-queries";
 import { DeleteConfirmation } from "@/components/RecordDialog";
 import { bytesLabel } from "@/lib/files";
 import { type MediaAsset, type MediaDerivative, type Trip } from "@/api-types";
-import { OwnerImage } from "@/trips/OwnerImage";
-import { VisibilityControl } from "@/trips/visibility";
+import { OwnerImage } from "./OwnerImage";
+import { VisibilityControl } from "../records/visibility";
 import { purposeLabel } from "./labels";
 
 /** One copy in the asset dialog: its preview and state, who may see it, and the actions that move it forward. */

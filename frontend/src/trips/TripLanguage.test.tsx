@@ -8,7 +8,7 @@ import { changeLocale } from "@/i18n/locale";
 import { server } from "../mocks/server";
 import { renderWithOwner, testToken } from "../query/test-utils";
 import type { Trip } from "../api-types";
-import { TripEditor } from "./TripEditor";
+import { TripEditor } from "@/features/trips/trip/TripEditor";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

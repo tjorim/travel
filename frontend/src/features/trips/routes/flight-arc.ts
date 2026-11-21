@@ -1,4 +1,4 @@
-import type { RouteCoordinate } from "@/trips/RouteGeometryEditor";
+import type { RouteCoordinate } from "./RouteGeometryEditor";
 
 // A suggestion is deliberately small (roughly two-degree intervals),
 // far below the existing route API's 10,000-point limit.

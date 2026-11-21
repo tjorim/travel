@@ -22,7 +22,7 @@ import { CaptureProvider, useCapture } from "@/app/providers/capture-context";
 import { wipeOfflineData } from "@/lib/offline-store";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
 
-const PublicationState = lazy(() => import("@/trips/PublicationState"));
+const PublicationState = lazy(() => import("@/features/trips/publication/PublicationState"));
 import { OwnerHeaderContext } from "@/app/providers/owner-header-context";
 
 /**

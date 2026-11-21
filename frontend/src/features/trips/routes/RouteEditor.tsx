@@ -1,10 +1,6 @@
 import { useRef, useState } from "react";
 
-import {
-  useDialogFocus,
-  useRecordDialog,
-  type DialogFocusRequest,
-} from "@/hooks/useRecordDialog";
+import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "@/hooks/useRecordDialog";
 import { useRecordForm } from "@/hooks/useRecordForm";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
@@ -15,9 +11,9 @@ import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
 import { formatDay } from "@/lib/dates";
 import { routeInPlan, routeTitle, sameJourney } from "@/lib/records";
 import { type Route, type Trip } from "@/api-types";
-import { placeFields, samePlace } from "@/trips/PlacePicker";
-import { useInPlaceCreate, type CreateRequestProps } from "@/trips/create-request";
-import { useReturnTarget, useRowDelete } from "@/trips/use-row-delete";
+import { placeFields, samePlace } from "../records/PlacePicker";
+import { useInPlaceCreate, type CreateRequestProps } from "../records/create-request";
+import { useReturnTarget, useRowDelete } from "../records/use-row-delete";
 import {
   blank,
   fromRoute,

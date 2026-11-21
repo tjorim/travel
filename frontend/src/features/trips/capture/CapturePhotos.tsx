@@ -10,7 +10,7 @@ import { useAuth } from "@/app/providers/auth-context";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
 import type { MediaAsset } from "@/api-types";
-import { OwnerImage } from "@/trips/OwnerImage";
+import { OwnerImage } from "../media/OwnerImage";
 import type { CaptureUpload } from "./use-capture-uploads";
 
 const tile = cn(

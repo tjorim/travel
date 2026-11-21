@@ -7,7 +7,7 @@ import { DeleteConfirmation } from "@/components/RecordDialog";
 import { bytesLabel } from "@/lib/files";
 import { formatCapture } from "@/lib/dates";
 import { type MediaAsset, type MediaDerivative } from "@/api-types";
-import { OwnerImage } from "@/trips/OwnerImage";
+import { OwnerImage } from "./OwnerImage";
 import { purposeLabel } from "./labels";
 
 /** One medium in the asset dialog: its original, offline copy and deletion, and the copies made from it. */

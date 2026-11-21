@@ -8,7 +8,7 @@ import { chooseOption, openAdvanced, renderWithOwner, testToken } from "../query
 import { answerConfirmation } from "../test-confirm";
 import type { Area, Location, Trip } from "../api-types";
 import { changeLocale } from "@/i18n/locale";
-import { LocationManager } from "./LocationManager";
+import { LocationManager } from "@/features/trips/locations/LocationManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

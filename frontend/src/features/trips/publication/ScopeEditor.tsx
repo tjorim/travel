@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible } from "@/components/ui/collapsible";
 import { useState } from "react";
 
-import { AdvancedSection } from "@/forms/AdvancedSection";
+import { AdvancedSection } from "../records/AdvancedSection";
 import { SearchSelect } from "@/components/forms/fields";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
@@ -13,7 +13,7 @@ import { FeedbackError } from "@/lib/api/feedback";
 import type { DatePrecision, ShareScope, ShareScopeKind } from "@/api-types";
 import { Field, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
-import { useSetVisibility } from "@/trips/visibility";
+import { useSetVisibility } from "../records/visibility";
 import { DATE_PRECISIONS, GROUP_TITLES, groupBy, updateItem, type CatalogItem } from "./catalog";
 import { ExclusionList } from "./ExclusionList";
 import { PresetSection, type ScopePreset } from "./PresetSection";

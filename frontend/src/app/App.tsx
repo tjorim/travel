@@ -9,17 +9,20 @@ import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
 import { lazyNamed } from "@/components/lazy-view";
 import { Callback } from "@/features/auth/Callback";
-import { OwnerHome } from "@/pages/OwnerHome";
+import { OwnerHome } from "@/features/trips/trip/OwnerHome";
 import { createOwnerQueryClient } from "@/lib/query/client";
 import { OwnerQueryProvider } from "@/app/providers/OwnerQueryProvider";
 import { buildOwnerRouteTree, createOwnerRouter } from "@/app/router/router";
 
 // The sign-in callback and the home page load with the shell. Every other page is fetched when its route is first
 // visited; the router, its loaders and the query client stay here, so route state never depends on a page's chunk.
-const Trips = lazyNamed(() => import("@/pages/Trips"), "Trips");
-const TripWorkspace = lazyNamed(() => import("@/pages/TripWorkspace"), "TripWorkspace");
-const TripDetail = lazyNamed(() => import("@/pages/TripDetail"), "TripDetail");
-const Capture = lazyNamed(() => import("@/pages/Capture"), "Capture");
+const Trips = lazyNamed(() => import("@/features/trips/trip/Trips"), "Trips");
+const TripWorkspace = lazyNamed(
+  () => import("@/features/trips/workspace/TripWorkspace"),
+  "TripWorkspace",
+);
+const TripDetail = lazyNamed(() => import("@/features/trips/detail/TripDetail"), "TripDetail");
+const Capture = lazyNamed(() => import("@/features/trips/capture/Capture"), "Capture");
 const Library = lazyNamed(() => import("@/features/library/Library"), "Library");
 const Sharing = lazyNamed(() => import("@/features/sharing/Sharing"), "Sharing");
 const Settings = lazyNamed(() => import("@/features/settings/Settings"), "Settings");

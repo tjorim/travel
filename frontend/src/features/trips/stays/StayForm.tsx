@@ -1,6 +1,6 @@
-import { AdvancedSection } from "@/forms/AdvancedSection";
-import { DateField, TimeField } from "@/forms/DateTimeFields";
-import { DocumentLinksField } from "@/forms/DocumentLinksField";
+import { AdvancedSection } from "../records/AdvancedSection";
+import { DateField, TimeField } from "../records/DateTimeFields";
+import { DocumentLinksField } from "../records/DocumentLinksField";
 import { Button } from "@/components/ui/button";
 import { RecordForm, requiredText, SelectField, TextField } from "@/components/forms/fields";
 import { MarkdownField } from "@/components/forms/MarkdownField";
@@ -12,8 +12,8 @@ import { addDays, daysBetween } from "@/lib/dates";
 import { areaName } from "@/lib/records";
 import { type DocumentAsset, type LocationInput, type Stay } from "@/api-types";
 import { PLANNING_STATUS_LABELS } from "@/lib/labels";
-import { PlaceSearchField } from "@/trips/PlaceSearchField";
-import { recordPrecisionOptions } from "@/trips/record-precision";
+import { PlaceSearchField } from "../records/PlaceSearchField";
+import { recordPrecisionOptions } from "../records/record-precision";
 import {
   accommodationOf,
   checkOutAfterCheckIn,
@@ -22,7 +22,7 @@ import {
   overlaps,
   type StayValues,
 } from "./model";
-import { IdeaNote } from "@/trips/IdeaNote";
+import { IdeaNote } from "../records/IdeaNote";
 
 /** The stay editor's fields; the place validator belongs to the manager, which knows what the editor opened with. */
 export function StayForm({

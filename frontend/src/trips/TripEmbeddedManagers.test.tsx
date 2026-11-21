@@ -9,7 +9,7 @@ import { fakeApi, resolveTexts, type FakeApi } from "../query/fake-api";
 import { useTripWithUpdates, useTripsQuery } from "@/lib/query/owner-queries";
 import { chooseOption, renderWithOwner, selectedOption, testToken } from "../query/test-utils";
 import type { TravelUpdate, Trip } from "../api-types";
-import { TravelUpdateManager } from "./TravelUpdateManager";
+import { TravelUpdateManager } from "@/features/trips/updates/TravelUpdateManager";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

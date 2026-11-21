@@ -11,7 +11,7 @@ import { FinishedTrackImport } from "@/features/trips/routes/FinishedTrackImport
 vi.mock("@/app/providers/auth-context", () => ({
   useAuth: () => ({ session: { accessToken: "synthetic", expiresAt: Date.now() + 60000 } }),
 }));
-vi.mock("../RouteGeometryEditor", () => ({
+vi.mock("@/features/trips/routes/RouteGeometryEditor", () => ({
   RouteGeometryEditor: () => <div>approximate draft</div>,
 }));
 afterEach(() => {

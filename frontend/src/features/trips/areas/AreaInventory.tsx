@@ -5,7 +5,7 @@ import { LocalName } from "@/components/LocalName";
 import { m } from "@/paraglide/messages.js";
 import { ownerLocationName, areaName } from "@/lib/records";
 import { type Area, type Location } from "@/api-types";
-import { visibilityLabel } from "@/trips/visibility";
+import { visibilityLabel } from "../records/visibility";
 import { areaSummary } from "./model";
 
 /** Every area with the locations reused inside it, and buttons to open either or add a location. */

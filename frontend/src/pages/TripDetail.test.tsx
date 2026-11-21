@@ -14,7 +14,7 @@ import {
   testToken,
 } from "../query/test-utils";
 import type { Trip } from "../api-types";
-import { TripDetail } from "./TripDetail";
+import { TripDetail } from "@/features/trips/detail/TripDetail";
 import { serveApi } from "../query/serve-api";
 
 const rootRoute = createRootRoute();

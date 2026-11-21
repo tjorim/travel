@@ -9,7 +9,7 @@ import { m } from "@/paraglide/messages.js";
 import { useTravelUpdateSearch } from "@/lib/query/owner-queries";
 import type { MediaDerivative, TravelUpdate } from "@/api-types";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { OwnerImage } from "@/trips/OwnerImage";
+import { OwnerImage } from "./OwnerImage";
 
 export type DerivativeValues = {
   purpose: MediaDerivative["purpose"];

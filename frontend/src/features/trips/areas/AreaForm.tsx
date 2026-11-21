@@ -1,15 +1,15 @@
 import { RecordForm, TextField, TimeZoneField } from "@/components/forms/fields";
 import { LocalizedField } from "@/components/forms/LocalizedField";
-import { LocalNameField } from "@/forms/LocalNameField";
-import { SuggestedNamesNotice } from "@/forms/SuggestedNames";
+import { LocalNameField } from "../records/LocalNameField";
+import { SuggestedNamesNotice } from "../records/SuggestedNames";
 import { useContentLanguage } from "@/i18n/content-language";
 import type { useRecordForm } from "@/hooks/useRecordForm";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
 import { useState } from "react";
 import type { Area, LocationInput } from "@/api-types";
-import { PlaceSearchField } from "@/trips/PlaceSearchField";
-import type { SuggestedNames } from "@/trips/place-result";
+import { PlaceSearchField } from "../records/PlaceSearchField";
+import type { SuggestedNames } from "../records/place-result";
 import {
   areaCoordinate,
   areaLabelOf,

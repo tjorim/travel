@@ -9,7 +9,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { server } from "../mocks/server";
 import { renderRoutesWithOwner, testToken } from "../query/test-utils";
 import type { Area, Trip } from "../api-types";
-import { FirstSteps } from "./FirstSteps";
+import { FirstSteps } from "@/features/trips/workspace/FirstSteps";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));

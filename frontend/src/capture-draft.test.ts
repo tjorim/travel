@@ -2,7 +2,7 @@
 import { mockCaptureLocks } from "./capture-draft-test-utils";
 import { beforeEach, expect, it, vi } from "vitest";
 import { clearSession } from "@/lib/auth";
-import { clearDraft, emptyDraft, readDraft, saveDraft } from "./capture-draft";
+import { clearDraft, emptyDraft, readDraft, saveDraft } from "@/features/trips/capture/capture-draft";
 import { testToken } from "./query/test-utils";
 
 function owner(subject: string) {

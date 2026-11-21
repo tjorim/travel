@@ -5,7 +5,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { renderWithOwner, testToken } from "../query/test-utils";
 import type { Trip } from "../api-types";
-import { PackingManager } from "./PackingManager";
+import { PackingManager } from "@/features/trips/packing/PackingManager";
 import { __resetOfflineStoreForTests, listOfflineCopies } from "@/lib/offline-store";
 import { serveApi } from "../query/serve-api";
 

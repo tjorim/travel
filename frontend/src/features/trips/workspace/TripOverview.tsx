@@ -1,0 +1,333 @@
+import { Link } from "@tanstack/react-router";
+import { buildAgendaItems, isUndated } from "../agenda/agenda-items";
+import { isOverdue, tripDay, tripProgress } from "./readiness";
+import { sectionPath } from "./workspace-sections";
+import { Badge as StatusBadge } from "@/components/ui/badge";
+import { useLocale } from "@/i18n/locale";
+import { m } from "@/paraglide/messages.js";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+
+import { dayjs } from "@/lib/dayjs";
+import { useTripResource } from "@/lib/query/owner-queries";
+import {
+  addDays,
+  browserTimeZone,
+  daysBetween,
+  formatDay,
+  offsetLabel,
+  utcOffsetMinutes,
+} from "@/lib/dates";
+import { routeInPlan, stayCoversNight, stayInPlan, timedRoutes } from "@/lib/records";
+import { whereabouts } from "./whereabouts";
+import {
+  type Stay,
+  type AlternativeGroup,
+  type Route,
+  type Trip,
+  type TripTask,
+} from "@/api-types";
+
+/** Where a badge leads: the owner section and block holding the records it counts. */
+type Badge = {
+  label: string;
+  value: string;
+  done: boolean;
+  section: "plan" | "prepare";
+  hash: "routes" | "stays" | "tasks";
+};
+
+const isConfirmed = (status: Stay["status"] | Route["status"]) => status === "confirmed";
+
+/** The archive header's booking badges, derived live from the owner's records. */
+export function tripBadges(
+  trip: Pick<Trip, "starts_on" | "ends_on">,
+  stays: Stay[],
+  routes: Route[],
+  tasks: TripTask[],
+  /** The owner's stored alternative groups: a night they still choose between is not a missing stay. */
+  groups: AlternativeGroup[] = [],
+): Badge[] {
+  const badges: Badge[] = [];
+  // Only scheduled routes are bookings; a drawn line between two areas is not.
+  const activeRoutes = routes.filter((route) => route.departs_on && routeInPlan(route));
+  if (activeRoutes.length) {
+    const booked = activeRoutes.filter((route) => isConfirmed(route.status)).length;
+    badges.push({
+      label: m.common_transport(),
+      value:
+        booked === activeRoutes.length
+          ? m.trips_all_confirmed()
+          : m.trips_confirmed_count({ confirmed: booked, total: activeRoutes.length }),
+      done: booked === activeRoutes.length,
+      section: "plan",
+      hash: "routes",
+    });
+  }
+  if (trip.starts_on && trip.ends_on && trip.ends_on > trip.starts_on) {
+    const nights = Array.from({ length: daysBetween(trip.starts_on, trip.ends_on) }, (_, index) =>
+      addDays(trip.starts_on!, index),
+    );
+    const booked = nights.filter((night) =>
+      stays.some((stay) => isConfirmed(stay.status) && stayCoversNight(stay, night)),
+    ).length;
+    const open = nights.filter((night) => !stays.some((stay) => stayCoversNight(stay, night)));
+    // A night an undecided group still compares candidates for is being chosen, not forgotten.
+    const choosing = open.filter((night) =>
+      groups.some(
+        (group) =>
+          group.kind === "stay" &&
+          !group.chosen_id &&
+          group.members.some(
+            (member) =>
+              member.stay &&
+              member.stay.status === "idea" &&
+              member.stay.check_in_date <= night &&
+              night < member.stay.check_out_date,
+          ),
+      ),
+    ).length;
+    const missing = open.length - choosing;
+    badges.push({
+      label: m.common_nights(),
+      value: m.trips_confirmed_nights({
+        confirmed: booked,
+        total: nights.length,
+        details:
+          (missing ? m.trips_without_a_stay({ count: missing }) : "") +
+          (choosing ? m.trips_nights_to_choose({ count: choosing }) : ""),
+      }),
+      done: booked === nights.length,
+      section: "plan",
+      hash: "stays",
+    });
+  } else if (stays.some(stayInPlan)) {
+    const active = stays.filter(stayInPlan);
+    const booked = active.filter((stay) => isConfirmed(stay.status)).length;
+    badges.push({
+      label: m.common_stays(),
+      value: m.trips_confirmed_count({ confirmed: booked, total: active.length }),
+      done: booked === active.length,
+      section: "plan",
+      hash: "stays",
+    });
+  }
+  const open = tasks.filter((task) => !task.completed_at).length;
+  if (tasks.length)
+    badges.push({
+      label: m.tasks_things_to_arrange(),
+      value: open ? m.trips_open_count({ count: open }) : m.trips_all_done(),
+      done: open === 0,
+      section: "prepare",
+      hash: "tasks",
+    });
+  return badges;
+}
+
+/** The trip's destination zone and when to evaluate it: the first stay with
+ * a zone, else the first flight's arrival zone. */
+export function tripZone(
+  _trip: Pick<Trip, "starts_on">,
+  stays: Stay[],
+  routes: Route[],
+): { zone: string; at: string } | null {
+  const stay = stays
+    .filter((item) => stayInPlan(item) && item.area.timezone)
+    .sort((left, right) => left.check_in_date.localeCompare(right.check_in_date))[0];
+  if (stay) return { zone: stay.area.timezone!, at: `${stay.check_in_date}T12:00:00Z` };
+  const route = timedRoutes(routes)
+    .filter((item) => routeInPlan(item) && item.arrival_timezone)
+    .sort((left, right) => left.arrives_at.localeCompare(right.arrives_at))[0];
+  if (route) return { zone: route.arrival_timezone!, at: route.arrives_at };
+  return null;
+}
+
+/** "Nu in Voorbeeldstad: 21:15 · 7 u later dan hier" during the trip, and the
+ * difference at the trip's own dates (daylight saving can change it). */
+export function LocalTimes({
+  trip,
+  stays,
+  routes,
+  now,
+  homeZone = browserTimeZone(),
+}: {
+  trip: Pick<Trip, "starts_on">;
+  stays: Stay[];
+  routes: Route[];
+  now: Date;
+  homeZone?: string;
+}) {
+  useLocale();
+  const instant = now.toISOString();
+  const here = whereabouts(instant, stays, routes, homeZone);
+  const destination = tripZone(trip, stays, routes);
+  const nowOffset = (zone: string) =>
+    utcOffsetMinutes(instant, zone) - utcOffsetMinutes(instant, homeZone);
+  const lines: string[] = [];
+  if (here.kind !== "home" && here.zone) {
+    const time = dayjs(now).tz(here.zone).format("ddd HH:mm");
+    lines.push(
+      m.trips_now({
+        place: here.kind === "stay" ? m.trips_in({ place: here.label }) : here.label,
+        time: time,
+        offset: offsetLabel(nowOffset(here.zone)),
+      }),
+    );
+  }
+  if (destination) {
+    const during =
+      utcOffsetMinutes(destination.at, destination.zone) -
+      utcOffsetMinutes(destination.at, homeZone);
+    const current = nowOffset(destination.zone);
+    if (here.kind === "home")
+      lines.push(
+        current !== during
+          ? m.trips_trip_offset_now({
+              during: offsetLabel(during),
+              current: offsetLabel(current, true),
+            })
+          : m.trips_during_the_trip({ offset: offsetLabel(during), details: "" }),
+      );
+  }
+  if (!lines.length) return null;
+  return (
+    <p
+      className="m-0 grid gap-0.5 text-travel-muted [&_span:first-child]:font-bold [&_span:first-child]:text-travel-ink"
+      aria-live="polite"
+    >
+      {lines.map((line) => (
+        <span key={line}>{line}</span>
+      ))}
+    </p>
+  );
+}
+
+/** `action` sits on the first heading row, beside the day count, so a link to the rest of the trip takes no row of its own. */
+export function TripOverview({ trip, action }: { trip: Trip; action?: ReactNode }) {
+  const locale = useLocale();
+  const staysQuery = useTripResource(trip.id, "stays");
+  const routesQuery = useTripResource(trip.id, "routes");
+  const visitsQuery = useTripResource(trip.id, "visits");
+  const tasksQuery = useTripResource(trip.id, "trip-tasks");
+  const groupsQuery = useTripResource(trip.id, "alternative-groups");
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const stays = staysQuery.data ?? [];
+  const routes = routesQuery.data ?? [];
+  // The badges need all three records; one failed read shows none rather than a misleading partial count.
+  const badges = useMemo(
+    () =>
+      staysQuery.data && routesQuery.data && tasksQuery.data
+        ? tripBadges(
+            trip,
+            staysQuery.data,
+            routesQuery.data,
+            tasksQuery.data,
+            groupsQuery.data ?? [],
+          )
+        : [],
+    [locale, trip, staysQuery.data, routesQuery.data, tasksQuery.data, groupsQuery.data],
+  );
+
+  const today = tripDay(now, stays, routes);
+  const progress = tripProgress(trip.starts_on, trip.ends_on, today);
+  const overdue = (tasksQuery.data ?? []).filter((task) => isOverdue(task, today)).length;
+  const agenda = buildAgendaItems(stays, routes, visitsQuery.data ?? []);
+  const nights = trip.starts_on && trip.ends_on ? daysBetween(trip.starts_on, trip.ends_on) : null;
+  const localTimes = <LocalTimes trip={trip} stays={stays} routes={routes} now={now} />;
+  if (!trip.starts_on && !badges.length && !stays.length && !routes.length && !action) return null;
+  return (
+    <section
+      className="travel-card grid gap-2.5 [&_.travel-eyebrow]:m-0"
+      aria-label={m.trips_trip_overview()}
+    >
+      {(progress || action) && (
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          {progress && (
+            <strong>
+              {progress.kind === "before"
+                ? m.readiness_departure({ count: progress.days })
+                : progress.kind === "finished"
+                  ? m.readiness_finished()
+                  : progress.total
+                    ? m.readiness_underway({ day: progress.day, total: progress.total })
+                    : m.readiness_day({ day: progress.day })}
+            </strong>
+          )}
+          {action}
+        </div>
+      )}
+      {overdue > 0 && (
+        <p className="m-0">
+          <Link className="secondary action-link" to={sectionPath(trip.id, "prepare")} hash="tasks">
+            {m.readiness_overdue({ count: overdue })}
+          </Link>
+        </p>
+      )}
+      {trip.starts_on && (
+        <p className="travel-eyebrow">
+          {formatDay(trip.starts_on, "D MMMM")}
+          {trip.ends_on ? ` — ${formatDay(trip.ends_on, "D MMMM YYYY")}` : ""}
+          {nights ? ` · ${m.common_night_count({ count: nights })}` : ""}
+        </p>
+      )}
+      {localTimes}
+      {progress?.kind === "underway" && visitsQuery.data && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[today, addDays(today, 1)].map((date, index) => {
+            const entries = agenda.filter(
+              (item) => !isUndated(item) && item.first <= date && (item.last ?? item.first) >= date,
+            );
+            return (
+              <section key={date}>
+                <h3 className="m-0 text-base">
+                  {index === 0 ? m.readiness_today() : m.readiness_tomorrow()}
+                </h3>
+                {entries.length ? (
+                  <ul className="m-0 grid gap-1 pl-5">
+                    {entries.map((item) => (
+                      <li key={item.id}>
+                        {item.time && <time>{item.time} </time>}
+                        {item.text}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="m-0 text-travel-muted">{m.readiness_empty()}</p>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
+      {badges.length > 0 && (
+        <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+          {badges.map((badge) => (
+            <StatusBadge key={badge.label} render={<li />}>
+              <Link
+                className="inline-flex items-center gap-1 text-inherit no-underline hover:underline focus-visible:underline"
+                to={sectionPath(trip.id, badge.section)}
+                hash={badge.hash}
+              >
+                <span
+                  aria-hidden="true"
+                  className={
+                    badge.done
+                      ? "size-2 rounded-full bg-travel-link"
+                      : "size-2 rounded-full bg-travel-status-pending"
+                  }
+                />
+                <span className="shrink-0">{badge.label}</span>{" "}
+                <strong className="text-travel-ink">{badge.value}</strong>
+              </Link>
+            </StatusBadge>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
