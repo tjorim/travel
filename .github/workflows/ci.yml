@@ -115,9 +115,6 @@ jobs:
     if: github.event_name == 'push' || needs.changes.outputs.frontend == 'true'
     uses: ./.github/workflows/frontend-ci.yml
 
-
-
-
   dependency-audit:
     name: Dependency audit
     timeout-minutes: 10
