@@ -36,6 +36,7 @@ dependencies = [
 dev = [
   "pypdf==7.0.1",
   "pytest==9.2.0",
+  "pytest-cov==7.1.0",
   "python-travel",
   "ruff==0.17.5",
   "ty==0.0.105",
@@ -52,6 +53,15 @@ filterwarnings = [
   # fastmcp's py-key-value-aio protocol is checked by beartype without @runtime_checkable.
   "ignore:.*isn't explicitly decorated with @runtime_checkable:DeprecationWarning:beartype",
 ]
+
+# Run with `uv run pytest --cov` (CI does). The floor sits just below the measured total (93.81% without ffmpeg and
+# PostgreSQL, which CI has); raise it as tests are added and never lower it to land a change.
+[tool.coverage.run]
+source = ["app"]
+
+[tool.coverage.report]
+fail_under = 93
+skip_covered = true
 
 [tool.ruff]
 target-version = "py315"

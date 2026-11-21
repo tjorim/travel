@@ -43,8 +43,8 @@ jobs:
       - name: Format check
         run: pnpm run format:check
 
-      - name: Test
-        run: pnpm run test --maxWorkers=2
+      - name: Test with coverage thresholds
+        run: pnpm run test --coverage --maxWorkers=2
 
       - name: Build
         run: pnpm run build

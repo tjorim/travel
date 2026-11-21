@@ -35,6 +35,7 @@ For PostgreSQL, Keycloak and Caddy start the local stack from the repository roo
 
 ```bash
 uv run pytest
+uv run pytest --cov    # what CI runs: fails below the `fail_under` coverage floor in pyproject.toml
 ```
 
 Most of the suite uses SQLite and needs no services. The `*_postgres.py` tests skip unless a PostgreSQL database is

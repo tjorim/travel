@@ -52,7 +52,7 @@ pnpm lint
 pnpm format              # rewrites files in place
 pnpm format:check        # what CI runs
 pnpm format:repo         # same for ../.github, ../scripts and the root JSON files (format:repo:check in CI)
-pnpm test                # Vitest (MSW-mocked API); test:watch for watch mode
+pnpm test                # Vitest (MSW-mocked API); test:watch for watch mode; `pnpm test --coverage` checks the thresholds CI enforces
 pnpm test:e2e            # Playwright smoke and axe checks against the Vite dev server with the API mocked
 pnpm test:e2e:offline    # builds, then runs the service-worker/offline specs
 pnpm build
@@ -74,7 +74,7 @@ test needs more data.
 ```bash
 uv sync --all-groups --locked
 uv run uvicorn app.main:app --reload     # TRAVEL_ENVIRONMENT=development; SQLite file built by app.db.dev_schema
-uv run pytest
+uv run pytest                            # `uv run pytest --cov` checks the coverage floor CI enforces
 uv run ruff check .
 uv run ruff format --check .             # ruff format . to rewrite
 uv run ty check .
@@ -234,9 +234,9 @@ backend response models -> uv run python -m app.openapi_export (pnpm api:generat
 ## Testing
 
 Run the checks CI runs before pushing, from `frontend/`: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`
-(+ `pnpm format:repo:check`), `pnpm test`, `pnpm build`, `pnpm bundle:test && pnpm bundle:check`, `pnpm locale:audit`,
+(+ `pnpm format:repo:check`), `pnpm test --coverage`, `pnpm build`, `pnpm bundle:test && pnpm bundle:check`, `pnpm locale:audit`,
 `pnpm check-message-parity` and `pnpm ui:test && pnpm ui:check`; from `backend/`: `uv run ruff check .`,
-`uv run ruff format --check .`, `uv run ty check .` and `uv run pytest`. `pnpm test:e2e` needs
+`uv run ruff format --check .`, `uv run ty check .` and `uv run pytest --cov`. `pnpm test:e2e` needs
 `pnpm exec playwright install chromium`. The media tests need `ffmpeg` on `PATH`, and the `*_postgres.py` tests and
 the migration cycle need a PostgreSQL database. Other components have their own checks (`python-travel/`,
 `home-assistant/`); see their jobs in `.github/workflows/ci.yml`.
@@ -281,7 +281,7 @@ the three `uv.lock` entries and the `python-travel==` pin in the manifest are in
 - Never hand-edit `frontend/openapi.json` or `frontend/src/api-schema/`; regenerate them, and do not declare API record
   types elsewhere in the frontend.
 - `frontend/src/paraglide/` is generated and git-ignored: run `pnpm paraglide:compile` (or `pnpm typecheck`) after a
-  fresh checkout before running `tsc` directly. `pnpm test` compiles it through the Vitest plugin.
+  fresh checkout before running `tsc` directly. `pnpm test` compiles its own copy into the git-ignored `frontend/.vitest/` through the Vitest plugin.
 - `TRAVEL_ENVIRONMENT=development` without a `TRAVEL_DATABASE_URL` uses a SQLite file built from the models, not from
   the migrations; production is PostgreSQL, so verify schema changes with `alembic upgrade head` and `alembic check`
   against PostgreSQL.

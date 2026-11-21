@@ -1,14 +1,26 @@
 import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import react from "@vitejs/plugin-react";
 import { availableParallelism } from "node:os";
+import { resolve } from "node:path";
 import { configDefaults, defineConfig } from "vitest/config";
 
+// Tests compile their own Paraglide output and `@/paraglide` resolves there during tests. With coverage on, Vitest
+// starts a second Vite server whose Paraglide plugin rewrote `src/paraglide` (the output `pnpm build`, `pnpm dev` and
+// `tsc` use) with virtual-module imports while workers were reading it, so 20 files failed with "Cannot find package
+// virtual:paraglide/...". A directory of their own keeps the two apart.
+const paraglideTestDir = resolve(import.meta.dirname, ".vitest/paraglide");
+
 export default defineConfig({
-  resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
+  resolve: {
+    alias: [
+      { find: /^@\/paraglide(\/|$)/, replacement: `${paraglideTestDir}$1` },
+      { find: "@", replacement: resolve(import.meta.dirname, "src") },
+    ],
+  },
   plugins: [
     paraglideVitePlugin({
       project: "./project.inlang",
-      outdir: "./src/paraglide",
+      outdir: paraglideTestDir,
       strategy: ["custom-travel", "baseLocale"],
       emitTsDeclarations: true,
       // Group messages like `pnpm dev` so a cold test worker does not load thousands of modules.
@@ -42,6 +54,9 @@ export default defineConfig({
       include: ["src/**"],
       exclude: ["src/paraglide/**", "src/main.tsx", "src/assets/**"],
       reporter: ["text", "lcov"],
+      // Floors just below the measured totals (statements 82.87, branches 79.66, functions 82.48, lines 84.41), so
+      // coverage cannot regress unnoticed. Raise them as tests are added; never lower them to land a change.
+      thresholds: { statements: 82, branches: 79, functions: 82, lines: 84 },
     },
   },
 });
