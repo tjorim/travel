@@ -5,8 +5,8 @@ frontend may already have assigned one), otherwise a new UUID4; anything else wo
 stored on ``request.state.request_id`` and in ``current_request_id`` for code that logs below a request.
 
 The access line is JSON with the field names the other apps use (``event``, ``request_id``, ``method``, ``route``,
-``status_code``, ``latency_ms``). ``route`` is the route template, never the raw path, which can carry share slugs and
-capability tokens. 5xx log as errors, 4xx as warnings.
+``status_code``, ``latency_ms``). ``route`` is the route template as FastAPI routes it (without the ``/api`` prefix of an
+included router, like the slow-request log), never the raw path, which can carry share slugs and capability tokens. 5xx log as errors, 4xx as warnings.
 
 Pure ASGI, so streamed responses (media, MCP over SSE) pass through unbuffered. The 500 for an unhandled exception is
 sent by Starlette's outermost ``ServerErrorMiddleware`` after this middleware has unwound, so that response carries no
