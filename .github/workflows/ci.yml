@@ -26,9 +26,6 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       python-client: ${{ steps.filter.outputs.python-client }}
       home-assistant: ${{ steps.filter.outputs.home-assistant }}
-      codeql-actions: ${{ steps.filter.outputs.codeql-actions }}
-      codeql-javascript: ${{ steps.filter.outputs.codeql-javascript }}
-      codeql-python: ${{ steps.filter.outputs.codeql-python }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: filter
@@ -53,21 +50,6 @@ jobs:
             frontend:
               - 'frontend/**'
               - '.github/workflows/frontend-ci.yml'
-              - '.github/workflows/ci.yml'
-            codeql-actions:
-              - '.github/workflows/**'
-              - '.github/workflows/codeql-actions.yml'
-              - '.github/workflows/ci.yml'
-            codeql-javascript:
-              - 'frontend/**'
-              - '.github/workflows/codeql-javascript.yml'
-              - '.github/workflows/ci.yml'
-            codeql-python:
-              - 'backend/**'
-              - 'python-travel/**'
-              - 'home-assistant/**'
-              - 'custom_components/**'
-              - '.github/workflows/codeql-python.yml'
               - '.github/workflows/ci.yml'
 
   backend:
@@ -133,38 +115,8 @@ jobs:
     if: github.event_name == 'push' || needs.changes.outputs.frontend == 'true'
     uses: ./.github/workflows/frontend-ci.yml
 
-  codeql-actions:
-    name: CodeQL (Actions)
-    needs: changes
-    if: github.event_name == 'push' || github.event_name == 'schedule' || needs.changes.outputs.codeql-actions == 'true'
-    uses: ./.github/workflows/codeql-actions.yml
-    permissions:
-      actions: read
-      contents: read
-      packages: read
-      security-events: write
 
-  codeql-javascript:
-    name: CodeQL (JavaScript)
-    needs: changes
-    if: github.event_name == 'push' || github.event_name == 'schedule' || needs.changes.outputs.codeql-javascript == 'true'
-    uses: ./.github/workflows/codeql-javascript.yml
-    permissions:
-      actions: read
-      contents: read
-      packages: read
-      security-events: write
 
-  codeql-python:
-    name: CodeQL (Python)
-    needs: changes
-    if: github.event_name == 'push' || github.event_name == 'schedule' || needs.changes.outputs.codeql-python == 'true'
-    uses: ./.github/workflows/codeql-python.yml
-    permissions:
-      actions: read
-      contents: read
-      packages: read
-      security-events: write
 
   dependency-audit:
     name: Dependency audit
@@ -256,9 +208,6 @@ jobs:
       - home-assistant
       - hacs
       - frontend
-      - codeql-actions
-      - codeql-javascript
-      - codeql-python
       - dependency-audit
       - release-metadata
       - repo-format

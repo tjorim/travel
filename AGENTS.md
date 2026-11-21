@@ -237,8 +237,8 @@ the migration cycle need a PostgreSQL database. Other components have their own 
 ## CI
 
 `.github/workflows/ci.yml` detects which components a change touches and calls the component workflows
-(`backend-ci.yml`, `frontend-ci.yml` and the `codeql-*.yml` scans); unchanged components show as skipped. The
-`CI gate` job fails when any needed job failed or was cancelled. The `Frontend` caller runs `Frontend / Checks` and
+(`backend-ci.yml` and `frontend-ci.yml`); unchanged components show as skipped. The
+`CI gate` job fails when any needed job failed or was cancelled. CodeQL runs through GitHub's default setup (repository settings), so there are no `codeql-*.yml` files here, unlike the other apps; do not add them while the default setup is on, because GitHub rejects advanced-workflow uploads in that case. The `Frontend` caller runs `Frontend / Checks` and
 `Frontend / E2E shard n/3` (three Playwright shards, with the Chromium cache keyed by the Playwright version); the
 `Backend` caller runs `Backend / Checks` against PostgreSQL, including the migration upgrade/downgrade cycle with a
 pinned `ffmpeg`. `ci.yml` itself also runs the Python client, Home Assistant, HACS, dependency-audit,
