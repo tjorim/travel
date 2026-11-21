@@ -14,7 +14,7 @@
     "format:check": "oxfmt --check .",
     "format:repo": "cd .. && frontend/node_modules/.bin/oxfmt -c frontend/.oxfmtrc.json .github scripts *.json",
     "format:repo:check": "cd .. && frontend/node_modules/.bin/oxfmt --check -c frontend/.oxfmtrc.json .github scripts *.json",
-    "test": "pnpm paraglide:compile && vitest run",
+    "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
     "bundle:check": "node scripts/bundle-budget.mjs --check",
