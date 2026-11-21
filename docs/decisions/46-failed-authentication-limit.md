@@ -26,7 +26,7 @@ request legitimately has none), the `503` for unconfigured validation, and any
 failure caused by the identity provider being unreachable, including the
 refresh cool-down that follows it. Successes do not reset the count.
 
-The client key is the one in `app/ratelimit.py`: the peer address, or
+The client key is the one in `app/core/ratelimit.py`: the peer address, or
 `X-Real-IP` when the peer is a private (trusted proxy) address, with IPv6
 grouped by /64 and IPv4-mapped addresses folded to IPv4. A public peer cannot
 choose its own bucket.

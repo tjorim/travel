@@ -25,7 +25,7 @@ acknowledgement or not.
 
 ## API contract
 
-`app/visitor_changes.py` computes the review from `receivers()` over the live
+`app/services/sharing/visitor_changes.py` computes the review from `receivers()` over the live
 audiences (`audit.live_audiences`: the published public page and active links;
 drafts and an unpublished page deliver nothing). The merge preview (#27) reuses
 its helpers.

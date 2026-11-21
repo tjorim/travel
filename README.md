@@ -28,7 +28,7 @@ for the PWA (`pnpm dev`), or the [local application stack](#local-application-st
 
 `pnpm dev` proxies `/api` to `http://localhost:8000`, so run the API there. Locally neither a database container nor
 Keycloak is needed: the API defaults to a SQLite file, built from the models with
-`cd backend && TRAVEL_ENVIRONMENT=development uv run python -m app.dev_schema` (add `--reset` after a model change).
+`cd backend && TRAVEL_ENVIRONMENT=development uv run python -m app.db.dev_schema` (add `--reset` after a model change).
 The Alembic migrations target PostgreSQL and do not run on SQLite. Export one `TRAVEL_DEV_AUTH_BYPASS_TOKEN` (any
 string) for both processes and start the API with `TRAVEL_ENVIRONMENT=development`. `pnpm dev` then authenticates
 `/api` with it, and opening `http://localhost:5173/admin/` is already signed in as the fixed development owner (restart
@@ -64,7 +64,7 @@ uv run alembic upgrade head
 
 - `frontend/` — React source for the owner `/admin/` PWA and live public and unlisted trip views; the source layout is described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - `frontend/MAP-PROVIDER.md` — app map provider, attribution, privacy and failure policy
-- `backend/` — application service, FastAPI routes and future owner MCP workflows
+- `backend/` — application service, FastAPI routes and the owner MCP server; `app/` is `core/`, `db/`, `models/`, `schemas/`, `routers/`, `services/`, `mcp/` and `middleware/`, described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#backend-backendapp)
 - `compose.yaml` — local Caddy, `travel-api` and PostgreSQL stack
 - `Caddyfile.example` — local copy of the production owner, public and unlisted routes
 - `custom_components/travel/`, `home-assistant/`, `python-travel/` — Home Assistant integration, its tests and the PyPI client

@@ -257,7 +257,7 @@ name the sharing editor, presets and documents already use.
 
 ### Ordering
 
-Each record kind has one order, defined once on the server in `app/models.py` and shared by the `Trip`
+Each record kind has one order, defined once on the server in `app/models/` and shared by the `Trip`
 collection, the kind's own list endpoint, the export, the PDF and the visitor projection. A client never sorts a
 list to give it an order; it only chooses how to display one it already has.
 
@@ -302,7 +302,7 @@ documents and emergency information. A field that is ever shared joins the table
 - A trip (and a collection, which belongs to no trip) has `content_language` (`nl` or `en`, default `nl`; the web
   app sends the owner's interface language when it creates one). It is the language a write to the plain field name
   lands in, and the one a read prefers. A trip's records read it from their trip.
-- `app.content_language.resolve` is the one rule: the requested language, otherwise the other, otherwise nothing;
+- `app.core.content_language.resolve` is the one rule: the requested language, otherwise the other, otherwise nothing;
   an empty string counts as nothing. The owner API, MCP, the visitor document, the PDF, the Atom feed, the owner's
   search and the sharing checks all apply it.
 - A trip's and a travel update's `title` needs text in at least one language (a check constraint). Everything else
@@ -405,8 +405,8 @@ carries all three.
 An audience is stored in one of three tables (`public_surfaces`, `share_links`, `collection_members`) and reached
 by its own routes, but it is **one concept in the code** ([decision 360](decisions/360-audience-model.md)): every
 audience has a scope, a revision, the label of the preset last applied to it, a state that says whether it delivers,
-and a place its history is written. `backend/app/audience.py` is that interface and
-`backend/app/services/audiences.py` holds what is done with it: previews, the future-disclosure review, the
+and a place its history is written. `backend/app/services/sharing/audience.py` is that interface and
+`backend/app/services/sharing/audiences.py` holds what is done with it: previews, the future-disclosure review, the
 revision claim and the scope edit. A new audience feature is written once there, never per kind. What each audience
 receives is still decided by `projection.delivered` alone.
 
@@ -430,7 +430,7 @@ each counts the candidate scope as `FutureDisclosure` and stores nothing
 
 Each kind has a fixed allowlist. Nothing is redacted on the fly, and nothing
 outside the allowlist can be selected. The allowlist is the set of fields of
-the kind's `Projection*` model in `backend/app/schemas.py`: the renderers in
+the kind's `Projection*` model in `backend/app/schemas/projection.py`: the renderers in
 `projection.py` build those models and nothing else, a field they add without
 declaring it is refused, and the models are what the OpenAPI schema publishes
 (the web app's mirror is `frontend/src/projection-types.ts`).
@@ -503,7 +503,7 @@ Nothing outside an audience's allowlist is ever delivered, and subtraction never
 reveals a field.
 
 **Dependencies.** A delivered document must not point at something the audience does
-not receive, so one rule applies on the server, in `app/exclusions.py`, and nowhere
+not receive, so one rule applies on the server, in `app/services/sharing/exclusions.py`, and nowhere
 else: *excluding a record also hides, for that audience only, every record that
 depends on it.*
 
@@ -549,7 +549,7 @@ revisions work as before ([decision 15](decisions/15-sharing-scope-revisions.md)
 ## Date precision
 
 How exactly a visitor reads *when* is decided in one rule, applied on the server
-by `app/precision.py` in the same code path for the owner's preview, the Sharing
+by `app/services/sharing/precision.py` in the same code path for the owner's preview, the Sharing
 check and the real delivery: **the coarser value always wins**, so a visitor never
 receives a finer date than either the record or the audience allows.
 
@@ -682,7 +682,7 @@ update's zone**: an update at 07:00 in Taipei stays on its Taipei day, not the U
 3. else UTC, only for a trip with no zoned area on any dated stay or visit.
 
 A zone name the server cannot resolve counts as no zone, and the derivation never fails.
-`backend/app/update_day.py` is the one place that derives it, and the visitor projection, the change summaries,
+`backend/app/core/update_day.py` is the one place that derives it, and the visitor projection, the change summaries,
 the owner's PDF and export (`local_date` and `timezone`), and the owner API (`local_date` and `timezone` on every
 update) all use it, so the owner and the visitor read the same day
 ([#357](https://github.com/tjorim/travel/issues/357), [#391](https://github.com/tjorim/travel/issues/391)).

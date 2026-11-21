@@ -9,9 +9,8 @@ from fastmcp.utilities.lifespan import combine_lifespans
 from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .auth import current_subject
-from .database import SessionLocal
-from .errors import (
+from app.core.auth import current_subject
+from app.core.errors import (
     ApiException,
     Refusal,
     http_error_handler,
@@ -19,7 +18,9 @@ from .errors import (
     service_exception,
     validation_error_handler,
 )
-from .mcp_server import (
+from app.core.request_limits import RateLimitExceeded, RateLimitHeadersMiddleware
+from app.db.session import SessionLocal
+from app.mcp import (
     MCP_CAPABILITY_CONTRACT_VERSION,
     MCP_TOOL_CAPABILITIES,
     MCP_VISIBLE_TOOLS,
@@ -27,9 +28,9 @@ from .mcp_server import (
     mcp_http_enabled,
     mount_mcp,
 )
-from .places.search import PlaceSearchError
-from .request_limits import RateLimitExceeded, RateLimitHeadersMiddleware
-from .request_timing import RequestTimingMiddleware
+from app.middleware.request_timing import RequestTimingMiddleware
+from app.services.places.search import PlaceSearchError
+
 from .routers.alternatives import router as alternatives_router
 from .routers.areas import router as areas_router
 from .routers.auth import router as auth_router

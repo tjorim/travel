@@ -1,0 +1,637 @@
+"""Server-side rendering of the deliberately small public-share contract.
+
+What an audience receives is decided by each record's ``visibility`` (see
+``access``): everything set to ``everyone``, plus the ``custom`` records that
+audience's scope lists. Every kind has a fixed allowlist of output fields. This
+module never serializes an ORM model wholesale: adding a private canonical
+column cannot make it past these explicit renderers by accident.
+"""
+
+import hashlib
+from contextlib import suppress
+from datetime import UTC, date, datetime
+from typing import Any
+
+from pydantic import ValidationError
+
+from app.core.content_language import DEFAULT_LANGUAGE, ContentLanguage, pick
+from app.core.errors import ServiceError
+from app.core.markdown import markdown_text, render_inline, render_markdown
+from app.core.update_day import update_day, zone_spans
+from app.models import (
+    Area,
+    DatePrecision,
+    Location,
+    MediaDerivative,
+    MediaKind,
+    Trip,
+    Visibility,
+    travel_update_order_key,
+    visit_order_key,
+)
+from app.schemas import (
+    ProjectionAddress,
+    ProjectionArea,
+    ProjectionDates,
+    ProjectionFile,
+    ProjectionMedia,
+    ProjectionNavigation,
+    ProjectionPlace,
+    ProjectionRecord,
+    ProjectionRoute,
+    ProjectionRouteLine,
+    ProjectionRouteMap,
+    ProjectionRoutePoint,
+    ProjectionStay,
+    ProjectionUpdate,
+    ProjectionVisit,
+)
+from app.services.places.navigation import area_navigation_url, google_maps_url
+from app.services.sharing.access import COLLECTIONS, find_record, is_delivered, sharing_blocker
+from app.services.sharing.exclusions import EXCLUDE_KEY, hidden_records, is_excludable, stored_exclusions
+from app.services.sharing.precision import (
+    PRECISION_LENGTH,
+    audience_precision,
+    coarser,
+    effective_precision,
+    own_value,
+    route_precision,
+)
+
+
+class ScopeError(ServiceError):
+    """The scope is not safe to render for this trip."""
+
+
+def _safe_date(value: Any, precision: str) -> str | None:
+    """Truncate an ISO date to the precision the owner chose to share."""
+    return value.isoformat()[: PRECISION_LENGTH[precision]] if value else None
+
+
+def _utc_instant(value: datetime) -> datetime:
+    # SQLite returns stored UTC instants without an offset; a visitor's browser
+    # must never read them as its own local time.
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
+
+def visitor_text(record: Any, field: str, language: ContentLanguage | str) -> dict[str, Any]:
+    """One authored text as a visitor reads it: ``{field: text}``, plus ``{field_lang: code}`` when the text is in
+    the other language because the requested one is empty (``app.core.content_language``). Both keys are left to the
+    projection model as set values, so a text in the requested language carries no marker at all."""
+    text, found = pick(getattr(record, f"{field}_nl"), getattr(record, f"{field}_en"), language)
+    return {field: text} | ({f"{field}_lang": found.value} if found is not None and found != language else {})
+
+
+def place_names(place: Area | Location, language: ContentLanguage | str) -> dict[str, Any]:
+    """A place's label as ``visitor_text`` delivers it, plus its local name (#376) beside it.
+
+    The local name follows the label exactly: it is delivered only where the label is, and only when the label
+    resolves to a text. A place without a delivered label shows no local name, so the name never makes a place
+    visible or readable that its label would not."""
+    names = visitor_text(place, "label", language)
+    return names | ({"local_name": place.local_name} if names["label"] is not None and place.local_name else {})
+
+
+def _first_text(candidates: list[tuple[Any, str]], field: str, language: ContentLanguage | str) -> dict[str, Any]:
+    """The first of several records' texts that exists (a visit goes by its own title, else its location's name,
+    else its area's), with the language marker of the one used."""
+    for record, name in candidates:
+        if record is not None:
+            found = visitor_text(record, name, language)
+            if found[name] is not None:
+                return {field: found[name]} | (
+                    {f"{field}_lang": found[f"{name}_lang"]} if f"{name}_lang" in found else {}
+                )
+    return {field: None}
+
+
+def _share_place(
+    place: Area | None, shared_areas: set[str] | None = None, language: ContentLanguage | str | None = None
+) -> ProjectionArea | None:
+    """Embed only an area's deliberately authored safe fields."""
+    if place is None:
+        return None
+    language = language or place.content_language
+    # An area the audience receives itself shows its point; one only embedded in a record shows none.
+    shared = shared_areas is None or place.id in shared_areas
+    point = shared and place.latitude is not None and place.longitude is not None
+    return ProjectionArea(
+        **place_names(place, language),
+        country_code=place.country_code,
+        region=place.region,
+        latitude=round(place.latitude, 2) if point and place.latitude is not None else None,
+        longitude=round(place.longitude, 2) if point and place.longitude is not None else None,
+    )
+
+
+def _share_shared_place(
+    place: Area | Location, identifier: str, language: ContentLanguage | str | None = None
+) -> ProjectionPlace:
+    """A shared area (its label and region) or location (its public name).
+
+    A location shows its owner-chosen public name, city, country and point. Its
+    address is added only when the owner chose to share it. Its notes, provider
+    ids and display name (which usually contains the address) are never shown.
+    """
+    language = language or place.content_language
+    if isinstance(place, Area):
+        area = _share_place(place, None, language)
+        assert area is not None
+        return ProjectionPlace(
+            id=identifier,
+            **place_names(place, language),
+            country_code=area.country_code,
+            region=area.region,
+            latitude=area.latitude,
+            longitude=area.longitude,
+        )
+    values: dict[str, Any] = {}
+    if place.share_address:
+        address = {
+            "line1": place.address_line1,
+            "line2": place.address_line2,
+            "postal_code": place.postal_code,
+            "locality": place.locality,
+            "admin_area": place.admin_area,
+        }
+        values["address"] = ProjectionAddress(**{key: value for key, value in address.items() if value})
+    return ProjectionPlace(
+        id=identifier,
+        **place_names(place, language),
+        country_code=place.country_code,
+        region=place.locality,
+        latitude=place.latitude,
+        longitude=place.longitude,
+        **values,
+    )
+
+
+def _embedded_location(location: Location | None, context: dict[str, Any]) -> ProjectionPlace | None:
+    """The location of an update or stay, only when this audience receives that location."""
+    if location is None or location.id not in context["locations"]:
+        return None
+    return _share_shared_place(location, local_id("location", location), context["language"])
+
+
+def _share_route_map_point(
+    place: Location | None, mode: str, language: ContentLanguage | str
+) -> ProjectionRoutePoint | None:
+    """A route end on the map, only when that location is itself shared.
+
+    A shared location always has a label (``sharing_blocker`` refuses one without), so a labelless point is never
+    delivered rather than given invented wording."""
+    if place is None or not place.label or place.latitude is None or place.longitude is None:
+        return None
+    return ProjectionRoutePoint(
+        **place_names(place, language),
+        country_code=place.country_code,
+        latitude=place.latitude,
+        longitude=place.longitude,
+        kind="airport" if mode == "flight" else "place",
+    )
+
+
+def local_id(kind: str, record: Any) -> str:
+    """A projection-local id, stable across requests and not reversible.
+
+    It discloses no canonical id and no object key. A reisupdate keeps its own
+    share id, which visitors may bookmark.
+    """
+    if kind == "travel_update":
+        return f"update-{record.share_id}"
+    return f"{kind}-{hashlib.sha256(record.id.encode()).hexdigest()[:12]}"
+
+
+def _chosen(scope: dict) -> dict[str, set[str]]:
+    chosen: dict[str, set[str]] = {kind: set() for kind in COLLECTIONS}
+    for item in scope.get("items", []):
+        if item.get("kind") in chosen:
+            chosen[item["kind"]].add(item.get("id", ""))
+    return chosen
+
+
+def delivered(trip: Trip, scope: dict, *, with_exclusions: bool = True) -> dict[str, list[Any]]:
+    """The records this audience receives, by kind, in display order.
+
+    The one place that decides it: every document, file, navigation target, collection entry and
+    owner check reads this. ``with_exclusions=False`` is only for the owner's review of what the
+    scope's exclusions hide (see ``exclusion_review``); never for a visitor."""
+    chosen = _chosen(scope)
+    result = {
+        kind: [item for item in COLLECTIONS[kind](trip) if is_delivered(kind, item, chosen[kind])]
+        for kind in COLLECTIONS
+    }
+    # An audience's exclusions, and the records that depend on them, come out before anything is derived from
+    # what is left: the update a photo travels with, the places a document may name.
+    hidden = hidden_records(trip, scope) if with_exclusions else None
+    if hidden:
+        for kind in ("area", "location", "visit", "stay", "route", "travel_update"):
+            result[kind] = [item for item in result[kind] if item.id not in hidden.ids(kind)]
+    # A photo attached to a delivered reisupdate travels with it; approval
+    # remains the gate, its own visibility only governs loose gallery photos.
+    updates = {update.id for update in result["travel_update"]}
+    result["media_derivative"] = [
+        item
+        for item in trip.media_derivatives
+        if sharing_blocker("media_derivative", item) is None
+        and (item.travel_update_id in updates or is_delivered("media_derivative", item, chosen["media_derivative"]))
+        and not (hidden and item.id in hidden.ids("media_derivative"))
+    ]
+    result["visit"].sort(key=visit_order_key)
+    result["travel_update"].sort(key=travel_update_order_key)
+    # By day; within a day, day-only routes follow the timed ones, as in the owner Agenda.
+    result["route"].sort(
+        key=lambda item: (
+            item.departs_on is None,
+            item.departs_on or date.min,
+            item.departs_at is None,
+            item.departs_at.replace(tzinfo=None) if item.departs_at else datetime.min,
+            item.created_at.replace(tzinfo=None),
+        )
+    )
+    result["stay"].sort(key=lambda item: item.check_in_date)
+    return result
+
+
+def validate_scope(trip: Trip, scope: dict) -> None:
+    """Ensure every listed record belongs to this trip, is ``custom`` and can be shared.
+
+    Called when a scope is written. Delivery never fails on a record that has
+    since changed: it simply is not delivered.
+    """
+    seen: set[tuple[str, str]] = set()
+    for item in scope.get("items", []):
+        kind, record_id = item.get("kind"), item.get("id", "")
+        if kind not in COLLECTIONS:
+            raise ScopeError(f"Resource kind {kind} is not allowed in a share scope", code="scope_kind_invalid")
+        if (kind, record_id) in seen:
+            raise ScopeError(
+                f"{kind.replace('_', ' ').capitalize()} {record_id} is selected more than once", code="scope_duplicate"
+            )
+        seen.add((kind, record_id))
+        record = find_record(trip, kind, record_id)
+        if record is None:
+            raise ScopeError(
+                f"{kind.replace('_', ' ').capitalize()} {record_id} is not part of this trip", code="scope_unavailable"
+            )
+        if record.visibility != Visibility.CUSTOM:
+            raise ScopeError(
+                f"{kind.replace('_', ' ').capitalize()} {record_id} is {record.visibility.value}; "
+                "only a record set to custom can be chosen per audience",
+                code="scope_requires_custom",
+            )
+        if blocker := sharing_blocker(kind, record):
+            raise ScopeError(str(blocker), code=blocker.code)
+
+
+def prepare_scope(trip: Trip, scope: dict, stored: dict | None = None, *, allow_exclusions: bool = True) -> dict:
+    """Validate a submitted scope and return it as it is stored.
+
+    The listed ``custom`` records are checked by ``validate_scope``. The exclusions are then settled:
+
+    * the public view is the baseline and cannot exclude anything (``allow_exclusions=False``);
+    * an id that is not part of this trip is refused, unless the audience already stores it (a stale
+      entry for a record since deleted, which this write simply drops);
+    * an entry whose record the baseline no longer reaches (not ``everyone`` any more) is dropped;
+    * the rest is stored sorted, so the same set always has the same fingerprint, and ``exclude`` is
+      left out entirely when nothing is excluded, so every scope without exclusions is stored as before.
+    """
+    validate_scope(trip, scope)
+    entries = scope.get(EXCLUDE_KEY) or []
+    document = {key: value for key, value in scope.items() if key != EXCLUDE_KEY}
+    if not entries:
+        return document
+    if not allow_exclusions:
+        raise ScopeError(
+            "The public view is the baseline: it cannot exclude records. Exclude them on a hidden link instead",
+            code="scope_exclusion_not_allowed",
+        )
+    already = set(stored_exclusions(stored or {}))
+    kept: set[tuple[str, str]] = set()
+    for item in entries:
+        kind, record_id = item.get("kind"), item.get("id", "")
+        if kind not in COLLECTIONS:
+            raise ScopeError(f"Resource kind {kind} is not allowed in a share scope", code="scope_kind_invalid")
+        if (kind, record_id) in kept:
+            raise ScopeError(
+                f"{kind.replace('_', ' ').capitalize()} {record_id} is excluded more than once", code="scope_duplicate"
+            )
+        record = find_record(trip, kind, record_id)
+        if record is None:
+            if (kind, record_id) not in already:
+                raise ScopeError(
+                    f"{kind.replace('_', ' ').capitalize()} {record_id} is not part of this trip",
+                    code="scope_unavailable",
+                )
+            kept.add((kind, record_id))  # remembered only to catch a duplicate; dropped below
+            continue
+        kept.add((kind, record_id))
+        if is_excludable(trip, kind, record):
+            document.setdefault(EXCLUDE_KEY, []).append({"kind": kind, "id": record_id})
+    if EXCLUDE_KEY in document:
+        document[EXCLUDE_KEY].sort(key=lambda item: (item["kind"], item["id"]))
+    return document
+
+
+def _render(kind: str, item: Any, identifier: str, context: dict[str, Any]) -> dict[str, Any]:
+    """Render one record with its fixed, contract-approved fields.
+
+    Each kind builds its own ``Projection*`` model (see ``app.schemas``): the model's fields are the allowlist, so a
+    field added here without being declared there is refused. The document keeps carrying plain dictionaries."""
+    record: ProjectionRecord
+    values: dict[str, Any]
+    language = context["language"]
+    if kind in {"area", "location"}:
+        record = _share_shared_place(item, identifier, language)
+    elif kind == "visit":
+        precision = effective_precision(own_value(item), context["date_precision"])
+        shared_location = _embedded_location(item.location, context)
+        values = {}
+        if item.starts_on is not None:
+            values["starts_on"] = _safe_date(item.starts_on, precision)
+            values["ends_on"] = _safe_date(item.ends_on, precision) if item.ends_on is not None else None
+            # A time is private unless the owner also chose to show it, and only means something on a full date.
+            if item.share_time and precision == "day" and item.start_time is not None:
+                values["start_time"] = item.start_time.strftime("%H:%M")
+                values["end_time"] = item.end_time.strftime("%H:%M") if item.end_time is not None else None
+                # The times are local at the visit, so a viewer far away can read them in their own time.
+                values["timezone"] = item.area.timezone
+        if shared_location:
+            values["location"] = shared_location
+        summary = visitor_text(item, "summary", language)
+        record = ProjectionVisit(
+            id=identifier,
+            **_first_text(
+                [(item, "title"), (item.location if shared_location else None, "label"), (item.area, "label")],
+                "title",
+                language,
+            ),
+            **summary,
+            summary_html=render_markdown(summary["summary"]),
+            place=_share_place(item.area, context["areas"], language),
+            date_precision=DatePrecision(precision),
+            **values,
+        )
+    elif kind == "route":
+        locations = context["locations"]
+        values = {}
+        # A route's day follows the audience's date setting (a day when it sets none). An exact instant would
+        # give the day away, so the times are shared only to an audience that may read days.
+        precision = route_precision(context["date_precision"])
+        if item.departs_on is not None:
+            values["departs_on"] = _safe_date(item.departs_on, precision)
+            values["date_precision"] = DatePrecision(precision)
+        if precision == "day" and item.departs_at is not None and item.arrives_at is not None:
+            values.update(
+                departs_at=_utc_instant(item.departs_at).isoformat(),
+                arrives_at=_utc_instant(item.arrives_at).isoformat(),
+                departure_timezone=item.departure_timezone,
+                arrival_timezone=item.arrival_timezone,
+            )
+        if item.geometry is not None:
+            # Only the line itself: a stored line may carry keys of an older schema. One the map could not draw
+            # either is left out; the route keeps its two ends.
+            with suppress(ValidationError):
+                values["geometry"] = ProjectionRouteLine(
+                    type=item.geometry.get("type"), coordinates=item.geometry.get("coordinates")
+                )
+        departure = _share_route_map_point(
+            item.departure_location if item.departure_location_id in locations else None, item.mode.value, language
+        )
+        arrival = _share_route_map_point(
+            item.arrival_location if item.arrival_location_id in locations else None, item.mode.value, language
+        )
+        if departure or arrival:
+            values["map"] = ProjectionRouteMap(departure=departure, arrival=arrival)
+        record = ProjectionRoute(
+            id=identifier,
+            mode=item.mode,
+            status=item.status,
+            **visitor_text(item, "label", language),
+            departure=_share_place(item.departure_area, context["areas"], language),
+            arrival=_share_place(item.arrival_area, context["areas"], language),
+            carrier=item.carrier,
+            service_reference=item.service_reference,
+            **values,
+        )
+    elif kind == "stay":
+        precision = effective_precision(own_value(item), context["date_precision"])
+        values = {}
+        if location := _embedded_location(item.location, context):
+            values["location"] = location
+        record = ProjectionStay(
+            id=identifier,
+            **_first_text([(item.area, "label")], "title", language),
+            place=_share_place(item.area, context["areas"], language),
+            date_precision=DatePrecision(precision),
+            starts_on=_safe_date(item.check_in_date, precision),
+            ends_on=_safe_date(item.check_out_date, precision),
+            **values,
+        )
+    elif kind == "travel_update":
+        precision = (
+            coarser(item.share_date_precision.value, context["date_precision"]) or item.share_date_precision.value
+        )
+        values = {}
+        if location := _embedded_location(item.location, context):
+            values["location"] = location
+        body = visitor_text(item, "body", language)
+        # An update without text in either language (which no audience is delivered, see ``sharing_blocker``) is
+        # still an empty text, never a missing one: the model requires a string.
+        body["body"] = body["body"] or ""
+        record = ProjectionUpdate(
+            id=identifier,
+            **visitor_text(item, "title", language),
+            **body,
+            body_html=render_markdown(body["body"]),
+            date_precision=DatePrecision(precision),
+            story_date=_safe_date(update_day(item, context["zone_spans"]), precision),
+            place=_share_place(item.area, context["areas"], language),
+            **values,
+        )
+    elif kind == "media_derivative":
+        # The projection-local file marker discloses no object key, original
+        # asset, or canonical derivative id.
+        values = (
+            {
+                "video": ProjectionFile(id=identifier),
+                "poster": ProjectionFile(id=f"{identifier}-poster"),
+                "duration_seconds": item.duration_seconds,
+            }
+            if item.media_asset.media_kind.value == "video"
+            else {"image": ProjectionFile(id=identifier)}
+        )
+        if item.travel_update_id in context["updates"]:
+            values["update"] = context["updates"][item.travel_update_id]
+        caption = visitor_text(item, "caption", language)
+        record = ProjectionMedia(
+            id=identifier,
+            **caption,
+            caption_html=render_inline(caption["caption"]),
+            **visitor_text(item, "alt_text", language),
+            width=item.width,
+            height=item.height,
+            focal_x=item.focal_x,
+            focal_y=item.focal_y,
+            **values,
+        )
+    else:
+        raise ValueError(f"No projection renderer for {kind}")
+    return record.model_dump()
+
+
+def shared_trip_dates(trip: Trip, scope: dict) -> dict[str, Any] | None:
+    """The trip's travel dates, only at the precision the scope selects.
+
+    The audience's own date precision also caps them: the coarser of the two applies."""
+    chosen = scope.get("trip", {}).get("dates")
+    if chosen not in PRECISION_LENGTH or (trip.starts_on is None and trip.ends_on is None):
+        return None
+    precision = coarser(chosen, audience_precision(scope)) or chosen
+    return ProjectionDates(
+        starts_on=_safe_date(trip.starts_on, precision),
+        ends_on=_safe_date(trip.ends_on, precision),
+        date_precision=DatePrecision(precision),
+    ).model_dump()
+
+
+_DESTINATIONS = {
+    "visit": "visits",
+    "area": "places",
+    "location": "places",
+    "stay": "stays",
+    "travel_update": "updates",
+    "media_derivative": "media",
+    "route": "routes",
+}
+
+
+def _cover(trip: Trip, received: list[MediaDerivative]) -> str | None:
+    """The trip's chosen cover, only if this audience already receives that photo.
+
+    Nominating a cover never delivers it: a copy that is private, unapproved,
+    detached from a shared update or deleted is simply not among ``received``,
+    so the audience gets no cover and no way to request its file.
+    """
+    for item in received:
+        if item.is_cover and item.media_asset.media_kind == MediaKind.PHOTO:
+            return local_id("media_derivative", item)
+    return None
+
+
+def render_projection(
+    trip: Trip, scope: dict, schema_version: str, language: ContentLanguage | str | None = None
+) -> dict:
+    """Render one complete public or unlisted document from its live scope.
+
+    ``language`` is the visitor's language (``nl`` or ``en``): each authored text is delivered in it, else in the
+    other language, and an item whose text is in the other language carries ``<field>_lang`` with that code. Without
+    one the trip's own content language is the requested one."""
+    language = ContentLanguage(language or trip.content_language or DEFAULT_LANGUAGE)
+    records = delivered(trip, scope)
+    context = {
+        "language": language,
+        "updates": {item.id: local_id("travel_update", item) for item in records["travel_update"]},
+        "locations": {item.id for item in records["location"]},
+        "areas": {item.id for item in records["area"]},
+        # The audience's own cap on every date; the coarser of it and a record's own value is shown.
+        "date_precision": audience_precision(scope),
+        # The trip's zoned stay and visit days: the fallback zone of an update whose area has none.
+        "zone_spans": zone_spans(trip),
+    }
+    # Markdown fields carry their source, sanitized HTML for display, and, for
+    # the trip summary shown on cards, a one-line plain-text preview.
+    trip_fields = scope.get("trip", {})
+    title = visitor_text(trip, "title", language) if trip_fields.get("title", True) else {"title": None}
+    summary_fields = visitor_text(trip, "summary", language) if trip_fields.get("summary", True) else {"summary": None}
+    summary = summary_fields["summary"]
+    projection: dict[str, Any] = {
+        "schema_version": schema_version,
+        **title,
+        **summary_fields,
+        "summary_html": render_markdown(summary),
+        "summary_text": markdown_text(summary),
+        "dates": shared_trip_dates(trip, scope),
+        "cover": _cover(trip, records["media_derivative"]),
+        "visits": [],
+        "places": [],
+        "updates": [],
+        "stays": [],
+        "media": [],
+        "routes": [],
+        "navigation": [],
+    }
+    for kind, destination in _DESTINATIONS.items():
+        for item in records[kind]:
+            identifier = local_id(kind, item)
+            projection[destination].append(_render(kind, item, identifier, context))
+            # A shared place is also a destination someone may navigate to.
+            if kind in {"area", "location"} and _navigation_target(item) is not None:
+                projection["navigation"].append(ProjectionNavigation(id=identifier).model_dump())
+    if scope.get("numbers"):
+        projection["numbers"] = summary_numbers(projection, scope["numbers"])
+    return projection
+
+
+def _navigation_target(place: Area | Location) -> str | None:
+    """Where a shared place sends someone: a location's point, or an area's name."""
+    if isinstance(place, Area):
+        return area_navigation_url(place)
+    if place.latitude is not None and place.longitude is not None:
+        return google_maps_url(f"{place.latitude:.7f},{place.longitude:.7f}")
+    return None
+
+
+def scoped_navigation_url(trip: Trip, scope: dict, identifier: str) -> str | None:
+    """Resolve a projection-local navigation marker among the delivered places."""
+    records = delivered(trip, scope)
+    for kind in ("area", "location"):
+        for place in records[kind]:
+            if local_id(kind, place) == identifier:
+                return _navigation_target(place)
+    return None
+
+
+def scoped_file(trip: Trip, scope: dict, identifier: str) -> tuple[str, Any] | None:
+    """Resolve a projection-local file marker among the delivered files."""
+    records = delivered(trip, scope)
+    for kind in ("media_derivative",):
+        for item in records[kind]:
+            if local_id(kind, item) == identifier:
+                return kind, item.object
+            if local_id(kind, item) + "-poster" == identifier and item.poster_object is not None:
+                return kind, item.poster_object
+    return None
+
+
+def summary_numbers(document: dict, selected: list[str]) -> dict[str, int]:
+    """Derive figures ONLY from the finished audience document, never ORM records.
+
+    Days are distinct full dates of updates, not elapsed trip duration. Areas
+    are explicit area records (not locations or embedded place mentions).
+    Nights are the union of half-open day-precise shared stay intervals, so
+    overlapping stays cannot double count a night. Coarse dates contribute none.
+    """
+    areas = [item for item in document["places"] if item["id"].startswith("area-")]
+    days = {
+        item["story_date"]
+        for item in document["updates"]
+        if item.get("date_precision") == "day" and item.get("story_date")
+    }
+    intervals = sorted(
+        (date.fromisoformat(item["starts_on"]), date.fromisoformat(item["ends_on"]))
+        for item in document["stays"]
+        if item.get("date_precision") == "day" and item.get("starts_on") and item.get("ends_on")
+    )
+    nights = 0
+    covered_until = date.min
+    for start, end in intervals:
+        nights += max(0, (end - max(start, covered_until)).days)
+        covered_until = max(covered_until, end)
+    values = {
+        "days": len(days),
+        "areas": len(areas),
+        "countries": len({item["country_code"] for item in areas if item.get("country_code")}),
+        "nights": nights,
+    }
+    return {key: value for key, value in values.items() if key in selected}

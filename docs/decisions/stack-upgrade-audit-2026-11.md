@@ -202,7 +202,7 @@ Effort: S under a day, M a few days, L more.
   (PEP 810: `lazy import x` / `lazy from m import n`, module scope only, not
   inside `try`, functions or classes; `__lazy_modules__`; `-X lazy_imports`).
 - Measured locally on Python 3.15.0 with `-X importtime`: `import app.main`
-  takes about 1.4 s cumulative. The `fastmcp` cost is not removable: `app/mcp_server/`
+  takes about 1.4 s cumulative. The `fastmcp` cost is not removable: `app/mcp/`
   builds the `FastMCP` object, decorators and `BM25SearchTransform` at import
   and `app/main.py` mounts it, so first access happens at start-up anyway.
   `PIL` cost is 0.35 ms (cumulative) and `timezonefinder` 0.9 ms to import.
@@ -219,7 +219,7 @@ Effort: S under a day, M a few days, L more.
 - Source: [PostgreSQL 18 UUID functions](https://www.postgresql.org/docs/18/functions-uuid.html)
   and the [SQLAlchemy 2.1 notes](https://docs.sqlalchemy.org/en/21/changelog/migration_21.html)
   (server-side `uuidv7()` in batched INSERTs).
-- `uuidv7()` exists and is time ordered. But `app/models.py:29` builds ids as
+- `uuidv7()` exists and is time ordered. But `app/models/:29` builds ids as
   `uuid.uuid4().hex` into `String(32)` primary keys (opaque capabilities and
   identifiers, not `uuid` columns), and these ids are exposed in URLs and are
   deliberately unguessable. A time-ordered id would leak creation time and
@@ -251,7 +251,7 @@ Effort: S under a day, M a few days, L more.
 - Relevant removals and behaviour changes: Python 3.10 dropped (we require
   3.15), psycopg 3 is the default driver (we pin `psycopg[binary]` 3.3.6 and
   `postgresql+psycopg`), autoflush now also runs for Core and `text()`
-  statements, `Select.filter_by()` searches all FROM entities. `app/database.py:14`
+  statements, `Select.filter_by()` searches all FROM entities. `app/db/session.py`
   sets `autoflush=False`; `autoflush`, `filter_by`, `exclude_properties` and
   `inherit_schema` are otherwise not used in `app/`. `alembic check` is already
   clean (audit table). New features (typed `Table` columns, `CreateView`,

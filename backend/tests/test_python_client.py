@@ -5,11 +5,11 @@ import asyncio
 import aiohttp
 import pytest
 from aiohttp import web
-from test_trip_tasks import Base, client_for, create_trip, engine
 from travel_client import TravelClient, TravelError
 
-from app.auth import current_subject
+from app.core.auth import current_subject
 from app.main import app
+from tests.routers.test_trip_tasks import Base, client_for, create_trip, engine
 
 
 def test_client_owner_roundtrip(tmp_path):
@@ -111,13 +111,13 @@ def test_identity_requires_ordinary_api_audience(monkeypatch):
     import jwt
     from cryptography.hazmat.primitives.asymmetric import rsa
     from fastapi.testclient import TestClient
-    from test_auth import StaticJwksClient
 
-    from app.config import settings
+    from app.core.config import settings
+    from tests.core.test_auth import StaticJwksClient
 
     app.dependency_overrides.clear()
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    monkeypatch.setattr("app.auth.signing_keys", lambda _: StaticJwksClient(key.public_key()))
+    monkeypatch.setattr("app.core.auth.signing_keys", lambda _: StaticJwksClient(key.public_key()))
     monkeypatch.setattr(settings, "oidc_audience", "travel-api")
     monkeypatch.setattr(settings, "oidc_issuer_url", "https://auth.example.test/realms/travel")
     monkeypatch.setattr(settings, "oidc_jwks_url", "https://auth.example.test/keys")

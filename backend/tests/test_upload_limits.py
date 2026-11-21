@@ -10,14 +10,15 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.auth import current_subject
-from app.config import settings
-from app.database import Base, get_session
+from app.core.auth import current_subject
+from app.core.config import settings
+from app.db.base import Base
+from app.db.session import get_session
 from app.main import app
-from app.media.providers import GooglePhotosPickerProvider, ProviderError, ProviderMediaItem
-from app.media.service import MediaImportError, read_bounded_upload
 from app.models import DocumentAsset, MediaAsset, StoredObject
-from app.storage import LocalObjectStorage, get_storage
+from app.services.media.ingest import MediaImportError, read_bounded_upload
+from app.services.media.providers import GooglePhotosPickerProvider, ProviderError, ProviderMediaItem
+from app.services.storage import LocalObjectStorage, get_storage
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -210,7 +211,7 @@ def test_provider_download_at_the_limit_is_returned(monkeypatch) -> None:
 def test_saturation_releases_slots_on_failure(monkeypatch):
     from fastapi import HTTPException
 
-    from app import storage
+    from app.services import storage
 
     monkeypatch.setattr(storage, "_upload_slots", __import__("threading").BoundedSemaphore(1))
     with read_bounded_upload(io.BytesIO(b"x")):
@@ -228,8 +229,8 @@ def test_saturation_releases_slots_on_failure(monkeypatch):
 def test_provider_network_failure_releases_staging_slot(monkeypatch):
     from threading import BoundedSemaphore
 
-    from app import storage
-    from app.media.providers import download_bounded
+    from app.services import storage
+    from app.services.media.providers import download_bounded
 
     slots = BoundedSemaphore(1)
     monkeypatch.setattr(storage, "_upload_slots", slots)

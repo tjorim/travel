@@ -3,7 +3,8 @@
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from ..errors import Refusal
+from app.core.errors import Refusal
+
 from ..models import Area, Location
 from ..schemas import Identifier, LocationInput
 from .localized import text_keys, trip_language, write_texts

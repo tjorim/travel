@@ -1,8 +1,8 @@
 from sqlalchemy import select
-from test_visits import TestingSessionLocal, client_for, create_trip, setup_function, teardown_function  # noqa: F401
 
 from app.models import Trip
-from app.overview import _locations_repeating_areas
+from app.services.sharing.overview import _locations_repeating_areas
+from tests.routers.test_visits import TestingSessionLocal, client_for, create_trip, setup_function, teardown_function  # noqa: F401
 
 
 def test_only_locations_that_repeat_their_area_are_flagged() -> None:

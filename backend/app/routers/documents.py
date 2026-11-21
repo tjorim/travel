@@ -11,13 +11,14 @@ from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from ..auth import current_subject
-from ..database import get_session
-from ..media.ranges import private_original_headers
+from app.core.auth import current_subject
+from app.db.session import get_session
+from app.services.documents import service as service
+from app.services.media.ranges import private_original_headers
+from app.services.storage import ObjectStorage, get_storage
+
 from ..models import DocumentKind
 from ..schemas import DocumentResponse, DocumentTitle, DocumentUpdate, Identifier, LibraryDocumentUpdate
-from ..services import documents as service
-from ..storage import ObjectStorage, get_storage
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 trip_router = APIRouter(prefix="/trips/{trip_id}/documents", tags=["documents"], deprecated=True)

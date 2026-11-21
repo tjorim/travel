@@ -13,7 +13,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.exc import IntegrityError
 
 from alembic import command
-from app.config import settings
+from app.core.config import settings
 
 PREVIOUS = "033_one_document_model"
 

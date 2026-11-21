@@ -11,9 +11,9 @@ from pydantic import BaseModel, Field
 from pydantic_core import PydanticCustomError
 from starlette.exceptions import HTTPException
 
-from app.errors import ApiException, http_error_handler, service_exception, validation_error_handler
-from app.media.providers import GooglePhotosPickerProvider, ProviderError
+from app.core.errors import ApiException, http_error_handler, service_exception, validation_error_handler
 from app.schemas import require_visit_times
+from app.services.media.providers import GooglePhotosPickerProvider, ProviderError
 
 
 def contract_app():
@@ -99,7 +99,12 @@ def test_provider_diagnostics_never_expose_urls_or_tokens():
 
 def test_every_app_owned_http_failure_declares_a_code():
     root = Path(__file__).parents[1] / "app"
-    for path in [*root.joinpath("routers").glob("*.py"), root / "auth.py", root / "main.py", root / "media/ranges.py"]:
+    for path in [
+        *root.joinpath("routers").glob("*.py"),
+        root / "core/auth.py",
+        root / "main.py",
+        root / "services/media/ranges.py",
+    ]:
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
                 assert node.func.id != "HTTPException", (path, node.lineno)

@@ -4,8 +4,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from ..auth import current_subject
-from ..markdown import markdown_text, render
+from app.core.auth import current_subject
+from app.core.markdown import markdown_text, render
+
 from ..schemas import MarkdownRenderRequest, MarkdownRenderResponse
 
 router = APIRouter(prefix="/markdown", tags=["markdown"])

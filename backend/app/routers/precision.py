@@ -5,10 +5,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from ..auth import current_subject
-from ..database import get_session
+from app.core.auth import current_subject
+from app.db.session import get_session
+from app.services.sharing import precision_bulk as service
+
 from ..schemas import FollowAudiencePrecisionRequest, FollowAudiencePrecisionResult, Identifier
-from ..services import precision as service
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["publication"])
 

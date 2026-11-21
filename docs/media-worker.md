@@ -134,7 +134,7 @@ Failed work never serves the original as a visitor fallback.
 
 ## Validation and publication safety
 
-`tests/test_media_worker.py` exercises real generated MP4/WebP validation and
+`tests/services/test_media_worker.py` exercises real generated MP4/WebP validation and
 v1 HTTP responses: lost submission, durable replay, queue/running state,
 admission/outage/backoff, explicit rollback, deletion/cancellation, expired
 results, corruption, pending review and lost ACK. The existing media/publication
@@ -151,7 +151,7 @@ cd backend
 TRAVEL_TEST_MEDIA_WORKER_URL=http://127.0.0.1:18090 \
 TRAVEL_TEST_MEDIA_WORKER_TOKEN_FILE=/path/outside/repo/test-token \
 TRAVEL_TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/travel_test \
-  uv run pytest tests/test_media_worker.py tests/test_media_worker_postgres.py
+  uv run pytest tests/services/test_media_worker.py tests/test_media_worker_postgres.py
 ```
 
 Put the pinned ffmpeg/ffprobe from `backend/Dockerfile`'s base image on the test

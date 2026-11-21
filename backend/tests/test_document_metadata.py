@@ -3,14 +3,14 @@ from unittest.mock import Mock
 
 import pytest
 from pydantic import ValidationError
-from test_documents import TestingSessionLocal, client_for, create_trip, setup_function, teardown_function
 
-from app.document import service as documents
 from app.main import app
-from app.mcp_server import BinaryUpload, TravelMcpBackend
-from app.mcp_server import core as mcp_core
+from app.mcp import BinaryUpload, TravelMcpBackend
+from app.mcp import core as mcp_core
 from app.models import DocumentKind
-from app.storage import LocalObjectStorage, get_storage
+from app.services.documents import ingest as documents
+from app.services.storage import LocalObjectStorage, get_storage
+from tests.routers.test_documents import TestingSessionLocal, client_for, create_trip, setup_function, teardown_function
 
 __all__ = ["setup_function", "teardown_function"]
 

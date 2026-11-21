@@ -1,6 +1,6 @@
 """Owner-only review and apply of a sharing preset for one audience (#241).
 
-Thin routes over ``app.services.sharing_presets``, which the MCP tools call too: the review stores nothing, and the
+Thin routes over ``app.services.sharing.presets``, which the MCP tools call too: the review stores nothing, and the
 apply writes the plan in one transaction that each route commits."""
 
 from typing import Annotated
@@ -8,8 +8,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
 
-from ..auth import current_subject
-from ..database import get_session
+from app.core.auth import current_subject
+from app.db.session import get_session
+from app.services.sharing import presets as service
+
 from ..schemas import (
     Identifier,
     LinkPresetApplyResult,
@@ -20,7 +22,6 @@ from ..schemas import (
     SharingPresetRequest,
     SharingPresetReview,
 )
-from ..services import sharing_presets as service
 
 router = APIRouter(tags=["publication"])
 

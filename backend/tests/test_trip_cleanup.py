@@ -11,24 +11,16 @@ from sqlalchemy import create_engine, event, select, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.auth import current_subject
-from app.config import settings
-from app.database import get_session
-from app.errors import Refusal, service_error_handler
-from app.mcp_server import TravelMcpBackend
-from app.media.service import purge_deleted_media
-from app.models import (
-    Base,
-    DocumentAsset,
-    DocumentKind,
-    MediaAsset,
-    MediaKind,
-    ObjectState,
-    StoredObject,
-    Trip,
-)
+from app.core.auth import current_subject
+from app.core.config import settings
+from app.core.errors import Refusal, service_error_handler
+from app.db.base import Base
+from app.db.session import get_session
+from app.mcp import TravelMcpBackend
+from app.models import DocumentAsset, DocumentKind, MediaAsset, MediaKind, ObjectState, StoredObject, Trip
 from app.routers import trips
-from app.storage import LocalObjectStorage
+from app.services.media.ingest import purge_deleted_media
+from app.services.storage import LocalObjectStorage
 
 
 @pytest.fixture(params=["sqlite", "postgres"])

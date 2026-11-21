@@ -1,7 +1,7 @@
 # Object storage contract
 
 Trip media, documents and derivatives are stored
-as objects in `TRAVEL_MEDIA_STORAGE_ROOT` (`app/storage.py`), with one
+as objects in `TRAVEL_MEDIA_STORAGE_ROOT` (`app/services/storage.py`), with one
 `stored_objects` row each (a media object has a `trip_id`, a document original an `owner_subject`; there is no
 second inventory table since #368). In production the root is
 the private `travel_media` volume, and the apps backup captures it together
@@ -122,7 +122,7 @@ Clients handling large files should use the multipart upload API; eliminating
 the encoded JSON allocation requires a different MCP binary transport (tracked in tjorim/travel#84).
 
 Over HTTP the MCP transport caps every request body at 48 MiB (`MCP_MAX_REQUEST_BODY_BYTES`
-in `app/mcp_server/server.py`), so a base64 upload holds about 36 MiB of file (a body of exactly the
+in `app/mcp/server.py`), so a base64 upload holds about 36 MiB of file (a body of exactly the
 limit decodes to just under it, after the call's JSON framing). That covers phone photos,
 scanned PDFs and short clips; anything larger uses the multipart API or, later, the upload
 handle in #84. The MCP SDK's own default is 4 MiB and FastMCP does not pass the setting on, so
@@ -134,7 +134,7 @@ through the production mount (`test_mcp_server.py`) accept a body of exactly the
 one byte more, and fail if a FastMCP or SDK upgrade stops honouring the override. Only the local
 stdio server (development) can receive a larger body.
 
-Memory: a synthetic 150 MiB stdio upload (`tests/test_mcp_upload_memory.py`) grew the peak RSS
+Memory: a synthetic 150 MiB stdio upload (`tests/mcp/test_mcp_upload_memory.py`) grew the peak RSS
 by about 400 MiB while parsing, twice the 200 MiB of encoded JSON, because `json.loads`
 decodes the bytes to text and then builds the string; decoding, staging, the durable copy
 and the read-back then grew it by 4 MiB more. Through uvicorn and the production mount, a

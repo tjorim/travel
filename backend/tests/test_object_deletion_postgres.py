@@ -8,10 +8,10 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from app.database import Base
-from app.media.service import _purge_pending_objects
+from app.db.base import Base
 from app.models import ObjectState, StoredObject, Trip
-from app.storage import OBJECT_DELETION_LOCK, LocalObjectStorage
+from app.services.media.ingest import _purge_pending_objects
+from app.services.storage import OBJECT_DELETION_LOCK, LocalObjectStorage
 
 
 @pytest.fixture

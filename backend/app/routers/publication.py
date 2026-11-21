@@ -1,6 +1,6 @@
 """Owner publication routes (the public page, named share links) and anonymous delivery of what they share.
 
-The owner routes are thin: ``app.services.publication`` holds the operations, shared with the MCP tools, and each
+The owner routes are thin: ``app.services.sharing.publication`` holds the operations, shared with the MCP tools, and each
 route commits once. Anonymous delivery stays here because it is HTTP only.
 """
 
@@ -12,13 +12,18 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..atom import atom_document
-from ..audience import LinkAudience, PublicAudience, has_expired
-from ..auth import current_subject
-from ..capability import verifier_for
-from ..database import get_session
-from ..errors import ApiException
-from ..http_delivery import (
+from app.core.auth import current_subject
+from app.core.capability import verifier_for
+from app.core.errors import ApiException
+from app.core.ratelimit import public_delivery_limit, retry_after_seconds, shared_delivery_limit
+from app.core.request_limits import RateLimitExceeded
+from app.db.session import get_session
+from app.services.sharing import publication as service
+from app.services.sharing.atom import atom_document
+from app.services.sharing.audience import LinkAudience, PublicAudience, has_expired
+from app.services.sharing.audiences import render_document
+from app.services.sharing.delivery import UNLISTED_HEADERS
+from app.services.sharing.http_delivery import (
     LanguageQuery,
     declare_language,
     file_response,
@@ -29,6 +34,10 @@ from ..http_delivery import (
     validate_public_path,
     visitor_language,
 )
+from app.services.sharing.projection import render_projection, scoped_navigation_url
+from app.services.sharing.service import active_collection, collection_index, expire_link
+from app.services.storage import ObjectStorage, get_storage
+
 from ..models import (
     AuditEvent,
     LinkState,
@@ -37,9 +46,6 @@ from ..models import (
     SurfaceState,
     Trip,
 )
-from ..projection import render_projection, scoped_navigation_url
-from ..ratelimit import public_delivery_limit, retry_after_seconds, shared_delivery_limit
-from ..request_limits import RateLimitExceeded
 from ..schemas import (
     AuditEventResponse,
     AuditReasonInput,
@@ -61,12 +67,7 @@ from ..schemas import (
     ShareLinkUpdate,
     ShareScopeInput,
 )
-from ..services import publication as service
-from ..services.audiences import render_document
-from ..services.delivery import UNLISTED_HEADERS
-from ..services.sharing import active_collection, collection_index, expire_link
 from ..services.trips import trip_query
-from ..storage import ObjectStorage, get_storage
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["publication"])
 
@@ -631,7 +632,7 @@ def public_feed(request: Request, slug: str, session: SessionDep, lang: Language
 
 @delivery_router.get("/shared/{token}/feed.atom", dependencies=[Depends(shared_delivery_limit)])
 def link_feed(request: Request, token: str, session: SessionDep, lang: LanguageQuery = None) -> Response:
-    from ..authlimit import failed_authentication
+    from app.core.authlimit import failed_authentication
 
     retry = failed_authentication.retry_after(request)
     if retry is not None:

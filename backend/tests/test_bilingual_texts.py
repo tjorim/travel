@@ -9,14 +9,15 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app import schemas
-from app.atom import atom_document
-from app.auth import current_subject
-from app.config import settings
-from app.content_language import ContentLanguage, pick, resolve
-from app.database import Base, get_session
+from app.core.auth import current_subject
+from app.core.config import settings
+from app.core.content_language import ContentLanguage, pick, resolve
+from app.db.base import Base
+from app.db.session import get_session
 from app.main import app
-from app.mcp_server import TravelMcpBackend
+from app.mcp import TravelMcpBackend
 from app.models import Area, MediaDerivative, Trip, Visibility
+from app.services.sharing.atom import atom_document
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -532,7 +533,7 @@ def test_a_collection_index_reads_every_member_in_the_collections_language_and_m
 
 
 def test_a_photo_caption_and_alt_text_fall_back_in_the_projection() -> None:
-    from app.projection import visitor_text
+    from app.services.sharing.projection import visitor_text
 
     photo = MediaDerivative(caption_nl="Zonsondergang", alt_text_en="A sunset over the sea")
     assert visitor_text(photo, "caption", "en") == {"caption": "Zonsondergang", "caption_lang": "nl"}
@@ -548,8 +549,8 @@ def test_an_update_without_text_in_either_language_breaks_no_delivery(owner: Tes
     from sqlalchemy import text
 
     from app.models import DatePrecision, TravelUpdate
-    from app.projection import _render
-    from app.trip_pdf import PdfRequest, pdf_data
+    from app.services.sharing.projection import _render
+    from app.services.trip_pdf import PdfRequest, pdf_data
 
     trip = new_trip(owner)
     update = owner.post(
@@ -618,10 +619,10 @@ def test_an_update_without_text_in_either_language_breaks_no_delivery(owner: Tes
 
 
 def test_an_owner_can_edit_a_suggested_area_name_on_an_english_trip(owner: TestClient) -> None:
-    from app.config import Settings
-    from app.places.search import CachedPlaceSearchService
+    from app.core.config import Settings
     from app.routers.places import get_place_search_service
-    from tests.test_places import FakePlaceSearchProvider
+    from app.services.places.search import CachedPlaceSearchService
+    from tests.routers.test_places import FakePlaceSearchProvider
 
     app.dependency_overrides[get_place_search_service] = lambda: CachedPlaceSearchService(
         FakePlaceSearchProvider(), Settings()

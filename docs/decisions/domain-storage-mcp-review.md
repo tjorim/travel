@@ -34,7 +34,7 @@ original trip-only ownership rule.
   deletion lock (rules 3 and 4), and a provider import commits each finished item through the transport's
   `checkpoint`. The statements below about MCP calling router functions describe the reviewed baseline, not the
   code. No module outside `routers/` imports a router except `main.py`, `test_service_transports.py` fails for a
-  service that commits, and the MCP tools live in `backend/app/mcp_server/`, one module per tool family.
+  service that commits, and the MCP tools live in `backend/app/mcp/`, one module per tool family.
   Historical source evidence below describes the reviewed baseline.
 - #116 resolved with owner approval on 2026-11-01: MCP audit retention is 730
   days, matching sharing audits. `purge-expired-audit-events` now purges both
@@ -95,7 +95,7 @@ entries as schema authority.
 
 - **Database:** canonical structured records, ownership/access policy, object
   inventory and lifecycle state. Current mapped fields are in the appendix.
-  Provider secrets have a separate storage abstraction (`app/secrets.py` and
+  Provider secrets have a separate storage abstraction (`app/core/secrets.py` and
   `ProviderSecret`); they are not trip content or export material.
 - **Application-controlled storage:** media/document originals, generated image
   and video copies/posters, and owner-library files. The database records keys,
@@ -198,7 +198,7 @@ explicitly described as a proposed reproduction. No new test is added in this PR
    the same bounded ingestion service. HTTP uses multipart. Over HTTP MCP every
    request body is capped at 48 MiB (about 36 MiB of file), raised from the SDK's 4 MiB default
    by `TravelStreamableHTTPSessionManager` and enforced and tested explicitly (`RequestBodyCap`,
-   `tests/test_mcp_server.py`, `tests/test_mcp_upload_memory.py`; one request in flight costs
+   `tests/mcp/test_mcp_server.py`, `tests/mcp/test_mcp_upload_memory.py`; one request in flight costs
    about 3.1 times its body, so 148 MiB at the cap);
    the stdio measurement is in `docs/object-storage.md`. The bounded upload
    handle the issue proposes stays open: it needs a decision on a one-time
@@ -226,7 +226,7 @@ Existing regression evidence also includes `test_mcp_cannot_cross_owner_boundary
 `test_route_tools_refuse_a_route_between_the_same_place`, the merge-widening and
 chosen-private tests, and `test_update_location_refuses_an_unacknowledged_visitor_change_with_a_json_review`.
 These are source-inspected tests, not tests executed for this documentation PR.
-A practical rerun is `cd backend && uv sync --all-groups --frozen && uv run pytest tests/test_mcp_server.py`.
+A practical rerun is `cd backend && uv sync --all-groups --frozen && uv run pytest tests/mcp/test_mcp_server.py`.
 
 ## Retention, Deletion And Private Export
 
@@ -313,5 +313,5 @@ unlisted or owner route behavior and no UI dependency/shared component.
 ## Mapped Field Inventory
 
 Removed: it predated later models and went stale. The mapped columns, types,
-enums and constraints are authoritative in `backend/app/models.py`; see
+enums and constraints are authoritative in `backend/app/models/`; see
 [domain-model.md](../domain-model.md) for what each record means.

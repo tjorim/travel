@@ -503,7 +503,7 @@ Safety rules this adds to the policy:
 - An exclusion hides everything that points at the excluded record for that audience
   (an area hides the locations in it and what uses them, a location what uses it, an
   update its photos), so no delivered document names a record the audience does not
-  receive. The filtering lives in one function, `app/exclusions.py`, read by
+  receive. The filtering lives in one function, `app/services/sharing/exclusions.py`, read by
   `projection.delivered`, which every document, file, navigation, collection and
   preview path already uses; `access.receivers` (audit and merge reviews) applies
   it too.

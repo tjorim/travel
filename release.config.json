@@ -6,7 +6,7 @@
       "pattern": "version=\"([^\"]+)\","
     },
     {
-      "file": "backend/app/mcp_server/server.py",
+      "file": "backend/app/mcp/server.py",
       "pattern": "version=\"([^\"]+)\","
     },
     {

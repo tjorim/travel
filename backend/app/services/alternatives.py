@@ -16,8 +16,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from ..audit import record_audit_event
-from ..errors import Conflict, RecordNotFound, Refusal
+from app.core.errors import Conflict, RecordNotFound, Refusal
+from app.services.audit import record_audit_event
+from app.services.sharing.visibility import choose_visibility
+
 from ..models import (
     AlternativeGroup,
     AlternativeGroupKind,
@@ -45,7 +47,6 @@ from ..schemas import (
     VisitResponse,
 )
 from .trips import owned_trip
-from .visibility import choose_visibility
 
 Record = Stay | Visit | Route
 

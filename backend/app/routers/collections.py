@@ -10,11 +10,14 @@ from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from ..audience import MemberAudience
-from ..auth import current_subject
-from ..database import get_session
-from ..errors import ApiException
-from ..http_delivery import (
+from app.core.auth import current_subject
+from app.core.errors import ApiException
+from app.core.ratelimit import shared_delivery_limit
+from app.db.session import get_session
+from app.services.sharing.audience import MemberAudience
+from app.services.sharing.audiences import render_document
+from app.services.sharing.delivery import UNLISTED_HEADERS
+from app.services.sharing.http_delivery import (
     LanguageQuery,
     declare_language,
     file_response,
@@ -24,9 +27,11 @@ from ..http_delivery import (
     validate_public_path,
     visitor_language,
 )
+from app.services.sharing.projection import scoped_navigation_url
+from app.services.sharing.service import active_collection
+from app.services.storage import ObjectStorage, get_storage
+
 from ..models import CollectionAuditEvent, CollectionMember, Trip
-from ..projection import scoped_navigation_url
-from ..ratelimit import shared_delivery_limit
 from ..schemas import (
     AuditReasonInput,
     CollectionAuditEventResponse,
@@ -45,11 +50,7 @@ from ..schemas import (
     ShareScopeInput,
 )
 from ..services import collections as service
-from ..services.audiences import render_document
-from ..services.delivery import UNLISTED_HEADERS
-from ..services.sharing import active_collection
 from ..services.trips import trip_query
-from ..storage import ObjectStorage, get_storage
 
 router = APIRouter(prefix="/collections", tags=["collections"])
 delivery_router = APIRouter(tags=["sharing-delivery"], dependencies=[Depends(validate_public_path)])

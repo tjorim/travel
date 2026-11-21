@@ -9,7 +9,13 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session, sessionmaker
-from test_publication import (  # noqa: F401
+
+from app import schemas
+from app.core.config import settings
+from app.main import app
+from app.mcp import BatchCreate, TravelMcpBackend
+from app.models import Stay
+from tests.routers.test_publication import (  # noqa: F401
     activate,
     client_for,
     create_trip,
@@ -19,12 +25,6 @@ from test_publication import (  # noqa: F401
     share,
     teardown_function,
 )
-
-from app import schemas
-from app.config import settings
-from app.main import app
-from app.mcp_server import BatchCreate, TravelMcpBackend
-from app.models import Stay
 
 NIGHTS = {"check_in_date": "2054-04-01", "check_out_date": "2054-04-03"}
 

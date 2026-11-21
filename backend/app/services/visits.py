@@ -3,9 +3,10 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from ..errors import RecordNotFound, Refusal, service_error
+from app.core.errors import RecordNotFound, Refusal, service_error
+from app.services.route_overlap import overlapping_routes, route_title
+
 from ..models import VISIT_ORDER, Location, PlanningStatus, Trip, Visibility, Visit
-from ..route_overlap import overlapping_routes, route_title
 from ..schemas import Identifier, VisitCreate, VisitRouteCheck, VisitUpdate, require_visit_times
 from .localized import text_keys, write_texts
 from .placement import resolve_place, selected_area

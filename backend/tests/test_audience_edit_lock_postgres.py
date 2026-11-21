@@ -14,12 +14,13 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.auth import current_subject
-from app.database import Base, get_session
+from app.core.auth import current_subject
+from app.db.base import Base
+from app.db.session import get_session
 from app.main import app
 from app.models import ShareLink
 from app.schemas import ShareScopeInput
-from app.services import audiences
+from app.services.sharing import audiences
 from app.services.trips import owned_trip
 
 

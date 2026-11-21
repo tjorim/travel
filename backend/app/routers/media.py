@@ -1,6 +1,6 @@
 """Trip media routes and the owner's provider connections.
 
-The media routes are thin: ``app.services.media`` holds the operations, shared with the MCP tools. Each route
+The media routes are thin: ``app.services.media.service`` holds the operations, shared with the MCP tools. Each route
 commits once; the object-storage lifecycle (``docs/object-storage.md``) is kept around that commit: uploads write
 their bytes before it, and a removal finalises its purge only after it.
 """
@@ -11,13 +11,17 @@ from fastapi import APIRouter, Depends, File, Request, Response, UploadFile, sta
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from ..auth import current_subject
-from ..database import get_session
-from ..errors import ApiException, service_exception
-from ..media import oauth
-from ..media.providers import ProviderUnavailableError, get_provider_resolver, provider_available
-from ..media.ranges import media_response, private_original_headers
-from ..media.service import ProviderResolver
+from app.core.auth import current_subject
+from app.core.errors import ApiException, service_exception
+from app.core.secrets import SecretStore, get_secret_store
+from app.db.session import get_session
+from app.services.media import oauth
+from app.services.media import service as service
+from app.services.media.ingest import ProviderResolver
+from app.services.media.providers import ProviderUnavailableError, get_provider_resolver, provider_available
+from app.services.media.ranges import media_response, private_original_headers
+from app.services.storage import ObjectStorage, get_storage
+
 from ..models import ImportProvider
 from ..schemas import (
     ImportSessionCompleteResponse,
@@ -32,9 +36,6 @@ from ..schemas import (
     OAuthStartResponse,
     ProviderConnectionStatus,
 )
-from ..secrets import SecretStore, get_secret_store
-from ..services import media as service
-from ..storage import ObjectStorage, get_storage
 
 router = APIRouter(prefix="/trips/{trip_id}/media", tags=["media"])
 provider_tokens_router = APIRouter(prefix="/provider-tokens", tags=["media"])

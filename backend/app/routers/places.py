@@ -5,11 +5,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from ..auth import current_subject
-from ..database import get_session
-from ..places.search import CachedPlaceSearchService, get_place_search_service
+from app.core.auth import current_subject
+from app.db.session import get_session
+from app.services.places import service as service
+from app.services.places.search import CachedPlaceSearchService, get_place_search_service
+
 from ..schemas import Identifier, PlaceReverseGeocodeRequest, PlaceSearchRequest, PlaceSearchResponse
-from ..services import places as service
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["places"])
 

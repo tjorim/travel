@@ -11,7 +11,12 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from test_publication import (  # noqa: F401
+
+from app.main import app
+from app.models import CollectionMember, PublicSurface, ShareLink, SurfaceState
+from app.services.audit import scope_fingerprint
+from app.services.storage import LocalObjectStorage, get_storage
+from tests.routers.test_publication import (  # noqa: F401
     _photo_copy,
     activate,
     client_for,
@@ -20,11 +25,6 @@ from test_publication import (  # noqa: F401
     setup_function,
     teardown_function,
 )
-
-from app.audit import scope_fingerprint
-from app.main import app
-from app.models import CollectionMember, PublicSurface, ShareLink, SurfaceState
-from app.storage import LocalObjectStorage, get_storage
 
 GOLDEN = Path(__file__).parent / "golden" / "legacy_scope_documents.json"
 LEGACY_SCOPE = {"schema_version": "travel/share-scope@1", "trip": {"title": True, "summary": True}, "items": []}

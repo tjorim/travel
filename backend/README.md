@@ -25,7 +25,7 @@ built from the models instead of the migrations:
 ```bash
 export TRAVEL_ENVIRONMENT=development
 export TRAVEL_DEV_AUTH_BYPASS_TOKEN=dev   # any string; send it as `Authorization: Bearer dev`
-uv run python -m app.dev_schema           # create the tables (--reset rebuilds the file after a model change)
+uv run python -m app.db.dev_schema           # create the tables (--reset rebuilds the file after a model change)
 uv run uvicorn app.main:app --reload
 ```
 
@@ -40,6 +40,10 @@ uv run pytest
 Most of the suite uses SQLite and needs no services. The `*_postgres.py` tests skip unless a PostgreSQL database is
 configured, and the media tests need `ffmpeg` on `PATH`. `tests/test_openapi_snapshot.py` fails when
 `../frontend/openapi.json` is stale (see [API contract](#api-contract)).
+
+The tests mirror `app/` (`tests/routers`, `tests/services`, `tests/core`, `tests/db`, `tests/middleware`, `tests/schemas`,
+`tests/mcp`); migration, golden-file and cross-cutting tests stay at the top of `tests/`. The package layout of `app/` and
+where new code goes are described in [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#backend-backendapp).
 
 ## Lint and type-check
 
@@ -299,7 +303,7 @@ counters and bounded memory are described in
 ### Visitor rate limits
 
 The anonymous delivery routes are rate limited per client with FastAPI dependencies and `limits`
-(`app/ratelimit.py`, #189). All `/public/*` routes share one counter
+(`app/core/ratelimit.py`, #189). All `/public/*` routes share one counter
 (`TRAVEL_RATE_LIMIT_DEFAULT`) and all `/shared/{token}*` routes another, with a
 stricter limit (`TRAVEL_RATE_LIMIT_SHARED`), so probing different tokens, files
 or navigation targets counts together. Owner routes are not limited. A throttled
@@ -379,8 +383,8 @@ missing, revoked, expired or out-of-scope marker is `404`.
 ### Media ingestion
 
 Every imported or uploaded file goes through the same copy-verify-record
-pipeline (`app/media/service.py`) regardless of source: bytes are hashed,
-written to Travel-controlled object storage (`app/storage.py`; a local
+pipeline (`app/services/media/ingest.py`) regardless of source: bytes are hashed,
+written to Travel-controlled object storage (`app/services/storage.py`; a local
 filesystem adapter in dev/test, the backed-up VPS media volume in
 production), and re-read to verify the checksum before a `MediaAsset` row
 ever references them. A provider URL or a device's local file handle is
@@ -417,7 +421,7 @@ share link is rejected in `/shared/{token}`.
 Originals and their raw EXIF/XMP/IPTC are owner-only, and are never modified
 on ingest: the stored original keeps every embedded tag byte-for-byte. At
 the same time, `direct_upload`/`complete_import_session` best-effort-parse
-each photo's EXIF (`app/media/service.py:extract_exif_metadata`) and keep
+each photo's EXIF (`app/services/media/ingest.py:extract_exif_metadata`) and keep
 both: `MediaAsset.captured_at` and a small convenience subset in
 `raw_metadata.exif` (camera make/model, decimal-degree GPS) so the owner API
 response can pre-fill a reisupdate's date or suggest a place without any client
@@ -442,7 +446,7 @@ a public or unlisted audience.
 
 Deleting a media asset (`DELETE .../media/{media_id}`) is a soft delete: it
 disappears from owner queries immediately, matching the 30-day recoverable-
-deletion policy. `app/media/service.py:purge_deleted_media` hard-deletes
+deletion policy. `app/services/media/ingest.py:purge_deleted_media` hard-deletes
 media past that window and reclaims any of their stored objects nothing
 else still references (dedup-safe); wiring it to a scheduled job is v2
 infrastructure work, not part of this application-only issue.

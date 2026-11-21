@@ -14,8 +14,9 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import ColumnElement, and_, delete, select
 from sqlalchemy.orm import Session
 
-from ..audience import PUBLIC_KEY, Audience, Reach, audiences_of_trip
-from ..errors import Conflict, RecordNotFound, Refusal, TooManyRequests
+from app.core.errors import Conflict, RecordNotFound, Refusal, TooManyRequests
+from app.services.sharing.audience import PUBLIC_KEY, Audience, Reach, audiences_of_trip
+
 from ..models import (
     LiveAudienceKind,
     LivePoint,

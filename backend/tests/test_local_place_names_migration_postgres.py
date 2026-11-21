@@ -13,7 +13,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.exc import DataError
 
 from alembic import command
-from app.config import settings
+from app.core.config import settings
 
 PREVIOUS = "034_bilingual_texts"
 

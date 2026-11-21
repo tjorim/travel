@@ -49,7 +49,7 @@ function visitorRoutes(): Plugin {
 const devBypassToken = process.env.TRAVEL_DEV_AUTH_BYPASS_TOKEN;
 
 function devSession(): Plugin {
-  // Mirrors auth.ts. The subject must match app/auth.py's DEV_BYPASS_SUBJECT so
+  // Mirrors auth.ts. The subject must match app/core/auth.py's DEV_BYPASS_SUBJECT so
   // the per-owner query cache is keyed like the API's owner.
   const seed = `
     const encode = (value) => btoa(JSON.stringify(value)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");

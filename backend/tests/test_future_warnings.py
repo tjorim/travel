@@ -7,7 +7,11 @@ from datetime import date
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from test_publication import (  # noqa: F401
+
+from app.models import Trip
+from app.services.sharing.overview import future_counts, not_started, trip_overview
+from app.services.trips import trip_query
+from tests.routers.test_publication import (  # noqa: F401
     activate,
     client_for,
     create_trip,
@@ -17,10 +21,6 @@ from test_publication import (  # noqa: F401
     share,
     teardown_function,
 )
-
-from app.models import Trip
-from app.overview import future_counts, not_started, trip_overview
-from app.services.trips import trip_query
 
 FUTURE_TRANSPORT = "future_transport_times"
 FUTURE_DAY_DATES = "future_day_dates"

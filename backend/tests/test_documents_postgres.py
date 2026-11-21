@@ -16,17 +16,18 @@ from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.auth import current_subject
-from app.database import Base, get_session
-from app.document.service import trip_documents
-from app.errors import Refusal
+from app.core.auth import current_subject
+from app.core.errors import Refusal
+from app.db.base import Base
+from app.db.session import get_session
 from app.main import app
-from app.media.service import store_uploaded_object
 from app.models import DocumentAsset, ObjectState, StayDocumentAsset, StoredObject
 from app.schemas import DocumentUpdate
-from app.services.documents import update_document
-from app.storage import LocalObjectStorage, get_storage
-from app.storage_reconcile import unreferenced_objects
+from app.services.documents.ingest import trip_documents
+from app.services.documents.service import update_document
+from app.services.media.ingest import store_uploaded_object
+from app.services.storage import LocalObjectStorage, get_storage
+from app.services.storage_reconcile import unreferenced_objects
 
 
 @pytest.fixture
