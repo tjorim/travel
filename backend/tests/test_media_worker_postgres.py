@@ -12,9 +12,10 @@ from sqlalchemy.orm import sessionmaker
 from test_media_worker import outputs
 
 from app.db.base import Base
-from app.media import service, worker
 from app.models import DerivativePurpose, MediaDerivative, MediaWorkerJob, StoredObject, Trip
-from app.storage import LocalObjectStorage
+from app.services.media import ingest as service
+from app.services.media import worker
+from app.services.storage import LocalObjectStorage
 
 
 @pytest.fixture

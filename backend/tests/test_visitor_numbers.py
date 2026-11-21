@@ -5,11 +5,11 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from app.audience import PublicAudience
 from app.models import Area, DatePrecision, PlanningStatus, PublicSurface, Stay, TravelUpdate, Trip, Visibility
-from app.projection import render_projection, summary_numbers
 from app.schemas import ShareScopeInput
-from app.sharing_presets import plan_preset
+from app.services.sharing.audience import PublicAudience
+from app.services.sharing.preset_plan import plan_preset
+from app.services.sharing.projection import render_projection, summary_numbers
 
 ALL = ["days", "areas", "countries", "nights"]
 

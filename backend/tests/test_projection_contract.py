@@ -21,7 +21,7 @@ from test_publication import (  # noqa: F401
 from app import schemas
 from app.main import app
 from app.models import DatePrecision
-from app.storage import LocalObjectStorage, get_storage
+from app.services.storage import LocalObjectStorage, get_storage
 
 RECORDS = {
     "visits": schemas.ProjectionVisit,

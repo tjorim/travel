@@ -14,7 +14,7 @@ from app.db.base import Base
 from app.db.session import get_session
 from app.main import app
 from app.models import ShareLink
-from app.storage import LocalObjectStorage, get_storage
+from app.services.storage import LocalObjectStorage, get_storage
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -198,7 +198,7 @@ def test_map_inputs_never_include_owner_only_geometry_or_unselected_coordinates(
 
 def test_projection_generalizes_even_a_legacy_area_point() -> None:
     from app.models import Area
-    from app.projection import _share_place
+    from app.services.sharing.projection import _share_place
 
     area = Area(label="Somewhere", latitude=25.03371, longitude=121.56541)
     assert _share_place(area).model_dump() == {
@@ -1497,10 +1497,10 @@ def test_scope_revisions_reject_stale_owner_writes() -> None:
 
 
 def test_concurrent_scope_claims_use_database_revision() -> None:
-    from app.audience import PublicAudience
     from app.core.errors import RevisionConflict
     from app.models import PublicSurface
-    from app.services.audiences import claim_revision
+    from app.services.sharing.audience import PublicAudience
+    from app.services.sharing.audiences import claim_revision
 
     client = client_for("owner-1")
     trip = create_trip(client)
@@ -1521,7 +1521,7 @@ def test_concurrent_scope_claims_use_database_revision() -> None:
 
 
 def test_projection_route_instants_keep_their_utc_offset() -> None:
-    from app.projection import _utc_instant
+    from app.services.sharing.projection import _utc_instant
 
     naive = datetime(2035, 6, 4, 2, 0)
     assert _utc_instant(naive).isoformat() == "2035-06-04T02:00:00+00:00"

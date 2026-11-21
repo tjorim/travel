@@ -87,7 +87,7 @@ def test_the_trip_overview_lists_visits_that_restate_a_route() -> None:
     from test_visits import TestingSessionLocal
 
     from app.models import Trip
-    from app.overview import _visits_restating_routes
+    from app.services.sharing.overview import _visits_restating_routes
 
     owner = client_for("owner-1")
     base, ams, _, _, _ = _trip_with_flight(owner)

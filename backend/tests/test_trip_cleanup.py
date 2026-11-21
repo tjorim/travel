@@ -17,10 +17,10 @@ from app.core.errors import Refusal, service_error_handler
 from app.db.base import Base
 from app.db.session import get_session
 from app.mcp_server import TravelMcpBackend
-from app.media.service import purge_deleted_media
 from app.models import DocumentAsset, DocumentKind, MediaAsset, MediaKind, ObjectState, StoredObject, Trip
 from app.routers import trips
-from app.storage import LocalObjectStorage
+from app.services.media.ingest import purge_deleted_media
+from app.services.storage import LocalObjectStorage
 
 
 @pytest.fixture(params=["sqlite", "postgres"])

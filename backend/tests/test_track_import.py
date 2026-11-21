@@ -15,7 +15,7 @@ from test_routes import (  # noqa: F401
 
 from app.models import Route, StoredObject
 from app.routers.routes import track_import_limiter
-from app.track_import import MAX_BYTES, approximate_line
+from app.services.track_import import MAX_BYTES, approximate_line
 
 POINTS = [[4.1234567, 50.1234567], [4.2345678, 50.2345678], [4.3456789, 50.3456789]]
 MARKER = "PRIVATE-TIMESTAMP-ACCURACY-ELEVATION"

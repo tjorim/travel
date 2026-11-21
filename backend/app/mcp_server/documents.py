@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.documents import service as document_service
+
 from .. import schemas
 from ..models import DocumentKind
-from ..services import documents as document_service
 from ..services import emergency_info as emergency_service
 from .core import BinaryUpload, McpTools, storage
 from .rendering import _model, _models

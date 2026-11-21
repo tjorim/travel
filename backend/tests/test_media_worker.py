@@ -18,7 +18,6 @@ from test_media import (
 )
 
 from app.core.config import settings
-from app.media import service, worker
 from app.models import (
     DerivativeProcessingState,
     DerivativePurpose,
@@ -28,7 +27,9 @@ from app.models import (
     MediaWorkerJob,
     StoredObject,
 )
-from app.storage import LocalObjectStorage, sha256_hex
+from app.services.media import ingest as service
+from app.services.media import worker
+from app.services.storage import LocalObjectStorage, sha256_hex
 
 WORKER_ID = "a" * 32
 

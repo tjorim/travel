@@ -6,8 +6,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import RecordNotFound, Refusal, service_error
+from app.services.documents.ingest import trip_documents
 
-from ..document.service import trip_documents
 from ..models import STAY_ORDER, Location, PlanningStatus, Stay, StayDocumentAsset, Trip, Visibility
 from ..schemas import Identifier, StayCreate, StayUpdate, require_stay_nights
 from .placement import selected_area, stay_place

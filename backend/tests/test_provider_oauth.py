@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.core.secrets import Credential, DatabaseSecretStore, InMemorySecretStore, get_secret_store
 from app.db.base import Base
 from app.main import app
-from app.media import oauth
+from app.services.media import oauth
 
 
 def configure(monkeypatch) -> None:

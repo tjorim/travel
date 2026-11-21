@@ -116,7 +116,7 @@ locale, so "1 day" never reads "1 days". Name parameters after what they hold
 test covers every plural message at 0, 1 and several.
 
 Copy that lives outside the catalogue follows the same rule: the PDF renderer's label
-tables (`backend/app/pdf_renderer.py`) and the Home Assistant translations
+tables (`backend/app/services/pdf_renderer.py`) and the Home Assistant translations
 (`custom_components/travel/translations/`) are checked by
 `backend/tests/test_label_parity.py`, which requires the same keys and placeholders in
 every locale. The frontend parity script is shared with other apps and is left alone.

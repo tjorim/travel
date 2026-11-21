@@ -8,11 +8,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app import maintenance
 from app.db.base import Base
 from app.models import ObjectState, StoredObject, Trip
-from app.storage import LocalObjectStorage, lock_object_deletion
-from app.storage_reconcile import remove_unreferenced_objects, unreferenced_objects
+from app.services import maintenance
+from app.services.storage import LocalObjectStorage, lock_object_deletion
+from app.services.storage_reconcile import remove_unreferenced_objects, unreferenced_objects
 
 NOW = datetime(2054, 10, 20, 12, tzinfo=UTC)
 OLD = (NOW - timedelta(days=2)).timestamp()

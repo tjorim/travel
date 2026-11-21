@@ -8,8 +8,8 @@ from app.core.config import Settings
 from app.db.base import Base
 from app.main import app
 from app.models import TravelUpdate
-from app.places.search import CachedPlaceSearchService
 from app.routers.places import get_place_search_service
+from app.services.places.search import CachedPlaceSearchService
 
 
 def setup_function() -> None:

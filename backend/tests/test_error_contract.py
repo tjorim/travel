@@ -12,8 +12,8 @@ from pydantic_core import PydanticCustomError
 from starlette.exceptions import HTTPException
 
 from app.core.errors import ApiException, http_error_handler, service_exception, validation_error_handler
-from app.media.providers import GooglePhotosPickerProvider, ProviderError
 from app.schemas import require_visit_times
+from app.services.media.providers import GooglePhotosPickerProvider, ProviderError
 
 
 def contract_app():
@@ -103,7 +103,7 @@ def test_every_app_owned_http_failure_declares_a_code():
         *root.joinpath("routers").glob("*.py"),
         root / "core/auth.py",
         root / "main.py",
-        root / "media/ranges.py",
+        root / "services/media/ranges.py",
     ]:
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):

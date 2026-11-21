@@ -10,7 +10,7 @@ import json
 import re
 from pathlib import Path
 
-from app import pdf_renderer
+from app.services import pdf_renderer
 
 TRANSLATIONS = Path(__file__).resolve().parents[2] / "custom_components/travel/translations"
 PLACEHOLDER = re.compile(r"\{(\w+)\}")

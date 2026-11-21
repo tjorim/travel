@@ -34,7 +34,7 @@ def _failed_authentication_limit_off():
 @pytest.fixture(autouse=True)
 def _pillow_rejects_truncated_images():
     # WeasyPrint sets ImageFile.LOAD_TRUNCATED_IMAGES on import. The API runs the renderer in a subprocess, so it
-    # never reaches the application, but a test that imports app.pdf_renderer would leak it into every later test.
+    # never reaches the application, but a test that imports app.services.pdf_renderer would leak it into every later test.
     from PIL import ImageFile
 
     ImageFile.LOAD_TRUNCATED_IMAGES = False

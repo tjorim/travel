@@ -20,7 +20,7 @@ from app.db.session import get_session
 from app.main import app
 from app.models import ShareLink
 from app.schemas import ShareScopeInput
-from app.services import audiences
+from app.services.sharing import audiences
 from app.services.trips import owned_trip
 
 

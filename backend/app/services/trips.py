@@ -5,9 +5,10 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.content_language import DEFAULT_LANGUAGE, ContentLanguage
 from app.core.errors import RecordNotFound, Refusal, ServiceError, service_error
+from app.services.audit import scrub_trip_audit_text
+from app.services.sharing.access import set_cover
+from app.services.sharing.overview import trip_overview
 
-from ..access import set_cover
-from ..audit import scrub_trip_audit_text
 from ..models import (
     DocumentAsset,
     Location,
@@ -20,7 +21,6 @@ from ..models import (
     Trip,
     cover_file_route,
 )
-from ..overview import trip_overview
 from ..schemas import Identifier, TripCreate, TripResponse, TripSummaryResponse, TripUpdate
 from .localized import move_texts, write_texts
 

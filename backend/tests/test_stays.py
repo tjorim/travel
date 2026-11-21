@@ -11,7 +11,7 @@ from app.db.base import Base
 from app.db.session import get_session
 from app.main import app
 from app.models import StayDocumentAsset
-from app.storage import LocalObjectStorage, get_storage
+from app.services.storage import LocalObjectStorage, get_storage
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)

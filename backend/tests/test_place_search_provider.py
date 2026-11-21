@@ -1,6 +1,6 @@
 import httpx
 
-from app.places.search import NominatimSearchProvider
+from app.services.places.search import NominatimSearchProvider
 
 
 def test_nominatim_requests_english_names_for_search_and_reverse(monkeypatch) -> None:

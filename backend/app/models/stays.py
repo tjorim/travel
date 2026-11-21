@@ -60,7 +60,7 @@ class Stay(Base):
     # A shared stay is only its city or area and its nights, at this precision;
     # never the property, location or booking details. ``None`` follows the
     # audience; an audience never gets a finer precision than this or its own
-    # setting allows (see ``app.precision``).
+    # setting allows (see ``app.services.sharing.precision``).
     visibility: Mapped[Visibility] = _visibility_column()
     share_date_precision: Mapped[DatePrecision | None] = mapped_column(
         _enum_column(DatePrecision, "travel_date_precision"), default=None, nullable=True

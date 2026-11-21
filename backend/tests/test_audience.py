@@ -15,7 +15,10 @@ from test_publication import (  # noqa: F401
     teardown_function,
 )
 
-from app.audience import (
+from app.models import AuditEventKind, AuditTargetType, CollectionAuditKind, PublicSurface
+from app.schemas import ShareScopeInput
+from app.services.sharing import audiences
+from app.services.sharing.audience import (
     AudienceKind,
     LinkAudience,
     MemberAudience,
@@ -23,11 +26,8 @@ from app.audience import (
     Reach,
     audiences_of_trip,
 )
-from app.models import AuditEventKind, AuditTargetType, CollectionAuditKind, PublicSurface
-from app.precision import audience_precision
-from app.schemas import ShareScopeInput
-from app.services import audiences
-from app.services.publication import public_preview
+from app.services.sharing.precision import audience_precision
+from app.services.sharing.publication import public_preview
 
 
 def _audiences(owner: TestClient) -> dict:

@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import current_subject
 from app.db.session import get_session
+from app.services.places.search import CachedPlaceSearchService, get_place_search_service
 
 from ..models import Area
-from ..places.search import CachedPlaceSearchService, get_place_search_service
 from ..schemas import (
     AreaInput,
     AreaMergeResult,

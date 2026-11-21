@@ -22,18 +22,18 @@ from test_publication import (  # noqa: F401
     teardown_function,
 )
 
-from app import sharing_presets
-from app.access import COLLECTIONS
-from app.audience import Audience, LinkAudience, PublicAudience
-from app.audit import scope_fingerprint
 from app.core.errors import ServiceError
 from app.db.base import Base
 from app.main import app
 from app.models import AuditEvent, PublicSurface, ShareLink, Trip, Visibility
-from app.precision import audience_precision, effective_precision, is_finer, own_value
-from app.projection import delivered
+from app.services.audit import scope_fingerprint
+from app.services.sharing import preset_plan as sharing_presets
+from app.services.sharing.access import COLLECTIONS
+from app.services.sharing.audience import Audience, LinkAudience, PublicAudience
+from app.services.sharing.precision import audience_precision, effective_precision, is_finer, own_value
+from app.services.sharing.preset_plan import PRESETS, plan_preset
+from app.services.sharing.projection import delivered
 from app.services.trips import trip_query
-from app.sharing_presets import PRESETS, plan_preset
 
 PRESET_IDS = list(PRESETS)
 

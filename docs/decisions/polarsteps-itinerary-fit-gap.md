@@ -195,7 +195,7 @@ offset**. The Europe/Brussels browser and physical phone displayed
 **08:00–10:00**. The flight showed the same discrepancy (TW/TN/H).
 
 `RouteResponse.mark_utc` in `backend/app/schemas/routes.py` explicitly repairs naive
-SQLite UTC values for owner responses; `backend/app/projection.py` directly
+SQLite UTC values for owner responses; `backend/app/services/sharing/projection.py` directly
 calls `isoformat()` on them. `ProjectionView.tsx` parses the resulting naive
 string with `dayjs(value).tz(timeZone)`. This supports a local serialization
 explanation. PostgreSQL normally retains timezone-aware instants, but it was

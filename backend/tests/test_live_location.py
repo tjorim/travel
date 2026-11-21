@@ -121,7 +121,7 @@ def test_real_delivery_link_revocation_and_no_history_in_story_outputs(monkeypat
     import json
 
     from app.models import ShareLink, Trip
-    from app.trip_pdf import PdfRequest, pdf_data
+    from app.services.trip_pdf import PdfRequest, pdf_data
 
     clock = datetime.now(UTC)
     monkeypatch.setattr(live, "now", lambda: clock)

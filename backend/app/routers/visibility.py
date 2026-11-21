@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import current_subject
 from app.db.session import get_session
+from app.services.sharing import visibility
 
 from ..schemas import Identifier, ShareScopeKind, VisibilityUpdate
-from ..services import visibility
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["visibility"])
 

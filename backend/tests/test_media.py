@@ -18,17 +18,22 @@ from app.core.secrets import Credential, InMemorySecretStore, get_secret_store
 from app.db.base import Base
 from app.db.session import get_session
 from app.main import app
-from app.media import oauth
-from app.media.providers import (
+from app.models import ImportProvider, ImportSession, MediaAsset, ObjectState, StoredObject
+from app.services.media import oauth
+from app.services.media.ingest import (
+    delete_media_asset,
+    delete_media_derivative,
+    direct_upload,
+    purge_deleted_media,
+)
+from app.services.media.providers import (
     ProviderError,
     ProviderMediaItem,
     ProviderSession,
     ProviderSessionStatus,
     get_provider_resolver,
 )
-from app.media.service import delete_media_asset, delete_media_derivative, direct_upload, purge_deleted_media
-from app.models import ImportProvider, ImportSession, MediaAsset, ObjectState, StoredObject
-from app.storage import LocalObjectStorage, get_storage
+from app.services.storage import LocalObjectStorage, get_storage
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -156,8 +161,8 @@ def video_with_telemetry(tmp_path: Path) -> bytes:
 
 
 def test_video_job_left_processing_by_the_retired_local_encoder_becomes_retryable(tmp_path: Path) -> None:
-    from app.media import service
     from app.models import DerivativeProcessingBackend, DerivativePurpose, MediaDerivative
+    from app.services.media import ingest as service
 
     client = client_for("owner-1", tmp_path)
     trip = create_trip(client)
@@ -188,8 +193,8 @@ def test_video_job_left_processing_by_the_retired_local_encoder_becomes_retryabl
 
 
 def _queue_video(session: Session, tmp_path: Path, trip_id: str, *, filename: str = "clip.mov"):
-    from app.media import service
     from app.models import DerivativePurpose
+    from app.services.media import ingest as service
 
     asset, _ = direct_upload(
         session,
@@ -300,7 +305,7 @@ def test_photo_thumbnail_is_a_smaller_owner_only_image(tmp_path: Path) -> None:
 
 
 def test_thumbnail_cache_reuses_bytes_and_is_purged_with_original(tmp_path: Path, monkeypatch) -> None:
-    from app.media import service
+    from app.services.media import ingest as service
 
     owner = client_for("owner-1", tmp_path)
     trip = create_trip(owner)
@@ -951,8 +956,8 @@ def test_purge_deleted_media_keeps_a_recent_deletion_within_the_recovery_window(
 
 
 def test_purge_deleted_media_reclaims_original_and_derivative_objects_after_the_window(tmp_path: Path) -> None:
-    from app.media.service import create_derivative
     from app.models import DerivativePurpose, Trip
+    from app.services.media.ingest import create_derivative
 
     storage = LocalObjectStorage(root=str(tmp_path))
     with TestingSessionLocal() as session:
@@ -980,8 +985,8 @@ def test_purge_deleted_media_reclaims_original_and_derivative_objects_after_the_
 
 
 def test_purge_deleted_media_retries_after_storage_failure_without_dangling_references(tmp_path: Path) -> None:
-    from app.media.service import create_derivative
     from app.models import DerivativePurpose, Trip
+    from app.services.media.ingest import create_derivative
 
     storage = LocalObjectStorage(root=str(tmp_path))
     with TestingSessionLocal() as session:
@@ -1026,8 +1031,8 @@ def test_purge_deleted_media_retries_after_storage_failure_without_dangling_refe
 
 def test_purge_deleted_media_leaves_the_document_that_holds_the_same_bytes(tmp_path: Path) -> None:
     """A document's original belongs to the owner and a photo's to its trip, so the same bytes are two objects."""
-    from app.document.service import direct_upload as upload_document
     from app.models import DocumentKind, Trip
+    from app.services.documents.ingest import direct_upload as upload_document
 
     storage = LocalObjectStorage(root=str(tmp_path))
     with TestingSessionLocal() as session:
@@ -1135,8 +1140,8 @@ def test_purge_deleted_media_retries_when_commit_fails_after_file_deletion(tmp_p
 
 
 def test_derivative_deletion_failure_leaves_retryable_object(tmp_path: Path) -> None:
-    from app.media.service import create_derivative
     from app.models import DerivativePurpose, MediaDerivative, Trip
+    from app.services.media.ingest import create_derivative
 
     storage = LocalObjectStorage(root=str(tmp_path))
     with TestingSessionLocal() as session:
@@ -1216,8 +1221,8 @@ def test_photo_content_type_is_sniffed(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("operation", ["thumbnail", "derivative"])
 def test_legacy_corrupt_photos_return_handled_errors(tmp_path: Path, operation: str) -> None:
-    from app.media.service import MediaImportError, create_derivative, generate_thumbnail
     from app.models import DerivativePurpose
+    from app.services.media.ingest import MediaImportError, create_derivative, generate_thumbnail
 
     owner = client_for("owner", tmp_path)
     trip = create_trip(owner)
@@ -1241,7 +1246,7 @@ def test_legacy_corrupt_photos_return_handled_errors(tmp_path: Path, operation: 
 
 
 def test_thumbnail_jpeg_uses_decoder_reduction() -> None:
-    from app.media.service import _decoded_image
+    from app.services.media.ingest import _decoded_image
 
     buffer = io.BytesIO()
     Image.new("RGB", (4000, 3000)).save(buffer, format="JPEG")

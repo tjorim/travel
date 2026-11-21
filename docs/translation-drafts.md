@@ -46,7 +46,7 @@ translated message with **Try again**; the field's text is unchanged. Cancelling
 
 ## Backend behaviour
 
-`app/translation.py` talks to LibreTranslate's `POST /translate` with
+`app/services/translation.py` talks to LibreTranslate's `POST /translate` with
 `format: "text"`:
 
 - Markdown structure is kept: heading, list, task and quote markers, code
@@ -85,7 +85,7 @@ is tracked in apps#250.
 ## Video job concurrency
 
 The same change serialises video derivative jobs (`VIDEO_CONCURRENCY = 1` in
-`app/media/service.py`). Waiting jobs stay `processing`; while a job of this
+`app/services/media/ingest.py`). Waiting jobs stay `processing`; while a job of this
 process is waiting it is not expired as stalled, and the stalled clock
 (`processing_started_at`) restarts when the job gets its slot. A job lost with
 its process still expires and can be retried.

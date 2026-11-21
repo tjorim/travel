@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from app.core.secrets import get_secret_store
+from app.services.media import service as media_service
 
 from .. import schemas
 from ..models import ImportProvider
-from ..services import media as media_service
 from .core import BinaryUpload, McpTools, storage
 from .rendering import _model, _models
 
@@ -146,7 +146,7 @@ class MediaTools(McpTools):
 
     def start_media_import_session(self, trip_id: str, provider: ImportProvider) -> dict[str, Any]:
         """Start an explicit provider selection session; interactive OAuth is a separate workflow."""
-        from ..media.providers import get_provider_resolver
+        from app.services.media.providers import get_provider_resolver
 
         return self._call(
             "media_import.start",
@@ -163,7 +163,7 @@ class MediaTools(McpTools):
         self, trip_id: str, provider: ImportProvider, session_id: str, confirm: bool = False
     ) -> dict[str, Any]:
         """Copy only owner-selected provider media after explicit confirmation."""
-        from ..media.providers import get_provider_resolver
+        from app.services.media.providers import get_provider_resolver
 
         return self._call(
             "media_import.complete",

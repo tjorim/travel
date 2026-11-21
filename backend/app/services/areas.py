@@ -8,12 +8,22 @@ from timezonefinder import TimezoneFinder
 
 from app.core.errors import Conflict, RecordNotFound, Refusal
 from app.core.search_text import contains
+from app.services.audit import live_audiences, record_audit_event
+from app.services.places.search import CachedPlaceSearchService
+from app.services.sharing.access import receivers, trip_audiences
+from app.services.sharing.live_scopes import scope_picks
+from app.services.sharing.visibility import make_private
+from app.services.sharing.visitor_changes import (
+    MovedRecord,
+    Placement,
+    chosen_private,
+    merge_widening,
+    merge_widening_refusal,
+    widened_record_details,
+    widened_records,
+)
 
-from ..access import receivers, trip_audiences
-from ..audit import live_audiences, record_audit_event
-from ..live_scopes import scope_picks
 from ..models import Area, AuditEventKind, AuditTargetType, Location, Route, Stay, TravelUpdate, Visit
-from ..places.search import CachedPlaceSearchService
 from ..schemas import (
     AreaInput,
     AreaMergeDuplicate,
@@ -25,19 +35,9 @@ from ..schemas import (
     MergeRequest,
     SuggestedArea,
 )
-from ..visitor_changes import (
-    MovedRecord,
-    Placement,
-    chosen_private,
-    merge_widening,
-    merge_widening_refusal,
-    widened_record_details,
-    widened_records,
-)
 from .localized import text_keys, write_texts
 from .placement import is_city_level
 from .trips import owned_trip
-from .visibility import make_private
 
 AREA_SUGGESTION_RADIUS_KM = 25
 _timezone_finder = TimezoneFinder(in_memory=True)

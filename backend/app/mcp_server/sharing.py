@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from app.services.sharing import precision_bulk as precision_service
+from app.services.sharing import presets as preset_service
+from app.services.sharing import publication as publication_service
+
 from .. import schemas
-from ..services import precision as precision_service
-from ..services import publication as publication_service
-from ..services import sharing_presets as preset_service
 from .core import McpTools, storage
 from .rendering import _model, _models, _share_url
 

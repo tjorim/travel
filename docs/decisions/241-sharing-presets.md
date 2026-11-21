@@ -403,7 +403,7 @@ owners: they set the cap, and leave `trip.dates` where it is.
 
 Shipped (Part of #241). Nothing is applied: no migration, no scope or visibility write, no revision, no audit event.
 
-- `app/sharing_presets.py`: the three presets as code constants (`travel/sharing-preset@1`, ids `story_only`,
+- `app/services/sharing/preset_plan.py`: the three presets as code constants (`travel/sharing-preset@1`, ids `story_only`,
   `story_and_route`, `planned_trip`, each extending the one before), `plan_preset(trip, audience, preset_id)` (pure) and
   `review_preset(session, trip, audience, preset_id)`.
 - Review endpoints (owner-only, `POST`, body `{"preset": …}`): `…/public-projection/preset/review`,

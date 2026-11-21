@@ -93,7 +93,7 @@ zone (the area's, else the zone of the trip's nearest dated stay or visit, else 
 [the domain model](domain-model.md)). `timezone` was added without changing the schema
 version, because adding a field is compatible.
 
-Each record lists its columns explicitly in `backend/app/export.py`. A column
+Each record lists its columns explicitly in `backend/app/services/export.py`. A column
 added to a model later is **not** exported until reviewed and added there.
 Records are ordered stably (creation time, position or the record's own date order, then id). The document
 is generated section by section from a single database snapshot (PostgreSQL

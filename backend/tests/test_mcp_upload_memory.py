@@ -21,8 +21,8 @@ SCRIPT = """
 import base64, json, tempfile
 from pathlib import Path
 from app.mcp_server.core import BinaryUpload
-from app.media.service import read_bounded_upload
-from app.storage import LocalObjectStorage, sha256_hex, verify_object
+from app.services.media.ingest import read_bounded_upload
+from app.services.storage import LocalObjectStorage, sha256_hex, verify_object
 
 RAW = 150 * 1024 * 1024
 MIB = 1024 * 1024
@@ -95,7 +95,7 @@ SERVER = textwrap.dedent(
     from app.db.base import Base
     from app.mcp_server import create_mcp_http_app, mount_mcp
     from app.mcp_server import core
-    from app.storage import LocalObjectStorage
+    from app.services.storage import LocalObjectStorage
 
     issuer, url = "https://identity.example.test/realms/travel", "https://travel.example.test/mcp"
     settings.environment, settings.oidc_audience, settings.oidc_issuer_url = "production", "travel-api", issuer

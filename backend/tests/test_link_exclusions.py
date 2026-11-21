@@ -35,8 +35,8 @@ from app.models import (
     TravelUpdate,
     Visit,
 )
-from app.projection import local_id
-from app.storage import LocalObjectStorage, get_storage
+from app.services.sharing.projection import local_id
+from app.services.storage import LocalObjectStorage, get_storage
 
 MODELS = {
     "area": Area,

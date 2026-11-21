@@ -22,10 +22,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import settings
 from app.core.errors import Refusal
 from app.db.session import SessionLocal
+from app.services.storage import ObjectStorage, get_storage
 
 from .. import schemas
 from ..models import ActivityTransport, OwnerActivityEvent
-from ..storage import ObjectStorage, get_storage
 
 Result = TypeVar("Result")
 

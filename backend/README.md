@@ -379,8 +379,8 @@ missing, revoked, expired or out-of-scope marker is `404`.
 ### Media ingestion
 
 Every imported or uploaded file goes through the same copy-verify-record
-pipeline (`app/media/service.py`) regardless of source: bytes are hashed,
-written to Travel-controlled object storage (`app/storage.py`; a local
+pipeline (`app/services/media/ingest.py`) regardless of source: bytes are hashed,
+written to Travel-controlled object storage (`app/services/storage.py`; a local
 filesystem adapter in dev/test, the backed-up VPS media volume in
 production), and re-read to verify the checksum before a `MediaAsset` row
 ever references them. A provider URL or a device's local file handle is
@@ -417,7 +417,7 @@ share link is rejected in `/shared/{token}`.
 Originals and their raw EXIF/XMP/IPTC are owner-only, and are never modified
 on ingest: the stored original keeps every embedded tag byte-for-byte. At
 the same time, `direct_upload`/`complete_import_session` best-effort-parse
-each photo's EXIF (`app/media/service.py:extract_exif_metadata`) and keep
+each photo's EXIF (`app/services/media/ingest.py:extract_exif_metadata`) and keep
 both: `MediaAsset.captured_at` and a small convenience subset in
 `raw_metadata.exif` (camera make/model, decimal-degree GPS) so the owner API
 response can pre-fill a reisupdate's date or suggest a place without any client
@@ -442,7 +442,7 @@ a public or unlisted audience.
 
 Deleting a media asset (`DELETE .../media/{media_id}`) is a soft delete: it
 disappears from owner queries immediately, matching the 30-day recoverable-
-deletion policy. `app/media/service.py:purge_deleted_media` hard-deletes
+deletion policy. `app/services/media/ingest.py:purge_deleted_media` hard-deletes
 media past that window and reclaims any of their stored objects nothing
 else still references (dedup-safe); wiring it to a scheduled job is v2
 infrastructure work, not part of this application-only issue.

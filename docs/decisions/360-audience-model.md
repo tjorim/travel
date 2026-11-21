@@ -7,15 +7,15 @@ Decision: 2026-11-14, issue [#360](https://github.com/tjorim/travel/issues/360),
 Issue #360 offered three depths for treating the public view, a hidden link and a collection member as one
 **audience**: code only, API too, or storage too. The owner chose **option 1, code only**.
 
-- One interface, `app.audience.Audience`, with a subclass per kind (`PublicAudience`, `LinkAudience`,
+- One interface, `app.services.sharing.audience.Audience`, with a subclass per kind (`PublicAudience`, `LinkAudience`,
   `MemberAudience`). Everything an audience feature needs to ask lives on it: scope, revision, the applied preset
   label and time, whether it delivers now (`live`), whether the owner may still edit it (`editable`), whether it
   may exclude records, the document schema a visitor receives, where its history is written (`audit_target`) and
   whether live location may name it (`live_location_key`).
-- Each audience feature is written **once**, over that interface, in `app.services.audiences`: finding the
+- Each audience feature is written **once**, over that interface, in `app.services.sharing.audiences`: finding the
   audience an owner addresses, previewing it (document, file, navigation target), the future-disclosure review, the
   revision claim, and the scope edit with its widening refusal and audit entry. The preset review and apply
-  (`app.sharing_presets`, `app.services.sharing_presets`), the live-location settings (`app.services.live_location`),
+  (`app.services.sharing.preset_plan`, `app.services.sharing.presets`), the live-location settings (`app.services.live_location`),
   the lists of a trip's audiences (`audit.live_audiences`, `access.trip_audiences`, `live_scopes`, the preset's
   "other audiences" check, all now `audience.audiences_of_trip`) and the owner's and the visitor's document
   (`audiences.render_document`) take it too.

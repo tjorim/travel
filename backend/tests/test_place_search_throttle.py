@@ -6,7 +6,12 @@ from test_publication import client_for, create_trip, engine
 
 from app.db.base import Base
 from app.main import app
-from app.places.search import CachedPlaceSearchService, PlaceSearchBusy, PlaceSearchError, get_place_search_service
+from app.services.places.search import (
+    CachedPlaceSearchService,
+    PlaceSearchBusy,
+    PlaceSearchError,
+    get_place_search_service,
+)
 
 
 def setup_function() -> None:
@@ -28,7 +33,7 @@ class Provider:
 
 def test_spacing_cache_and_reverse_share_budget(monkeypatch):
     clock = [100.0]
-    monkeypatch.setattr("app.places.search.monotonic", lambda: clock[0])
+    monkeypatch.setattr("app.services.places.search.monotonic", lambda: clock[0])
     service = CachedPlaceSearchService(Provider())
     assert service.search("first").results == []
     assert service.search(" first ").results == []

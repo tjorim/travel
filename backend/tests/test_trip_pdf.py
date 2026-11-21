@@ -17,10 +17,10 @@ from test_export import (
 )
 
 from app.models import OwnerActivityEvent, PublicSurface, ShareLink, TravelUpdate, Trip, Visibility
-from app.projection import render_projection
+from app.services.sharing.projection import render_projection
+from app.services.storage import get_storage
+from app.services.trip_pdf import PdfRequest, check_budget, generate_pdf, pdf_data
 from app.services.trips import owned_trip
-from app.storage import get_storage
-from app.trip_pdf import PdfRequest, check_budget, generate_pdf, pdf_data
 
 # Reuse only synthetic fixture helpers; pytest calls these locally too.
 __all__ = ["setup_function", "teardown_function"]
@@ -134,11 +134,11 @@ def test_pdf_rejects_unsafe_audience_before_database_lookup(audience):
 def test_preflight_rejects_large_trip_before_relationship_load(monkeypatch):
     ids = build_rich_trip()
     with TestingSessionLocal() as session:
-        monkeypatch.setattr("app.trip_pdf.MAX_ROWS", 1)
+        monkeypatch.setattr("app.services.trip_pdf.MAX_ROWS", 1)
         with pytest.raises(HTTPException) as error:
             check_budget(session, ids["trip"])
         assert error.value.status_code == 413
-        monkeypatch.setattr("app.trip_pdf.MAX_ROWS", 1500)
+        monkeypatch.setattr("app.services.trip_pdf.MAX_ROWS", 1500)
         trip = session.get(Trip, ids["trip"])
         trip.summary = "x" * 500_001
         session.commit()
@@ -152,7 +152,7 @@ def test_timeout_is_fixed_error_and_itinerary_never_opens_photos(monkeypatch, tm
     def timeout(*args, **kwargs):
         raise subprocess.TimeoutExpired("renderer", 30)
 
-    monkeypatch.setattr("app.trip_pdf.subprocess.run", timeout)
+    monkeypatch.setattr("app.services.trip_pdf.subprocess.run", timeout)
     with TestingSessionLocal() as session:
         trip = owned_trip(session, ids["trip"], "owner-1", load_relations=False)
         with pytest.raises(HTTPException) as error:
@@ -185,7 +185,7 @@ def test_foreign_audience_not_found():
 
 
 def test_renderer_independent_audience_allowlist_and_markup_escape(tmp_path, monkeypatch):
-    from app import pdf_renderer
+    from app.services import pdf_renderer
 
     data = {
         "title": "Synthetic",
@@ -222,7 +222,7 @@ def test_renderer_independent_audience_allowlist_and_markup_escape(tmp_path, mon
 def test_photo_resolution_reads_only_approved_copy_and_enforces_actual_bytes(tmp_path, monkeypatch):
     import io
 
-    from app import trip_pdf
+    from app.services import trip_pdf
 
     ids = build_rich_trip()
     seen = []
@@ -255,8 +255,8 @@ def test_failed_generation_cleans_temporary_directory_and_releases_admission(mon
     import tempfile
     from threading import BoundedSemaphore
 
-    from app import trip_pdf
     from app.routers import trips
+    from app.services import trip_pdf
 
     ids = build_rich_trip()
     slots = BoundedSemaphore(1)
@@ -303,7 +303,7 @@ def test_disconnect_releases_ephemeral_response():
 
     from starlette.requests import ClientDisconnect
 
-    from app.trip_pdf import EphemeralPdfResponse
+    from app.services.trip_pdf import EphemeralPdfResponse
 
     cleaned = []
 
@@ -323,7 +323,7 @@ def test_disconnect_releases_ephemeral_response():
 def test_snapshot_deadline_stops_subsequent_queries(monkeypatch):
     from sqlalchemy import text
 
-    from app import trip_pdf
+    from app.services import trip_pdf
 
     with TestingSessionLocal() as session, trip_pdf.snapshot_budget(session):
         monkeypatch.setattr(trip_pdf.time, "monotonic", lambda: float("inf"))
@@ -367,7 +367,7 @@ def test_tagged_long_story_photos_and_resource_boundary(tmp_path, monkeypatch, l
     from pypdf import PdfReader
     from weasyprint import HTML
 
-    from app import pdf_renderer
+    from app.services import pdf_renderer
 
     photo = tmp_path / "approved"
     Image.new("RGB", (300, 500), "blue").save(photo, format="PNG")

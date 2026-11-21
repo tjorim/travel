@@ -39,11 +39,11 @@ from app.models import (
     Visit,
 )
 from app.services import collections as collection_service
-from app.services import documents as document_service
 from app.services import packing as packing_service
-from app.services import publication as publication_service
 from app.services import visits as visit_service
-from app.storage import LocalObjectStorage
+from app.services.documents import service as document_service
+from app.services.sharing import publication as publication_service
+from app.services.storage import LocalObjectStorage
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -415,7 +415,7 @@ def _imports_a_router(path: Path) -> list[str]:
 def test_no_router_imports_another_router_and_no_service_imports_a_router() -> None:
     offenders = {
         str(path.relative_to(APP)): _imports_a_router(path)
-        for path in [*(APP / "routers").glob("*.py"), *(APP / "services").glob("*.py")]
+        for path in [*(APP / "routers").glob("*.py"), *(APP / "services").rglob("*.py")]
         if _imports_a_router(path)
     }
     assert offenders == {}
@@ -444,11 +444,25 @@ def _commit_calls(tree: ast.AST) -> list[ast.Call]:
     ]
 
 
+# Modules that sat outside ``services/`` before the layout move (loose in ``app/``, or in ``media/`` and ``document/``)
+# and own their transaction on purpose: scheduled jobs and the media worker, the audit purge, the export audit record,
+# lazy-expiry persistence for delivery and the media/document storage purges. The rule below is for the owner operations
+# the HTTP routers and the MCP tools share.
+OWN_TRANSACTION = {
+    "services/audit.py",
+    "services/export.py",
+    "services/media/ingest.py",
+    "services/media/worker.py",
+    "services/sharing/http_delivery.py",
+    "services/task_alerts.py",
+}
+
+
 def test_no_service_commits_so_the_transport_owns_the_transaction() -> None:
     offenders = {
         str(path.relative_to(APP)): [call.lineno for call in calls]
-        for path in (APP / "services").glob("*.py")
-        if (calls := _commit_calls(ast.parse(path.read_text())))
+        for path in (APP / "services").rglob("*.py")
+        if str(path.relative_to(APP)) not in OWN_TRANSACTION and (calls := _commit_calls(ast.parse(path.read_text())))
     }
     assert offenders == {}
 
@@ -459,7 +473,7 @@ def test_the_storage_lifecycle_commits_only_when_it_purges() -> None:
     Uploads write bytes and flush rows (rule 1), a removal marks ``purge_pending`` and returns a ``PendingPurge``
     (rule 3), and only the purges commit themselves: they run after the caller's commit, under the deletion lock,
     and delete their own rows."""
-    for module in ("document/service.py", "media/service.py"):
+    for module in ("services/documents/ingest.py", "services/media/ingest.py"):
         tree = ast.parse((APP / module).read_text())
         committing = {
             function.name

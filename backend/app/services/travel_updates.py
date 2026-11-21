@@ -7,12 +7,12 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.errors import RecordNotFound, Refusal, service_error
 from app.core.update_day import at_wall_clock, update_zone
+from app.services.audit import delivering_audiences, record_visibility_change
+from app.services.sharing.access import apply_visibility, receivers
+from app.services.update_zones import trip_zone_spans
 
-from ..access import apply_visibility, receivers
-from ..audit import delivering_audiences, record_visibility_change
 from ..models import TRAVEL_UPDATE_ORDER, Location, MediaAsset, TravelUpdate, TravelUpdateMediaAsset, Trip, Visibility
 from ..schemas import Identifier, TravelUpdateCreate, TravelUpdatePatch
-from ..update_zones import trip_zone_spans
 from .localized import write_texts
 from .placement import location_from_input, selected_area
 from .trips import owned_trip

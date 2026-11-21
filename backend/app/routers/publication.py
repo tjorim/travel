@@ -1,6 +1,6 @@
 """Owner publication routes (the public page, named share links) and anonymous delivery of what they share.
 
-The owner routes are thin: ``app.services.publication`` holds the operations, shared with the MCP tools, and each
+The owner routes are thin: ``app.services.sharing.publication`` holds the operations, shared with the MCP tools, and each
 route commits once. Anonymous delivery stays here because it is HTTP only.
 """
 
@@ -18,10 +18,12 @@ from app.core.errors import ApiException
 from app.core.ratelimit import public_delivery_limit, retry_after_seconds, shared_delivery_limit
 from app.core.request_limits import RateLimitExceeded
 from app.db.session import get_session
-
-from ..atom import atom_document
-from ..audience import LinkAudience, PublicAudience, has_expired
-from ..http_delivery import (
+from app.services.sharing import publication as service
+from app.services.sharing.atom import atom_document
+from app.services.sharing.audience import LinkAudience, PublicAudience, has_expired
+from app.services.sharing.audiences import render_document
+from app.services.sharing.delivery import UNLISTED_HEADERS
+from app.services.sharing.http_delivery import (
     LanguageQuery,
     declare_language,
     file_response,
@@ -32,6 +34,10 @@ from ..http_delivery import (
     validate_public_path,
     visitor_language,
 )
+from app.services.sharing.projection import render_projection, scoped_navigation_url
+from app.services.sharing.service import active_collection, collection_index, expire_link
+from app.services.storage import ObjectStorage, get_storage
+
 from ..models import (
     AuditEvent,
     LinkState,
@@ -40,7 +46,6 @@ from ..models import (
     SurfaceState,
     Trip,
 )
-from ..projection import render_projection, scoped_navigation_url
 from ..schemas import (
     AuditEventResponse,
     AuditReasonInput,
@@ -62,12 +67,7 @@ from ..schemas import (
     ShareLinkUpdate,
     ShareScopeInput,
 )
-from ..services import publication as service
-from ..services.audiences import render_document
-from ..services.delivery import UNLISTED_HEADERS
-from ..services.sharing import active_collection, collection_index, expire_link
 from ..services.trips import trip_query
-from ..storage import ObjectStorage, get_storage
 
 router = APIRouter(prefix="/trips/{trip_id}", tags=["publication"])
 

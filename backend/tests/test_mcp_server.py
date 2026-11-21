@@ -57,8 +57,8 @@ from app.models import (
     Visibility,
 )
 from app.services import trips as trips_service
-from app.storage import LocalObjectStorage
-from app.task_alerts import process_due_task_alerts
+from app.services.storage import LocalObjectStorage
+from app.services.task_alerts import process_due_task_alerts
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -241,7 +241,7 @@ def test_mcp_share_activation_and_rotation_return_complete_visitor_urls(
 
 @pytest.mark.parametrize("lifecycle", ["draft", "active", "revoked", "rotated"])
 def test_mcp_share_metadata_never_returns_capabilities(backend: TravelMcpBackend, lifecycle: str) -> None:
-    from app.services import publication as publication_service
+    from app.services.sharing import publication as publication_service
 
     trip_id = backend.create_trip(schemas.TripCreate(title="Share metadata"))["id"]
     created = backend.create_share_link(trip_id, schemas.ShareLinkCreate(label="Family"), confirm=True)

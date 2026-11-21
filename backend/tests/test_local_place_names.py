@@ -24,9 +24,9 @@ from app.core.config import settings
 from app.main import app
 from app.mcp_server import TravelMcpBackend
 from app.models import Area, Location
-from app.navigation import area_navigation_url, location_navigation_url
-from app.places.search import NominatimSearchProvider
-from app.projection import place_names
+from app.services.places.navigation import area_navigation_url, location_navigation_url
+from app.services.places.search import NominatimSearchProvider
+from app.services.sharing.projection import place_names
 
 TAIPEI = "台北"
 HOTEL = "河畔飯店"
@@ -210,7 +210,7 @@ def test_a_provider_name_that_cannot_be_stored_or_is_not_text_is_left_out(monkey
 
 
 def test_country_codes_become_english_names_and_an_unknown_one_becomes_nothing() -> None:
-    from app.country_names import COUNTRY_NAMES, country_name
+    from app.services.places.country_names import COUNTRY_NAMES, country_name
 
     assert (country_name("TW"), country_name("nl"), country_name("JP")) == ("Taiwan", "Netherlands", "Japan")
     assert (country_name(None), country_name(""), country_name("ZZ")) == (None, None, None)
@@ -222,7 +222,7 @@ def test_country_codes_become_english_names_and_an_unknown_one_becomes_nothing()
 
 
 def _url(destination: str) -> str:
-    from app.navigation import google_maps_url
+    from app.services.places.navigation import google_maps_url
 
     return google_maps_url(destination)
 

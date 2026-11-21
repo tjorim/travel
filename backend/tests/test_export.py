@@ -13,7 +13,6 @@ from app.core.auth import current_subject
 from app.core.capability import generate_token, verifier_for
 from app.db.base import Base
 from app.db.session import get_session
-from app.export import EXPORT_AUDIT_ACTION, EXPORT_SCHEMA_VERSION
 from app.main import app
 from app.models import (
     Area,
@@ -53,6 +52,7 @@ from app.models import (
     TripTask,
     Visit,
 )
+from app.services.export import EXPORT_AUDIT_ACTION, EXPORT_SCHEMA_VERSION
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)

@@ -15,10 +15,10 @@ from sqlalchemy.orm import Session
 
 from alembic import command
 from app.core.config import settings
-from app.media.service import _purge_pending_objects
 from app.models import MediaAsset, MediaKind, Stay, Trip
-from app.storage import LocalObjectStorage
-from app.storage_reconcile import unreferenced_objects
+from app.services.media.ingest import _purge_pending_objects
+from app.services.storage import LocalObjectStorage
+from app.services.storage_reconcile import unreferenced_objects
 from tests import legacy_rows
 
 PREVIOUS = "032_live_audiences"

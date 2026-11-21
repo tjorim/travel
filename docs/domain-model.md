@@ -405,8 +405,8 @@ carries all three.
 An audience is stored in one of three tables (`public_surfaces`, `share_links`, `collection_members`) and reached
 by its own routes, but it is **one concept in the code** ([decision 360](decisions/360-audience-model.md)): every
 audience has a scope, a revision, the label of the preset last applied to it, a state that says whether it delivers,
-and a place its history is written. `backend/app/audience.py` is that interface and
-`backend/app/services/audiences.py` holds what is done with it: previews, the future-disclosure review, the
+and a place its history is written. `backend/app/services/sharing/audience.py` is that interface and
+`backend/app/services/sharing/audiences.py` holds what is done with it: previews, the future-disclosure review, the
 revision claim and the scope edit. A new audience feature is written once there, never per kind. What each audience
 receives is still decided by `projection.delivered` alone.
 
@@ -503,7 +503,7 @@ Nothing outside an audience's allowlist is ever delivered, and subtraction never
 reveals a field.
 
 **Dependencies.** A delivered document must not point at something the audience does
-not receive, so one rule applies on the server, in `app/exclusions.py`, and nowhere
+not receive, so one rule applies on the server, in `app/services/sharing/exclusions.py`, and nowhere
 else: *excluding a record also hides, for that audience only, every record that
 depends on it.*
 
@@ -549,7 +549,7 @@ revisions work as before ([decision 15](decisions/15-sharing-scope-revisions.md)
 ## Date precision
 
 How exactly a visitor reads *when* is decided in one rule, applied on the server
-by `app/precision.py` in the same code path for the owner's preview, the Sharing
+by `app/services/sharing/precision.py` in the same code path for the owner's preview, the Sharing
 check and the real delivery: **the coarser value always wins**, so a visitor never
 receives a finer date than either the record or the audience allows.
 

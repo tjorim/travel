@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.places import service as place_service
+from app.services.sharing import visibility as visibility_service
+
 from .. import schemas
 from ..models import Visibility
 from ..services import areas as area_service
 from ..services import locations as location_service
-from ..services import places as place_service
-from ..services import visibility as visibility_service
 from .core import McpTools
 from .rendering import _listed, _model
 
@@ -19,7 +20,7 @@ class PlaceTools(McpTools):
 
     def search_places(self, trip_id: str, payload: schemas.PlaceSearchRequest) -> dict[str, Any]:
         """Explicitly search the configured owner-only place provider; this never saves a place."""
-        from ..places.search import get_place_search_service
+        from app.services.places.search import get_place_search_service
 
         return self._call(
             "place.search",
@@ -32,7 +33,7 @@ class PlaceTools(McpTools):
 
     def reverse_geocode_place(self, trip_id: str, payload: schemas.PlaceReverseGeocodeRequest) -> dict[str, Any]:
         """Explicitly request a coordinate-to-place suggestion; this never writes canonical data."""
-        from ..places.search import get_place_search_service
+        from app.services.places.search import get_place_search_service
 
         return self._call(
             "place.reverse",
@@ -79,7 +80,7 @@ class PlaceTools(McpTools):
 
     def suggest_area(self, trip_id: str, payload: schemas.AreaSuggestRequest) -> dict[str, Any]:
         """Suggest a nearby area or a new generalized area from coordinates; never saves it."""
-        from ..places.search import get_place_search_service
+        from app.services.places.search import get_place_search_service
 
         return self._call(
             "area.suggest",

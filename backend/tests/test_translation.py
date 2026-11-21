@@ -9,7 +9,7 @@ from test_publication import client_for
 
 from app.core.config import Settings
 from app.main import app
-from app.translation import (
+from app.services.translation import (
     Piece,
     TranslationCancelled,
     TranslationError,
@@ -273,5 +273,5 @@ def test_transport_configuration_ignores_ambient_proxy(monkeypatch) -> None:
         assert kwargs["timeout"].connect == 5
         return real_client(**kwargs)
 
-    monkeypatch.setattr("app.translation.httpx.AsyncClient", client_factory)
+    monkeypatch.setattr("app.services.translation.httpx.AsyncClient", client_factory)
     assert asyncio.run(service_with(fake_translate([])).translate("Hallo", "nl", "en")) == "EN(Hallo)"

@@ -1,7 +1,7 @@
 # Object storage contract
 
 Trip media, documents and derivatives are stored
-as objects in `TRAVEL_MEDIA_STORAGE_ROOT` (`app/storage.py`), with one
+as objects in `TRAVEL_MEDIA_STORAGE_ROOT` (`app/services/storage.py`), with one
 `stored_objects` row each (a media object has a `trip_id`, a document original an `owner_subject`; there is no
 second inventory table since #368). In production the root is
 the private `travel_media` volume, and the apps backup captures it together

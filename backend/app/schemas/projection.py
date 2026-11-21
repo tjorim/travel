@@ -17,7 +17,7 @@ LOCAL_NAME_SHOWN = (
 
 
 class ProjectionRecord(BaseModel):
-    """A record a visitor receives. Its fields *are* the allowlist: the renderers in ``app.projection`` build these
+    """A record a visitor receives. Its fields *are* the allowlist: the renderers in ``app.services.sharing.projection`` build these
     models and nothing else, so a field only reaches a visitor once it is declared here. Unknown keys are refused.
 
     A field with a default is delivered only under the condition its description names. It is absent otherwise, which

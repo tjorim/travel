@@ -28,8 +28,14 @@ from app.models import (
     Trip,
     Visit,
 )
-from app.precision import DEFAULT_PRECISION, audience_precision, coarser, effective_precision, is_finer
-from app.projection import render_projection
+from app.services.sharing.precision import (
+    DEFAULT_PRECISION,
+    audience_precision,
+    coarser,
+    effective_precision,
+    is_finer,
+)
+from app.services.sharing.projection import render_projection
 from app.services.trips import trip_query
 
 PRECISIONS = ("day", "month", "year")

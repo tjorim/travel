@@ -11,8 +11,8 @@ import json, tempfile, tracemalloc
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
-from app.media.service import read_bounded_upload
-from app.storage import CHUNK_SIZE, LocalObjectStorage, sha256_hex, verify_object
+from app.services.media.ingest import read_bounded_upload
+from app.services.storage import CHUNK_SIZE, LocalObjectStorage, sha256_hex, verify_object
 
 count = int(__import__('sys').argv[1])
 barrier = Barrier(count)

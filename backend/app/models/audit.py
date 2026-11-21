@@ -25,7 +25,7 @@ class AuditEvent(Base):
     never a raw capability token, recipient identity or recipient IP, since
     an unlisted link is a forwardable capability and recording who redeemed
     it would defeat that model. Retained per the sharing policy's 24-month
-    window; `purge_expired_audit_events` (`app.audit`) hard-deletes rows past
+    window; `purge_expired_audit_events` (`app.services.audit`) hard-deletes rows past
     it. `trip_id` is an id only (no foreign key): the events outlive a deleted
     trip until that window ends, and hold no trip content to leak (decision 36)."""
 

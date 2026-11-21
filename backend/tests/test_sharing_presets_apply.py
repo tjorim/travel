@@ -32,8 +32,6 @@ from test_sharing_presets import (
     vis,
 )
 
-from app import sharing_presets
-from app.access import COLLECTIONS
 from app.models import (
     AuditEvent,
     AuditEventKind,
@@ -44,7 +42,9 @@ from app.models import (
     Trip,
     Visibility,
 )
-from app.projection import ScopeError, delivered
+from app.services.sharing import preset_plan as sharing_presets
+from app.services.sharing.access import COLLECTIONS
+from app.services.sharing.projection import ScopeError, delivered
 from app.services.trips import trip_query
 
 KINDS = ["public", "link", "member"]

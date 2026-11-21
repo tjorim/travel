@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from app import maintenance
+from app.services import maintenance
 
 
 class FakeSession:

@@ -7,12 +7,12 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.audit import purge_expired_audit_events
 from app.core.auth import current_subject
 from app.db.base import Base
 from app.db.session import get_session
 from app.main import app
 from app.models import AuditEvent, ShareLink
+from app.services.audit import purge_expired_audit_events
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
@@ -276,8 +276,8 @@ def test_travel_update_visibility_through_create_and_patch_is_audited() -> None:
 
 
 def test_purge_bounds_both_audit_tables_at_the_same_exact_cutoff(monkeypatch) -> None:
-    from app import audit
     from app.models import OwnerActivityEvent
+    from app.services import audit
 
     now = datetime(2054, 6, 1, tzinfo=UTC)
 

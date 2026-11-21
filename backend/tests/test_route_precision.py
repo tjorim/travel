@@ -25,11 +25,11 @@ from test_publication import (  # noqa: F401
 
 from app.main import app
 from app.models import CollectionMember, Trip
-from app.overview import trip_overview
-from app.precision import precision_summary, route_precision
-from app.projection import delivered, render_projection
+from app.services.sharing.overview import trip_overview
+from app.services.sharing.precision import precision_summary, route_precision
+from app.services.sharing.projection import delivered, render_projection
+from app.services.storage import LocalObjectStorage, get_storage
 from app.services.trips import trip_query
-from app.storage import LocalObjectStorage, get_storage
 
 LENGTH = {"day": 10, "month": 7, "year": 4}
 BEFORE_START = date(2054, 3, 1)

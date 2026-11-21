@@ -21,6 +21,7 @@ from app.core.errors import (
 from app.core.request_limits import RateLimitExceeded, RateLimitHeadersMiddleware
 from app.db.session import SessionLocal
 from app.middleware.request_timing import RequestTimingMiddleware
+from app.services.places.search import PlaceSearchError
 
 from .mcp_server import (
     MCP_CAPABILITY_CONTRACT_VERSION,
@@ -30,7 +31,6 @@ from .mcp_server import (
     mcp_http_enabled,
     mount_mcp,
 )
-from .places.search import PlaceSearchError
 from .routers.alternatives import router as alternatives_router
 from .routers.areas import router as areas_router
 from .routers.auth import router as auth_router
