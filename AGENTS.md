@@ -52,7 +52,7 @@ Run `pnpm exec playwright install chromium` once; extend `e2e/mock-api.ts` when
 a screen under test needs more data.
 
 Vitest suites mock the API with MSW (`frontend/src/mocks/server.ts`, started in
-`src/test-setup.ts`): declare a test's routes with `server.use(http.get(...))`.
+`tests/setup.ts`): declare a test's routes with `server.use(http.get(...))`.
 A request nobody handles fails the test. Older suites still stub `fetch`; move
 them over when you touch them.
 

@@ -10,7 +10,7 @@ requires-python = ">=3.15"
 dependencies = [
   "alembic==1.20.1",
   "cryptography==50.0.2",
-  "fastapi==0.162.4",
+  "fastapi==0.162.5",
   "fastmcp==4.1.8",
   "httpx==0.28.1",
   "markdown-it-py==4.3.0",
@@ -36,7 +36,7 @@ dev = [
   "pytest==9.2.0",
   "python-travel",
   "ruff==0.17.5",
-  "ty==0.0.99",
+  "ty==0.0.101",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -44,6 +44,12 @@ packages = ["app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Third-party deprecations we cannot fix here; each entry is scoped to the emitting
+# module. Drop an entry once its upstream release stops warning.
+filterwarnings = [
+  # fastmcp's py-key-value-aio protocol is checked by beartype without @runtime_checkable.
+  "ignore:.*isn't explicitly decorated with @runtime_checkable:DeprecationWarning:beartype",
+]
 
 [tool.ruff]
 target-version = "py315"
@@ -55,6 +61,9 @@ ignore = ["E501", "B008"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
+
+[tool.ty.environment]
+python-version = "3.15"
 
 # Applied migrations are history and are not edited to satisfy a type checker.
 [tool.ty.src]

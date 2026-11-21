@@ -1,0 +1,80 @@
+name: Backend CI
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-26.04
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      TRAVEL_ENVIRONMENT: development
+      TRAVEL_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/travel
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: travel
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres -d travel"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: backend/.python-version
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          working-directory: backend
+
+      - name: Install dependencies
+        run: uv sync --all-groups --locked
+
+      - name: Install pinned ffmpeg and ffprobe
+        run: |
+          image=$(awk '$1 == "FROM" && $NF == "ffmpeg" { print $2; exit }' Dockerfile)
+          test -n "$image"
+          docker pull "$image"
+          container=$(docker create "$image")
+          docker cp "$container:/ffmpeg" /tmp/travel-ffmpeg
+          docker cp "$container:/ffprobe" /tmp/travel-ffprobe
+          docker rm "$container"
+          sudo install -m 0755 /tmp/travel-ffmpeg /usr/local/bin/ffmpeg
+          sudo install -m 0755 /tmp/travel-ffprobe /usr/local/bin/ffprobe
+
+      - name: Lint (ruff check)
+        run: uv run ruff check .
+
+      - name: Format (ruff format)
+        run: uv run ruff format --check .
+
+      - name: Typecheck (ty)
+        run: uv run ty check .
+
+      - name: Test
+        run: uv run pytest
+
+      - name: Verify migrations against PostgreSQL
+        run: |
+          uv run alembic upgrade head
+          uv run alembic check
+          uv run alembic downgrade base

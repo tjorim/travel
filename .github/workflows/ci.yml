@@ -26,6 +26,9 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       python-client: ${{ steps.filter.outputs.python-client }}
       home-assistant: ${{ steps.filter.outputs.home-assistant }}
+      codeql-actions: ${{ steps.filter.outputs.codeql-actions }}
+      codeql-javascript: ${{ steps.filter.outputs.codeql-javascript }}
+      codeql-python: ${{ steps.filter.outputs.codeql-python }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: filter
@@ -36,6 +39,7 @@ jobs:
               - 'backend/**'
               - 'python-travel/**'
               - 'frontend/openapi.json'
+              - '.github/workflows/backend-ci.yml'
               - '.github/workflows/ci.yml'
             home-assistant:
               - 'custom_components/travel/**'
@@ -48,65 +52,29 @@ jobs:
               - '.github/workflows/ci.yml'
             frontend:
               - 'frontend/**'
+              - '.github/workflows/frontend-ci.yml'
+              - '.github/workflows/ci.yml'
+            codeql-actions:
+              - '.github/workflows/**'
+              - '.github/workflows/codeql-actions.yml'
+              - '.github/workflows/ci.yml'
+            codeql-javascript:
+              - 'frontend/**'
+              - '.github/workflows/codeql-javascript.yml'
+              - '.github/workflows/ci.yml'
+            codeql-python:
+              - 'backend/**'
+              - 'python-travel/**'
+              - 'home-assistant/**'
+              - 'custom_components/**'
+              - '.github/workflows/codeql-python.yml'
               - '.github/workflows/ci.yml'
 
   backend:
     name: Backend
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-26.04
-    defaults:
-      run:
-        working-directory: backend
-    env:
-      TRAVEL_ENVIRONMENT: development
-      TRAVEL_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/travel
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_DB: travel
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
-        options: >-
-          --health-cmd "pg_isready -U postgres -d travel"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version-file: backend/.python-version
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-      - name: Install dependencies
-        run: uv sync --all-groups --frozen
-      - name: Install pinned ffmpeg and ffprobe
-        run: |
-          image=$(awk '$1 == "FROM" && $NF == "ffmpeg" { print $2; exit }' Dockerfile)
-          test -n "$image"
-          docker pull "$image"
-          container=$(docker create "$image")
-          docker cp "$container:/ffmpeg" /tmp/travel-ffmpeg
-          docker cp "$container:/ffprobe" /tmp/travel-ffprobe
-          docker rm "$container"
-          sudo install -m 0755 /tmp/travel-ffmpeg /usr/local/bin/ffmpeg
-          sudo install -m 0755 /tmp/travel-ffprobe /usr/local/bin/ffprobe
-      - name: Lint
-        run: uv run ruff check .
-      - name: Check formatting
-        run: uv run ruff format --check .
-      - name: Type check
-        run: uv run ty check .
-      - name: Test
-        run: uv run pytest
-      - name: Verify migrations against PostgreSQL
-        run: |
-          uv run alembic upgrade head
-          uv run alembic check
-          uv run alembic downgrade base
+    uses: ./.github/workflows/backend-ci.yml
 
   python-client:
     name: Python client (${{ matrix.python }})
@@ -163,106 +131,40 @@ jobs:
     name: Frontend
     needs: changes
     if: github.event_name == 'push' || needs.changes.outputs.frontend == 'true'
-    runs-on: ubuntu-26.04
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-        with:
-          package_json_file: frontend/package.json
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: frontend/.node-version
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+    uses: ./.github/workflows/frontend-ci.yml
 
-      - name: Validate UI maintenance inventory
-        run: |
-          node --test scripts/ui-maintenance.verify.mjs scripts/ui-imports.verify.mjs
-          node scripts/ui-maintenance.mjs check
-          node scripts/ui-imports.mjs
-
-      - name: Lint frontend
-        run: pnpm lint
-      - name: Check frontend formatting
-        run: pnpm format:check
-      - name: Audit interface strings and catalogues
-        run: pnpm locale:audit
-      - name: Check generated message and API types
-        run: pnpm typecheck
-      - name: Test frontend regressions
-        run: pnpm test --maxWorkers=2
-      - name: Build
-        run: pnpm build
-      - name: Check bundle budgets
-        run: pnpm bundle:test && pnpm bundle:check
-
-  frontend-e2e-shard:
-    name: Frontend end-to-end shard ${{ matrix.shard }}/3
+  codeql-actions:
+    name: CodeQL (Actions)
     needs: changes
-    if: github.event_name == 'push' || needs.changes.outputs.frontend == 'true'
-    runs-on: ubuntu-26.04
-    defaults:
-      run:
-        working-directory: frontend
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3]
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-        with:
-          package_json_file: frontend/package.json
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: frontend/.node-version
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Read Playwright version
-        id: playwright
-        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
-      - name: Cache Playwright browsers
-        id: browsers
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ steps.playwright.outputs.version }}
-      - name: Install Chromium system dependencies
-        run: pnpm exec playwright install-deps chromium
-      - name: Install Chromium
-        if: steps.browsers.outputs.cache-hit != 'true'
-        run: pnpm exec playwright install chromium
-      - name: Compile interface messages
-        run: pnpm paraglide:compile
-      - name: Run Playwright smoke and accessibility checks
-        run: pnpm test:e2e --shard=${{ matrix.shard }}/3 --workers=2 --reporter=github,blob
-      - name: Upload failure traces and blob report
-        if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: playwright-failure-${{ matrix.shard }}
-          path: |
-            frontend/test-results/
-            frontend/blob-report/
-          retention-days: 7
+    if: github.event_name == 'push' || github.event_name == 'schedule' || needs.changes.outputs.codeql-actions == 'true'
+    uses: ./.github/workflows/codeql-actions.yml
+    permissions:
+      actions: read
+      contents: read
+      packages: read
+      security-events: write
 
-  frontend-e2e:
-    name: Frontend end-to-end
-    needs: [changes, frontend-e2e-shard]
-    if: always() && (github.event_name == 'push' || needs.changes.outputs.frontend == 'true')
-    runs-on: ubuntu-26.04
-    steps:
-      - name: Require every shard to have passed
-        env:
-          RESULT: ${{ needs.frontend-e2e-shard.result }}
-        run: test "$RESULT" = success
+  codeql-javascript:
+    name: CodeQL (JavaScript)
+    needs: changes
+    if: github.event_name == 'push' || github.event_name == 'schedule' || needs.changes.outputs.codeql-javascript == 'true'
+    uses: ./.github/workflows/codeql-javascript.yml
+    permissions:
+      actions: read
+      contents: read
+      packages: read
+      security-events: write
+
+  codeql-python:
+    name: CodeQL (Python)
+    needs: changes
+    if: github.event_name == 'push' || github.event_name == 'schedule' || needs.changes.outputs.codeql-python == 'true'
+    uses: ./.github/workflows/codeql-python.yml
+    permissions:
+      actions: read
+      contents: read
+      packages: read
+      security-events: write
 
   dependency-audit:
     name: Dependency audit
@@ -327,27 +229,6 @@ jobs:
         working-directory: frontend
         run: pnpm run format:repo:check
 
-  gate:
-    name: CI gate
-    if: always()
-    needs:
-      - changes
-      - backend
-      - python-client
-      - home-assistant
-      - hacs
-      - frontend
-      - frontend-e2e
-      - dependency-audit
-      - release-metadata
-      - repo-format
-    runs-on: ubuntu-26.04
-    steps:
-      - name: Require every job to have passed or been skipped
-        env:
-          NEEDS: ${{ toJSON(needs) }}
-        run: echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null
-
   hacs:
     name: HACS repository validation
     needs: changes
@@ -364,3 +245,26 @@ jobs:
           REPOSITORY: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           REPOSITORY_REF: ${{ github.event.pull_request.head.sha || github.sha }}
           INPUT_COMMENT: "false"
+
+  gate:
+    name: CI gate
+    if: always()
+    needs:
+      - changes
+      - backend
+      - python-client
+      - home-assistant
+      - hacs
+      - frontend
+      - codeql-actions
+      - codeql-javascript
+      - codeql-python
+      - dependency-audit
+      - release-metadata
+      - repo-format
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Require every job to have passed or been skipped
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null
