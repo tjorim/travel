@@ -238,9 +238,9 @@ the migration cycle need a PostgreSQL database. Other components have their own 
 
 `.github/workflows/ci.yml` detects which components a change touches and calls the component workflows
 (`backend-ci.yml`, `frontend-ci.yml` and the `codeql-*.yml` scans); unchanged components show as skipped. The
-`CI gate` job fails when any needed job failed or was cancelled. The frontend workflow runs the `Frontend` job and
+`CI gate` job fails when any needed job failed or was cancelled. The `Frontend` caller runs `Frontend / Checks` and
 `Frontend / E2E shard n/3` (three Playwright shards, with the Chromium cache keyed by the Playwright version); the
-backend workflow runs one `Backend` job against PostgreSQL, including the migration upgrade/downgrade cycle with a
+`Backend` caller runs `Backend / Checks` against PostgreSQL, including the migration upgrade/downgrade cycle with a
 pinned `ffmpeg`. `ci.yml` itself also runs the Python client, Home Assistant, HACS, dependency-audit,
 release-metadata and repository-formatting jobs. Action versions are pinned to commit SHAs with the version in a
 comment; Renovate keeps them current.
