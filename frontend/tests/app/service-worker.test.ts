@@ -43,6 +43,7 @@ function boot(network: (request: { url: string }) => Promise<Response>) {
     skipWaiting: () => undefined,
     clients: { claim: () => undefined },
   };
+  // The worker harness injects fetch into its isolated scope alongside its in-memory caches.
   new Function("self", "caches", "fetch", source)(scope, caches, network);
   const dispatch = async (url: string, init: { mode?: string; method?: string } = {}) => {
     const request = { url, method: init.method ?? "GET", mode: init.mode ?? "cors" };

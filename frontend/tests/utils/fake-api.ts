@@ -131,7 +131,7 @@ export class FakeApi {
     return this.requests.filter((request) => request === key).length;
   }
 
-  /** Answers every request of the current test through the MSW server (see `serveApi` for uploads). */
+  /** Answers every request of the current test through the MSW server. */
   install(): this {
     serveApi((url, init) => this.respond(init.method, url, parseBody(init.body), init.headers));
     return this;
