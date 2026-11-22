@@ -2,10 +2,10 @@ import { FeedbackError } from "@/lib/api/feedback";
 import { m } from "@/paraglide/messages.js";
 const issuer = "https://auth.tjor.im/realms/travel";
 const clientId = "travel-tracker";
-const storageKey = "travel-tracker-session";
-const transactionKey = "travel-tracker-pkce-transaction";
-const restoreMarkerKey = "travel-tracker-may-restore-session";
-const silentRestoreKey = "travel-tracker-silent-restore-in-progress";
+const storageKey = "travel-session";
+const transactionKey = "travel-pkce-transaction";
+const restoreMarkerKey = "travel-may-restore-session";
+const silentRestoreKey = "travel-silent-restore-in-progress";
 
 export type OwnerSession = {
   accessToken: string;

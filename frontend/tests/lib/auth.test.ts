@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { server } from "@/mocks/server";
 import { clearSession, completeSignIn, readSession, shouldRestoreSession } from "@/lib/auth";
 
-const transactionKey = "travel-tracker-pkce-transaction";
+const transactionKey = "travel-pkce-transaction";
 
 afterEach(() => {
   sessionStorage.clear();
@@ -48,6 +48,31 @@ function transaction(silent: boolean) {
 }
 
 describe("owner browser session recovery", () => {
+  it("ignores sessions, transactions and restore markers from before the storage rename", async () => {
+    sessionStorage.setItem(
+      "travel-tracker-session",
+      JSON.stringify({ accessToken: "legacy", expiresAt: Date.now() + 60_000 }),
+    );
+    sessionStorage.setItem(
+      "travel-tracker-pkce-transaction",
+      JSON.stringify({
+        codeVerifier: "verifier",
+        returnPath: "/trips",
+        state: "state",
+        silent: false,
+      }),
+    );
+    localStorage.setItem("travel-tracker-may-restore-session", "1");
+    sessionStorage.setItem("travel-tracker-silent-restore-in-progress", "1");
+
+    expect(readSession()).toBeNull();
+    expect(shouldRestoreSession()).toBe(false);
+    await expect(completeSignIn("?code=code&state=state")).rejects.toThrow("aanmeldsessie");
+
+    localStorage.setItem("travel-may-restore-session", "1");
+    expect(shouldRestoreSession()).toBe(true);
+  });
+
   it("keeps only a non-secret restoration marker after a successful sign-in", async () => {
     transaction(false);
     serveToken();
@@ -58,8 +83,8 @@ describe("owner browser session recovery", () => {
 
     expect(readSession()).toMatchObject({ accessToken: "access" });
     expect(shouldRestoreSession()).toBe(true);
-    expect(localStorage.getItem("travel-tracker-may-restore-session")).toBe("1");
-    expect(localStorage.getItem("travel-tracker-session")).toBeNull();
+    expect(localStorage.getItem("travel-may-restore-session")).toBe("1");
+    expect(localStorage.getItem("travel-session")).toBeNull();
   });
 
   it("requests silent recovery when browser session storage is unavailable", async () => {
@@ -74,7 +99,7 @@ describe("owner browser session recovery", () => {
   });
 
   it("does not loop after refused recovery and retains its restore marker", async () => {
-    localStorage.setItem("travel-tracker-may-restore-session", "1");
+    localStorage.setItem("travel-may-restore-session", "1");
     transaction(true);
 
     await expect(completeSignIn("?error=login_required&state=state")).rejects.toThrow(
@@ -82,7 +107,7 @@ describe("owner browser session recovery", () => {
     );
 
     expect(shouldRestoreSession()).toBe(false);
-    expect(localStorage.getItem("travel-tracker-may-restore-session")).toBe("1");
+    expect(localStorage.getItem("travel-may-restore-session")).toBe("1");
   });
 
   it("removes both the credential and restoration marker on explicit sign-out", async () => {

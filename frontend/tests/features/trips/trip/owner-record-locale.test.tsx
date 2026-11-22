@@ -132,7 +132,7 @@ it("localizes only new Markdown placeholders and preserves existing source and s
 });
 
 it("keeps an authentication failure localizable after the callback has rejected", async () => {
-  sessionStorage.removeItem("travel-tracker-pkce-transaction");
+  sessionStorage.removeItem("travel-pkce-transaction");
   const failure = await completeSignIn("").catch((error: unknown) => error);
   expect(failure).toBeInstanceOf(Error);
   expect((failure as Error).message).toBe("De aanmeldsessie ontbreekt of is verlopen.");

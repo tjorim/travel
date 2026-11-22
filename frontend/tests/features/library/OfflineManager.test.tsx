@@ -46,7 +46,7 @@ afterEach(async () => {
 
 function withSession(): void {
   sessionStorage.setItem(
-    "travel-tracker-session",
+    "travel-session",
     JSON.stringify({ accessToken: fakeAccessToken(SUBJECT), expiresAt: Date.now() + 3_600_000 }),
   );
 }

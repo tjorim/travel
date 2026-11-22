@@ -70,7 +70,7 @@ afterEach(() => {
 
 it("prefetches the trips list through tripsRoute's loader before Trips reads it", async () => {
   sessionStorage.setItem(
-    "travel-tracker-session",
+    "travel-session",
     JSON.stringify({ accessToken: testToken("owner-1"), expiresAt: Date.now() + 60_000 }),
   );
   const requests = serveTrips([
@@ -118,7 +118,7 @@ it("skips the prefetch (and any request) when there is no signed-in owner", asyn
 
 it("opens a trip workspace section directly without crashing (regression for #239)", async () => {
   sessionStorage.setItem(
-    "travel-tracker-session",
+    "travel-session",
     JSON.stringify({ accessToken: testToken("owner-1"), expiresAt: Date.now() + 60_000 }),
   );
   serveTrips([

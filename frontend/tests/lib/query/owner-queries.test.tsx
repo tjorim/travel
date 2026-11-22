@@ -178,7 +178,7 @@ it("ends the session once on a 401 and does not retry it", async () => {
       { status: 401 },
     ),
   );
-  sessionStorage.setItem("travel-tracker-session", "kept-until-cleared");
+  sessionStorage.setItem("travel-session", "kept-until-cleared");
   const client = createOwnerQueryClient({ onUnauthorized: () => auth.setSession(null) });
   render(
     <QueryClientProvider client={client}>
@@ -198,7 +198,7 @@ it("preserves the session and restore marker on a final 401", async () => {
       { status: 401 },
     ),
   );
-  localStorage.setItem("travel-tracker-may-restore-session", "1");
+  localStorage.setItem("travel-may-restore-session", "1");
   render(
     <OwnerQueryProvider>
       <TaskCount label="tasks" />
@@ -206,7 +206,7 @@ it("preserves the session and restore marker on a final 401", async () => {
   );
   await waitFor(() => expect(requests).toHaveLength(1));
   expect(auth.setSession).not.toHaveBeenCalled();
-  expect(localStorage.getItem("travel-tracker-may-restore-session")).toBe("1");
+  expect(localStorage.getItem("travel-may-restore-session")).toBe("1");
 });
 
 it("fails a write immediately while offline instead of queueing it", async () => {

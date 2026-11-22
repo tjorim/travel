@@ -64,6 +64,16 @@ drain overwriting concurrently queued actions. Browsers without Web Locks keep
 saved actions but do not automatically replay them. Broader offline operation
 support must extend the allowlist, retry-safety inventory and tests together.
 
+## Travel browser sessions (#392)
+
+The owner app stores the session, pending PKCE transaction and silent restore flag
+in sessionStorage under `travel-session`, `travel-pkce-transaction` and
+`travel-silent-restore-in-progress`. The content-free
+`travel-may-restore-session` marker lives in localStorage. The app ignores the
+previous auth keys, so owners with only the old keys sign in again and any
+in-progress sign-in needs to be restarted. The storage keys are independent of
+the Keycloak client ID, which still uses `travel-tracker` pending tjorim/apps#349.
+
 ## Travel capture drafts (#118)
 
 Capture on `/admin/capture` and the owner trip dialog keeps unsent edits in
@@ -97,6 +107,8 @@ browsers without Web Locks keep the form usable in memory and display that the
 draft was not saved; explicit online Save remains available. Reloading the capture
 page restores the saved version; it does not merge stale tab edits.
 
+The draft-preservation requirement in #392 applies to the current owner-scoped
+version 3 drafts. Signing in again as the same owner restores these drafts.
 Legacy `travel-tracker-update-draft-v2` (and earlier) keys have unknown ownership.
 They remain verbatim in place as quarantined pending data, never read into a form,
 assigned to a signed-in owner, replayed or deleted by this migration. Incompatible

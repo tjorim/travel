@@ -51,7 +51,7 @@ beforeEach(() => {
   auth.session = { accessToken: testToken(), expiresAt: Date.now() + 3600000 };
   localStorage.clear();
   sessionStorage.setItem(
-    "travel-tracker-session",
+    "travel-session",
     JSON.stringify({ ...auth.session, expiresAt: Date.now() + 3600000 }),
   );
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });

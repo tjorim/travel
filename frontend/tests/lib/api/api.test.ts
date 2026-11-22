@@ -242,14 +242,14 @@ it("does not replay a second 401 or discard storage when renewal fails", async (
     if (force) throw new TypeError("Network unavailable");
     return current;
   });
-  sessionStorage.setItem("travel-tracker-session", "preserved");
+  sessionStorage.setItem("travel-session", "preserved");
   attempts = 0;
   await expect(ownerRequest(session, "/api/rejected", "fallback")).rejects.toMatchObject({
     status: 401,
   });
   expect(attempts).toBe(1);
-  expect(sessionStorage.getItem("travel-tracker-session")).toBe("preserved");
-  sessionStorage.removeItem("travel-tracker-session");
+  expect(sessionStorage.getItem("travel-session")).toBe("preserved");
+  sessionStorage.removeItem("travel-session");
 });
 
 it("sends binary imports without JSON encoding or putting file bytes in the URL", async () => {

@@ -43,7 +43,7 @@ async function save(subject: string, trip: string, label: string, bytes?: string
 
 function show() {
   sessionStorage.setItem(
-    "travel-tracker-session",
+    "travel-session",
     JSON.stringify({ accessToken: testToken("owner-1"), expiresAt: Date.now() + 3_600_000 }),
   );
   server.use(http.get("/api/*", () => HttpResponse.error()));

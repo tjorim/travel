@@ -50,10 +50,8 @@ it("shares one renewal and validates the child source before exchanging its code
   expect(renewSession()).toBe(first);
   const frame = document.querySelector("iframe")!;
   expect(frame).not.toBeNull();
-  await vi.waitFor(() =>
-    expect(sessionStorage.getItem("travel-tracker-pkce-transaction")).not.toBeNull(),
-  );
-  const { state } = JSON.parse(sessionStorage.getItem("travel-tracker-pkce-transaction")!);
+  await vi.waitFor(() => expect(sessionStorage.getItem("travel-pkce-transaction")).not.toBeNull());
+  const { state } = JSON.parse(sessionStorage.getItem("travel-pkce-transaction")!);
   window.dispatchEvent(
     new MessageEvent("message", {
       origin: "https://attacker.invalid",
@@ -74,14 +72,12 @@ it("shares one renewal and validates the child source before exchanging its code
 });
 
 it("keeps the restore marker when silent renewal is refused", async () => {
-  localStorage.setItem("travel-tracker-may-restore-session", "1");
+  localStorage.setItem("travel-may-restore-session", "1");
   const pending = renewSession();
   const rejected = expect(pending).rejects.toThrow();
   const frame = document.querySelector("iframe")!;
-  await vi.waitFor(() =>
-    expect(sessionStorage.getItem("travel-tracker-pkce-transaction")).not.toBeNull(),
-  );
-  const { state } = JSON.parse(sessionStorage.getItem("travel-tracker-pkce-transaction")!);
+  await vi.waitFor(() => expect(sessionStorage.getItem("travel-pkce-transaction")).not.toBeNull());
+  const { state } = JSON.parse(sessionStorage.getItem("travel-pkce-transaction")!);
   window.dispatchEvent(
     new MessageEvent("message", {
       origin: window.location.origin,
@@ -90,17 +86,17 @@ it("keeps the restore marker when silent renewal is refused", async () => {
     }),
   );
   await rejected;
-  expect(localStorage.getItem("travel-tracker-may-restore-session")).toBe("1");
+  expect(localStorage.getItem("travel-may-restore-session")).toBe("1");
 });
 
 it("reuses a concurrently renewed token and explicit sign-out cancels renewal", async () => {
   const session = { accessToken: "fresh", expiresAt: Date.now() + 120_000 };
-  sessionStorage.setItem("travel-tracker-session", JSON.stringify(session));
+  sessionStorage.setItem("travel-session", JSON.stringify(session));
   await expect(freshSession({ accessToken: "old", expiresAt: 0 }, true)).resolves.toEqual(session);
   const pending = renewSession();
   const rejected = expect(pending).rejects.toThrow("Signed out");
   clearSession();
   await rejected;
-  expect(sessionStorage.getItem("travel-tracker-session")).toBeNull();
+  expect(sessionStorage.getItem("travel-session")).toBeNull();
   expect(document.querySelector("iframe")).toBeNull();
 });
