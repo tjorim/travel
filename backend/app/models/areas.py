@@ -13,11 +13,13 @@ from app.db.base import Base
 from app.models.base import _trip_language, _visibility_column, opaque_id
 from app.models.enums import Visibility
 
+from .localized import LocalizedRecord
+
 if TYPE_CHECKING:
     from app.models.trips import Trip
 
 
-class Area(Base):
+class Area(LocalizedRecord, Base):
     """A city or region: where things are, without saying exactly where.
 
     An area holds a label, country and region, an optional rounded point and an
@@ -25,6 +27,8 @@ class Area(Base):
     owner's views place stays and live local time. Sharing an area shows its
     label, local name (beside the label), region, country and point, never its time
     zone, and never shares the locations filed under it."""
+
+    localized_fields = ("label",)
 
     __tablename__ = "areas"
     __table_args__ = (
@@ -40,6 +44,8 @@ class Area(Base):
     # the two languages (``app.core.content_language``).
     label_nl: Mapped[str | None] = mapped_column(String(120), nullable=True)
     label_en: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    label_nl_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    label_en_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     label = Localized()
     # The name as written where the place is (#376): not a translation, often not in Latin script, and in neither
     # language of the labels. Shown beside the label wherever the label is shared, and used for navigation.

@@ -13,8 +13,10 @@ from app.db.base import Base
 from app.models.base import _code, _content_language_column, _enum_column, opaque_id
 from app.models.enums import CollectionAuditKind, LinkState
 
+from .localized import LocalizedRecord
 
-class Collection(Base):
+
+class Collection(LocalizedRecord, Base):
     """An owner-wide, named, revocable capability that opens several trips at once.
 
     It has its own token and keyed verifier and never reuses a per-trip link's.
@@ -22,6 +24,8 @@ class Collection(Base):
     delivered at, so a collection can show less than the trip's own links.
     Everything renders live from canonical data -- there is no snapshot. The
     label is owner-only; `title` is optional text written for visitors."""
+
+    localized_fields = ("title",)
 
     __tablename__ = "collections"
     __table_args__ = (CheckConstraint("content_language IN ('nl', 'en')", name="ck_collections_content_language"),)
@@ -33,6 +37,8 @@ class Collection(Base):
     content_language: Mapped[str] = _content_language_column()
     title_nl: Mapped[str | None] = mapped_column(String(160), nullable=True)
     title_en: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    title_nl_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    title_en_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     title = Localized()
     state: Mapped[LinkState] = mapped_column(_enum_column(LinkState, "travel_link_state"), default=LinkState.DRAFT)
     token: Mapped[str | None] = mapped_column(String(128), nullable=True)

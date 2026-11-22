@@ -23,8 +23,11 @@ from app.schemas.base import (
     Identifier,
     InputModel,
     ResponseModel,
+    TextLanguage,
     _html_of,
 )
+
+from .localized import TranslationFreshness
 
 
 class OAuthStartResponse(ResponseModel):
@@ -63,6 +66,7 @@ class MediaAssetResponse(ResponseModel):
 
 
 class MediaDerivativeResponse(ResponseModel):
+    translation_freshness: dict[str, TranslationFreshness] = Field(default_factory=dict)
     id: str
     media_asset_id: str
     purpose: DerivativePurpose
@@ -112,6 +116,12 @@ class MediaDerivativePresentationUpdate(InputModel):
     alt_text: str | None = Field(default=None, max_length=300, description=PLAIN_TEXT)
     alt_text_nl: str | None = Field(default=None, max_length=300, description=DUTCH_TEXT)
     alt_text_en: str | None = Field(default=None, max_length=300, description=ENGLISH_TEXT)
+    caption_reviewed: TextLanguage | None = Field(
+        default=None, description="Confirm that this language version is still correct."
+    )
+    alt_text_reviewed: TextLanguage | None = Field(
+        default=None, description="Confirm that this language version is still correct."
+    )
     focal_x: int | None = Field(default=None, ge=0, le=100)
     focal_y: int | None = Field(default=None, ge=0, le=100)
 

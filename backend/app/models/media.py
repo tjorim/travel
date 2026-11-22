@@ -24,6 +24,8 @@ from app.models.enums import (
     Visibility,
 )
 
+from .localized import LocalizedRecord
+
 if TYPE_CHECKING:
     from app.models.storage import StoredObject
     from app.models.travel_updates import TravelUpdateMediaAsset
@@ -113,13 +115,15 @@ class MediaAsset(Base):
     update_links: Mapped[list[TravelUpdateMediaAsset]] = relationship(back_populates="media_asset")
 
 
-class MediaDerivative(Base):
+class MediaDerivative(LocalizedRecord, Base):
     """A stripped, resized copy of one `MediaAsset`, generated only when the
     owner selects that media for `share` publication (or, for `owner_preview`,
     for an in-app thumbnail). `metadata_stripped_at` records when stripping
     ran; `review_state` gates whether a `share` derivative may be referenced
     by a share scope item — a derivative is usable for sharing only once the
     owner has explicitly reviewed it."""
+
+    localized_fields = ("caption", "alt_text")
 
     __tablename__ = "media_derivatives"
     __table_args__ = (
@@ -164,9 +168,13 @@ class MediaDerivative(Base):
     )
     caption_nl: Mapped[str | None] = mapped_column(String(500), nullable=True)
     caption_en: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    caption_nl_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    caption_en_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     caption = Localized()
     alt_text_nl: Mapped[str | None] = mapped_column(String(300), nullable=True)
     alt_text_en: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    alt_text_nl_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    alt_text_en_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     alt_text = Localized()
     focal_x: Mapped[int | None] = mapped_column(Integer, nullable=True)
     focal_y: Mapped[int | None] = mapped_column(Integer, nullable=True)

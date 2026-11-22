@@ -9,10 +9,12 @@ import type { AreaResponse } from './areaResponse';
 import type { LocationResponse } from './locationResponse';
 import type { PlanningStatus } from './planningStatus';
 import type { RouteMode } from './routeMode';
+import type { RouteResponseTranslationFreshness } from './routeResponseTranslationFreshness';
 import type { StoredGeoJsonLineString } from './storedGeoJsonLineString';
 import type { Visibility } from './visibility';
 
 export type RouteResponse = {
+  translation_freshness: RouteResponseTranslationFreshness;
   id: string;
   mode: RouteMode;
   status: PlanningStatus;

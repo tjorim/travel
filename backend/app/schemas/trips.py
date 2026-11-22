@@ -14,10 +14,13 @@ from app.schemas.base import (
     Identifier,
     InputModel,
     ResponseModel,
+    TextLanguage,
     _html,
     _html_of,
     require_ordered_dates,
 )
+
+from .localized import TranslationFreshness
 
 
 class TripCreate(InputModel):
@@ -56,6 +59,12 @@ class TripUpdate(InputModel):
     summary: str | None = Field(default=None, max_length=4000, description=MARKDOWN + " " + PLAIN_TEXT)
     summary_nl: str | None = Field(default=None, max_length=4000, description=MARKDOWN + " " + DUTCH_TEXT)
     summary_en: str | None = Field(default=None, max_length=4000, description=MARKDOWN + " " + ENGLISH_TEXT)
+    title_reviewed: TextLanguage | None = Field(
+        default=None, description="Confirm that this language version is still correct."
+    )
+    summary_reviewed: TextLanguage | None = Field(
+        default=None, description="Confirm that this language version is still correct."
+    )
     starts_on: date | None = None
     ends_on: date | None = None
     cover_derivative_id: Identifier | None = Field(
@@ -66,6 +75,7 @@ class TripUpdate(InputModel):
 
 
 class TripBase(ResponseModel):
+    translation_freshness: dict[str, TranslationFreshness] = Field(default_factory=dict)
     id: str
     owner_subject: str
     content_language: ContentLanguage = Field(description=CONTENT_LANGUAGE)

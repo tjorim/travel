@@ -14,6 +14,8 @@ from app.db.base import Base
 from app.models.base import _enum_column, _languages, _trip_language, _visibility_column, opaque_id
 from app.models.enums import DatePrecision, Visibility
 
+from .localized import LocalizedRecord
+
 if TYPE_CHECKING:
     from app.models.areas import Area
     from app.models.locations import Location
@@ -41,7 +43,7 @@ class TravelUpdateMediaAsset(Base):
     media_asset: Mapped[MediaAsset] = relationship(back_populates="update_links")
 
 
-class TravelUpdate(Base):
+class TravelUpdate(LocalizedRecord, Base):
     """A reisupdate: the one record for something that happened on a trip.
 
     It has a private part and a shared part, kept in separate columns so that
@@ -54,6 +56,8 @@ class TravelUpdate(Base):
     visitors and empty until the owner writes it), the date at
     ``share_date_precision``, and the ``chosen_area``. ``area_id``
     always references an area, never a location."""
+
+    localized_fields = ("title", "body")
 
     __tablename__ = "travel_updates"
     __table_args__ = _languages("travel_updates.title")
@@ -68,9 +72,13 @@ class TravelUpdate(Base):
     share_date_precision: Mapped[DatePrecision] = mapped_column(_enum_column(DatePrecision, "travel_date_precision"))
     title_nl: Mapped[str | None] = mapped_column(String(160), nullable=True)
     title_en: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    title_nl_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    title_en_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     title = Localized(default="")
     body_nl: Mapped[str | None] = mapped_column(Text, nullable=True)
     body_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    body_nl_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    body_en_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     body = Localized(default="")
     private_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     visibility: Mapped[Visibility] = _visibility_column()

@@ -5,6 +5,7 @@
  * Private-by-default API for trips, reisupdates and what visitors may read of them.
  * OpenAPI spec version: snapshot
  */
+import type { CollectionUpdateTitleReviewed } from './collectionUpdateTitleReviewed';
 import type { ContentLanguage } from './contentLanguage';
 
 export type CollectionUpdate = {
@@ -17,4 +18,6 @@ export type CollectionUpdate = {
   title_nl?: string | null;
   /** The English text. Null or an empty string clears it; a visitor who reads English gets this one. */
   title_en?: string | null;
+  /** Confirm that this language version is still correct. */
+  title_reviewed?: CollectionUpdateTitleReviewed;
 };

@@ -11,10 +11,13 @@ from app.schemas.base import (
     PLAIN_TEXT,
     InputModel,
     ResponseModel,
+    TextLanguage,
     blank_to_none,
     require_timezone,
 )
 from app.schemas.places import PlaceReverseGeocodeRequest
+
+from .localized import TranslationFreshness
 
 
 class AreaInput(InputModel):
@@ -44,6 +47,9 @@ class AreaUpdate(InputModel):
     label: str | None = Field(default=None, max_length=120, description=PLAIN_TEXT)
     label_nl: str | None = Field(default=None, max_length=120, description=DUTCH_TEXT)
     label_en: str | None = Field(default=None, max_length=120, description=ENGLISH_TEXT)
+    label_reviewed: TextLanguage | None = Field(
+        default=None, description="Confirm that this language version is still correct."
+    )
     local_name: str | None = Field(default=None, max_length=120, description=LOCAL_NAME)
     country_code: str | None = COUNTRY_CODE_FIELD
     region: str | None = Field(default=None, max_length=120)
@@ -74,6 +80,7 @@ class AreaSuggestion(ResponseModel):
 
 
 class AreaResponse(AreaInput):
+    translation_freshness: dict[str, TranslationFreshness] = Field(default_factory=dict)
     id: str
     visibility: Visibility
     model_config = ConfigDict(from_attributes=True, extra="ignore", json_schema_serialization_defaults_required=True)

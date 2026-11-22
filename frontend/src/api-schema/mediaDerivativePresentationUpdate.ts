@@ -5,6 +5,8 @@
  * Private-by-default API for trips, reisupdates and what visitors may read of them.
  * OpenAPI spec version: snapshot
  */
+import type { MediaDerivativePresentationUpdateAltTextReviewed } from './mediaDerivativePresentationUpdateAltTextReviewed';
+import type { MediaDerivativePresentationUpdateCaptionReviewed } from './mediaDerivativePresentationUpdateCaptionReviewed';
 
 export type MediaDerivativePresentationUpdate = {
   travel_update_id?: string | null;
@@ -20,6 +22,10 @@ export type MediaDerivativePresentationUpdate = {
   alt_text_nl?: string | null;
   /** The English text. Null or an empty string clears it; a visitor who reads English gets this one. */
   alt_text_en?: string | null;
+  /** Confirm that this language version is still correct. */
+  caption_reviewed?: MediaDerivativePresentationUpdateCaptionReviewed;
+  /** Confirm that this language version is still correct. */
+  alt_text_reviewed?: MediaDerivativePresentationUpdateAltTextReviewed;
   focal_x?: number | null;
   focal_y?: number | null;
 };

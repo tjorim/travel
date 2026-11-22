@@ -17,6 +17,8 @@ from app.models.tasks import TASK_ORDER
 from app.models.travel_updates import TRAVEL_UPDATE_ORDER
 from app.models.visits import VISIT_ORDER
 
+from .localized import LocalizedRecord
+
 if TYPE_CHECKING:
     from app.models.alternatives import AlternativeGroup
     from app.models.areas import Area
@@ -31,7 +33,9 @@ if TYPE_CHECKING:
     from app.models.visits import Visit
 
 
-class Trip(Base):
+class Trip(LocalizedRecord, Base):
+    localized_fields = ("title", "summary")
+
     __tablename__ = "trips"
     __table_args__ = (
         *_languages("trips.title"),
@@ -45,9 +49,13 @@ class Trip(Base):
     content_language: Mapped[str] = _content_language_column()
     title_nl: Mapped[str | None] = mapped_column(String(160), nullable=True)
     title_en: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    title_nl_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    title_en_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     title = Localized(default="")
     summary_nl: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary_nl_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    summary_en_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     summary = Localized()
     # Local calendar dates of the first and last travel day. Owner-only
     # unless a share scope explicitly selects them at a chosen precision.

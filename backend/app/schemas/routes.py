@@ -16,12 +16,15 @@ from app.schemas.base import (
     Identifier,
     InputModel,
     ResponseModel,
+    TextLanguage,
     _html,
     _html_of,
     require_timezone,
 )
 from app.schemas.documents import require_unique_document_ids
 from app.schemas.locations import LocationInput, LocationResponse
+
+from .localized import TranslationFreshness
 
 ROUTE_STATUS = (
     "idea: a candidate being compared (two flights, a train or a bus) that covers no journey and cannot be shared; "
@@ -129,6 +132,9 @@ class RouteUpdate(InputModel):
     label: str | None = Field(default=None, max_length=160, description=PLAIN_TEXT)
     label_nl: str | None = Field(default=None, max_length=160, description=DUTCH_TEXT)
     label_en: str | None = Field(default=None, max_length=160, description=ENGLISH_TEXT)
+    label_reviewed: TextLanguage | None = Field(
+        default=None, description="Confirm that this language version is still correct."
+    )
     departure_area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     arrival_area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     departure_location: LocationInput | None = None
@@ -155,6 +161,7 @@ class RouteUpdate(InputModel):
 
 
 class RouteResponse(ResponseModel):
+    translation_freshness: dict[str, TranslationFreshness] = Field(default_factory=dict)
     id: str
     mode: RouteMode
     status: PlanningStatus

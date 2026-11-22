@@ -8,9 +8,11 @@
 import type { AreaResponse } from './areaResponse';
 import type { DatePrecision } from './datePrecision';
 import type { LocationResponse } from './locationResponse';
+import type { TravelUpdateResponseTranslationFreshness } from './travelUpdateResponseTranslationFreshness';
 import type { Visibility } from './visibility';
 
 export type TravelUpdateResponse = {
+  translation_freshness: TravelUpdateResponseTranslationFreshness;
   id: string;
   occurred_at: string;
   /** The IANA zone the update's day is read in: its area's, else the zone of the trip's nearest dated stay or visit, else UTC. Read and write the time in this zone. */

@@ -6,6 +6,7 @@
  * OpenAPI spec version: snapshot
  */
 import type { LocationResponseOsmElementType } from './locationResponseOsmElementType';
+import type { LocationResponseTranslationFreshness } from './locationResponseTranslationFreshness';
 import type { Visibility } from './visibility';
 
 export type LocationResponse = {
@@ -38,6 +39,7 @@ export type LocationResponse = {
   local_name: string | null;
   area_id: string;
   share_address: boolean;
+  translation_freshness: LocationResponseTranslationFreshness;
   id: string;
   visibility: Visibility;
   osm_url: string | null;

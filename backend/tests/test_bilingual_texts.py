@@ -1,6 +1,7 @@
 """Authored text in Dutch and English with fallback (#376): storage, the plain field name, the visitor's language."""
 
 from collections.abc import Generator
+from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -108,6 +109,61 @@ def test_both_languages_can_be_written_and_the_plain_name_falls_back_to_the_othe
     updated = owner.patch(base(trip), json={"title_nl": "Rondreis"}).json()
     assert (updated["title"], updated["title_nl"], updated["title_en"]) == ("Rondreis", "Rondreis", "Round trip")
     assert owner.get(base(trip)).json()["title_en"] == "Round trip"
+
+
+def test_translation_freshness_tracks_edits_and_reviews(owner: TestClient) -> None:
+    trip = new_trip(owner, title_nl="Reis", title_en="Trip", summary_nl="Kort", summary_en="Short")
+    path = base(trip)
+    summary = trip["translation_freshness"]["summary"]
+    title = trip["translation_freshness"]["title"]
+    assert title["nl_updated_at"] == title["en_updated_at"] is not None
+    assert title["possibly_out_of_date"] is None
+
+    # Existing bilingual rows have no known edit order.
+    with TestingSessionLocal.begin() as session:
+        row = session.get_one(Trip, trip["id"])
+        row.title_nl_updated_at = row.title_en_updated_at = None
+    unknown = {"nl_updated_at": None, "en_updated_at": None, "possibly_out_of_date": None}
+    assert owner.get(path).json()["translation_freshness"]["title"] == unknown
+    assert (
+        owner.patch(path, json={"title_nl": "Reis", "title_en": "Trip"}).json()["translation_freshness"]["title"]
+        == unknown
+    )
+
+    edited = owner.patch(path, json={"title": "Zomerreis"}).json()
+    title = edited["translation_freshness"]["title"]
+    assert title["nl_updated_at"] is not None and title["en_updated_at"] is None
+    assert title["possibly_out_of_date"] == "en"
+    assert edited["translation_freshness"]["summary"] == summary
+
+    checked = owner.patch(path, json={"title_reviewed": "en"}).json()
+    assert checked["title_en"] == "Trip"
+    assert checked["translation_freshness"]["title"] == {
+        "nl_updated_at": title["nl_updated_at"],
+        "en_updated_at": title["nl_updated_at"],
+        "possibly_out_of_date": None,
+    }
+    changed_again = owner.patch(path, json={"title_nl": "Winterreis"}).json()
+    assert changed_again["translation_freshness"]["title"]["possibly_out_of_date"] == "en"
+    translated = owner.patch(path, json={"title_en": "Winter trip"}).json()
+    assert translated["translation_freshness"]["title"]["possibly_out_of_date"] == "nl"
+    cleared = owner.patch(path, json={"title_en": None}).json()
+    assert cleared["translation_freshness"]["title"]["possibly_out_of_date"] is None
+
+
+def test_translation_freshness_is_exported_to_the_owner_only(owner: TestClient) -> None:
+    trip, slug = bilingual_trip(owner)
+    updated = owner.patch(base(trip), json={"title_nl": "Zomerreis"}).json()
+    exported = owner.get(f"{base(trip)}/export").json()
+    title = exported["trip"]["translation_freshness"]["title"]
+    assert title["possibly_out_of_date"] == "en"
+    for field in ("nl_updated_at", "en_updated_at"):
+        assert datetime.fromisoformat(title[field]) == datetime.fromisoformat(
+            updated["translation_freshness"]["title"][field]
+        )
+    projection = owner.get(f"/api/public/trips/{slug}?lang=en")
+    assert projection.json()["title"] == "Round trip"
+    assert "translation_freshness" not in projection.text
 
 
 def test_a_plain_write_next_to_the_same_language_with_other_text_is_refused(owner: TestClient) -> None:
@@ -278,6 +334,9 @@ def test_the_mcp_tools_take_the_same_fields(monkeypatch: pytest.MonkeyPatch) -> 
     )
     updated = backend.update_trip(trip["id"], schemas.TripUpdate(title_nl="Rondreis", content_language="en"))
     assert (updated["content_language"], updated["title"], updated["title_nl"]) == ("en", "Round trip", "Rondreis")
+    assert updated["translation_freshness"]["title"]["possibly_out_of_date"] == "en"
+    reviewed = backend.update_trip(trip["id"], schemas.TripUpdate(title_reviewed="en"))
+    assert reviewed["translation_freshness"]["title"]["possibly_out_of_date"] is None
     with pytest.raises(ValueError, match="Dutch or English"):
         backend.create_trip(schemas.TripCreate(summary_nl="Geen titel"))
 
