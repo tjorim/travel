@@ -37,6 +37,27 @@ Rules:
   `tests/features/trips/trip/Trips.test.tsx`). Shared helpers are in `tests/utils/` and are imported relatively; global
   setup is `tests/setup.ts`. End-to-end specs are in `frontend/e2e/`.
 
+### Frontend audiences
+
+- **Owner-only.** The owner entry (`main.tsx`), app shell and providers (`app/`), owner feature modules and authenticated
+  API requests (`lib/api/owner-api.ts`). This includes private record editors, offline copies, owner queries, session
+  helpers and the preview controls that fetch projections for the owner.
+- **Visitor-only.** The visitor entry (`visitor-main.tsx`) and `features/visitor/` hold the landing, public and unlisted
+  routes and the saved shared-link store.
+- **Shared.** Both audiences can use the projection renderer and map, design-system primitives, locale and preference
+  controls, generated API types and API error handling (`lib/api/api.ts`). The owner preview fetches its projection in
+  `features/trips/publication/RenderedPreview.tsx` and passes the result to the shared renderer.
+
+Visitor entries and visitor route modules must never import owner-only code, directly or transitively. Shared modules
+used by visitors follow the same rule. Keep new owner-only feature code in its feature folder. For owner-only helpers
+outside those folders, use an `owner-` or `Owner…` filename or register the path in `scripts/visitor-imports.mjs`
+when an existing naming convention requires a different name.
+
+`pnpm lint` checks this boundary from `visitor-main.tsx` and every source module in `features/visitor/`. It follows
+local imports, re-exports, type-only imports and literal lazy imports, and reports the chain that reaches a restricted
+module. Use explicit imports in this graph so each dependency can be checked. The generated API schemas and Paraglide
+output are treated as leaves.
+
 ### Exceptions
 
 - `src/main.tsx` and `src/visitor-main.tsx` both stay at the top of `src/`. `index.html` loads `main.tsx` (the owner app
@@ -47,13 +68,11 @@ Rules:
   `use-open-sections.ts`) next to a few camelCase hooks, and the route components keep their names (`Trips.tsx`,
   `TripWorkspace.tsx`, `Capture.tsx`) instead of a `*Page.tsx` suffix. New files follow the shared convention
   (`PascalCase.tsx` components, `useThing.ts` hooks, `camelCase.ts` modules).
-- `components/projection/` is the visitor view of a trip (`ProjectionView`, the header, numbers and current locations,
-  `RenderedPreview`). The public app renders it and so do the owner's previews, so it is a shared folder rather than part
-  of `features/visitor/`. `features/visitor/` holds the visitor routes and the saved-link store.
-- Shared layers read two contexts that live in `app/` and `i18n/`: `useAuth` (`app/providers/auth-context`) and
-  `useLocale` (`i18n/locale`).
+- `components/projection/` is the visitor view of a trip (`ProjectionView`, the header, numbers and current locations). It serves both
+  the visitor app and the owner's previews.
+- Owner code reads `useAuth` from `app/providers/auth-context`. Both audiences read `useLocale` from `i18n/locale`.
 - Features are independent except for these deliberate links: `app/` composes the pages of every feature;
-  `features/sharing/` reuses the scope editor, link lifecycle and catalog of `features/trips/publication/`, which in turn
+  `features/sharing/` reuses the scope editor, link lifecycle, catalog and preview controls of `features/trips/publication/`, which in turn
   reads the member types of `features/sharing/collections`; `features/library/` embeds the document manager and the
   packing list view; `features/trips/workspace/` embeds the document manager. Anything else two features need goes to a
   shared folder.

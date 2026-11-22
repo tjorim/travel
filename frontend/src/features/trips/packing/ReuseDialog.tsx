@@ -6,7 +6,7 @@ import { useState } from "react";
 import { SearchSelect } from "@/components/forms/fields";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
-import { ownerRequest } from "@/lib/api/api";
+import { ownerRequest } from "@/lib/api/owner-api";
 import { useOwner } from "@/lib/query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";

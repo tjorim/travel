@@ -12,7 +12,7 @@ import { errorMessage } from "@/lib/api/api";
 import { tripPath, useOwnerMutation } from "@/lib/query/owner-queries";
 import { RecordDialog } from "@/components/RecordDialog";
 import type { ShareLink, ShareScope } from "@/api-types";
-import { RenderedPreview } from "@/components/projection/RenderedPreview";
+import { RenderedPreview } from "./RenderedPreview";
 import { kindCountsText, LINK_STATE_LABELS, projectionSummary } from "./catalog";
 import { FutureDisclosureReview } from "./SharingReview";
 import { useExclusionReview } from "./use-exclusion-review";

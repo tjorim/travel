@@ -4,7 +4,7 @@ import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
 import type { CollectionMembershipResponse } from "@/api-types";
 import { ownerKeys } from "@/lib/query/keys";
-import { ownerFile, ownerRequest } from "@/lib/api/api";
+import { ownerFile, ownerRequest } from "@/lib/api/owner-api";
 import { useOwner, useTripResource } from "@/lib/query/owner-queries";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";

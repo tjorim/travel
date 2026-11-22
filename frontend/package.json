@@ -9,7 +9,7 @@
     "typecheck": "pnpm paraglide:compile && pnpm api:check && tsc -b --noEmit",
     "api:generate": "node scripts/api-types.mjs generate",
     "api:check": "node scripts/api-types.mjs check",
-    "lint": "oxlint",
+    "lint": "oxlint && node --test scripts/visitor-imports.verify.mjs",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "format:repo": "cd .. && frontend/node_modules/.bin/oxfmt -c frontend/.oxfmtrc.json .github scripts *.json",

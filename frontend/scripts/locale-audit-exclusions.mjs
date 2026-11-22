@@ -39,7 +39,7 @@ export const exclusions = {
     "Noto Sans Regular": "provider glyph font",
     HTTP: "internal status diagnostic",
   },
-  "lib/api/api.ts": {
+  "lib/api/owner-api.ts": {
     "Invalid API response": "diagnostic kept outside interface feedback",
     Bearer: "HTTP authorization scheme",
   },

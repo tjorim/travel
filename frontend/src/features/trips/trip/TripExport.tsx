@@ -4,7 +4,8 @@ import { useMutation } from "@tanstack/react-query";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
-import { ApiError, errorMessage, ownerFile } from "@/lib/api/api";
+import { ApiError, errorMessage } from "@/lib/api/api";
+import { ownerFile } from "@/lib/api/owner-api";
 import { textNotice, type MessageNotice } from "@/lib/api/feedback";
 import { useOwner } from "@/lib/query/owner-queries";
 import { Alert } from "@/components/ui/alert";

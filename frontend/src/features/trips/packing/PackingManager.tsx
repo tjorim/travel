@@ -6,7 +6,7 @@ import { SearchSelect } from "@/components/forms/fields";
 import { useLocale } from "@/i18n/locale";
 import { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import { m } from "@/paraglide/messages.js";
-import { ownerRequest } from "@/lib/api/api";
+import { ownerRequest } from "@/lib/api/owner-api";
 import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
 import { tripPath, useOwner } from "@/lib/query/owner-queries";
 import type { Trip } from "@/api-types";

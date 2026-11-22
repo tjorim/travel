@@ -15,7 +15,7 @@ import {
 import { fixture } from "../../utils/test-projection";
 import { VisitorRoutes } from "@/features/visitor/visitor-routes";
 import type { ShareScope } from "@/api-types";
-import { RenderedPreview } from "@/components/projection/RenderedPreview";
+import { RenderedPreview } from "@/features/trips/publication/RenderedPreview";
 import { m } from "@/paraglide/messages.js";
 import { rememberSharedTrip } from "@/features/visitor/saved-shared-trips";
 import { http, HttpResponse } from "msw/http";

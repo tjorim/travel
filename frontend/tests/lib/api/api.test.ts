@@ -4,7 +4,8 @@ import { http, HttpResponse } from "msw/http";
 import { afterEach, expect, it, vi } from "vitest";
 
 import { server } from "@/mocks/server";
-import { ApiError, apiFailure, ownerFile, ownerRequest } from "@/lib/api/api";
+import { ApiError, apiFailure } from "@/lib/api/api";
+import { ownerFile, ownerRequest } from "@/lib/api/owner-api";
 import { shouldRetryQuery } from "@/lib/query/client";
 import { ownerKeys } from "@/lib/query/keys";
 

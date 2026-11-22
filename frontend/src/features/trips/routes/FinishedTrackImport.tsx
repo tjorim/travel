@@ -6,7 +6,7 @@ import { useAuth } from "@/app/providers/auth-context";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
 import type { GeoJsonLineString } from "@/api-types";
-import { ownerRequest } from "@/lib/api/api";
+import { ownerRequest } from "@/lib/api/owner-api";
 import { RouteGeometryEditor, type RouteCoordinate } from "./RouteGeometryEditor";
 
 /** Files never enter query/mutation caches, form values or browser storage. */

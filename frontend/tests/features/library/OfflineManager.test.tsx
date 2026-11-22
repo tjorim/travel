@@ -5,7 +5,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 
 import { changeLocale } from "@/i18n/locale";
 import { formatInstant } from "@/lib/dates";
-import * as api from "@/lib/api/api";
+import * as ownerApi from "@/lib/api/owner-api";
 import { AuthProvider } from "@/app/providers/auth-context";
 import { answerConfirmation } from "../../utils/test-confirm";
 import { OfflineManager } from "@/features/library/OfflineManager";
@@ -286,7 +286,7 @@ it.each(["invalid JSON", "unknown error"])("does not renew access after %s", asy
     }),
   );
   if (failure === "unknown error") {
-    vi.spyOn(api, "ownerRequest").mockImplementation(async () => {
+    vi.spyOn(ownerApi, "ownerRequest").mockImplementation(async () => {
       probed = true;
       throw new Error("Unexpected probe failure");
     });

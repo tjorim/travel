@@ -11,7 +11,7 @@ import { cn } from "cn";
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 
 import { Markdown } from "@/components/Markdown";
-import { ownerRequest } from "@/lib/api/api";
+import { ownerRequest } from "@/lib/api/owner-api";
 import { useOwner } from "@/lib/query/owner-queries";
 import { optionalNote, useFieldErrors } from "./fields";
 import { applyMarkdownSnippet, type MarkdownSnippet } from "./markdown-snippets";

@@ -32,7 +32,8 @@ import type {
   TripTask,
   TripTaskAlert,
 } from "@/api-types";
-import { ApiError, ownerRequest, type OwnerRequest, type ErrorFallback } from "@/lib/api/api";
+import { ApiError, type ErrorFallback } from "@/lib/api/api";
+import { ownerRequest, type OwnerRequest } from "@/lib/api/owner-api";
 import { ownerKeys, type DerivativeParent, type LibraryResource, type TripResource } from "./keys";
 
 export type Owner = { session: OwnerSession; subject: string };

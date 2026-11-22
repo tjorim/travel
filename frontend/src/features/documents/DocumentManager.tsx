@@ -20,7 +20,8 @@ import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "@/hook
 import { useRecordForm } from "@/hooks/useRecordForm";
 import { useOfflineCopies } from "@/hooks/useOfflineCopies";
 import type { OfflineResourceKind } from "@/lib/offline-store";
-import { errorMessage, openOwnerFile, ownerFile } from "@/lib/api/api";
+import { errorMessage } from "@/lib/api/api";
+import { openOwnerFile, ownerFile } from "@/lib/api/owner-api";
 import { ownerKeys } from "@/lib/query/keys";
 import {
   documentsPath,

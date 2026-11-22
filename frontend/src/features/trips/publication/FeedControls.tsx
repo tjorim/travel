@@ -6,7 +6,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { TravelCheckbox } from "@/components/ui/TravelCheckbox";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
-import { ownerRequest } from "@/lib/api/api";
+import { ownerRequest } from "@/lib/api/owner-api";
 import { tripPath, useOwner } from "@/lib/query/owner-queries";
 import { ownerKeys } from "@/lib/query/keys";
 import type { ShareLink } from "@/api-types";

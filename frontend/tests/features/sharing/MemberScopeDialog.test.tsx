@@ -14,7 +14,7 @@ import { MemberScopeDialog } from "@/features/sharing/MemberScopeDialog";
 
 const auth = vi.hoisted(() => ({ session: null as { accessToken: string } | null }));
 vi.mock("@/app/providers/auth-context", () => ({ useAuth: () => auth }));
-vi.mock("@/components/projection/RenderedPreview", () => ({
+vi.mock("@/features/trips/publication/RenderedPreview", () => ({
   RenderedPreview: () => <p>Weergegeven preview</p>,
 }));
 
