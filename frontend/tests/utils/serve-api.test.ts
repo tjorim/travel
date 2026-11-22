@@ -1,14 +1,17 @@
 // @vitest-environment happy-dom
 
-import { afterEach, expect, it, vi } from "vitest";
+import { expect, it, vi } from "vitest";
 
 import { type ApiInit, serveApi } from "./serve-api";
 
-afterEach(() => vi.unstubAllGlobals());
-
 it.each(["GET", "POST"])("preserves a %s request for the next API responder", async (method) => {
   const fallback = vi.fn((_url: string, init: ApiInit) =>
-    Response.json({ method: init.method, body: init.body ?? null }),
+    Response.json(
+      /* Fixture exception: Echo response for testing MSW handler fallthrough. */ {
+        method: init.method,
+        body: init.body ?? null,
+      },
+    ),
   );
   serveApi(fallback);
   const overlay = vi.fn(() => undefined);

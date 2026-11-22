@@ -1,10 +1,9 @@
 import { http, HttpResponse } from "msw/http";
-import { vi } from "vitest";
 
 import { server } from "@/mocks/server";
 
 /** What a responder sees of a request: the method, headers and the body as sent (a string, a `FormData` or nothing). */
-export type ApiInit = RequestInit & { method: string; headers: Headers };
+export type ApiInit = { method: string; headers: Headers; body: string | FormData | undefined };
 
 /**
  * Answers a path and query (`/api/trips?x=1`). Return `undefined` to leave the request to the next handler; a thrown
@@ -19,12 +18,6 @@ export type ApiResponder = (
  * Serves the current test's API through the MSW server (see src/mocks/server.ts), for suites that route requests in
  * a hand-written function. The server drops the handler when the test ends; a later `serveApi` call wins over an
  * earlier one for the requests it answers.
- *
- * It returns a spy over `fetch`, recording every call exactly as the screen made it, for assertions on client-side
- * options (`cache`, `credentials`, `referrerPolicy`) that never reach the network.
- *
- * Uploads are the exception: jsdom's `FormData` and `File` cannot be serialised by Node's `fetch`, so a request whose
- * body is a `FormData` goes to the responder directly and the screen sees the same object it sent.
  */
 export function serveApi(respond: ApiResponder) {
   server.use(
@@ -43,20 +36,6 @@ export function serveApi(respond: ApiResponder) {
       }
     }),
   );
-  const network = globalThis.fetch;
-  const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    if (typeof FormData === "undefined" || !(init?.body instanceof FormData))
-      return network(input, init);
-    const location = new URL(String(input), "http://localhost");
-    const answer = await respond(location.pathname + location.search, {
-      ...init,
-      method: init.method ?? "GET",
-      headers: new Headers(init.headers),
-    });
-    return answer ?? network(input, init);
-  });
-  vi.stubGlobal("fetch", fetchSpy);
-  return fetchSpy;
 }
 
 /** The body as the screen sent it: multipart becomes `FormData`, anything else stays the raw text. */

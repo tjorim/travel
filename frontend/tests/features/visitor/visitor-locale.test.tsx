@@ -334,7 +334,9 @@ it.each(["invalid", "revoked", "expired"])(
         },
       ),
     );
-    const sent = serveApi(fetcher);
+    // Happy DOM drops request privacy options before MSW receives the request.
+    const sent = vi.spyOn(globalThis, "fetch");
+    serveApi(fetcher);
     rememberSharedTrip(token, projection());
     render(<VisitorRoutes initialEntries={[`/share/${token}`]} />);
     await screen.findByRole("heading", { name: m.unavailable_trip() });

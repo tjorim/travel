@@ -31,6 +31,7 @@ beforeEach(() => stubViewport(true));
 afterEach(() => {
   cleanup();
   localStorage.clear();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
@@ -311,7 +312,9 @@ it("lists only server supplied public cards and opens their stable slugs", async
       },
     ]),
   );
-  const sent = serveApi(fetcher);
+  // Happy DOM drops request privacy options before MSW receives the request.
+  const sent = vi.spyOn(globalThis, "fetch");
+  serveApi(fetcher);
   render(<VisitorRoutes initialEntries={["/"]} />);
   expect((await screen.findByRole("status")).textContent).toContain("Reizen laden");
   const first = await screen.findByRole("link", { name: /Visible journey/ });
@@ -586,7 +589,9 @@ it("requests a fresh scoped projection after navigation and shows live edits", a
       { status: 200 },
     ),
   );
-  const sent = serveApi(fetcher);
+  // Happy DOM drops request privacy options before MSW receives the request.
+  const sent = vi.spyOn(globalThis, "fetch");
+  serveApi(fetcher);
   const first = render(<VisitorRoutes initialEntries={["/trips/slug"]} />);
   await screen.findByRole("heading", { name: "Before edit" });
   expect(screen.getByRole("link", { name: "Mijn reizen beheren" }).getAttribute("href")).toBe(
@@ -768,7 +773,9 @@ it("uses the visitor story renderer for an owner preview and requests only owner
       url: "https://www.google.com/maps/dir/?api=1&destination=Taipei",
     }),
   );
-  const sent = serveApi(fetcher);
+  // Happy DOM drops request privacy options before MSW receives the request.
+  const sent = vi.spyOn(globalThis, "fetch");
+  serveApi(fetcher);
   vi.spyOn(window, "open").mockImplementation(() => null);
   const session = { accessToken: "owner-token", expiresAt: Date.now() + 60_000 };
   const preview = render(

@@ -76,6 +76,7 @@ it.each([
 
 it("shows only freshly selected fields after validation with private request options", async () => {
   rememberSharedTrip(token, projection);
+  // Happy DOM drops request privacy options before MSW receives the request.
   const fetcher = vi.spyOn(globalThis, "fetch");
   server.use(
     http.get(`/api/shared/${token}`, () =>
