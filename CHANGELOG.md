@@ -85,6 +85,7 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 ### Internal
 
 - **Web:** Split the shared trip map into map setup, layers, framing and controls (#370).
+- **Web:** Split visitor routing, trip listings, collection views and trip delivery into separate modules (#370).
 - **Web:** Separate authenticated API requests from shared API errors and check that visitor routes cannot import owner code, including through shared modules (#370).
 - **Web:** Split the shared trip projection into story, plan, gallery and map data modules (#370).
 - **Web:** Use MSW for the shared test API, including multipart uploads (#370).
