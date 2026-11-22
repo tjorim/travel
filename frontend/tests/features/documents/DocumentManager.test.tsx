@@ -28,6 +28,7 @@ const trip: Trip = {
   summary_html: null,
   id: "trip",
   title: "Exampleland",
+  translation_freshness: {},
   title_nl: "Exampleland",
   title_en: null,
   summary: null,
@@ -60,6 +61,7 @@ function serve(initial: DocumentAsset[]) {
     {
       owner_subject: "synthetic",
       content_language: "nl",
+      translation_freshness: {},
       title_nl: null,
       title_en: null,
       summary: null,
@@ -78,6 +80,7 @@ function serve(initial: DocumentAsset[]) {
     {
       owner_subject: "synthetic",
       content_language: "nl",
+      translation_freshness: {},
       title_nl: null,
       title_en: null,
       summary: null,

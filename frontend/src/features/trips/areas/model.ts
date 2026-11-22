@@ -1,3 +1,4 @@
+import type { ContentLanguage } from "@/i18n/content-language";
 import { m } from "@/paraglide/messages.js";
 import type { Area, LocationInput } from "@/api-types";
 import type { FormContext } from "../records/form-context";
@@ -5,6 +6,7 @@ import type { FormContext } from "../records/form-context";
 export type Values = {
   labelNl: string;
   labelEn: string;
+  labelReviewed: ContentLanguage | null;
   localName: string;
   countryCode: string;
   region: string;
@@ -15,6 +17,7 @@ export type Values = {
 export const blank = (): Values => ({
   labelNl: "",
   labelEn: "",
+  labelReviewed: null,
   localName: "",
   countryCode: "",
   region: "",
@@ -25,6 +28,7 @@ export const blank = (): Values => ({
 export const fromArea = (area: Area): Values => ({
   labelNl: area.label_nl ?? "",
   labelEn: area.label_en ?? "",
+  labelReviewed: null,
   localName: area.local_name ?? "",
   countryCode: area.country_code ?? "",
   region: area.region ?? "",

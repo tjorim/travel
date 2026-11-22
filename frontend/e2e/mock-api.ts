@@ -9,6 +9,7 @@ export const ownerTrip: Api.TripResponse & { travel_updates: Api.TravelUpdateRes
   cover_url: null,
   content_language: "nl",
   title: "Exampleland 2054",
+  translation_freshness: {},
   title_nl: "Exampleland 2054",
   title_en: null,
   summary: "Three weeks around the island.",
@@ -188,6 +189,7 @@ const savedDefaults = (
   id: string,
 ): Omit<Api.TravelUpdateResponse, "occurred_at" | "local_date"> => ({
   title: "",
+  translation_freshness: {},
   title_nl: null,
   title_en: null,
   body_nl: null,
@@ -262,6 +264,7 @@ export const overdueTask: Api.TripTaskResponse = {
 // --- Sharing presets (#241) ---
 
 export const presetVisit = {
+  translation_freshness: {},
   title_nl: null,
   title_en: null,
   kind: null,
@@ -282,6 +285,7 @@ export const presetVisit = {
   id: "visit-1",
   title: "Night market",
   area: {
+    translation_freshness: {},
     label_nl: null,
     label_en: null,
     local_name: null,

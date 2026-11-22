@@ -13,6 +13,13 @@ const trip = {
   title: "Rondreis Eilandland",
   title_nl: "Rondreis Eilandland",
   title_en: "Island tour",
+  translation_freshness: {
+    title: {
+      nl_updated_at: "2054-10-10T00:00:00Z",
+      en_updated_at: "2054-10-09T00:00:00Z",
+      possibly_out_of_date: "en" as const,
+    },
+  },
   summary: "Drie weken over het eiland.",
   summary_nl: "Drie weken over het eiland.",
   summary_en: null,
@@ -85,6 +92,24 @@ for (const locale of ["nl", "en"] as const) {
         await expect(title).toHaveValue("Rondreis Eilandland");
         await expect(title).toHaveAttribute("lang", "nl");
 
+        await titleLanguages
+          .getByRole("radio", {
+            name: message(locale, "localized_choice_out_of_date").replace(
+              "{language}",
+              message(locale, "localized_english"),
+            ),
+          })
+          .click();
+        await expect(title).toHaveValue("Island tour");
+        await expect(
+          dialog.getByText(message(locale, "localized_possibly_out_of_date")),
+        ).toBeVisible();
+        await dialog
+          .getByRole("button", { name: message(locale, "localized_still_correct") })
+          .click();
+        await expect(dialog.getByText(message(locale, "localized_review_pending"))).toBeVisible();
+        expect(patches).toEqual([]);
+
         const summaryLanguages = dialog.getByRole("radiogroup", {
           name: message(locale, "localized_language_of").replace(
             "{label}",
@@ -122,6 +147,7 @@ for (const locale of ["nl", "en"] as const) {
         expect(patches[0]).toMatchObject({
           title_nl: "Rondreis Eilandland",
           title_en: "Island tour",
+          title_reviewed: "en",
           summary_nl: "Drie weken over het eiland.",
           summary_en: "Three weeks around the island.",
         });

@@ -6,6 +6,7 @@ import { message } from "./messages";
 
 // Synthetic content only.
 const visit = {
+  translation_freshness: {},
   title_nl: null,
   title_en: null,
   kind: null,
@@ -26,6 +27,7 @@ const visit = {
   id: "visit-1",
   title: "Night market",
   area: {
+    translation_freshness: {},
     label_nl: null,
     label_en: null,
     local_name: null,

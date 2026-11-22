@@ -49,6 +49,7 @@ it("keeps a title cleared in both languages cleared", async () => {
         id: "c1",
         label: "Family",
         title: "Old",
+        translation_freshness: {},
         title_nl: "Old",
         title_en: null,
       },

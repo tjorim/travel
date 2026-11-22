@@ -16,6 +16,7 @@ for (const locale of locales)
       await choosePreferences(page, locale, theme);
       const area = (id: string, longitude: number) =>
         ({
+          translation_freshness: {},
           label_nl: null,
           label_en: null,
           local_name: null,
@@ -31,6 +32,7 @@ for (const locale of locales)
       const from = area("West", -60),
         to = area("East", 60);
       const flight = {
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         departs_on: null,

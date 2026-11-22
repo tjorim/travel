@@ -15,6 +15,7 @@ const area: Area = {
   id: "area-1",
   visibility: "private",
   label: "Taipei",
+  translation_freshness: {},
   label_nl: "Taipei",
   label_en: null,
   local_name: null,

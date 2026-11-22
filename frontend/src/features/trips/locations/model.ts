@@ -1,3 +1,4 @@
+import type { ContentLanguage } from "@/i18n/content-language";
 import { m } from "@/paraglide/messages.js";
 import { ApiError } from "@/lib/api/api";
 import { ownerLocationName } from "@/lib/records";
@@ -8,6 +9,7 @@ export type Values = {
   displayName: string;
   labelNl: string;
   labelEn: string;
+  labelReviewed: ContentLanguage | null;
   localName: string;
   addressLine1: string;
   addressLine2: string;
@@ -23,6 +25,7 @@ export const blank = (areaId = ""): Values => ({
   displayName: "",
   labelNl: "",
   labelEn: "",
+  labelReviewed: null,
   localName: "",
   addressLine1: "",
   addressLine2: "",
@@ -38,6 +41,7 @@ export const fromPlace = (place: Location): Values => ({
   displayName: place.display_name ?? "",
   labelNl: place.label_nl ?? "",
   labelEn: place.label_en ?? "",
+  labelReviewed: null,
   localName: place.local_name ?? "",
   addressLine1: place.address_line1 ?? "",
   addressLine2: place.address_line2 ?? "",

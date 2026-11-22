@@ -11,6 +11,7 @@ const day = (offset: number) =>
 const update = (id: string, title: string, offset: number) =>
   ({
     local_date: new Date(Date.now() + offset * 3_600_000).toISOString().slice(0, 10),
+    translation_freshness: {},
     title_nl: null,
     title_en: null,
     body_nl: null,

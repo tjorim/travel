@@ -16,17 +16,25 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
-type Values = { titleNl: string; titleEn: string; bodyNl: string; bodyEn: string };
+type Values = {
+  titleNl: string;
+  titleEn: string;
+  titleReviewed?: ContentLanguage | null;
+  bodyNl: string;
+  bodyEn: string;
+};
 let latest: { reset: (values: Values) => void; values: () => Values } | undefined;
 
 function Editor({
   initial,
   language = "nl",
   required = false,
+  staleLanguage,
 }: {
   initial?: Partial<Values>;
   language?: ContentLanguage;
   required?: boolean;
+  staleLanguage?: ContentLanguage;
 }) {
   const defaults: Values = { titleNl: "", titleEn: "", bodyNl: "", bodyEn: "", ...initial };
   const form = useForm({ defaultValues: defaults });
@@ -46,6 +54,13 @@ function Editor({
           label="Titel"
           required={required}
           requiredMessage={() => "Geef een titel."}
+          freshness={
+            staleLanguage && {
+              nl_updated_at: "2026-11-22T10:00:00Z",
+              en_updated_at: "2026-11-21T10:00:00Z",
+              possibly_out_of_date: staleLanguage,
+            }
+          }
           maxLength={160}
         />
         <LocalizedField form={form} name="body" kind="markdown" label="Tekst" rows={3} />
@@ -242,4 +257,17 @@ it("says which language visitors fall back to while a version is empty", () => {
       "Zonder tekst in het Engels zien bezoekers die Engels lezen de tekst in het Nederlands.",
     ),
   ).toBeTruthy();
+});
+
+it("queues a review for the flagged language without editing either text", () => {
+  render(<Editor initial={{ titleNl: "Reis", titleEn: "Trip" }} staleLanguage="en" />);
+
+  fireEvent.click(choice(/Engels \(mogelijk verouderd\)/));
+  fireEvent.click(screen.getByRole("button", { name: "Nog steeds correct" }));
+  expect(latest?.values()).toMatchObject({ titleNl: "Reis", titleEn: "Trip", titleReviewed: "en" });
+  expect(screen.getByRole("status").textContent).toContain("zodra je opslaat");
+
+  fireEvent.click(screen.getByRole("button", { name: "Bevestiging ongedaan maken" }));
+  expect(latest?.values().titleReviewed).toBeNull();
+  expect(choice(/Engels \(mogelijk verouderd\)/)).toBeTruthy();
 });

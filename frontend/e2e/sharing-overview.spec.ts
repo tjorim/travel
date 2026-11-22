@@ -12,6 +12,7 @@ const scope = {
 const inTwoDays = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
 const collection: Api.CollectionResponse = {
   content_language: "nl",
+  translation_freshness: {},
   title_nl: null,
   title_en: null,
   id: "collection-1",

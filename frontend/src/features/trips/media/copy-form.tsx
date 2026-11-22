@@ -1,3 +1,5 @@
+import type { TranslationFreshness } from "@/api-types";
+import type { ContentLanguage } from "@/i18n/content-language";
 import { useState } from "react";
 
 import type { OwnerSession } from "@/lib/auth";
@@ -32,8 +34,10 @@ export type PresentationValues = {
   travelUpdateId: string;
   captionNl: string;
   captionEn: string;
+  captionReviewed: ContentLanguage | null;
   altTextNl: string;
   altTextEn: string;
+  altTextReviewed: ContentLanguage | null;
   focalX: string;
   focalY: string;
 };
@@ -41,8 +45,10 @@ export const blankPresentation = (): PresentationValues => ({
   travelUpdateId: "",
   captionNl: "",
   captionEn: "",
+  captionReviewed: null,
   altTextNl: "",
   altTextEn: "",
+  altTextReviewed: null,
   focalX: "",
   focalY: "",
 });
@@ -50,8 +56,10 @@ export const fromDerivative = (derivative: MediaDerivative): PresentationValues 
   travelUpdateId: derivative.travel_update_id ?? "",
   captionNl: derivative.caption_nl ?? "",
   captionEn: derivative.caption_en ?? "",
+  captionReviewed: null,
   altTextNl: derivative.alt_text_nl ?? "",
   altTextEn: derivative.alt_text_en ?? "",
+  altTextReviewed: null,
   focalX: derivative.focal_x?.toString() ?? "",
   focalY: derivative.focal_y?.toString() ?? "",
 });
@@ -63,11 +71,13 @@ const percentage = ({ value }: { value: string }) =>
 /** The copy's presentation fields, with a live focal-point preview when the copy can be shown inline. */
 export function PresentationFields({
   record,
+  translationFreshness,
   tripId,
   updates,
   previewUrl,
   session,
 }: {
+  translationFreshness?: Record<string, TranslationFreshness>;
   record: ReturnType<typeof useRecordForm<PresentationValues>>;
   tripId: string;
   updates: TravelUpdate[];
@@ -140,6 +150,7 @@ export function PresentationFields({
       <LocalizedField
         form={record.form}
         name="caption"
+        freshness={translationFreshness?.caption}
         kind="markdown"
         format="inline"
         label={m.media_caption()}
@@ -149,6 +160,7 @@ export function PresentationFields({
       <LocalizedField
         form={record.form}
         name="altText"
+        freshness={translationFreshness?.alt_text}
         label={m.media_alternative_text()}
         maxLength={300}
       />

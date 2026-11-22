@@ -13,6 +13,7 @@ import type {
 } from "./api-schema";
 
 export type {
+  TranslationFreshness,
   ProjectionAddress,
   ProjectionArea,
   ProjectionDates,
@@ -44,6 +45,7 @@ export type {
   CollectionMemberResponse as CollectionMember,
   CollectionMembershipResponse,
   CollectionResponse as Collection,
+  CollectionUpdate,
   AuditEventResponse as AuditEvent,
   DatePrecision,
   DocumentResponse as DocumentAsset,

@@ -1,3 +1,4 @@
+import type { ContentLanguage } from "@/i18n/content-language";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -50,6 +51,7 @@ export function CollectionEditor({
     nl: collection?.title_nl ?? "",
     en: collection?.title_en ?? "",
   });
+  const [reviewed, setReviewed] = useState<ContentLanguage | null>(null);
   // A new collection is written in the language the owner opened the editor in.
   const [creationLanguage] = useState(interfaceLanguage);
   const [addTripId, setAddTripId] = useState("");
@@ -82,9 +84,12 @@ export function CollectionEditor({
           setNotice(textNotice(() => m.sharing_collection_created()));
         }, fail(m.sharing_collection_save_error));
     } else {
-      mutations.update.mutateAsync({ id: collection.id, ...values }).then(() => {
-        setNotice(textNotice(() => m.sharing_collection_saved()));
-      }, fail(m.sharing_collection_save_error));
+      mutations.update
+        .mutateAsync({ id: collection.id, ...values, title_reviewed: reviewed ?? undefined })
+        .then(() => {
+          setReviewed(null);
+          setNotice(textNotice(() => m.sharing_collection_saved()));
+        }, fail(m.sharing_collection_save_error));
     }
   }
 
@@ -175,6 +180,9 @@ export function CollectionEditor({
             <LocalizedFieldView
               label={m.sharing_collection_title()}
               language={collection?.content_language ?? creationLanguage}
+              freshness={collection?.translation_freshness?.title}
+              reviewed={reviewed}
+              onReview={setReviewed}
               maxLength={160}
               disabled={locked}
               fields={{

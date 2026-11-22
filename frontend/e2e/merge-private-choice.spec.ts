@@ -7,6 +7,7 @@ import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
 
 const area = (id: string, label: string) =>
   ({
+    translation_freshness: {},
     label_nl: null,
     label_en: null,
     local_name: null,
@@ -37,6 +38,7 @@ const airport = (id: string, areaId: string) =>
     osm_url: null,
     notes_html: null,
 
+    translation_freshness: {},
     label_nl: null,
     label_en: null,
     local_name: null,

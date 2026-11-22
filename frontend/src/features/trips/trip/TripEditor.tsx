@@ -1,3 +1,4 @@
+import type { ContentLanguage } from "@/i18n/content-language";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
 import { textNotice, errorNotice, useFeedback } from "@/lib/api/feedback";
@@ -20,8 +21,10 @@ import type { Trip } from "@/api-types";
 type Values = {
   titleNl: string;
   titleEn: string;
+  titleReviewed: ContentLanguage | null;
   summaryNl: string;
   summaryEn: string;
+  summaryReviewed: ContentLanguage | null;
   startsOn: string;
   endsOn: string;
 };
@@ -29,16 +32,20 @@ type Values = {
 const blank = (): Values => ({
   titleNl: "",
   titleEn: "",
+  titleReviewed: null,
   summaryNl: "",
   summaryEn: "",
+  summaryReviewed: null,
   startsOn: "",
   endsOn: "",
 });
 const fromTrip = (trip: Trip): Values => ({
   titleNl: trip.title_nl ?? "",
   titleEn: trip.title_en ?? "",
+  titleReviewed: null,
   summaryNl: trip.summary_nl ?? "",
   summaryEn: trip.summary_en ?? "",
+  summaryReviewed: null,
   startsOn: trip.starts_on ?? "",
   endsOn: trip.ends_on ?? "",
 });
@@ -90,8 +97,10 @@ export function TripEditor({
       const details = {
         title_nl: values.titleNl.trim() || null,
         title_en: values.titleEn.trim() || null,
+        title_reviewed: values.titleReviewed ?? undefined,
         summary_nl: values.summaryNl.trim() || null,
         summary_en: values.summaryEn.trim() || null,
+        summary_reviewed: values.summaryReviewed ?? undefined,
         starts_on: values.startsOn || null,
         ends_on: values.endsOn || null,
       };
@@ -178,6 +187,7 @@ export function TripEditor({
           <LocalizedField
             form={form}
             name="title"
+            freshness={trip?.translation_freshness?.title}
             label={m.common_title()}
             language={language}
             required
@@ -187,6 +197,7 @@ export function TripEditor({
           <LocalizedField
             form={form}
             name="summary"
+            freshness={trip?.translation_freshness?.summary}
             kind="markdown"
             label={m.common_summary()}
             language={language}

@@ -27,6 +27,7 @@ it("loads an area into editor values and back to blanks", () => {
   expect(values).toEqual({
     labelNl: "Taipei",
     labelEn: "",
+    labelReviewed: null,
     localName: "臺北",
     countryCode: "TW",
     region: "",

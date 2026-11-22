@@ -1,3 +1,4 @@
+import type { ContentLanguage } from "@/i18n/content-language";
 import { dayjs } from "@/lib/dayjs";
 import { m } from "@/paraglide/messages.js";
 import { browserTimeZone, daysBetween, formatDay, localDate, wallClock } from "@/lib/dates";
@@ -37,6 +38,7 @@ export type Values = {
   status: Route["status"];
   labelNl: string;
   labelEn: string;
+  labelReviewed: ContentLanguage | null;
   departure: PlaceValue;
   arrival: PlaceValue;
   departsOn: string;
@@ -94,6 +96,7 @@ export function blank(): Values {
     status: "planned",
     labelNl: "",
     labelEn: "",
+    labelReviewed: null,
     departure: emptyPlace(),
     arrival: emptyPlace(),
     departsOn: "",
@@ -123,6 +126,7 @@ export const fromRoute = (route: Route): Values => ({
   status: route.status,
   labelNl: route.label_nl ?? "",
   labelEn: route.label_en ?? "",
+  labelReviewed: null,
   departure: placeOf(route.departure_area, route.departure_location),
   arrival: placeOf(route.arrival_area, route.arrival_location),
   departsOn: route.departs_on ?? "",

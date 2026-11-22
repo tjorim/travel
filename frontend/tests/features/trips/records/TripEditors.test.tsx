@@ -20,6 +20,7 @@ const taipei: Area = {
   id: "taipei",
   visibility: "private",
   label: "Taipei",
+  translation_freshness: {},
   label_nl: "Taipei",
   label_en: null,
   local_name: null,
@@ -37,6 +38,7 @@ const trip: Trip = {
   summary_html: null,
   id: "trip",
   title: "Exampleland",
+  translation_freshness: {},
   title_nl: "Exampleland",
   title_en: null,
   summary: null,
@@ -51,6 +53,7 @@ const visit = {
   area: taipei,
   location: null,
   title: "Hot springs",
+  translation_freshness: {},
   title_nl: "Hot springs",
   title_en: null,
   kind: null,
@@ -91,6 +94,7 @@ const stay = {
   document_asset_ids: [],
 } satisfies Api.StayResponse;
 const route = {
+  translation_freshness: {},
   label_nl: null,
   label_en: null,
   departure_timezone: null,

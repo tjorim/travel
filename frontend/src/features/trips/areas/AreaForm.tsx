@@ -1,3 +1,4 @@
+import type { TranslationFreshness } from "@/api-types";
 import { RecordForm, TextField, TimeZoneField } from "@/components/forms/fields";
 import { LocalizedField } from "@/components/forms/LocalizedField";
 import { LocalNameField } from "../records/LocalNameField";
@@ -25,8 +26,10 @@ import {
 export function AreaForm({
   tripId,
   record,
+  translationFreshness,
 }: {
   tripId: string;
+  translationFreshness?: Record<string, TranslationFreshness>;
   record: ReturnType<typeof useRecordForm<Values, Area>>;
 }) {
   useLocale();
@@ -67,6 +70,7 @@ export function AreaForm({
         <LocalizedField
           form={record.form}
           name="label"
+          freshness={translationFreshness?.label}
           label={m.common_name()}
           required
           requiredMessage={m.areas_give_the_area_a_name}

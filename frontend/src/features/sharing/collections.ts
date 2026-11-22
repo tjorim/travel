@@ -4,7 +4,13 @@ import { m } from "@/paraglide/messages.js";
 import { ownerRequest } from "@/lib/api/api";
 import { ownerKeys } from "@/lib/query/keys";
 import { useOwner, useOwnerMutation, type Owner } from "@/lib/query/owner-queries";
-import type { Collection, CollectionMember, ProjectionDocument, ShareScope } from "@/api-types";
+import type {
+  Collection,
+  CollectionMember,
+  CollectionUpdate,
+  ProjectionDocument,
+  ShareScope,
+} from "@/api-types";
 
 export type { Collection, CollectionMember };
 
@@ -65,7 +71,10 @@ export function useCollectionMutations() {
     request: (body) => ({ path: collectionsPath, method: "POST", body }),
     invalidate: refresh,
   });
-  const update = useOwnerMutation<{ id: string } & CollectionTexts, Collection>({
+  const update = useOwnerMutation<
+    { id: string } & CollectionTexts & Pick<CollectionUpdate, "title_reviewed">,
+    Collection
+  >({
     fallback: save,
     request: ({ id, ...body }) => ({ path: `${collectionsPath}/${id}`, method: "PATCH", body }),
     invalidate: refresh,

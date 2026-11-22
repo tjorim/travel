@@ -21,6 +21,7 @@ const trip = (overrides: Partial<Trip> = {}): Trip => ({
   summary_html: null,
   id: "trip",
   title: "Rondreis Taiwan",
+  translation_freshness: {},
   title_nl: "Rondreis Taiwan",
   title_en: null,
   summary: null,

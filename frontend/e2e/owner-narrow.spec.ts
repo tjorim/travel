@@ -16,6 +16,7 @@ for (const locale of ["nl", "en"] as const) {
             timezone: "UTC",
             local_date: "2054-11-01",
             share_date_precision: "day",
+            translation_freshness: {},
             title_nl: null,
             title_en: null,
             body: "synthetic",
