@@ -6,7 +6,7 @@ import { type ContentLanguage } from "@/i18n/content-language";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
 import type { TranslationDraftResponse } from "@/api-types";
-import { ownerRequest } from "@/lib/api/api";
+import { ownerRequest } from "@/lib/api/owner-api";
 import {
   errorNotice,
   noticeMessage,

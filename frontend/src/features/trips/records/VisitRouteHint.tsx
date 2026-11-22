@@ -3,7 +3,7 @@ import { m } from "@/paraglide/messages.js";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
-import { ownerRequest } from "@/lib/api/api";
+import { ownerRequest } from "@/lib/api/owner-api";
 import { ownerKeys } from "@/lib/query/keys";
 import { tripPath, useOwner } from "@/lib/query/owner-queries";
 import type { Visit } from "@/api-types";

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatInstant, formatNumber, useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
-import { ownerFile, ownerRequest } from "@/lib/api/api";
+import { ownerFile, ownerRequest } from "@/lib/api/owner-api";
 import { ownerKeys } from "@/lib/query/keys";
 import { useOwner, useTripResource } from "@/lib/query/owner-queries";
 import { DeleteConfirmation, RecordDialog } from "@/components/RecordDialog";

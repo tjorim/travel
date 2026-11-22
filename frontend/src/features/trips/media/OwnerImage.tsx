@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { OwnerSession } from "@/lib/auth";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
-import { ownerFile } from "@/lib/api/api";
+import { ownerFile } from "@/lib/api/owner-api";
 
 /** Fetches a private, authenticated image as a blob and renders it inline, revoking the object URL on cleanup. */
 export function OwnerImage({

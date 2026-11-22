@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { decodeSubject } from "@/lib/auth";
 import { useAuth } from "@/app/providers/auth-context";
-import { ApiError, ownerRequest } from "@/lib/api/api";
+import { ApiError } from "@/lib/api/api";
+import { ownerRequest } from "@/lib/api/owner-api";
 import {
   clearOfflineCopies,
   getKeyDisclosure,

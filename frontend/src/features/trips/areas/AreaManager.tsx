@@ -5,7 +5,8 @@ import { useDialogFocus, useRecordDialog, type DialogFocusRequest } from "@/hook
 import { useRecordForm } from "@/hooks/useRecordForm";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
-import { errorMessage, isResourceInUse } from "@/lib/api/api";
+import { errorMessage } from "@/lib/api/api";
+import { isResourceInUse } from "@/lib/api/owner-api";
 import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
 import { useTripResource } from "@/lib/query/owner-queries";
 import { RecordDialog } from "@/components/RecordDialog";

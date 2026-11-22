@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
-import { ownerRequest } from "@/lib/api/api";
+import { ownerRequest } from "@/lib/api/owner-api";
 import { useOwner } from "@/lib/query/owner-queries";
 import type { PackingSuggestion } from "./model";
 

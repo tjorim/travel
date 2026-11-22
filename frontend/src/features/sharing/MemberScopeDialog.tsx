@@ -11,7 +11,7 @@ import type { Projection } from "@/components/projection/ProjectionView";
 import { errorNotice, textNotice, useFeedback } from "@/lib/api/feedback";
 import { RecordDialog } from "@/components/RecordDialog";
 import type { ExclusionWidening, ShareScope, TripSummary } from "@/api-types";
-import { RenderedPreview } from "@/components/projection/RenderedPreview";
+import { RenderedPreview } from "@/features/trips/publication/RenderedPreview";
 import { cloneScope } from "@/features/trips/publication/catalog";
 import {
   ExclusionWideningDialog,

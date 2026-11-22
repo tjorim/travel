@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { m } from "@/paraglide/messages.js";
-import { ownerRequest } from "@/lib/api/api";
+import { ownerRequest } from "@/lib/api/owner-api";
 import { ownerKeys } from "@/lib/query/keys";
 import { tripPath, useOwner } from "@/lib/query/owner-queries";
 import { collectionsPath } from "@/features/sharing/collections";

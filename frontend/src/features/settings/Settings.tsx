@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { accountUrl, decodeSubject } from "@/lib/auth";
 import { useAuth } from "@/app/providers/auth-context";
 import { useConfirmation } from "@/hooks/useConfirmation";
-import { ownerRequest } from "@/lib/api/api";
+import { ownerRequest } from "@/lib/api/owner-api";
 import { ownerKeys } from "@/lib/query/keys";
 import { useOwnerMutation, useProviderConnections } from "@/lib/query/owner-queries";
 import { EmptyState } from "@/components/ui/EmptyState";
