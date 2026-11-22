@@ -1,3 +1,4 @@
+import type { ContentLanguage } from "@/i18n/content-language";
 import { useLocale } from "@/i18n/locale";
 import { m } from "@/paraglide/messages.js";
 import { useFeedback, textNotice, errorNotice } from "@/lib/api/feedback";
@@ -33,8 +34,10 @@ import { PlaceSearchField } from "../records/PlaceSearchField";
 type Values = {
   titleNl: string;
   titleEn: string;
+  titleReviewed: ContentLanguage | null;
   bodyNl: string;
   bodyEn: string;
+  bodyReviewed: ContentLanguage | null;
   privateNotes: string;
   occurredAt: string;
   datePrecision: TravelUpdate["share_date_precision"];
@@ -45,8 +48,10 @@ type Values = {
 const blank = (): Values => ({
   titleNl: "",
   titleEn: "",
+  titleReviewed: null,
   bodyNl: "",
   bodyEn: "",
+  bodyReviewed: null,
   privateNotes: "",
   occurredAt: localDateTime(),
   datePrecision: "day",
@@ -57,8 +62,10 @@ const blank = (): Values => ({
 const fromUpdate = (update: TravelUpdate): Values => ({
   titleNl: update.title_nl ?? "",
   titleEn: update.title_en ?? "",
+  titleReviewed: null,
   bodyNl: update.body_nl ?? "",
   bodyEn: update.body_en ?? "",
+  bodyReviewed: null,
   privateNotes: update.private_notes ?? "",
   occurredAt: updateWallClock(update),
   datePrecision: update.share_date_precision,
@@ -168,8 +175,10 @@ export function TravelUpdateManager({
           location: values.location,
           title_nl: values.titleNl.trim() || null,
           title_en: values.titleEn.trim() || null,
+          title_reviewed: values.titleReviewed ?? undefined,
           body_nl: values.bodyNl.trim() || null,
           body_en: values.bodyEn.trim() || null,
+          body_reviewed: values.bodyReviewed ?? undefined,
           private_notes: values.privateNotes.trim() || null,
           visibility: values.visibility,
         },
@@ -332,6 +341,7 @@ export function TravelUpdateManager({
             <LocalizedField
               form={record.form}
               name="title"
+              freshness={selected?.translation_freshness?.title}
               label={m.common_title()}
               required
               requiredMessage={m.updates_give_the_travel_update_a_title}
@@ -340,6 +350,7 @@ export function TravelUpdateManager({
             <LocalizedField
               form={record.form}
               name="body"
+              freshness={selected?.translation_freshness?.body}
               kind="markdown"
               label={m.common_text_for_visitors()}
               optional={m.updates_empty_until_shared()}

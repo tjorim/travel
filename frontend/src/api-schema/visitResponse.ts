@@ -12,8 +12,10 @@ import type { PlanningStatus } from './planningStatus';
 import type { RouteReference } from './routeReference';
 import type { Visibility } from './visibility';
 import type { VisitKind } from './visitKind';
+import type { VisitResponseTranslationFreshness } from './visitResponseTranslationFreshness';
 
 export type VisitResponse = {
+  translation_freshness: VisitResponseTranslationFreshness;
   id: string;
   area: AreaResponse;
   location: LocationResponse | null;

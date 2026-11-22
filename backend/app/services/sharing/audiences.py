@@ -64,11 +64,10 @@ def owned_link(session: Session, subject: str, trip_id: Identifier, link_id: Ide
     return LinkAudience(link)
 
 
-def owned_collection(session: Session, subject: str, collection_id: Identifier) -> Collection:
+def owned_collection(session: Session, subject: str, collection_id: Identifier, *, lock: bool = False) -> Collection:
     """One of the owner's collections, settled if it ran out, or 404."""
-    collection = session.scalar(
-        select(Collection).where(Collection.id == collection_id, Collection.owner_subject == subject)
-    )
+    query = select(Collection).where(Collection.id == collection_id, Collection.owner_subject == subject)
+    collection = session.scalar(query.with_for_update() if lock else query)
     if collection is None:
         raise RecordNotFound("Collection not found")
     settle_expired(session, [collection])

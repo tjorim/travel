@@ -6,10 +6,12 @@
  * OpenAPI spec version: snapshot
  */
 import type { CollectionMemberResponse } from './collectionMemberResponse';
+import type { CollectionResponseTranslationFreshness } from './collectionResponseTranslationFreshness';
 import type { ContentLanguage } from './contentLanguage';
 import type { LinkState } from './linkState';
 
 export type CollectionResponse = {
+  translation_freshness: CollectionResponseTranslationFreshness;
   id: string;
   label: string;
   content_language: ContentLanguage;

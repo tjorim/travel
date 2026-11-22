@@ -57,6 +57,7 @@ def collection_response(session: Session, collection: Collection) -> CollectionR
         label=collection.label,
         content_language=collection.content_language,
         title=collection.title,
+        translation_freshness=collection.translation_freshness,
         title_nl=collection.title_nl,
         title_en=collection.title_en,
         state=collection.state,
@@ -119,7 +120,7 @@ def get_collection(session: Session, subject: str, collection_id: Identifier) ->
 def update_collection(
     session: Session, subject: str, collection_id: Identifier, payload: CollectionUpdate
 ) -> CollectionResponse:
-    collection = owned_collection(session, subject, collection_id)
+    collection = owned_collection(session, subject, collection_id, lock=True)
     require_collection_editable(collection)
     fields = payload.model_fields_set
     if "label" in fields and payload.label is not None:

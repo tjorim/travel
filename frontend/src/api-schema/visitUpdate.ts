@@ -9,6 +9,8 @@ import type { DatePrecision } from './datePrecision';
 import type { LocationInput } from './locationInput';
 import type { PlanningStatus } from './planningStatus';
 import type { VisitKind } from './visitKind';
+import type { VisitUpdateSummaryReviewed } from './visitUpdateSummaryReviewed';
+import type { VisitUpdateTitleReviewed } from './visitUpdateTitleReviewed';
 
 export type VisitUpdate = {
   area_id?: string | null;
@@ -33,6 +35,10 @@ export type VisitUpdate = {
   summary_nl?: string | null;
   /** Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one. */
   summary_en?: string | null;
+  /** Confirm that this language version is still correct. */
+  title_reviewed?: VisitUpdateTitleReviewed;
+  /** Confirm that this language version is still correct. */
+  summary_reviewed?: VisitUpdateSummaryReviewed;
   share_time?: boolean | null;
   /** How precisely a visitor may read this record's dates: day, month or year. null (the default) follows the audience: each public view and hidden link sets its own date precision in its share scope (defaults.date_precision). The coarser of the two always applies, so a visitor never gets a finer date than either allows; with neither set the date reads by month. Send null to follow the audience; omit to keep the value. */
   share_date_precision?: DatePrecision | null;

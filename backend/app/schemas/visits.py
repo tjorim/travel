@@ -17,11 +17,14 @@ from app.schemas.base import (
     InputModel,
     LocalTime,
     ResponseModel,
+    TextLanguage,
     _html,
     _html_of,
     require_ordered_dates,
 )
 from app.schemas.locations import LocationInput, LocationResponse
+
+from .localized import TranslationFreshness
 
 
 def require_visit_times(
@@ -93,6 +96,12 @@ class VisitUpdate(InputModel):
     summary: str | None = Field(default=None, max_length=2000, description=MARKDOWN + " " + PLAIN_TEXT)
     summary_nl: str | None = Field(default=None, max_length=2000, description=MARKDOWN + " " + DUTCH_TEXT)
     summary_en: str | None = Field(default=None, max_length=2000, description=MARKDOWN + " " + ENGLISH_TEXT)
+    title_reviewed: TextLanguage | None = Field(
+        default=None, description="Confirm that this language version is still correct."
+    )
+    summary_reviewed: TextLanguage | None = Field(
+        default=None, description="Confirm that this language version is still correct."
+    )
     share_time: bool | None = None
     share_date_precision: DatePrecision | None = Field(
         default=None, description=PRECISION_OWN + " Send null to follow the audience; omit to keep the value."
@@ -116,6 +125,7 @@ class VisitRouteCheck(InputModel):
 
 
 class VisitResponse(ResponseModel):
+    translation_freshness: dict[str, TranslationFreshness] = Field(default_factory=dict)
     id: str
     area: AreaResponse
     location: LocationResponse | None

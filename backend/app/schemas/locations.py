@@ -16,10 +16,13 @@ from app.schemas.base import (
     PLAIN_TEXT,
     Identifier,
     InputModel,
+    TextLanguage,
     _html,
     _html_of,
     blank_to_none,
 )
+
+from .localized import TranslationFreshness
 
 
 class LocationFields(InputModel):
@@ -124,6 +127,9 @@ class LocationUpdate(InputModel):
     label: str | None = Field(default=None, max_length=120, description=PLAIN_TEXT)
     label_nl: str | None = Field(default=None, max_length=120, description=DUTCH_TEXT)
     label_en: str | None = Field(default=None, max_length=120, description=ENGLISH_TEXT)
+    label_reviewed: TextLanguage | None = Field(
+        default=None, description="Confirm that this language version is still correct."
+    )
     local_name: str | None = Field(default=None, max_length=120, description=LOCAL_NAME)
     area_id: Identifier | None = Field(default=None, min_length=1, max_length=32)
     share_address: bool | None = None
@@ -205,6 +211,7 @@ class LocationUpdate(InputModel):
 
 
 class LocationResponse(LocationFields):
+    translation_freshness: dict[str, TranslationFreshness] = Field(default_factory=dict)
     id: str
     visibility: Visibility
     # Every stored location belongs to an area (derived from its city when it was created).

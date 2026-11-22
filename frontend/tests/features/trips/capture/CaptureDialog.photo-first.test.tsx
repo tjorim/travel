@@ -37,6 +37,7 @@ const trip = (
   summary_html: null,
   id,
   title,
+  translation_freshness: {},
   title_nl: title,
   title_en: null,
   summary: null,

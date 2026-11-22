@@ -6,11 +6,13 @@
  * OpenAPI spec version: snapshot
  */
 import type { ContentLanguage } from './contentLanguage';
+import type { TripResponseTranslationFreshness } from './tripResponseTranslationFreshness';
 
 /**
  * One trip's own fields and cover. Every record kind, travel updates included, has its own list endpoint.
  */
 export type TripResponse = {
+  translation_freshness: TripResponseTranslationFreshness;
   id: string;
   owner_subject: string;
   /** The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown. */

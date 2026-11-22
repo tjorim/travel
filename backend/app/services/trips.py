@@ -102,6 +102,7 @@ def _trip_fields(trip: Trip, cover: MediaDerivative | None) -> dict:
         "owner_subject": trip.owner_subject,
         "content_language": trip.content_language,
         "title": trip.title,
+        "translation_freshness": trip.translation_freshness,
         "title_nl": trip.title_nl,
         "title_en": trip.title_en,
         "summary": trip.summary,

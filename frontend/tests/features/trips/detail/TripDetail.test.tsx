@@ -41,6 +41,7 @@ const trip: Trip = {
   summary_html: null,
   id: "trip",
   title: "Exampleland",
+  translation_freshness: {},
   title_nl: "Exampleland",
   title_en: null,
   summary: "Drie weken",
@@ -59,6 +60,7 @@ const trip: Trip = {
       local_date: "2054-11-17",
       share_date_precision: "day",
       title: "Eerste avond",
+      translation_freshness: {},
       title_nl: "Eerste avond",
       title_en: null,
       body: "",
@@ -157,6 +159,7 @@ it("shows the whole private trip once every read has arrived", async () => {
           navigation_provider_place_id: null,
           notes: null,
           label: null,
+          translation_freshness: {},
           label_nl: null,
           label_en: null,
           local_name: null,
@@ -168,6 +171,7 @@ it("shows the whole private trip once every read has arrived", async () => {
           notes_html: null,
         },
         area: {
+          translation_freshness: {},
           label_nl: null,
           label_en: null,
           local_name: null,
@@ -229,6 +233,7 @@ it("shows a saved location's own name instead of its repeated locality", async (
         navigation_provider: null,
         navigation_provider_place_id: null,
         notes: null,
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         local_name: null,
@@ -267,6 +272,7 @@ it("shows saved travel context and update media in the private overview", async 
         navigation_provider: null,
         navigation_provider_place_id: null,
         notes: null,
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         local_name: null,
@@ -323,6 +329,7 @@ it("shows saved travel context and update media in the private overview", async 
           navigation_provider_place_id: null,
           notes: null,
           label: null,
+          translation_freshness: {},
           label_nl: null,
           label_en: null,
           local_name: null,
@@ -334,6 +341,7 @@ it("shows saved travel context and update media in the private overview", async 
           notes_html: null,
         },
         area: {
+          translation_freshness: {},
           label_nl: null,
           label_en: null,
           local_name: null,
@@ -350,6 +358,7 @@ it("shows saved travel context and update media in the private overview", async 
     ],
     routes: [
       {
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         booking_reference: null,
@@ -362,6 +371,7 @@ it("shows saved travel context and update media in the private overview", async 
         status: "confirmed",
         label: "BR76",
         departure_area: {
+          translation_freshness: {},
           label_nl: null,
           label_en: null,
           local_name: null,
@@ -375,6 +385,7 @@ it("shows saved travel context and update media in the private overview", async 
           label: "Amsterdam",
         },
         arrival_area: {
+          translation_freshness: {},
           label_nl: null,
           label_en: null,
           local_name: null,

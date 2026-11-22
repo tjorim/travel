@@ -45,6 +45,7 @@ const trip: Trip = {
   summary_html: null,
   id: "trip",
   title: "Exampleland",
+  translation_freshness: {},
   title_nl: "Exampleland",
   title_en: null,
   summary: null,
@@ -63,6 +64,7 @@ const trip: Trip = {
       local_date: "2054-11-16",
       share_date_precision: "day",
       title: "Privé dagboek",
+      translation_freshness: {},
       title_nl: "Privé dagboek",
       title_en: null,
       body: "Geheim",
@@ -84,6 +86,7 @@ const trip: Trip = {
       local_date: "2054-11-16",
       share_date_precision: "day",
       title: "Aankomst",
+      translation_freshness: {},
       title_nl: "Aankomst",
       title_en: null,
       body: "Geland",
@@ -105,6 +108,7 @@ const trip: Trip = {
       local_date: "2054-11-16",
       share_date_precision: "day",
       title: "Stad ↔ natuur",
+      translation_freshness: {},
       title_nl: "Stad ↔ natuur",
       title_en: null,
       body: "Bos",
@@ -185,6 +189,7 @@ beforeEach(() => {
     })
     .collection<Api.AreaResponse>("/api/trips/trip/areas", [
       {
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         local_name: null,
@@ -217,6 +222,7 @@ beforeEach(() => {
         navigation_provider: null,
         navigation_provider_place_id: null,
         notes: null,
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         local_name: null,
@@ -247,6 +253,7 @@ beforeEach(() => {
         navigation_provider: null,
         navigation_provider_place_id: null,
         notes: null,
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         local_name: null,
@@ -262,6 +269,7 @@ beforeEach(() => {
     ])
     .collection<Api.VisitResponse>("/api/trips/trip/visits", [
       {
+        translation_freshness: {},
         title_nl: null,
         title_en: null,
         kind: null,
@@ -282,6 +290,7 @@ beforeEach(() => {
         id: "v1",
         title: "Noordkust",
         area: {
+          translation_freshness: {},
           label_nl: null,
           label_en: null,
           local_name: null,
@@ -302,6 +311,7 @@ beforeEach(() => {
     .collection<Api.RouteResponse>("/api/trips/trip/routes", [
       {
         status: "idea",
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         departure_location: null,
@@ -323,6 +333,7 @@ beforeEach(() => {
         mode: "flight",
         label: null,
         departure_area: {
+          translation_freshness: {},
           label_nl: null,
           label_en: null,
           local_name: null,
@@ -336,6 +347,7 @@ beforeEach(() => {
           country_code: "BE",
         },
         arrival_area: {
+          translation_freshness: {},
           label_nl: null,
           label_en: null,
           local_name: null,
@@ -383,6 +395,7 @@ beforeEach(() => {
         width: null,
         height: null,
         caption: null,
+        translation_freshness: {},
         caption_nl: null,
         caption_en: null,
         alt_text: null,
@@ -413,6 +426,7 @@ beforeEach(() => {
         width: null,
         height: null,
         caption: null,
+        translation_freshness: {},
         caption_nl: null,
         caption_en: null,
         alt_text: null,

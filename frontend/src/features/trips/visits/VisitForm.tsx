@@ -1,3 +1,4 @@
+import type { TranslationFreshness } from "@/api-types";
 import { AdvancedSection } from "../records/AdvancedSection";
 import { CheckboxField, SelectField, RecordForm } from "@/components/forms/fields";
 import { LocalizedField } from "@/components/forms/LocalizedField";
@@ -17,9 +18,11 @@ import { lastDay, type Values } from "./model";
 export function VisitForm({
   tripId,
   record,
+  translationFreshness,
   editingId,
 }: {
   tripId: string;
+  translationFreshness?: Record<string, TranslationFreshness>;
   record: ReturnType<typeof useRecordForm<Values>>;
   editingId: string | null | undefined;
 }) {
@@ -44,6 +47,7 @@ export function VisitForm({
       <LocalizedField
         form={record.form}
         name="title"
+        freshness={translationFreshness?.title}
         label={m.common_title()}
         optional
         maxLength={160}
@@ -143,6 +147,7 @@ export function VisitForm({
       <LocalizedField
         form={record.form}
         name="summary"
+        freshness={translationFreshness?.summary}
         kind="markdown"
         label={m.common_text_for_visitors()}
         optional

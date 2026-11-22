@@ -16,10 +16,13 @@ from app.schemas.base import (
     Identifier,
     InputModel,
     ResponseModel,
+    TextLanguage,
     _html,
     _html_of,
 )
 from app.schemas.locations import LocationInput, LocationResponse
+
+from .localized import TranslationFreshness
 
 
 def _accept_old_date_precision(data: Any) -> Any:
@@ -91,6 +94,12 @@ class TravelUpdatePatch(InputModel):
     body: str | None = Field(default=None, max_length=10000, description=MARKDOWN + " " + PLAIN_TEXT)
     body_nl: str | None = Field(default=None, max_length=10000, description=MARKDOWN + " " + DUTCH_TEXT)
     body_en: str | None = Field(default=None, max_length=10000, description=MARKDOWN + " " + ENGLISH_TEXT)
+    title_reviewed: TextLanguage | None = Field(
+        default=None, description="Confirm that this language version is still correct."
+    )
+    body_reviewed: TextLanguage | None = Field(
+        default=None, description="Confirm that this language version is still correct."
+    )
     private_notes: str | None = Field(default=None, max_length=10000, description=MARKDOWN)
     area_id: Identifier | None = None
     location: LocationInput | None = None
@@ -102,6 +111,7 @@ class TravelUpdatePatch(InputModel):
 
 
 class TravelUpdateResponse(ResponseModel):
+    translation_freshness: dict[str, TranslationFreshness] = Field(default_factory=dict)
     id: str
     occurred_at: datetime
     timezone: str = Field(

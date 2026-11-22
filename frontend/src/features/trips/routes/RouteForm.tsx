@@ -1,3 +1,4 @@
+import type { TranslationFreshness } from "@/api-types";
 import { FinishedTrackImport } from "./FinishedTrackImport";
 import { FlightLineSuggestion } from "./FlightLineSuggestion";
 import { Collapsible } from "@/components/ui/collapsible";
@@ -36,6 +37,7 @@ import { IdeaNote } from "../records/IdeaNote";
 export function RouteForm({
   tripId,
   record,
+  translationFreshness,
   editingId,
   bookingOpen,
   onBookingOpenChange,
@@ -44,6 +46,7 @@ export function RouteForm({
   documents,
 }: {
   tripId: string;
+  translationFreshness?: Record<string, TranslationFreshness>;
   record: ReturnType<typeof useRecordForm<Values>>;
   editingId: string | null | undefined;
   bookingOpen: boolean;
@@ -89,6 +92,7 @@ export function RouteForm({
       <LocalizedField
         form={record.form}
         name="label"
+        freshness={translationFreshness?.label}
         label={m.common_name()}
         optional
         maxLength={160}

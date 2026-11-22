@@ -24,6 +24,8 @@ from app.schemas.projection import ProjectionDates
 from app.schemas.publication import CREATE_WITH_PRESET
 from app.schemas.sharing_presets import PresetExceptions, SharingPresetId
 
+from .localized import TranslationFreshness
+
 
 # A collection is owner-wide: its members are (trip, scope) pairs and its own
 # token opens an index of them. The owner label never reaches a visitor.
@@ -46,6 +48,9 @@ class CollectionUpdate(InputModel):
     title: str | None = Field(default=None, max_length=160, description=PLAIN_TEXT)
     title_nl: str | None = Field(default=None, max_length=160, description=DUTCH_TEXT)
     title_en: str | None = Field(default=None, max_length=160, description=ENGLISH_TEXT)
+    title_reviewed: TextLanguage | None = Field(
+        default=None, description="Confirm that this language version is still correct."
+    )
 
 
 class CollectionMemberCreate(InputModel):
@@ -79,6 +84,7 @@ class CollectionMemberResponse(ResponseModel):
 
 
 class CollectionResponse(ResponseModel):
+    translation_freshness: dict[str, TranslationFreshness] = Field(default_factory=dict)
     id: str
     label: str
     content_language: ContentLanguage
@@ -98,6 +104,7 @@ class CollectionResponse(ResponseModel):
 
 # MCP collection metadata is deliberately independent of the token-bearing REST model.
 class McpCollectionResponse(BaseModel):
+    translation_freshness: dict[str, TranslationFreshness] = Field(default_factory=dict)
     id: str
     label: str
     content_language: ContentLanguage

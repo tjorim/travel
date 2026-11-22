@@ -134,8 +134,10 @@ export function MediaManager({
           travel_update_id: values.travelUpdateId || null,
           caption_nl: values.captionNl || null,
           caption_en: values.captionEn || null,
+          caption_reviewed: values.captionReviewed ?? undefined,
           alt_text_nl: values.altTextNl || null,
           alt_text_en: values.altTextEn || null,
+          alt_text_reviewed: values.altTextReviewed ?? undefined,
           focal_x: values.focalX === "" ? null : Number(values.focalX),
           focal_y: values.focalY === "" ? null : Number(values.focalY),
         },
@@ -568,6 +570,7 @@ export function MediaManager({
             actions={cancelAction}
           >
             <PresentationFields
+              translationFreshness={selectedDerivative?.translation_freshness}
               record={presentationRecord}
               tripId={trip.id}
               updates={trip.travel_updates}

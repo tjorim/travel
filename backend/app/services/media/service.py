@@ -130,6 +130,7 @@ def derivative_response(derivative: MediaDerivative, trip_id: str) -> MediaDeriv
         height=derivative.height,
         travel_update_id=derivative.travel_update_id,
         caption=derivative.caption,
+        translation_freshness=derivative.translation_freshness,
         caption_nl=derivative.caption_nl,
         caption_en=derivative.caption_en,
         alt_text=derivative.alt_text,

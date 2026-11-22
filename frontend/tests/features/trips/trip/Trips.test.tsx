@@ -103,6 +103,7 @@ vi.mock("@/features/trips/workspace/TripOverview", () => ({
 const trip = (id: string, title: string, extra: Partial<Trip> = {}): Trip => ({
   id,
   title,
+  translation_freshness: {},
   title_nl: title,
   title_en: null,
   summary: null,

@@ -7,10 +7,12 @@
  */
 import type { DerivativePurpose } from './derivativePurpose';
 import type { DerivativeReviewState } from './derivativeReviewState';
+import type { MediaDerivativeResponseTranslationFreshness } from './mediaDerivativeResponseTranslationFreshness';
 import type { MediaKind } from './mediaKind';
 import type { Visibility } from './visibility';
 
 export type MediaDerivativeResponse = {
+  translation_freshness: MediaDerivativeResponseTranslationFreshness;
   id: string;
   media_asset_id: string;
   purpose: DerivativePurpose;

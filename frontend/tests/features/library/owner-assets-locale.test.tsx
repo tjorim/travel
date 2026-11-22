@@ -31,6 +31,7 @@ const trip: Trip = {
   summary_html: null,
   id: "trip",
   title: "Eigen reis",
+  translation_freshness: {},
   title_nl: "Eigen reis",
   title_en: null,
   summary: null,

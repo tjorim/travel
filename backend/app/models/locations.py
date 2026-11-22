@@ -13,12 +13,14 @@ from app.db.base import Base
 from app.models.base import _trip_language, _visibility_column, opaque_id
 from app.models.enums import Visibility
 
+from .localized import LocalizedRecord
+
 if TYPE_CHECKING:
     from app.models.areas import Area
     from app.models.trips import Trip
 
 
-class Location(Base):
+class Location(LocalizedRecord, Base):
     """A hotel, station or monument, with an address and coordinates, or just a city.
 
     A location always belongs to one ``area``. It can be shared by its
@@ -27,6 +29,8 @@ class Location(Base):
     chosen ``share_address``. Notes, provider ids and the display name (which
     usually contains the address) are never shared, and a location cannot be
     shared without a ``label``."""
+
+    localized_fields = ("label",)
 
     __tablename__ = "locations"
     __table_args__ = (
@@ -59,6 +63,8 @@ class Location(Base):
     # and required for that, because the display name usually contains the address.
     label_nl: Mapped[str | None] = mapped_column(String(120), nullable=True)
     label_en: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    label_nl_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    label_en_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     label = Localized()
     # The name as written where the place is (#376), as on an area. It follows the label's visibility.
     local_name: Mapped[str | None] = mapped_column(String(120), nullable=True)

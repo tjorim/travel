@@ -6,11 +6,13 @@
  * OpenAPI spec version: snapshot
  */
 import type { ContentLanguage } from './contentLanguage';
+import type { TripSummaryResponseTranslationFreshness } from './tripSummaryResponseTranslationFreshness';
 
 /**
  * A trip without any embedded record: what the owner's trip list needs, whatever the trip holds.
  */
 export type TripSummaryResponse = {
+  translation_freshness: TripSummaryResponseTranslationFreshness;
   id: string;
   owner_subject: string;
   /** The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown. */

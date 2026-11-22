@@ -98,6 +98,7 @@ function signedIn() {
     {
       owner_subject: "synthetic",
       content_language: "nl",
+      translation_freshness: {},
       title_nl: null,
       title_en: null,
       summary: null,
@@ -119,6 +120,7 @@ function signedIn() {
       timezone: "synthetic",
       local_date: "2054-01-01",
       share_date_precision: "day",
+      translation_freshness: {},
       title_nl: null,
       title_en: null,
       body: "synthetic",
@@ -180,6 +182,7 @@ function signedIn() {
         navigation_provider_place_id: null,
         notes: null,
         label: null,
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         local_name: null,

@@ -32,6 +32,7 @@ const update = (id: string, title: string): TravelUpdate => ({
   local_date: "2054-11-17",
   share_date_precision: "day",
   title,
+  translation_freshness: {},
   title_nl: title,
   title_en: null,
   body: "",
@@ -64,6 +65,7 @@ beforeEach(() => {
       summary_html: null,
       id: "trip",
       title: "Exampleland",
+      translation_freshness: {},
       title_nl: "Exampleland",
       title_en: null,
       summary: null,
@@ -100,6 +102,7 @@ beforeEach(() => {
   api.on<Api.TripSummaryResponse[]>("GET", /^\/api\/trips$/, () => [
     {
       owner_subject: "synthetic",
+      translation_freshness: {},
       title_nl: null,
       title_en: null,
       summary_nl: null,

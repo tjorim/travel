@@ -89,3 +89,26 @@ The same change serialises video derivative jobs (`VIDEO_CONCURRENCY = 1` in
 process is waiting it is not expired as stalled, and the stalled clock
 (`processing_started_at`) restarts when the job gets its slot. A job lost with
 its process still expires and can be retried.
+
+## Reviewing translations after an edit
+
+When both languages have text and one was edited later, the owner editor marks
+the older version as possibly out of date. Saving an edit records the changed
+language's timestamp. Editing both in one save gives them the same timestamp.
+The editor also offers **Still correct**. Choose it and save to acknowledge the
+other language's latest edit without changing the text. The reviewed timestamp
+catches up to the other version so both are current. An unrelated save or a
+save that echoes unchanged text leaves the timestamps alone.
+
+Existing text starts with unknown edit order (both timestamps are null). The
+first edit to either version establishes an order. A missing language has no
+staleness warning. Moving a trip's text to its correct language carries the
+timestamp with it. Machine drafts stay marked as unreviewed until saved.
+
+Full owner API and MCP records expose `translation_freshness` keyed by field
+name, with `nl_updated_at`, `en_updated_at` and `possibly_out_of_date` (the
+language code or null). Owner update requests accept `<field>_reviewed` with
+`nl` or `en`, for example `{"summary_reviewed":"en"}`. The private trip export
+includes the same additive metadata for the localized records in the export.
+Visitors continue to receive the stored text via the existing language and
+fallback rules.

@@ -7,6 +7,8 @@
  */
 import type { DatePrecision } from './datePrecision';
 import type { LocationInput } from './locationInput';
+import type { TravelUpdatePatchBodyReviewed } from './travelUpdatePatchBodyReviewed';
+import type { TravelUpdatePatchTitleReviewed } from './travelUpdatePatchTitleReviewed';
 import type { Visibility } from './visibility';
 
 export type TravelUpdatePatch = {
@@ -25,6 +27,10 @@ export type TravelUpdatePatch = {
   body_nl?: string | null;
   /** Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one. */
   body_en?: string | null;
+  /** Confirm that this language version is still correct. */
+  title_reviewed?: TravelUpdatePatchTitleReviewed;
+  /** Confirm that this language version is still correct. */
+  body_reviewed?: TravelUpdatePatchBodyReviewed;
   /** Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. */
   private_notes?: string | null;
   area_id?: string | null;

@@ -137,6 +137,7 @@ export function LocationForm({
       <LocalizedField
         form={record.form}
         name="label"
+        freshness={selected?.translation_freshness?.label}
         label={m.locations_public_name_label()}
         optional
         maxLength={120}

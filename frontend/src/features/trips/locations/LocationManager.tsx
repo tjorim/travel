@@ -85,6 +85,7 @@ export function LocationManager({
         display_name: optional(values.displayName),
         label_nl: optional(values.labelNl),
         label_en: optional(values.labelEn),
+        label_reviewed: values.labelReviewed ?? undefined,
         local_name: optional(values.localName),
         address_line1: optional(values.addressLine1),
         address_line2: optional(values.addressLine2),

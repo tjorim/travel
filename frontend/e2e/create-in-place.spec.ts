@@ -6,6 +6,7 @@ import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
 
 // Synthetic content only. A stateful owner API: records created in the dialogs join the lists the agenda and the map read.
 const area = {
+  translation_freshness: {},
   label_nl: null,
   label_en: null,
   local_name: null,
@@ -58,6 +59,7 @@ async function openOwner(page: Page, locale: (typeof locales)[number], theme: "l
     if (route.request().method() === "POST") {
       const body = JSON.parse(route.request().postData() ?? "{}") as Record<string, unknown>;
       const visit = {
+        translation_freshness: {},
         title_nl: null,
         title_en: null,
         summary_nl: null,

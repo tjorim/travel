@@ -69,6 +69,7 @@ export function AreaManager({
         payload: {
           label_nl: values.labelNl.trim() || null,
           label_en: values.labelEn.trim() || null,
+          label_reviewed: values.labelReviewed ?? undefined,
           local_name: values.localName.trim() || null,
           country_code: values.countryCode.trim().toUpperCase() || null,
           region: values.region.trim() || null,
@@ -224,7 +225,13 @@ export function AreaManager({
             }}
           />
         )}
-        {editing && <AreaForm tripId={trip.id} record={record} />}
+        {editing && (
+          <AreaForm
+            translationFreshness={selected?.translation_freshness}
+            tripId={trip.id}
+            record={record}
+          />
+        )}
       </RecordDialog>
     </section>
   );

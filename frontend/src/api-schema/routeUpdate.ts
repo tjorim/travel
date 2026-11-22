@@ -9,6 +9,7 @@ import type { GeoJsonLineStringInput } from './geoJsonLineStringInput';
 import type { LocationInput } from './locationInput';
 import type { PlanningStatus } from './planningStatus';
 import type { RouteMode } from './routeMode';
+import type { RouteUpdateLabelReviewed } from './routeUpdateLabelReviewed';
 
 export type RouteUpdate = {
   mode?: RouteMode | null;
@@ -20,6 +21,8 @@ export type RouteUpdate = {
   label_nl?: string | null;
   /** The English text. Null or an empty string clears it; a visitor who reads English gets this one. */
   label_en?: string | null;
+  /** Confirm that this language version is still correct. */
+  label_reviewed?: RouteUpdateLabelReviewed;
   departure_area_id?: string | null;
   arrival_area_id?: string | null;
   departure_location?: LocationInput | null;

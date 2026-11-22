@@ -14,6 +14,8 @@ from app.db.base import Base
 from app.models.base import _enum_column, _trip_language, _visibility_column, opaque_id
 from app.models.enums import PlanningStatus, RouteMode, Visibility
 
+from .localized import LocalizedRecord
+
 if TYPE_CHECKING:
     from app.models.alternatives import AlternativeGroupMember
     from app.models.areas import Area
@@ -22,7 +24,7 @@ if TYPE_CHECKING:
     from app.models.trips import Trip
 
 
-class Route(Base):
+class Route(LocalizedRecord, Base):
     """How the traveller gets from one area to another, at any level of detail.
 
     A route always runs between two *areas*; that is all a visitor ever sees of
@@ -38,6 +40,8 @@ class Route(Base):
     location appears on a map only when that location is itself shared. The
     line is drawn by hand; it is never derived from a live track (decision 244).
     """
+
+    localized_fields = ("label",)
 
     __tablename__ = "routes"
     __table_args__ = (
@@ -55,6 +59,8 @@ class Route(Base):
     # A name for the route; without one it is shown as "<from> → <to>".
     label_nl: Mapped[str | None] = mapped_column(String(160), nullable=True)
     label_en: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    label_nl_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    label_en_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     label = Localized()
     departure_area_id: Mapped[str] = mapped_column(ForeignKey("areas.id"), nullable=False)
     arrival_area_id: Mapped[str] = mapped_column(ForeignKey("areas.id"), nullable=False)

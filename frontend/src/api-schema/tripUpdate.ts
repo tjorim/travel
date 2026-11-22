@@ -6,6 +6,8 @@
  * OpenAPI spec version: snapshot
  */
 import type { ContentLanguage } from './contentLanguage';
+import type { TripUpdateSummaryReviewed } from './tripUpdateSummaryReviewed';
+import type { TripUpdateTitleReviewed } from './tripUpdateTitleReviewed';
 
 export type TripUpdate = {
   /** The language a write to a plain text field name lands in (`title` is `title_<content_language>`), and the one read first: `nl` or `en`. Dutch and English are both always accepted as `<field>_nl` and `<field>_en`; where one is missing, the other is shown. */
@@ -24,6 +26,10 @@ export type TripUpdate = {
   summary_nl?: string | null;
   /** Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one. */
   summary_en?: string | null;
+  /** Confirm that this language version is still correct. */
+  title_reviewed?: TripUpdateTitleReviewed;
+  /** Confirm that this language version is still correct. */
+  summary_reviewed?: TripUpdateSummaryReviewed;
   starts_on?: string | null;
   ends_on?: string | null;
   /** The share copy of a photo to use as the trip's cover; null removes the cover. Choosing a cover does not publish it: an audience shows it only if it already receives that photo. */

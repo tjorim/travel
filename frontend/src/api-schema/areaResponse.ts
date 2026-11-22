@@ -5,6 +5,7 @@
  * Private-by-default API for trips, reisupdates and what visitors may read of them.
  * OpenAPI spec version: snapshot
  */
+import type { AreaResponseTranslationFreshness } from './areaResponseTranslationFreshness';
 import type { Visibility } from './visibility';
 
 export type AreaResponse = {
@@ -21,6 +22,7 @@ export type AreaResponse = {
   latitude: number | null;
   longitude: number | null;
   timezone: string | null;
+  translation_freshness: AreaResponseTranslationFreshness;
   id: string;
   visibility: Visibility;
 };

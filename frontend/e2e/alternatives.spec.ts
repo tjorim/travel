@@ -5,6 +5,7 @@ import { choosePreferences, mockApi, ownerTrip, signInOwner } from "./mock-api";
 import { message } from "./messages";
 
 const area = {
+  translation_freshness: {},
   label_nl: null,
   label_en: null,
   local_name: null,

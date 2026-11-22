@@ -5,6 +5,7 @@
  * Private-by-default API for trips, reisupdates and what visitors may read of them.
  * OpenAPI spec version: snapshot
  */
+import type { AreaUpdateLabelReviewed } from './areaUpdateLabelReviewed';
 
 export type AreaUpdate = {
   /** The text in the record's content language, else the other language's. A write to it sets the content language's text; null or an empty string clears it. */
@@ -13,6 +14,8 @@ export type AreaUpdate = {
   label_nl?: string | null;
   /** The English text. Null or an empty string clears it; a visitor who reads English gets this one. */
   label_en?: string | null;
+  /** Confirm that this language version is still correct. */
+  label_reviewed?: AreaUpdateLabelReviewed;
   /** The name of the place as written where it is (for example `東京` or `Αθήνα`): not a translation of the label, and often not in Latin script. Used for search and navigation, and shown beside the label wherever the label is shared; never shared without one. Null or an empty string clears it. */
   local_name?: string | null;
   country_code?: string | null;

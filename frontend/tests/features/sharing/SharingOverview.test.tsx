@@ -31,6 +31,7 @@ const trips: Api.TripSummaryResponse[] = [
   {
     owner_subject: "synthetic",
     content_language: "nl",
+    translation_freshness: {},
     title_nl: null,
     title_en: null,
     summary_nl: null,
@@ -49,6 +50,7 @@ const trips: Api.TripSummaryResponse[] = [
   {
     owner_subject: "synthetic",
     content_language: "nl",
+    translation_freshness: {},
     title_nl: null,
     title_en: null,
     summary_nl: null,
@@ -81,6 +83,7 @@ const link = (state: Api.LinkState): Api.ShareLinkResponse => ({
 });
 const collection: Api.CollectionResponse = {
   content_language: "nl",
+  translation_freshness: {},
   title_nl: null,
   title_en: null,
   id: "c1",

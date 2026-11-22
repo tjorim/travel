@@ -16,6 +16,7 @@ const area = (id: string, label: string): Area => ({
   id,
   visibility: "private",
   label,
+  translation_freshness: {},
   label_nl: label,
   label_en: null,
   local_name: null,
@@ -35,6 +36,7 @@ const trip: Trip = {
   summary_html: null,
   id: "trip",
   title: "Exampleland",
+  translation_freshness: {},
   title_nl: "Exampleland",
   title_en: null,
   summary: null,
@@ -89,6 +91,7 @@ it("lists stays, routes and visits together by day, then what has no day yet", a
     [
       {
         status: "planned",
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         departure_location: null,
@@ -115,6 +118,7 @@ it("lists stays, routes and visits together by day, then what has no day yet", a
       },
       {
         status: "planned",
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         departure_location: null,
@@ -141,6 +145,7 @@ it("lists stays, routes and visits together by day, then what has no day yet", a
       },
       {
         status: "planned",
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         departure_location: null,
@@ -169,6 +174,7 @@ it("lists stays, routes and visits together by day, then what has no day yet", a
     [
       {
         location: null,
+        translation_freshness: {},
         title_nl: null,
         title_en: null,
         kind: null,
@@ -193,6 +199,7 @@ it("lists stays, routes and visits together by day, then what has no day yet", a
       },
       {
         location: null,
+        translation_freshness: {},
         title_nl: null,
         title_en: null,
         kind: null,
@@ -251,6 +258,7 @@ it("keeps each record's own order for same-day items without a time, instead of 
       // Ids sort alphabetically the other way around, so an id-based tiebreak would reverse these.
       {
         status: "planned",
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         departure_location: null,
@@ -277,6 +285,7 @@ it("keeps each record's own order for same-day items without a time, instead of 
       },
       {
         status: "planned",
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         departure_location: null,
@@ -305,6 +314,7 @@ it("keeps each record's own order for same-day items without a time, instead of 
     [
       {
         location: null,
+        translation_freshness: {},
         title_nl: null,
         title_en: null,
         kind: null,
@@ -366,6 +376,7 @@ it("opens the record behind an agenda row when it is clicked", async () => {
     [
       {
         status: "planned",
+        translation_freshness: {},
         label_nl: null,
         label_en: null,
         departure_location: null,
@@ -394,6 +405,7 @@ it("opens the record behind an agenda row when it is clicked", async () => {
     [
       {
         location: null,
+        translation_freshness: {},
         title_nl: null,
         title_en: null,
         kind: null,
@@ -486,6 +498,7 @@ it("offers no way to start a record unless the workspace can open one", async ()
     [
       {
         location: null,
+        translation_freshness: {},
         title_nl: null,
         title_en: null,
         kind: null,

@@ -26,6 +26,7 @@ const trip: Trip = {
   summary_html: null,
   id: "trip",
   title: "Exampleland",
+  translation_freshness: {},
   title_nl: "Exampleland",
   title_en: null,
   summary: null,
@@ -38,6 +39,7 @@ const trip: Trip = {
 const area = (id: string, label: string): Area => ({
   id,
   label,
+  translation_freshness: {},
   label_nl: label,
   label_en: null,
   local_name: null,

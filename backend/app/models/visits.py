@@ -13,6 +13,8 @@ from app.db.base import Base
 from app.models.base import _enum_column, _trip_language, _visibility_column, opaque_id
 from app.models.enums import DatePrecision, PlanningStatus, Visibility, VisitKind
 
+from .localized import LocalizedRecord
+
 if TYPE_CHECKING:
     from app.models.alternatives import AlternativeGroupMember
     from app.models.areas import Area
@@ -20,7 +22,7 @@ if TYPE_CHECKING:
     from app.models.trips import Trip
 
 
-class Visit(Base):
+class Visit(LocalizedRecord, Base):
     """A stop on the trip: somewhere the traveller is, or goes, and when.
 
     A visit is at an *area*, or at a *location* in one, and can carry the days it
@@ -31,6 +33,8 @@ class Visit(Base):
     days at ``share_date_precision``), held in separate fields so private text
     can never reach a visitor by changing a switch.
     """
+
+    localized_fields = ("title", "summary")
 
     __tablename__ = "visits"
     __table_args__ = (
@@ -48,6 +52,8 @@ class Visit(Base):
     # Without a title a visit goes by the name of its location, else of its area.
     title_nl: Mapped[str | None] = mapped_column(String(160), nullable=True)
     title_en: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    title_nl_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    title_en_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     title = Localized()
     kind: Mapped[VisitKind | None] = mapped_column(_enum_column(VisitKind, "travel_visit_kind"), nullable=True)
     # Owner-only planning state; never part of a shared visit.
@@ -63,6 +69,8 @@ class Visit(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary_nl: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary_en: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary_nl_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    summary_en_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     summary = Localized()
     visibility: Mapped[Visibility] = _visibility_column()
     # Whether a shared visit also shows its times. A separate choice from sharing the visit at all.

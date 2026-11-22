@@ -13068,6 +13068,13 @@
             ],
             "title": "Timezone"
           },
+          "translation_freshness": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TranslationFreshness"
+            },
+            "type": "object",
+            "title": "Translation Freshness"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -13087,6 +13094,7 @@
           "latitude",
           "longitude",
           "timezone",
+          "translation_freshness",
           "id",
           "visibility"
         ],
@@ -13191,6 +13199,22 @@
             ],
             "title": "Label En",
             "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
+          },
+          "label_reviewed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Reviewed",
+            "description": "Confirm that this language version is still correct."
           },
           "local_name": {
             "anyOf": [
@@ -14212,6 +14236,13 @@
       },
       "CollectionResponse": {
         "properties": {
+          "translation_freshness": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TranslationFreshness"
+            },
+            "type": "object",
+            "title": "Translation Freshness"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -14330,6 +14361,7 @@
         },
         "type": "object",
         "required": [
+          "translation_freshness",
           "id",
           "label",
           "content_language",
@@ -14412,6 +14444,22 @@
             ],
             "title": "Title En",
             "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
+          },
+          "title_reviewed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Reviewed",
+            "description": "Confirm that this language version is still correct."
           }
         },
         "additionalProperties": false,
@@ -16451,6 +16499,13 @@
             "title": "Share Address",
             "default": false
           },
+          "translation_freshness": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TranslationFreshness"
+            },
+            "type": "object",
+            "title": "Translation Freshness"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -16509,6 +16564,7 @@
           "local_name",
           "area_id",
           "share_address",
+          "translation_freshness",
           "id",
           "visibility",
           "osm_url",
@@ -16556,6 +16612,22 @@
             ],
             "title": "Label En",
             "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
+          },
+          "label_reviewed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Reviewed",
+            "description": "Confirm that this language version is still correct."
           },
           "local_name": {
             "anyOf": [
@@ -17250,6 +17322,38 @@
             "title": "Alt Text En",
             "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
+          "caption_reviewed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Caption Reviewed",
+            "description": "Confirm that this language version is still correct."
+          },
+          "alt_text_reviewed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt Text Reviewed",
+            "description": "Confirm that this language version is still correct."
+          },
           "focal_x": {
             "anyOf": [
               {
@@ -17283,6 +17387,13 @@
       },
       "MediaDerivativeResponse": {
         "properties": {
+          "translation_freshness": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TranslationFreshness"
+            },
+            "type": "object",
+            "title": "Translation Freshness"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -17521,6 +17632,7 @@
         },
         "type": "object",
         "required": [
+          "translation_freshness",
           "id",
           "media_asset_id",
           "purpose",
@@ -22072,6 +22184,13 @@
       },
       "RouteResponse": {
         "properties": {
+          "translation_freshness": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TranslationFreshness"
+            },
+            "type": "object",
+            "title": "Translation Freshness"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -22290,6 +22409,7 @@
         },
         "type": "object",
         "required": [
+          "translation_freshness",
           "id",
           "mode",
           "status",
@@ -22378,6 +22498,22 @@
             ],
             "title": "Label En",
             "description": "The English text. Null or an empty string clears it; a visitor who reads English gets this one."
+          },
+          "label_reviewed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Reviewed",
+            "description": "Confirm that this language version is still correct."
           },
           "departure_area_id": {
             "anyOf": [
@@ -24450,6 +24586,56 @@
         ],
         "title": "TranslationDraftResponse"
       },
+      "TranslationFreshness": {
+        "properties": {
+          "nl_updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nl Updated At"
+          },
+          "en_updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "En Updated At"
+          },
+          "possibly_out_of_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Possibly Out Of Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nl_updated_at",
+          "en_updated_at",
+          "possibly_out_of_date"
+        ],
+        "title": "TranslationFreshness"
+      },
       "TravelUpdateCreate": {
         "properties": {
           "occurred_at": {
@@ -24702,6 +24888,38 @@
             "title": "Body En",
             "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
+          "title_reviewed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Reviewed",
+            "description": "Confirm that this language version is still correct."
+          },
+          "body_reviewed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Reviewed",
+            "description": "Confirm that this language version is still correct."
+          },
           "private_notes": {
             "anyOf": [
               {
@@ -24772,6 +24990,13 @@
       },
       "TravelUpdateResponse": {
         "properties": {
+          "translation_freshness": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TranslationFreshness"
+            },
+            "type": "object",
+            "title": "Translation Freshness"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -24928,6 +25153,7 @@
         },
         "type": "object",
         "required": [
+          "translation_freshness",
           "id",
           "occurred_at",
           "timezone",
@@ -25152,6 +25378,13 @@
       },
       "TripResponse": {
         "properties": {
+          "translation_freshness": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TranslationFreshness"
+            },
+            "type": "object",
+            "title": "Translation Freshness"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -25286,6 +25519,7 @@
         },
         "type": "object",
         "required": [
+          "translation_freshness",
           "id",
           "owner_subject",
           "content_language",
@@ -25306,6 +25540,13 @@
       },
       "TripSummaryResponse": {
         "properties": {
+          "translation_freshness": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TranslationFreshness"
+            },
+            "type": "object",
+            "title": "Translation Freshness"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -25458,6 +25699,7 @@
         },
         "type": "object",
         "required": [
+          "translation_freshness",
           "id",
           "owner_subject",
           "content_language",
@@ -25911,6 +26153,38 @@
             "title": "Summary En",
             "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one."
           },
+          "title_reviewed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Reviewed",
+            "description": "Confirm that this language version is still correct."
+          },
+          "summary_reviewed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Reviewed",
+            "description": "Confirm that this language version is still correct."
+          },
           "starts_on": {
             "anyOf": [
               {
@@ -26229,6 +26503,13 @@
       },
       "VisitResponse": {
         "properties": {
+          "translation_freshness": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TranslationFreshness"
+            },
+            "type": "object",
+            "title": "Translation Freshness"
+          },
           "id": {
             "type": "string",
             "title": "Id"
@@ -26439,6 +26720,7 @@
         },
         "type": "object",
         "required": [
+          "translation_freshness",
           "id",
           "area",
           "location",
@@ -26729,6 +27011,38 @@
             ],
             "title": "Summary En",
             "description": "Markdown: bold, italic, headings, bulleted, numbered and task lists, links (http, https, mailto), blockquotes, inline and fenced code, rules and tables. Raw HTML and images are not rendered, and a task list is display-only: it never creates trip tasks. The English text. Null or an empty string clears it; a visitor who reads English gets this one."
+          },
+          "title_reviewed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Reviewed",
+            "description": "Confirm that this language version is still correct."
+          },
+          "summary_reviewed": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "nl",
+                  "en"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Reviewed",
+            "description": "Confirm that this language version is still correct."
           },
           "share_time": {
             "anyOf": [

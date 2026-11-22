@@ -80,6 +80,7 @@ export function VisitEditor({
         payload: {
           title_nl: values.titleNl.trim() || null,
           title_en: values.titleEn.trim() || null,
+          title_reviewed: values.titleReviewed ?? undefined,
           kind: values.kind || null,
           status: values.status,
           starts_on: values.startsOn || null,
@@ -89,6 +90,7 @@ export function VisitEditor({
           notes: values.notes.trim() || null,
           summary_nl: values.summaryNl.trim() || null,
           summary_en: values.summaryEn.trim() || null,
+          summary_reviewed: values.summaryReviewed ?? undefined,
           share_time: values.shareTime,
           share_date_precision: values.shareDatePrecision || null,
           ...(!id || !samePlace(values.place, baseline.current.place)
@@ -162,7 +164,14 @@ export function VisitEditor({
             onErase={erase}
           />
         )}
-        {editing && <VisitForm tripId={trip.id} record={record} editingId={editingId} />}
+        {editing && (
+          <VisitForm
+            translationFreshness={selected?.translation_freshness}
+            tripId={trip.id}
+            record={record}
+            editingId={editingId}
+          />
+        )}
       </RecordDialog>
       {rowDelete.target && (
         <DeleteConfirmation

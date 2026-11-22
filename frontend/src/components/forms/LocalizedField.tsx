@@ -1,3 +1,4 @@
+import type { TranslationFreshness } from "@/api-types";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { Button } from "@/components/ui/button";
 import { useField, type AnyFieldApi, type AnyFormApi } from "@tanstack/react-form";
@@ -41,7 +42,7 @@ export function LocalizedField({
   /** A further rule over the whole field (both languages), re-run when the fields named in `listenTo` change. */
   validate?: (props: { fieldApi: AnyFieldApi }) => string | (() => string) | undefined;
   listenTo?: string[];
-} & Omit<ViewProps, "fields" | "required">) {
+} & Omit<ViewProps, "fields" | "required" | "reviewed" | "onReview">) {
   const names = localizedNames(name);
   const atLeastOne = ({ fieldApi }: { fieldApi: AnyFieldApi }) =>
     required &&
@@ -66,12 +67,24 @@ export function LocalizedField({
       validators: validators(names.nl) as never,
     }) as unknown as AnyFieldApi,
   };
-  return <LocalizedFieldView {...view} fields={fields} required={required} />;
+  const review = useField({ form, name: `${name}Reviewed` as never }) as unknown as AnyFieldApi;
+  return (
+    <LocalizedFieldView
+      {...view}
+      fields={fields}
+      required={required}
+      reviewed={review.state.value}
+      onReview={review.handleChange}
+    />
+  );
 }
 
 type ViewProps = {
   /** The two versions as form fields, or anything shaped like one (see `plainField`). */
   fields: Record<ContentLanguage, AnyFieldApi>;
+  freshness?: TranslationFreshness;
+  reviewed?: ContentLanguage | null;
+  onReview?: (language: ContentLanguage | null) => void;
   label: string;
   kind?: "text" | "markdown";
   required?: boolean;
@@ -109,6 +122,9 @@ export function LocalizedFieldView({
   language: initial,
   optional,
   format,
+  freshness,
+  reviewed,
+  onReview,
   ...input
 }: ViewProps) {
   useLocale();
@@ -131,19 +147,27 @@ export function LocalizedFieldView({
     if (clean) setDrafted({ nl: false, en: false });
   }, [clean]);
 
+  const stale = (language: ContentLanguage) =>
+    freshness?.possibly_out_of_date === language &&
+    !empty(language) &&
+    !empty(otherLanguage(language));
   const choice = (language: ContentLanguage) => {
     const isMain = language === main;
     const isEmpty = empty(language);
+    const name =
+      isMain && isEmpty
+        ? m.localized_choice_main_empty({ language: languageName(language) })
+        : isMain
+          ? m.localized_choice_main({ language: languageName(language) })
+          : isEmpty
+            ? m.localized_choice_empty({ language: languageName(language) })
+            : languageName(language);
     return {
       value: language,
       label:
-        isMain && isEmpty
-          ? m.localized_choice_main_empty({ language: languageName(language) })
-          : isMain
-            ? m.localized_choice_main({ language: languageName(language) })
-            : isEmpty
-              ? m.localized_choice_empty({ language: languageName(language) })
-              : languageName(language),
+        stale(language) && reviewed !== language
+          ? m.localized_choice_out_of_date({ language: name })
+          : name,
     };
   };
   const choices = [main, otherLanguage(main)].map(choice);
@@ -184,6 +208,25 @@ export function LocalizedFieldView({
               setDrafted((previous) => ({ ...previous, [shown]: true }));
             }}
           />
+        </div>
+      )}
+      {stale(shown) && !reviewing && (
+        <div className="grid gap-1">
+          <p className="help m-0" role="status">
+            {reviewed === shown ? m.localized_review_pending() : m.localized_possibly_out_of_date()}
+          </p>
+          {onReview && (
+            <div>
+              <Button
+                type="button"
+                className="compact secondary"
+                disabled={input.disabled}
+                onClick={() => onReview(reviewed === shown ? null : shown)}
+              >
+                {reviewed === shown ? m.localized_undo_review() : m.localized_still_correct()}
+              </Button>
+            </div>
+          )}
         </div>
       )}
       {reviewing && (

@@ -1,3 +1,4 @@
+import type { ContentLanguage } from "@/i18n/content-language";
 import { m } from "@/paraglide/messages.js";
 import { addDays } from "@/lib/dates";
 import { locationName, stayCoversNight, areaName } from "@/lib/records";
@@ -55,6 +56,7 @@ export type Values = {
   place: PlaceValue;
   titleNl: string;
   titleEn: string;
+  titleReviewed: ContentLanguage | null;
   kind: VisitKind | "";
   status: PlanningStatus;
   startsOn: string;
@@ -64,6 +66,7 @@ export type Values = {
   notes: string;
   summaryNl: string;
   summaryEn: string;
+  summaryReviewed: ContentLanguage | null;
   shareTime: boolean;
   /** Empty follows each audience's own date precision. */
   shareDatePrecision: DatePrecision | "";
@@ -73,6 +76,7 @@ export const blank = (): Values => ({
   place: emptyPlace(),
   titleNl: "",
   titleEn: "",
+  titleReviewed: null,
   kind: "",
   status: "planned",
   startsOn: "",
@@ -82,6 +86,7 @@ export const blank = (): Values => ({
   notes: "",
   summaryNl: "",
   summaryEn: "",
+  summaryReviewed: null,
   shareTime: false,
   shareDatePrecision: "",
 });
@@ -95,6 +100,7 @@ export const fromVisit = (visit: Visit): Values => ({
   place: placeOfVisit(visit),
   titleNl: visit.title_nl ?? "",
   titleEn: visit.title_en ?? "",
+  titleReviewed: null,
   kind: visit.kind ?? "",
   status: visit.status,
   startsOn: visit.starts_on ?? "",
@@ -104,6 +110,7 @@ export const fromVisit = (visit: Visit): Values => ({
   notes: visit.notes ?? "",
   summaryNl: visit.summary_nl ?? "",
   summaryEn: visit.summary_en ?? "",
+  summaryReviewed: null,
   shareTime: visit.share_time,
   shareDatePrecision: visit.share_date_precision ?? "",
 });
