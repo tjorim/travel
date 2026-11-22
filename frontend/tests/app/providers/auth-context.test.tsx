@@ -19,7 +19,7 @@ afterEach(() => {
 it("renews thirty seconds before expiry and on refocus without clearing an offline session", async () => {
   vi.useFakeTimers();
   const stored = JSON.stringify({ accessToken: "owner", expiresAt: Date.now() + 60_000 });
-  sessionStorage.setItem("travel-tracker-session", stored);
+  sessionStorage.setItem("travel-session", stored);
   render(
     <AuthProvider>
       <p>Open editor</p>
@@ -33,5 +33,5 @@ it("renews thirty seconds before expiry and on refocus without clearing an offli
     window.dispatchEvent(new Event("focus"));
   });
   expect(renewSession).toHaveBeenCalledTimes(2);
-  expect(sessionStorage.getItem("travel-tracker-session")).toBe(stored);
+  expect(sessionStorage.getItem("travel-session")).toBe(stored);
 });

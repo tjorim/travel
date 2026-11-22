@@ -33,7 +33,7 @@ beforeEach(() => {
   auth.session = { accessToken: testToken(), expiresAt: Date.now() + 3600000 };
   localStorage.clear();
   sessionStorage.setItem(
-    "travel-tracker-session",
+    "travel-session",
     JSON.stringify({ ...auth.session, expiresAt: Date.now() + 3600000 }),
   );
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
@@ -259,7 +259,7 @@ it("remounts capture on an account transition so A's in-memory fields cannot bec
   await waitFor(() => expect(readDraft("t1")?.title).toBe("Synthetic A private draft"));
   auth.session = { accessToken: testToken("owner-B"), expiresAt: Date.now() + 3600000 };
   sessionStorage.setItem(
-    "travel-tracker-session",
+    "travel-session",
     JSON.stringify({ ...auth.session, expiresAt: Date.now() + 3600000 }),
   );
   view.rerender(

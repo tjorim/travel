@@ -27,7 +27,7 @@ function fakeAccessToken(subject: string): string {
 
 function withSession(): void {
   sessionStorage.setItem(
-    "travel-tracker-session",
+    "travel-session",
     JSON.stringify({ accessToken: fakeAccessToken(SUBJECT), expiresAt: Date.now() + 60_000 }),
   );
 }

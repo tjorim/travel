@@ -62,7 +62,7 @@ for (const locale of ["nl", "en"] as const) {
     await mockApi(accountB);
     await accountB.addInitScript(() => {
       sessionStorage.setItem(
-        "travel-tracker-session",
+        "travel-session",
         JSON.stringify({
           accessToken: `e30.${btoa(JSON.stringify({ sub: "synthetic-owner-B" }))}.`,
           expiresAt: Date.now() + 3600000,

@@ -53,7 +53,7 @@ function devSession(): Plugin {
   // the per-owner query cache is keyed like the API's owner.
   const seed = `
     const encode = (value) => btoa(JSON.stringify(value)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-    sessionStorage.setItem("travel-tracker-session", JSON.stringify({
+    sessionStorage.setItem("travel-session", JSON.stringify({
       accessToken: encode({ alg: "none" }) + "." + encode({ sub: "dev-bypass-user" }) + ".",
       expiresAt: Date.now() + 12 * 60 * 60 * 1000,
     }));`;

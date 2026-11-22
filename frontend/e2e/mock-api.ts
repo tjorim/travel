@@ -228,7 +228,7 @@ export async function signInOwner(page: Page) {
     const encode = (value: unknown) =>
       btoa(JSON.stringify(value)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
     sessionStorage.setItem(
-      "travel-tracker-session",
+      "travel-session",
       JSON.stringify({
         accessToken: `${encode({ alg: "none" })}.${encode({ sub: "e2e-owner" })}.`,
         expiresAt: Date.now() + 60 * 60 * 1000,

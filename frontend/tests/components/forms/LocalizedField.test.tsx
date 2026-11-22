@@ -72,7 +72,7 @@ function Editor({
 
 function withOwner(ui: React.ReactElement) {
   sessionStorage.setItem(
-    "travel-tracker-session",
+    "travel-session",
     JSON.stringify({ accessToken: testToken(), expiresAt: Date.now() + 60_000 }),
   );
   return render(<AuthProvider>{ui}</AuthProvider>);

@@ -81,7 +81,7 @@ beforeEach(() => {
   stubObjectUrls();
   auth.session = { accessToken: testToken(), expiresAt: Date.now() + 3600000 };
   localStorage.clear();
-  sessionStorage.setItem("travel-tracker-session", JSON.stringify(auth.session));
+  sessionStorage.setItem("travel-session", JSON.stringify(auth.session));
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   trips = [trip("t1", "Exampleland", null, null), trip("t2", "IJsland", null, null)];
   api = fakeApi()

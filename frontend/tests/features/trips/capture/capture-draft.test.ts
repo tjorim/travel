@@ -12,7 +12,7 @@ import { testToken } from "../../../utils/query-test-utils";
 
 function owner(subject: string) {
   sessionStorage.setItem(
-    "travel-tracker-session",
+    "travel-session",
     JSON.stringify({ accessToken: testToken(subject), expiresAt: Date.now() + 60000 }),
   );
 }

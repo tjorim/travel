@@ -94,8 +94,6 @@ for (const locale of locales) {
       .click();
     await expect(dialog).toHaveCount(0);
 
-    expect(
-      await page.evaluate(() => sessionStorage.getItem("travel-tracker-session")),
-    ).not.toBeNull();
+    expect(await page.evaluate(() => sessionStorage.getItem("travel-session"))).not.toBeNull();
   });
 }
