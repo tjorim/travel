@@ -85,6 +85,7 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 ### Internal
 
 - **Web:** Split the shared trip map into map setup, layers, framing and controls (#370).
+- **Web:** Split visitor routing, trip listings, collection views and trip delivery into separate modules (#370).
 - **Web:** Separate authenticated API requests from shared API errors and check that visitor routes cannot import owner code, including through shared modules (#370).
 - **Web:** Split the shared trip projection into story, plan, gallery and map data modules (#370).
 - Align the tooling, CI and docs with the other apps: the frontend `tsconfig.json` is now a solution file for `tsconfig.app.json` and `tsconfig.node.json`, Vitest has its own `vitest.config.ts` and `tests/setup.ts`, `e2e` is `test:e2e` (and `e2e:offline` is `test:e2e:offline`), `pnpm test` no longer compiles messages separately, oxlint and oxfmt use the shared plugins, ignore lists and `no-console` rule, and frontend and backend dependencies move to the newest versions the apps use (pnpm 12.21.0, TanStack Query 5.108, lucide-react 1.72, oxlint 1.93, oxfmt 0.78, SQLAlchemy 2.1.9, psycopg 3.3.9, ty 0.0.105 with its renamed rules). `@tanstack/react-form` stays on 1.x until the forms move to 2.0. CI is split into `frontend-ci.yml` (`Frontend / Checks`, `Frontend / E2E shard n/3`) and `backend-ci.yml` (`Backend / Checks`) called from `ci.yml` with the same path filters and `CI gate`. `AGENTS.md`, `CLAUDE.md`, `README.md` and `backend/README.md` follow the shared section skeleton.

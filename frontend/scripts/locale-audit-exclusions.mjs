@@ -14,7 +14,9 @@ export const exclusions = {
     English: "language autonym",
     "Travel ·": "fixed application title brand",
   },
-  "features/visitor/visitor-routes.tsx": { Travel: "fixed application brand" },
+  "features/visitor/CollectionIndexView.tsx": { Travel: "fixed application brand" },
+  "features/visitor/TripIndex.tsx": { Travel: "fixed application brand" },
+  "features/visitor/VisitorPage.tsx": { Travel: "fixed application brand" },
   "components/VisitorTopBar.tsx": { Travel: "fixed application brand" },
   "components/projection/ProjectionView.tsx": {
     "absolute top-1/3 z-10 grid size-11 -translate-y-1/2 place-items-center rounded-full border border-travel-control-border bg-travel-surface p-0 text-travel-forest shadow-travel-card disabled:hidden":
