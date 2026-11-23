@@ -84,6 +84,7 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 
 ### Internal
 
+- **Web:** Record a 650-line limit for frontend source files and why visitor, owner and shared code stay separated by the import check rather than by top-level folders (#370).
 - **Web:** Split the shared trip map into map setup, layers, framing and controls (#370).
 - **Web:** Split visitor routing, trip listings, collection views and trip delivery into separate modules (#370).
 - **Web:** Separate authenticated API requests from shared API errors and check that visitor routes cannot import owner code, including through shared modules (#370).
