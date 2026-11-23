@@ -84,6 +84,7 @@ allowed scopes are listed in `release.config.json`, and `check` validates `[Unre
 
 ### Internal
 
+- Keep generated API schema files out of CodeRabbit reviews so large API changes stay under its file limit. Reviews remain on request only.
 - **Web:** Record why visitor, owner and shared code stay separated by the import check rather than by top-level folders (#370).
 - **Web:** Split the shared trip map into map setup, layers, framing and controls (#370).
 - **Web:** Split visitor routing, trip listings, collection views and trip delivery into separate modules (#370).
