@@ -58,13 +58,6 @@ local imports, re-exports, type-only imports and literal lazy imports, and repor
 module. Use explicit imports in this graph so each dependency can be checked. The generated API schemas and Paraglide
 output are treated as leaves.
 
-### File size
-
-Keep a frontend source file under 650 lines. Past that, split by responsibility (a hook for state and effects, a module
-for pure helpers, one component per section) instead of growing the file. A file may exceed the limit only with a
-reason recorded here; none do today, and the largest are `CaptureDialog.tsx` (637), `PublicationManager.tsx` (597) and
-`MediaManager.tsx` (590). The limit is a review rule, not a lint check.
-
 ### Folder layout
 
 Visitor, owner and shared code is separated by the import boundary above, not by top-level `visitor/`, `owner/` and
