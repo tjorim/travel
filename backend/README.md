@@ -494,10 +494,9 @@ VPS activation is tracked in [apps#275](https://github.com/tjorim/apps/issues/27
 | `TRAVEL_DATABASE_URL` | SQLAlchemy URL; PostgreSQL in production. |
 | `TRAVEL_OIDC_ISSUER_URL` | Required issuer for production bearer-token validation. |
 | `TRAVEL_OIDC_JWKS_URL` | Required JWKS endpoint for production bearer-token validation. |
-| `TRAVEL_OIDC_AUDIENCE` | Expected API audience; defaults to `travel-api`. |
+| `TRAVEL_OIDC_AUDIENCE` | Expected API audience; defaults to `travel-api`. Required, and different from the MCP URL, when `TRAVEL_MCP_RESOURCE_URL` is set. |
 | `TRAVEL_OIDC_HOME_ASSISTANT_CLIENT_ID` | Public PKCE client ID the Home Assistant integration signs in with; defaults to `travel-home-assistant`. |
-| `TRAVEL_MCP_BASE_URL` | Canonical public MCP resource URL (for example `https://travel.example.test/mcp`); advertised as the protected resource and, by default, the only audience MCP accepts. Unset for local stdio use. |
-| `TRAVEL_MCP_AUDIENCE` | Optional MCP audience when it must differ from the resource URL; never equal to `TRAVEL_OIDC_AUDIENCE`. |
+| `TRAVEL_MCP_RESOURCE_URL` | Canonical public MCP URL, trailing slash required (for example `https://travel.example.test/mcp/`); advertised as the protected resource and the only audience MCP accepts. Requires a non-empty `TRAVEL_OIDC_AUDIENCE` that differs from it. Unset for local stdio use. Replaces `TRAVEL_MCP_BASE_URL` and `TRAVEL_MCP_AUDIENCE`: startup fails if either is still set (the old URL only while the new one is empty). |
 | `TRAVEL_MCP_DEVELOPMENT_SUBJECT` | Local-test/stdio owner subject; honored only when `TRAVEL_ENVIRONMENT=development`, never in production. |
 | `TRAVEL_PUBLIC_APP_URL` | Visitor-facing Travel PWA origin used by MCP to return a complete `/share/<capability>` URL; defaults to `http://localhost:5173` for local Vite development. Set this to the deployed Travel origin in production. |
 | `TRAVEL_SHARE_LINK_SECRET`, `TRAVEL_SHARE_LINK_SECRET_FILE` | Keys the one-way verifier stored for each unlisted share-link token. The public default is rejected unless `TRAVEL_ENVIRONMENT=development`; set a stable non-default secret in production, either directly or as the path of a file (such as a Docker secret) that holds it. A direct `TRAVEL_SHARE_LINK_SECRET` wins over the file. The raw token is also stored for owner recovery, so database and backup readers can recover it; see [ADR 20](../docs/decisions/20-share-link-token-storage.md). |
@@ -568,7 +567,7 @@ assistant, follow [docs/booking-confirmation-recipe.md](../docs/booking-confirma
 
 The local
 MCP server is mounted by FastAPI at `/mcp` only when both
-`TRAVEL_MCP_BASE_URL` and `TRAVEL_OIDC_ISSUER_URL` are configured. It accepts
+`TRAVEL_MCP_RESOURCE_URL` and `TRAVEL_OIDC_ISSUER_URL` are configured. It accepts
 only Keycloak tokens whose audience is the MCP resource, never the API token;
 see [`docs/decisions/336-mcp-resource-audience.md`](../docs/decisions/336-mcp-resource-audience.md)
 for the contract and reconnect steps. Caddy routing, production Keycloak

@@ -78,11 +78,11 @@ def test_current_subject_rejects_a_wrong_audience(monkeypatch: pytest.MonkeyPatc
 
 def test_current_subject_rejects_a_token_for_the_mcp_resource(monkeypatch: pytest.MonkeyPatch) -> None:
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    token = token_for(private_key, "https://travel.example.test/mcp")
+    token = token_for(private_key, "https://travel.example.test/mcp/")
     monkeypatch.setattr("app.core.auth.signing_keys", lambda _: StaticJwksClient(private_key.public_key()))
     monkeypatch.setattr(settings, "environment", "production")
     monkeypatch.setattr(settings, "oidc_audience", "travel-api")
-    monkeypatch.setattr(settings, "mcp_base_url", "https://travel.example.test/mcp")
+    monkeypatch.setattr(settings, "mcp_resource_url", "https://travel.example.test/mcp/")
     monkeypatch.setattr(settings, "oidc_issuer_url", "https://auth.example.test/realms/travel")
     monkeypatch.setattr(
         settings, "oidc_jwks_url", "https://auth.example.test/realms/travel/protocol/openid-connect/certs"
