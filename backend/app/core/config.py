@@ -1,6 +1,7 @@
 import re
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlsplit
 
 from cryptography.fernet import Fernet
 from limits import parse_many
@@ -23,15 +24,24 @@ class Settings(BaseSettings):
     # it outside environment == "development". Same contract as the
     # DEV_AUTH_BYPASS_TOKEN of champagnefestival and worktime.
     dev_auth_bypass_token: str = ""
-    # The canonical public URL of the MCP resource, for example
-    # https://travel.example.test/mcp.  It is advertised verbatim as the
-    # protected-resource identifier (RFC 9728/8707) and, unless
-    # mcp_audience overrides it, is the only audience MCP accepts.  Ordinary
-    # API tokens (oidc_audience) never authenticate MCP and the reverse.
+    # The canonical public URL of the MCP endpoint, trailing slash required, for
+    # example https://travel.example.test/mcp/ (TRAVEL_MCP_RESOURCE_URL). Setting
+    # it, together with oidc_issuer_url, mounts MCP over HTTP. It is advertised
+    # verbatim as the protected-resource identifier (RFC 9728/8707) and is the
+    # only audience MCP accepts. Ordinary API tokens (oidc_audience) never
+    # authenticate MCP and the reverse. Same contract as MCP_RESOURCE_URL in
+    # Daynest, Worktime and Champagnefestival.
+    mcp_resource_url: str | None = None
+    # Retired TRAVEL_MCP_BASE_URL and TRAVEL_MCP_AUDIENCE, read only so startup
+    # can refuse a configuration that still uses them. Nothing else reads them.
+    retired_mcp_base_url: str | None = Field(
+        default=None, validation_alias="TRAVEL_MCP_BASE_URL", exclude=True, repr=False
+    )
+    retired_mcp_audience: str | None = Field(
+        default=None, validation_alias="TRAVEL_MCP_AUDIENCE", exclude=True, repr=False
+    )
     # In development a named subject makes stdio integration tests possible
     # without weakening production authentication.
-    mcp_base_url: str | None = None
-    mcp_audience: str | None = None
     mcp_development_subject: str | None = None
     # The visitor-facing PWA origin. MCP runs without an HTTP request from
     # which it could otherwise determine where an unlisted visitor URL lives.
@@ -164,20 +174,50 @@ class Settings(BaseSettings):
             )
         return self
 
-    @property
-    def mcp_resource_url(self) -> str | None:
-        """The canonical MCP resource URL, without a trailing slash."""
-        return self.mcp_base_url.rstrip("/") if self.mcp_base_url else None
-
-    @property
-    def mcp_token_audience(self) -> str | None:
-        """The one audience an MCP bearer token must carry."""
-        return self.mcp_audience or self.mcp_resource_url
+    @field_validator("mcp_resource_url")
+    @classmethod
+    def validate_mcp_resource_url(cls, value: str | None) -> str | None:
+        """Require the canonical public MCP URL, so the audience can be compared byte for byte."""
+        if not value:
+            return None
+        parts = urlsplit(value)
+        if (
+            parts.scheme not in {"http", "https"}
+            or not parts.hostname
+            or parts.path != "/mcp/"
+            or parts.query
+            or parts.fragment
+            or parts.username is not None
+            or parts.password is not None
+            or value != parts.geturl()
+        ):
+            raise ValueError("TRAVEL_MCP_RESOURCE_URL must be a canonical HTTP(S) URL ending in /mcp/")
+        return value
 
     @model_validator(mode="after")
-    def validate_mcp_audience_is_not_the_api_audience(self) -> Settings:
-        if self.mcp_token_audience and self.mcp_token_audience == self.oidc_audience:
-            raise ValueError("TRAVEL_MCP_AUDIENCE must differ from TRAVEL_OIDC_AUDIENCE.")
+    def validate_retired_mcp_settings(self) -> Settings:
+        """Fail loudly instead of silently unmounting MCP or binding it to another audience."""
+        if self.retired_mcp_base_url and not self.mcp_resource_url:
+            raise ValueError(
+                "TRAVEL_MCP_BASE_URL is no longer read: set TRAVEL_MCP_RESOURCE_URL to the canonical "
+                "https://<host>/mcp/ URL."
+            )
+        if self.retired_mcp_audience:
+            raise ValueError(
+                "TRAVEL_MCP_AUDIENCE is no longer read: MCP tokens must carry TRAVEL_MCP_RESOURCE_URL as their audience."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_mcp_requires_api_audience(self) -> Settings:
+        """Keep MCP and REST tokens apart: an empty or equal TRAVEL_OIDC_AUDIENCE would let one pass for the other."""
+        if self.mcp_resource_url and not self.oidc_audience:
+            raise ValueError(
+                "TRAVEL_OIDC_AUDIENCE must be set when TRAVEL_MCP_RESOURCE_URL is: "
+                "without it the REST API accepts MCP tokens."
+            )
+        if self.mcp_resource_url and self.mcp_resource_url == self.oidc_audience:
+            raise ValueError("TRAVEL_OIDC_AUDIENCE must differ from TRAVEL_MCP_RESOURCE_URL.")
         return self
 
 

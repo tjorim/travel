@@ -97,9 +97,9 @@ SERVER = textwrap.dedent(
     from app.mcp import core
     from app.services.storage import LocalObjectStorage
 
-    issuer, url = "https://identity.example.test/realms/travel", "https://travel.example.test/mcp"
+    issuer, url = "https://identity.example.test/realms/travel", "https://travel.example.test/mcp/"
     settings.environment, settings.oidc_audience, settings.oidc_issuer_url = "production", "travel-api", issuer
-    settings.mcp_base_url, settings.mcp_audience = url, None
+    settings.mcp_resource_url = url
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     root = tempfile.mkdtemp()

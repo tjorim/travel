@@ -319,13 +319,13 @@ def test_mcp_preview_file_and_derivative_tools_reach_their_handlers(backend: Tra
 
 
 def test_http_mcp_factory_requires_oidc_and_builds_a_stateless_app(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(settings, "mcp_base_url", None)
+    monkeypatch.setattr(settings, "mcp_resource_url", None)
     monkeypatch.setattr(settings, "oidc_issuer_url", None)
     assert not mcp_http_enabled()
     with pytest.raises(RuntimeError, match="MCP HTTP requires"):
         create_mcp_http_app(TestingSessionLocal)
 
-    monkeypatch.setattr(settings, "mcp_base_url", "https://mcp.example.test/mcp")
+    monkeypatch.setattr(settings, "mcp_resource_url", "https://mcp.example.test/mcp/")
     monkeypatch.setattr(settings, "oidc_issuer_url", "https://identity.example.test/realms/travel")
     assert mcp_http_enabled()
     server, http_app = create_mcp_http_app(TestingSessionLocal)
@@ -336,7 +336,7 @@ def test_http_mcp_factory_requires_oidc_and_builds_a_stateless_app(monkeypatch: 
 def test_http_mcp_logs_why_a_request_was_refused_without_the_token(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    monkeypatch.setattr(settings, "mcp_base_url", "https://mcp.example.test/mcp")
+    monkeypatch.setattr(settings, "mcp_resource_url", "https://mcp.example.test/mcp/")
     monkeypatch.setattr(settings, "oidc_issuer_url", "https://identity.example.test/realms/travel")
     _, http_app = create_mcp_http_app(TestingSessionLocal)
     client = TestClient(http_app)
@@ -349,7 +349,7 @@ def test_http_mcp_logs_why_a_request_was_refused_without_the_token(
 
 
 ISSUER = "https://identity.example.test/realms/travel"
-MCP_URL = "https://travel.example.test/mcp"
+MCP_URL = "https://travel.example.test/mcp/"
 MCP_HEADERS = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
 WHOAMI_CALL = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "whoami", "arguments": {}}}
 
@@ -360,8 +360,7 @@ def mcp_resource(monkeypatch: pytest.MonkeyPatch) -> tuple[FastAPI, RSAKeyPair]:
     monkeypatch.setattr(settings, "environment", "production")
     monkeypatch.setattr(settings, "oidc_audience", "travel-api")
     monkeypatch.setattr(settings, "oidc_issuer_url", ISSUER)
-    monkeypatch.setattr(settings, "mcp_base_url", MCP_URL)
-    monkeypatch.setattr(settings, "mcp_audience", None)
+    monkeypatch.setattr(settings, "mcp_resource_url", MCP_URL)
     server, http_app = create_mcp_http_app(TestingSessionLocal)
     pair = RSAKeyPair.generate()
     # Only the key lookup is replaced; issuer, audience, expiry and scope checks are the production verifier's.
@@ -382,15 +381,18 @@ def test_mcp_publishes_its_canonical_resource_and_keycloak_as_the_authorization_
 ) -> None:
     application, _ = mcp_resource
     with TestClient(application, base_url="https://travel.example.test") as client:
-        metadata = client.get("/.well-known/oauth-protected-resource/mcp")
+        metadata = client.get("/.well-known/oauth-protected-resource/mcp/", follow_redirects=False)
+        # A proxy that strips the trailing slash, or a client deriving the path from /mcp, gets the same document.
+        stripped = client.get("/.well-known/oauth-protected-resource/mcp", follow_redirects=False)
         challenge = client.post("/mcp", json=WHOAMI_CALL, headers=MCP_HEADERS, follow_redirects=True)
 
-    assert metadata.status_code == 200
+    assert metadata.status_code == stripped.status_code == 200
+    assert metadata.json() == stripped.json()
     assert metadata.json()["resource"] == MCP_URL
     assert metadata.json()["authorization_servers"] == [ISSUER]
     assert challenge.status_code == 401
     assert (
-        'resource_metadata="https://travel.example.test/.well-known/oauth-protected-resource/mcp"'
+        'resource_metadata="https://travel.example.test/.well-known/oauth-protected-resource/mcp/"'
         in challenge.headers["www-authenticate"]
     )
 
@@ -412,8 +414,8 @@ def test_mcp_tool_call_with_the_dedicated_audience_acts_as_the_token_subject(
     "claims",
     [
         pytest.param({"audience": "travel-api"}, id="api-audience-only"),
-        pytest.param({"audience": "https://worktime.example.test/mcp"}, id="another-mcp-resource"),
-        pytest.param({"audience": f"{MCP_URL}/"}, id="resource-with-trailing-slash"),
+        pytest.param({"audience": "https://worktime.example.test/mcp/"}, id="another-mcp-resource"),
+        pytest.param({"audience": MCP_URL.rstrip("/")}, id="resource-without-trailing-slash"),
         pytest.param({"audience": ["travel-api", "account"]}, id="audience-list-without-mcp"),
         pytest.param({"audience": None}, id="no-audience"),
         pytest.param({"issuer": "https://identity.example.test/realms/other"}, id="wrong-issuer"),
@@ -670,16 +672,43 @@ def test_a_rejected_mcp_token_leaves_no_audit_row(mcp_resource: tuple[FastAPI, R
         assert {event.owner_subject for event in session.scalars(select(OwnerActivityEvent))} == {"owner-9"}
 
 
-def test_mcp_audience_defaults_to_the_canonical_url_and_never_the_api_audience(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    configured = Settings(mcp_base_url="https://travel.example.test/mcp/", oidc_audience="travel-api")
-    assert configured.mcp_resource_url == MCP_URL
-    assert configured.mcp_token_audience == MCP_URL
-    assert Settings(mcp_base_url=MCP_URL, mcp_audience="travel-mcp").mcp_token_audience == "travel-mcp"
-    assert Settings().mcp_token_audience is None
-    with pytest.raises(ValidationError, match="TRAVEL_MCP_AUDIENCE must differ"):
-        Settings(mcp_base_url=MCP_URL, mcp_audience="travel-api", oidc_audience="travel-api")
+def test_mcp_resource_url_is_canonical_and_never_the_api_audience() -> None:
+    assert Settings(mcp_resource_url=MCP_URL, oidc_audience="travel-api").mcp_resource_url == MCP_URL
+    assert Settings().mcp_resource_url is None
+    with pytest.raises(ValidationError, match="TRAVEL_OIDC_AUDIENCE must be set when TRAVEL_MCP_RESOURCE_URL is"):
+        Settings(mcp_resource_url=MCP_URL, oidc_audience="")
+    with pytest.raises(ValidationError, match="TRAVEL_OIDC_AUDIENCE must differ"):
+        Settings(mcp_resource_url=MCP_URL, oidc_audience=MCP_URL)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "travel",
+        "https://travel.example.test/mcp",
+        "https://travel.example.test/mcp/?unexpected=true",
+        "https://travel.example.test/mcp/#fragment",
+        "https://user@travel.example.test/mcp/",
+        "ftp://travel.example.test/mcp/",
+        "https://travel.example.test/other/",
+    ],
+)
+def test_mcp_resource_url_requires_canonical_endpoint(url: str) -> None:
+    with pytest.raises(ValidationError, match="TRAVEL_MCP_RESOURCE_URL must be a canonical"):
+        Settings(mcp_resource_url=url)
+
+
+def test_retired_mcp_settings_fail_loudly(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("TRAVEL_MCP_RESOURCE_URL", raising=False)
+    monkeypatch.setenv("TRAVEL_MCP_BASE_URL", "https://travel.example.test/mcp")
+    with pytest.raises(ValidationError, match="TRAVEL_MCP_BASE_URL is no longer read"):
+        Settings()
+    assert Settings(mcp_resource_url=MCP_URL).mcp_resource_url == MCP_URL
+    monkeypatch.delenv("TRAVEL_MCP_BASE_URL")
+
+    monkeypatch.setenv("TRAVEL_MCP_AUDIENCE", "travel-mcp")
+    with pytest.raises(ValidationError, match="TRAVEL_MCP_AUDIENCE is no longer read"):
+        Settings(mcp_resource_url=MCP_URL)
 
 
 def test_unauthorized_reason_names_unverified_claims_but_never_the_token() -> None:
