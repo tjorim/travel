@@ -171,7 +171,7 @@ Database and HA backups may retain deleted history until their independent reten
 
 Use short, imperative, sentence-case commit titles, for example `Add reusable travel maps and document previews`. Keep
 each commit focused. Reference a relevant GitHub issue for substantive work and update `PLAN.md` when its order changes.
-Pull requests should state the affected public/private routes, describe visual checks, and note the manual checks run. Open a pull request as a draft while the work is in progress and mark it ready for review once it is complete and its checks pass locally, so reviewers and CI only see finished work; push once per pull request where you can rather than after every small change.
+Pull requests should state the affected public/private routes, describe visual checks, and note the manual checks run. Open a pull request as a draft while the work is in progress and mark it ready for review once it is complete and its checks pass locally, so reviewers and CI only see finished work; push once per pull request where you can rather than after every small change. Match review effort to risk: low-risk changes (docs, UI polish, derived read-only views) get one quick review and only real bugs are fixed; keep the full review and fix loop for money, auth, data models, files, exports and permissions.
 
 ### Deferred work and repo scope
 
