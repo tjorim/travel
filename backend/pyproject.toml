@@ -25,7 +25,7 @@ dependencies = [
   "pyjwt[crypto]==2.15.1",
   "python-multipart==0.0.34",
   "limits==5.8.0",
-  "reportlab==5.1.0",
+  "reportlab==5.1.1",
   "sqlalchemy==2.1.9",
   "timezonefinder==9.2.0",
   "uvicorn[standard]==0.54.0",
