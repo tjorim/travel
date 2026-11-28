@@ -20,7 +20,7 @@ dependencies = [
   "nh3==0.3.8",
   "pillow==13.0.0",
   "psycopg[binary]==3.3.9",
-  "pydantic==2.14.3",
+  "pydantic==2.14.4",
   "pydantic-settings==2.16.3",
   "pyjwt[crypto]==2.15.1",
   "python-multipart==0.0.34",
